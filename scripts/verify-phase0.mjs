@@ -104,11 +104,20 @@ const gates = [
               }
             }
 
-            // Also catch edits to an already-applied migration file (forward-fix only).
-            const diff = run('git', ['diff', '--exit-code', '--stat', '--', 'src/db/migrations'])
+            // Also catch edits to an already-applied migration file (forward-fix only,
+            // PLAYBOOK §5). Scoped to *.sql deliberately: `meta/_journal.json` changes
+            // every time a migration is legitimately added, so including it would flag
+            // normal work as tampering and train everyone to ignore this check.
+            const diff = run('git', [
+              'diff',
+              '--exit-code',
+              '--stat',
+              '--',
+              'src/db/migrations/*.sql',
+            ])
             return diff.ok
               ? { ok: true, output: '' }
-              : { ok: false, output: `applied migrations were modified:\n${diff.output}` }
+              : { ok: false, output: `an applied migration file was modified:\n${diff.output}` }
           },
         },
       ]

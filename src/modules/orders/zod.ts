@@ -1,0 +1,150 @@
+/**
+ * 1.3 payload schemas, including every `pending_changes` payload (brief step 2).
+ *
+ * These are the boundary. A draft that MARBIM extracted from a buyer PO and a form a
+ * merchandiser typed both land here, and both are re-validated at approve — so a schema
+ * that tightens later must be able to reject a draft written under the looser one. That
+ * is why each pending payload is registered under a versioned key rather than inferred.
+ *
+ * Money is a decimal STRING throughout. Accepting a JS number here would quietly make
+ * every unit price a float before it ever reached `lib/money`.
+ */
+import { z } from 'zod'
+
+/** `YYYY-MM-DD`, and a real date — `2026-02-30` parses in JS and must not pass. */
+export const calendarDate = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'expected YYYY-MM-DD')
+  .refine((value) => new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value, {
+    message: 'not a real calendar date',
+  })
+
+/** numeric(14,2) as a string. Never a number — see lib/money. */
+export const moneyAmount = z
+  .string()
+  .regex(/^-?\d{1,12}(\.\d{1,2})?$/, 'expected a decimal amount with at most 2 places')
+
+export const currencyCode = z.string().length(3).regex(/^[A-Z]{3}$/, 'expected an ISO-4217 code')
+
+export const orderStatus = z.enum([
+  'confirmed',
+  'in_production',
+  'shipped_partial',
+  'shipped_full',
+  'closed',
+  'cancelled',
+])
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TNA templates
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * A bare name means "the template's own spacing is the required lead time"; the object
+ * form states a different gap, which is how deliberate slack is declared (see tna.ts).
+ */
+export const tnaDependency = z.union([
+  z.string().min(1),
+  z.object({ name: z.string().min(1), gapDays: z.number().int().min(0) }),
+])
+
+export const tnaTemplateMilestone = z.object({
+  name: z
+    .string()
+    .min(1)
+    .regex(/^[a-z][a-z0-9_]*$/, 'milestone names are snake_case identifiers'),
+  offsetDaysBeforeExFactory: z.number().int().min(0),
+  dependsOn: z.array(tnaDependency).default([]),
+  critical: z.boolean().default(false),
+  ownerRole: z.string().optional(),
+})
+
+export const tnaTemplatePayload = z.object({
+  name: z.string().min(1),
+  productType: z.string().min(1),
+  milestones: z.array(tnaTemplateMilestone).min(1),
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Orders
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const createOrderPayload = z.object({
+  buyerId: z.uuid(),
+  poNumbers: z.array(z.string().min(1)).min(1),
+  totalValue: moneyAmount.optional(),
+  currency: currencyCode.default('USD'),
+  plannedExFactoryDate: calendarDate.optional(),
+  ownerUserId: z.string().min(1).optional(),
+  agentSnapshot: z.record(z.string(), z.unknown()).optional(),
+})
+
+export const orderStylePayload = z.object({
+  styleCode: z.string().min(1),
+  description: z.string().optional(),
+  unitPrice: moneyAmount.optional(),
+  currency: currencyCode.default('USD'),
+})
+
+/** One cell of the colour × size grid. Pieces are integers. */
+export const breakdownCell = z.object({
+  color: z.string().min(1),
+  size: z.string().min(1),
+  qty: z.number().int().positive(),
+})
+
+export const saveBreakdownPayload = z.object({
+  orderStyleId: z.uuid(),
+  cells: z.array(breakdownCell).min(1),
+  /** Set when the buyer asked for the change — forces a new revision. */
+  buyerRevision: z.boolean().default(false),
+  reason: z.string().optional(),
+  documentId: z.uuid().optional(),
+})
+
+export const generateTnaPayload = z.object({
+  orderId: z.uuid(),
+  templateId: z.uuid(),
+  exFactoryDate: calendarDate,
+})
+
+export const actualizeMilestonePayload = z.object({
+  milestoneId: z.uuid(),
+  actualDate: calendarDate,
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// pending_changes payloads
+//
+// Registered in register.ts under these keys. The key is stored on the draft so approve
+// re-validates against a NAMED schema rather than re-deriving one from the payload shape
+// — which is what makes a tightened schema able to reject an old draft.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** What MARBIM extracts from a buyer PO scan. Every field is uncertain, hence optional. */
+export const orderFromPoDraft = z.object({
+  buyerId: z.uuid(),
+  poNumbers: z.array(z.string().min(1)).min(1),
+  totalValue: moneyAmount.optional(),
+  currency: currencyCode.default('USD'),
+  plannedExFactoryDate: calendarDate.optional(),
+})
+
+/** A buyer's amendment, drafted from an email or an amended PO. */
+export const orderRevisionDraft = z.object({
+  orderStyleId: z.uuid(),
+  cells: z.array(breakdownCell).min(1),
+  reason: z.string().min(1),
+  documentId: z.uuid().optional(),
+})
+
+export const ORDERS_ZOD_MAP = {
+  order_from_po_v1: orderFromPoDraft,
+  order_revision_v1: orderRevisionDraft,
+} as const
+
+export type CreateOrderPayload = z.infer<typeof createOrderPayload>
+export type SaveBreakdownPayload = z.infer<typeof saveBreakdownPayload>
+export type GenerateTnaPayload = z.infer<typeof generateTnaPayload>
+export type ActualizeMilestonePayload = z.infer<typeof actualizeMilestonePayload>
+export type TnaTemplatePayload = z.infer<typeof tnaTemplatePayload>

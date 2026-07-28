@@ -79,7 +79,9 @@ jobs:
             git status --porcelain src/db/migrations
             exit 1
           fi
-          git diff --exit-code -- src/db/migrations
+          # Scoped to *.sql: meta/_journal.json changes whenever a migration is
+          # legitimately added, so flagging it would mark normal work as tampering.
+          git diff --exit-code -- 'src/db/migrations/*.sql'
 
       # Proves a fresh production database can be provisioned from zero — which is why
       # extensions live in 0000_extensions.sql and not only in the compose init hook.
