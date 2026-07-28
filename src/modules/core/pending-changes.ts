@@ -26,7 +26,7 @@ import { recordChange } from './audit'
 import type { AnyCtx, RequestCtx, Role } from './ctx'
 import { AppError, conflict, notFound } from './errors'
 import { emit } from './outbox'
-import { getModule, resolvePendingSchema } from './registry'
+import { getCommitHandler, getModule, resolvePendingSchema } from './registry'
 import { type TenantDb, withTenantTx } from './tenancy'
 
 type Operation = 'insert' | 'update' | 'delete'
@@ -276,26 +276,46 @@ export async function approve(
       return { schemaError: error }
     }
 
-    const before =
-      draft.operation === 'insert'
-        ? null
-        : await readRow(tx, draft.targetTable, draft.targetId as string)
+    // A module may own how its target is committed — see PendingCommitHandler. When it
+    // does, core does not touch the table itself: the module's invariant (a revision
+    // pointer, a balance draw-down) is not expressible as a row write.
+    const handler = getCommitHandler(draft.moduleId, draft.targetTable)
 
-    if (draft.operation !== 'insert' && !before) {
-      throw notFound('errors.target_row_not_found', {
+    let rowId: string
+    let before: Record<string, unknown> | null
+    let after: Record<string, unknown> | null
+
+    if (handler) {
+      const result = await handler(ctx, tx, {
+        operation: draft.operation,
+        targetId: draft.targetId,
+        payload,
+      })
+      rowId = result.rowId
+      before = result.before ?? null
+      after = result.after ?? null
+    } else {
+      before =
+        draft.operation === 'insert'
+          ? null
+          : await readRow(tx, draft.targetTable, draft.targetId as string)
+
+      if (draft.operation !== 'insert' && !before) {
+        throw notFound('errors.target_row_not_found', {
+          targetTable: draft.targetTable,
+          targetId: draft.targetId,
+        })
+      }
+
+      rowId = await applyChange(tx, ctx, {
+        operation: draft.operation,
         targetTable: draft.targetTable,
         targetId: draft.targetId,
+        payload,
       })
+
+      after = draft.operation === 'delete' ? null : await readRow(tx, draft.targetTable, rowId)
     }
-
-    const rowId = await applyChange(tx, ctx, {
-      operation: draft.operation,
-      targetTable: draft.targetTable,
-      targetId: draft.targetId,
-      payload,
-    })
-
-    const after = draft.operation === 'delete' ? null : await readRow(tx, draft.targetTable, rowId)
 
     await recordChange(ctx, tx, {
       action: draft.operation,

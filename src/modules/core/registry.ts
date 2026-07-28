@@ -9,8 +9,36 @@
  */
 import type { ZodType } from 'zod'
 
-import type { Role } from './ctx'
+import type { AnyCtx, Role } from './ctx'
 import { AppError } from './errors'
+import type { TenantDb } from './tenancy'
+
+/**
+ * How an approved draft actually becomes a row, when a plain INSERT will not do.
+ *
+ * Core's generic commit writes one row from the payload, which is right for most targets.
+ * It is wrong whenever committing is a domain operation — a breakdown revision has to
+ * replace a grid, bump a revision pointer and write an evidence row; a bonded issue has to
+ * draw down a UD balance. Those cannot be expressed as an INSERT, and the module that
+ * owns the invariant is the only place that should try.
+ *
+ * The handler receives the approve transaction, so its writes, the audit row and the
+ * outbox event still commit together. Returning `before`/`after` lets it describe the
+ * change for the audit trail in its own terms rather than as a row diff.
+ */
+export type PendingCommitHandler = (
+  ctx: AnyCtx,
+  tx: TenantDb,
+  input: {
+    operation: 'insert' | 'update' | 'delete'
+    targetId: string | null
+    payload: Record<string, unknown>
+  },
+) => Promise<{
+  rowId: string
+  before?: Record<string, unknown> | null
+  after?: Record<string, unknown> | null
+}>
 
 export interface ModuleDefinition {
   /** Folder name under src/modules, e.g. 'orders'. */
@@ -28,6 +56,11 @@ export interface ModuleDefinition {
   toolPack?: unknown
   /** BullMQ processors owned by this module. */
   jobs?: Readonly<Record<string, unknown>>
+  /**
+   * Per-target overrides for how an approved draft is committed. Any target without one
+   * gets core's generic single-row write.
+   */
+  commitHandlers?: Readonly<Record<string, PendingCommitHandler>>
   /**
    * Versioned prompt fragment giving MARBIM this department's craft. Teaches WHEN to
    * call a computation and how to narrate the result — the computation itself stays in
@@ -65,6 +98,16 @@ export function registerModule(definition: ModuleDefinition): ModuleDefinition {
 }
 
 export const getModule = (id: string): ModuleDefinition | undefined => registry.get(id)
+
+/**
+ * The module's own commit logic for a target, if it declared one. Resolved at approve
+ * time rather than at insert, so a module can add a handler later without invalidating
+ * drafts already waiting in the inbox.
+ */
+export const getCommitHandler = (
+  moduleId: string,
+  targetTable: string,
+): PendingCommitHandler | undefined => registry.get(moduleId)?.commitHandlers?.[targetTable]
 export const listModules = (): readonly ModuleDefinition[] => [...registry.values()]
 
 /**
