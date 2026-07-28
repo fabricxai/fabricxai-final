@@ -24,7 +24,7 @@ through Phase 0.
 | A · signup→verify→login | `src/modules/core/__tests__/auth-flow.integration.test.ts` | ✅ passing (8 assertions) | session 2 — done |
 | B · pending_change end-to-end | `src/modules/core/__tests__/pending-flow.integration.test.ts` | ✅ passing (11 cases) | session 3a — done |
 | C · `seed --scale=pilot` | `pnpm seed --scale=pilot` exit 0, twice | ✅ passing | session 3b — done |
-| D · CI green | `.github/workflows/ci.yml` | ✅ all jobs defined; green locally | session 4 — done |
+| D · CI green | `.github/workflows/ci.yml` | ✅ all 4 jobs green on GitHub | session 4 — done |
 
 ---
 
@@ -147,8 +147,15 @@ Also assert, cheaply: seeded rows are visible **only** under the matching
 
 ## Gate D — CI green
 
-**Artifact:** `.github/workflows/ci.yml`, all jobs green on a pull request.
-Remote: `github.com/fabricxai/fabricxai-final`.
+**Artifact:** `.github/workflows/ci.yml`, all jobs green.
+Remote: `github.com/fabricxai/fabricxai-final`. First green run: `b924fce`.
+
+The first run failed twice, and both were worth the trip:
+* `pnpm db:migrate` demanded the full app env — every S3 key and the auth secret — because
+  `db/direct.ts` imported `lib/env`. Restoring a database should need a connection string,
+  not the model provider keys. Fixed at the source rather than by adding vars to the job.
+* `bitnami/minio:latest` no longer exists, and MinIO needs `server /data` as its command,
+  which GitHub service containers cannot override. It starts as a step instead.
 
 | Job | Command | Works today |
 |---|---|---|

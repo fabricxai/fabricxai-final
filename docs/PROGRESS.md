@@ -14,7 +14,7 @@ pending_change inserts, approves, commits and audits end-to-end against a scratc
 `seed --scale=pilot` runs; CI green.
 
 Each criterion has a named proof artifact and a runner — `pnpm verify:phase0`, defined in
-[`docs/runbooks/phase-0-exit.md`](./runbooks/phase-0-exit.md). Current: **4/4 green — Phase 0 complete.** Next is Phase 2 (X.1 Approve Inbox + X.2 MARBIM),
+[`docs/runbooks/phase-0-exit.md`](./runbooks/phase-0-exit.md). Current: **4/4 green — Phase 0 complete**, CI green on `main`. Next is Phase 2 (X.1 Approve Inbox + X.2 MARBIM),
 which cannot start until `docs/handoffs/HANDOFF-X.1.md` exists with §8 resolved.
 
 ## Modules
