@@ -1,0 +1,30 @@
+# deps
+node_modules/
+.pnpm-store/
+
+# next
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# env — secrets only via env, never in the image (dev-plan §6)
+.env
+.env.*
+!.env.example
+
+# local infra state
+.docker-data/
+docker/data/
+
+# test / build output
+coverage/
+dist/
+playwright-report/
+test-results/
+
+# editors / os
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json

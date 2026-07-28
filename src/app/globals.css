@@ -1,0 +1,19 @@
+@import 'tailwindcss';
+
+/* Design tokens — the locked v2 palette from docs/01-design/theme.css.
+   Imported AFTER tailwindcss so @theme wins, exactly as the token file instructs. */
+@import './theme.css';
+
+/* next/font hashes the real family names at build time, so point the token variables
+   at what it actually loaded. Components keep referencing --font-sans etc. */
+:root {
+  --font-display: var(--font-archivo), system-ui, sans-serif;
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-bangla: var(--font-anek-bangla), 'Noto Sans Bengali', sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+}
+
+html {
+  background: var(--canvas);
+  color-scheme: dark;
+}

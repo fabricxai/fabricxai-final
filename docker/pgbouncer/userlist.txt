@@ -1,0 +1,11 @@
+; DEV ONLY. Passwords match docker-compose.dev.yml and .env.example.
+;
+; Production does not use this file — use auth_type=scram-sha-256 with auth_user +
+; auth_query so PgBouncer reads verifiers from Postgres and no password is ever
+; written to disk. See docs/runbooks/.
+;
+; "fabricxai"     — owner/migration role. Migrations bypass PgBouncer entirely
+;                   (DIRECT_DATABASE_URL); this entry exists only for psql via the pooler.
+; "fabricxai_app_rw" — the application role. NOT the owner, does not bypass RLS.
+"fabricxai" "fabricxai"
+"fabricxai_app_rw" "fabricxai-app-dev-secret"

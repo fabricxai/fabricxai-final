@@ -1,0 +1,62 @@
+{
+  "name": "fabricxai",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "worker:dev": "tsx watch src/worker/index.ts",
+    "worker:start": "tsx src/worker/index.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "db:generate": "drizzle-kit generate",
+    "db:generate:custom": "drizzle-kit generate --custom",
+    "db:migrate": "tsx src/db/migrate.ts",
+    "db:check": "drizzle-kit check",
+    "db:studio": "drizzle-kit studio",
+    "seed": "tsx src/db/seed/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "verify:phase0": "node scripts/verify-phase0.mjs",
+    "db:setup-roles": "node scripts/setup-db-roles.mjs"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.926.0",
+    "@aws-sdk/s3-request-presigner": "^3.926.0",
+    "better-auth": "^1.6.25",
+    "bullmq": "^5.81.2",
+    "dotenv": "^17.2.0",
+    "drizzle-orm": "^0.45.2",
+    "ioredis": "^5.11.1",
+    "next": "^16.2.12",
+    "nodemailer": "^9.0.3",
+    "postgres": "^3.4.9",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^22.15.0",
+    "@types/nodemailer": "^8.0.1",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "drizzle-kit": "^0.31.10",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.2.12",
+    "globals": "^17.8.0",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.1",
+    "typescript": "^5.9.0",
+    "typescript-eslint": "^8.65.0",
+    "vitest": "^4.1.10"
+  }
+}

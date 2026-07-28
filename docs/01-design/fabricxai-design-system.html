@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FabricXAI — Brand & Design System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=Anek+Bangla:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* ── Ink (from logo #101725) ───────────────────────── */
+  --ink-950:#0A0E17; --ink-900:#101725; --ink-850:#141C2C; --ink-800:#18202F;
+  --ink-700:#212A3B; --ink-600:#2C3648; --ink-500:#3C4759; --ink-400:#5A6577;
+  --ink-300:#808B9D; --ink-200:#A8B2C1; --ink-100:#D2D8E2; --ink-50:#EFF2F7;
+  /* ── Amber (from logo #EAB308) ─────────────────────── */
+  --amber-300:#F5D661; --amber-400:#F0C531; --amber-500:#EAB308;
+  --amber-600:#C89806; --amber-700:#9A7505;
+  /* ── Warp indigo (secondary) ───────────────────────── */
+  --warp-400:#8BA4FF; --warp-500:#6B8AFF; --warp-600:#4B63E0; --warp-700:#3B4DB8;
+  /* ── Status ─────────────────────────────────────────── */
+  --on-track:#34D399; --at-risk:#FF8A3D; --late:#FB4E5E;
+  --info:#60A5FA; --done:#808B9D;
+  /* ── Semantic ───────────────────────────────────────── */
+  --canvas:var(--ink-950); --surface:var(--ink-900); --raised:var(--ink-850);
+  --line:rgba(255,255,255,.09); --line-strong:rgba(255,255,255,.16);
+  --text:#E8EBF0; --text-dim:var(--ink-200); --text-mute:var(--ink-300);
+  --glass:rgba(20,28,44,.72);
+  /* ── Type ───────────────────────────────────────────── */
+  --display:'Archivo',system-ui,sans-serif;
+  --body:'Inter',system-ui,sans-serif;
+  --bangla:'Anek Bangla','Noto Sans Bengali',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+  /* ── Radius ─────────────────────────────────────────── */
+  --r-xs:4px; --r-sm:8px; --r-md:12px; --r-lg:16px; --r-xl:20px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--canvas);color:var(--text);font-family:var(--body);
+  font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased;
+  background-image:radial-gradient(900px 500px at 78% -8%,rgba(234,179,8,.055),transparent 65%),
+                   radial-gradient(700px 420px at 8% 12%,rgba(75,99,224,.05),transparent 60%);
+  background-attachment:fixed;
+}
+.wrap{max-width:1180px;margin:0 auto;padding:0 28px}
+
+/* thread motif — warp+weft, taken straight from the X in the mark */
+.thread{height:6px;background-image:repeating-linear-gradient(115deg,var(--amber-500) 0 2px,transparent 2px 9px);opacity:.85}
+.thread--ink{background-image:repeating-linear-gradient(115deg,var(--ink-500) 0 2px,transparent 2px 9px)}
+
+header{padding:64px 0 40px;border-bottom:1px solid var(--line)}
+header img{height:44px;display:block;margin-bottom:26px}
+h1{font-family:var(--display);font-size:clamp(30px,4.6vw,52px);font-weight:800;letter-spacing:-.025em;line-height:1.04}
+h1 em{font-style:normal;color:var(--amber-500)}
+.lede{color:var(--text-dim);max-width:60ch;margin-top:14px;font-size:16px}
+.meta{margin-top:22px;display:flex;gap:8px;flex-wrap:wrap}
+.meta span{font-family:var(--mono);font-size:11px;color:var(--text-mute);border:1px solid var(--line);padding:5px 10px;border-radius:var(--r-full,99px)}
+
+section{padding:56px 0;border-bottom:1px solid var(--line)}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--amber-500);margin-bottom:12px}
+h2{font-family:var(--display);font-size:clamp(22px,2.6vw,30px);font-weight:700;letter-spacing:-.02em;margin-bottom:10px}
+h3{font-family:var(--display);font-size:15px;font-weight:600;letter-spacing:.01em;margin:28px 0 12px;color:var(--text)}
+.sub{color:var(--text-dim);max-width:66ch;margin-bottom:26px}
+p+p{margin-top:12px}
+code{font-family:var(--mono);font-size:12px;background:var(--ink-800);border:1px solid var(--line);padding:1px 6px;border-radius:var(--r-xs);color:var(--amber-300)}
+
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
+.g5{grid-template-columns:repeat(auto-fit,minmax(128px,1fr))}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:20px}
+.glass{background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid var(--line);border-radius:var(--r-lg)}
+
+/* colour chips */
+.sw{border-radius:var(--r-md);overflow:hidden;border:1px solid var(--line)}
+.sw i{display:block;height:74px}
+.sw div{padding:9px 11px;background:var(--ink-850)}
+.sw b{display:block;font-size:12px;font-weight:600}
+.sw code{background:none;border:none;padding:0;font-size:11px;color:var(--text-mute)}
+
+/* type scale */
+.trow{display:flex;align-items:baseline;gap:20px;padding:13px 0;border-bottom:1px solid var(--line)}
+.trow:last-child{border-bottom:0}
+.tk{font-family:var(--mono);font-size:11px;color:var(--text-mute);min-width:118px;flex-shrink:0}
+.d1{font-family:var(--display);font-size:40px;font-weight:800;letter-spacing:-.025em}
+.d2{font-family:var(--display);font-size:28px;font-weight:700;letter-spacing:-.02em}
+.d3{font-family:var(--display);font-size:19px;font-weight:600}
+.b1{font-size:15px}.b2{font-size:14px}.b3{font-size:13px}
+.cap{font-size:12px;color:var(--text-dim)}
+.lbl{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-mute)}
+.num{font-family:var(--body);font-variant-numeric:tabular-nums;font-size:22px;font-weight:600;letter-spacing:-.01em}
+.bn{font-family:var(--bangla);font-size:16px}
+
+/* buttons */
+.btns{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.btn{font-family:var(--body);font-size:13px;font-weight:600;padding:9px 16px;border-radius:var(--r-sm);border:1px solid transparent;cursor:pointer;transition:.15s ease;display:inline-flex;align-items:center;gap:7px}
+.btn:focus-visible{outline:2px solid var(--amber-500);outline-offset:2px}
+.btn-p{background:var(--amber-500);color:var(--ink-950)}
+.btn-p:hover{background:var(--amber-400)}
+.btn-s{background:transparent;border-color:var(--line-strong);color:var(--text)}
+.btn-s:hover{background:var(--ink-800);border-color:var(--ink-500)}
+.btn-g{background:transparent;color:var(--text-dim)}
+.btn-g:hover{background:var(--ink-800);color:var(--text)}
+.btn-d{background:rgba(251,78,94,.12);color:var(--late);border-color:rgba(251,78,94,.3)}
+.btn-d:hover{background:rgba(251,78,94,.2)}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+
+/* status chips */
+.chips{display:flex;gap:9px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:500;padding:4px 11px 4px 9px;border-radius:99px;border:1px solid;background:var(--ink-850)}
+.chip s{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.c-ok{color:var(--on-track);border-color:rgba(52,211,153,.32)}.c-ok s{background:var(--on-track)}
+.c-rk{color:var(--at-risk);border-color:rgba(255,138,61,.32)}.c-rk s{background:var(--at-risk)}
+.c-lt{color:var(--late);border-color:rgba(251,78,94,.32)}.c-lt s{background:var(--late)}
+.c-in{color:var(--info);border-color:rgba(96,165,250,.32)}.c-in s{background:var(--info)}
+.c-dn{color:var(--done);border-color:rgba(128,139,157,.3)}.c-dn s{background:var(--done)}
+.c-ai{color:var(--amber-400);border-color:rgba(234,179,8,.36);background:rgba(234,179,8,.09)}.c-ai s{background:var(--amber-500)}
+
+/* input */
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12px;font-weight:500;color:var(--text-dim);margin-bottom:6px}
+.field input{width:100%;background:var(--ink-950);border:1px solid var(--line-strong);border-radius:var(--r-sm);padding:9px 12px;color:var(--text);font-family:var(--body);font-size:13px}
+.field input:focus{outline:none;border-color:var(--amber-500);box-shadow:0 0 0 3px rgba(234,179,8,.15)}
+.field input::placeholder{color:var(--ink-400)}
+.hint{font-size:11px;color:var(--text-mute);margin-top:5px}
+
+/* KPI — selvage edge carries status */
+.kpi{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:16px 18px;overflow:hidden}
+.kpi::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--amber-500)}
+.kpi.rk::before{background:var(--at-risk)}.kpi.ok::before{background:var(--on-track)}
+.kpi .lbl{margin-bottom:9px}
+.kpi .num{display:block}
+.kpi .delta{font-size:12px;color:var(--text-mute);margin-top:5px}
+.kpi .delta b{color:var(--on-track);font-weight:600}
+.kpi .delta b.dn{color:var(--late)}
+
+/* table */
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{text-align:left;font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--text-mute);font-weight:400;padding:0 12px 10px;border-bottom:1px solid var(--line-strong)}
+.tbl td{padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+.tbl tbody tr:hover{background:rgba(255,255,255,.022)}
+.tbl .id{font-family:var(--mono);font-size:12px;color:var(--text-dim)}
+.tbl .n{font-variant-numeric:tabular-nums;text-align:right}
+.tblwrap{overflow-x:auto}
+
+/* AI draft card */
+.draft{border:1px solid rgba(234,179,8,.28);background:linear-gradient(180deg,rgba(234,179,8,.055),transparent 60%),var(--surface);border-radius:var(--r-lg);overflow:hidden}
+.draft-h{display:flex;align-items:center;gap:10px;padding:13px 18px;border-bottom:1px solid var(--line)}
+.draft-h .t{font-family:var(--display);font-weight:600;font-size:14px}
+.draft-b{padding:16px 18px}
+.fld{display:grid;grid-template-columns:120px 1fr auto;gap:12px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.fld:last-child{border-bottom:0}
+.fld .k{font-size:12px;color:var(--text-mute)}
+.fld .v{font-size:13px;font-weight:500;font-variant-numeric:tabular-nums}
+.conf{font-family:var(--mono);font-size:10.5px;color:var(--text-mute);display:flex;align-items:center;gap:6px}
+.bar{width:38px;height:3px;background:var(--ink-700);border-radius:2px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--amber-500)}
+.bar.lo i{background:var(--at-risk)}
+.draft-f{display:flex;gap:9px;padding:13px 18px;border-top:1px solid var(--line);background:rgba(0,0,0,.18)}
+
+/* weave loader */
+.weave{display:inline-flex;gap:3px;align-items:center}
+.weave i{display:block;width:3px;height:15px;background:var(--amber-500);border-radius:1px;transform:skewX(-22deg);animation:w 1.05s ease-in-out infinite}
+.weave i:nth-child(2){animation-delay:.13s;background:var(--ink-300)}
+.weave i:nth-child(3){animation-delay:.26s}
+.weave i:nth-child(4){animation-delay:.39s;background:var(--ink-300)}
+@keyframes w{0%,100%{opacity:.25;transform:skewX(-22deg) scaleY(.62)}50%{opacity:1;transform:skewX(-22deg) scaleY(1)}}
+@media(prefers-reduced-motion:reduce){.weave i{animation:none;opacity:.7}}
+
+/* do / don't */
+.dd{border-radius:var(--r-md);padding:15px 17px;border:1px solid}
+.do{border-color:rgba(52,211,153,.26);background:rgba(52,211,153,.05)}
+.dont{border-color:rgba(251,78,94,.26);background:rgba(251,78,94,.05)}
+.dd b{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;margin-bottom:9px}
+.do b{color:var(--on-track)}.dont b{color:var(--late)}
+.dd ul{list-style:none;font-size:13px;color:var(--text-dim)}
+.dd li{padding:4px 0 4px 15px;position:relative}
+.dd li::before{content:'';position:absolute;left:0;top:11px;width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.45}
+
+.rule{display:flex;gap:14px;padding:13px 0;border-bottom:1px solid var(--line);align-items:flex-start}
+.rule:last-child{border-bottom:0}
+.rule .n{font-family:var(--mono);font-size:11px;color:var(--amber-500);min-width:26px;padding-top:2px}
+.rule p{font-size:13px;color:var(--text-dim)}
+.rule strong{color:var(--text);font-weight:600}
+
+.note{border-left:2px solid var(--amber-500);padding:3px 0 3px 16px;color:var(--text-dim);font-size:13px;margin-top:18px}
+footer{padding:44px 0 60px;color:var(--text-mute);font-size:12px}
+@media(max-width:640px){.wrap{padding:0 18px}section{padding:40px 0}.fld{grid-template-columns:1fr;gap:4px}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+<header>
+  <img src="data:image/png;base64,PLACEHOLDER" alt="FabricXAI" style="display:none">
+  <div style="display:flex;align-items:center;gap:14px;margin-bottom:26px">
+    <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true">
+      <g stroke-width="3.4" stroke-linecap="square">
+        <path d="M4 24 L20 5" stroke="#EAB308"/><path d="M11 29 L27 10" stroke="#EAB308"/>
+        <path d="M10 5 L26 24" stroke="#E8EBF0"/><path d="M17 3 L33 22" stroke="#E8EBF0" opacity=".55"/>
+      </g>
+    </svg>
+    <span style="font-family:var(--display);font-size:22px;font-weight:800;letter-spacing:-.02em">fabric<span style="color:var(--amber-500)">xai</span></span>
+  </div>
+  <h1>The system that runs the <em>floor</em>.</h1>
+  <p class="lede">Brand guidelines and design system for the FabricXAI platform — the operating layer for garment factories. Built for people who make decisions worth thousands of dollars in ten-second glances, on shared screens, under fluorescent light.</p>
+  <div class="meta"><span>v1.0</span><span>Dark-first</span><span>en-US · bn-BD</span><span>Tailwind v4 tokens</span></div>
+</header>
+
+<section>
+  <div class="eyebrow">Foundation</div>
+  <h2>Warp and weft</h2>
+  <p class="sub">The mark is two sets of threads crossing — the moment loose yarn becomes cloth. That's the whole product thesis: scattered inputs (a buyer's email, a supervisor's tally sheet, a bank advice) crossed into one fabric a factory can hold. Every design decision below traces back to it.</p>
+  <div class="grid g3">
+    <div class="card"><h3 style="margin-top:0">Structure over decoration</h3><p style="font-size:13px;color:var(--text-dim)">A merchandiser reads 400 rows a day. Alignment, tabular numerals and consistent row rhythm do more for them than any gradient. Ornament earns its place or leaves.</p></div>
+    <div class="card"><h3 style="margin-top:0">Amber means you</h3><p style="font-size:13px;color:var(--text-dim)">The brand colour is reserved for two things: the action you should take, and anything waiting on your judgment. It is never a status. That restraint is what makes it work.</p></div>
+    <div class="card"><h3 style="margin-top:0">Built for bad conditions</h3><p style="font-size:13px;color:var(--text-dim)">Glare, dust, a five-year-old shared PC, internet that drops mid-entry. If it only looks good on a MacBook in a quiet office, it isn't finished.</p></div>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">Identity</div>
+  <h2>Logo</h2>
+  <p class="sub">Two locked variants. The wordmark's crossing X is the only part that may be used alone — as the app icon, favicon, loading state, and the source of the thread motif.</p>
+  <div class="grid g2">
+    <div class="card" style="background:var(--ink-900);display:flex;align-items:center;justify-content:center;min-height:120px">
+      <span style="font-family:var(--display);font-size:32px;font-weight:800;letter-spacing:-.02em;color:#fff">fabric<span style="color:#EAB308">xai</span></span>
+    </div>
+    <div class="card" style="background:#EFF2F7;display:flex;align-items:center;justify-content:center;min-height:120px">
+      <span style="font-family:var(--display);font-size:32px;font-weight:800;letter-spacing:-.02em;color:#101725">fabric<span style="color:#EAB308">xai</span></span>
+    </div>
+  </div>
+  <p class="hint" style="margin-top:10px">Above: proportional stand-ins. Ship the supplied PNG/SVG assets — <code>fabricxai-logo-dark.png</code> on ink, <code>fabricxai-logo-light.png</code> on white.</p>
+
+  <div class="grid g2" style="margin-top:26px">
+    <div class="dd do"><b>Do</b><ul>
+      <li>Keep clear space equal to the height of the "f" on all sides</li>
+      <li>Minimum width 96px on screen, 24mm in print</li>
+      <li>Place on ink #101725, near-black, white, or #EFF2F7 only</li>
+      <li>Use the X mark alone at 16–48px (favicon, app icon, avatars)</li>
+    </ul></div>
+    <div class="dd dont"><b>Don't</b><ul>
+      <li>Recolour the wordmark, or make "ai" anything but #EAB308</li>
+      <li>Place it over photography, gradients, or busy fabric textures</li>
+      <li>Add glow, bevel, outline, or drop shadow</li>
+      <li>Stretch, condense, rotate, or rebuild it in a different typeface</li>
+    </ul></div>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">Colour</div>
+  <h2>Palette</h2>
+  <p class="sub">Two colours come straight out of the logo. Everything else is built to serve them without competing.</p>
+
+  <h3>Brand</h3>
+  <div class="grid g5">
+    <div class="sw"><i style="background:#101725"></i><div><b>Ink 900</b><code>#101725</code></div></div>
+    <div class="sw"><i style="background:#EAB308"></i><div><b>Amber 500</b><code>#EAB308</code></div></div>
+    <div class="sw"><i style="background:#F0C531"></i><div><b>Amber 400</b><code>#F0C531</code></div></div>
+    <div class="sw"><i style="background:#6B8AFF"></i><div><b>Warp 500</b><code>#6B8AFF</code></div></div>
+    <div class="sw"><i style="background:#E8EBF0"></i><div><b>Chalk</b><code>#E8EBF0</code></div></div>
+  </div>
+  <p class="hint" style="margin-top:10px">Warp indigo is the secondary — denim, the other half of this industry. It carries links, secondary charts, and selected states so amber never has to compete with itself.</p>
+
+  <h3>Surfaces &amp; text</h3>
+  <div class="grid g5">
+    <div class="sw"><i style="background:#0A0E17"></i><div><b>Canvas</b><code>#0A0E17</code></div></div>
+    <div class="sw"><i style="background:#101725"></i><div><b>Surface</b><code>#101725</code></div></div>
+    <div class="sw"><i style="background:#141C2C"></i><div><b>Raised</b><code>#141C2C</code></div></div>
+    <div class="sw"><i style="background:#212A3B"></i><div><b>Border</b><code>#212A3B</code></div></div>
+    <div class="sw"><i style="background:#808B9D"></i><div><b>Muted text</b><code>#808B9D</code></div></div>
+  </div>
+
+  <h3>Status</h3>
+  <p style="font-size:13px;color:var(--text-dim);margin-bottom:14px">Status is never colour alone — always a dot plus a word. Fluorescent glare and colour-blindness are both routine on a factory floor.</p>
+  <div class="chips">
+    <span class="chip c-ok"><s></s>On track</span>
+    <span class="chip c-rk"><s></s>At risk</span>
+    <span class="chip c-lt"><s></s>Late</span>
+    <span class="chip c-in"><s></s>In review</span>
+    <span class="chip c-dn"><s></s>Closed</span>
+    <span class="chip c-ai"><s></s>MARBIM draft</span>
+  </div>
+  <div class="note"><strong>The amber rule.</strong> "At risk" is orange <code>#FF8A3D</code>, not amber — because amber already means something more specific here: <em>a person needs to act</em>. Primary buttons, focus rings, pending approvals and AI drafts. Nothing else. Break this and every screen turns into a warning.</div>
+
+  <h3>Data visualisation</h3>
+  <div class="grid g5">
+    <div class="sw"><i style="background:#EAB308"></i><div><b>Series 1</b><code>#EAB308</code></div></div>
+    <div class="sw"><i style="background:#6B8AFF"></i><div><b>Series 2</b><code>#6B8AFF</code></div></div>
+    <div class="sw"><i style="background:#2DD4BF"></i><div><b>Series 3</b><code>#2DD4BF</code></div></div>
+    <div class="sw"><i style="background:#FB7185"></i><div><b>Series 4</b><code>#FB7185</code></div></div>
+    <div class="sw"><i style="background:#A78BFA"></i><div><b>Series 5</b><code>#A78BFA</code></div></div>
+  </div>
+  <p class="hint" style="margin-top:10px">Ordered by luminance so a two-series chart is always legible in greyscale — factories print these.</p>
+</section>
+
+<section>
+  <div class="eyebrow">Typography</div>
+  <h2>Archivo · Inter · Anek Bangla</h2>
+  <p class="sub"><strong style="color:var(--text)">Archivo</strong> for display — an industrial grotesque with the flat terminals and tight fit of shipping-carton stencils and factory signage. <strong style="color:var(--text)">Inter</strong> for the interface, because at 13px in a 40-column table nothing else stays this readable. <strong style="color:var(--text)">Anek Bangla</strong> for Bengali, a variable family drawn to sit at the same weight and rhythm as Latin sans. <strong style="color:var(--text)">JetBrains Mono</strong> for anything a human reads character by character: LC numbers, style codes, roll IDs.</p>
+
+  <div class="card">
+    <div class="trow"><span class="tk">display/xl · 40/700</span><span class="d1">Order PO-889</span></div>
+    <div class="trow"><span class="tk">display/lg · 28/700</span><span class="d2">Production planning</span></div>
+    <div class="trow"><span class="tk">display/sm · 19/600</span><span class="d3">Line 4 — efficiency</span></div>
+    <div class="trow"><span class="tk">body/lg · 15/400</span><span class="b1">Fabric in-house for 82% of the order.</span></div>
+    <div class="trow"><span class="tk">body/md · 14/400</span><span class="b2">Cutting starts once the PP sample clears.</span></div>
+    <div class="trow"><span class="tk">table · 13/400</span><span class="b3">H&amp;M Bangladesh · Polo 180gsm · 24,000 pcs</span></div>
+    <div class="trow"><span class="tk">caption · 12/400</span><span class="cap">Updated 4 minutes ago by Rashida</span></div>
+    <div class="trow"><span class="tk">label · 11/mono</span><span class="lbl">Ex-factory date</span></div>
+    <div class="trow"><span class="tk">numeric · tabular</span><span class="num">$14.15 · 24,000 · 68.4%</span></div>
+    <div class="trow"><span class="tk">bangla · 16/500</span><span class="bn">উৎপাদন লাইন ৪ — দক্ষতা ৬৮%</span></div>
+  </div>
+
+  <div class="grid g2" style="margin-top:24px">
+    <div class="dd do"><b>Do</b><ul>
+      <li>Tabular numerals on every figure that stacks in a column</li>
+      <li>Sentence case everywhere except mono labels</li>
+      <li>Archivo only for page and section titles — it loses at small sizes</li>
+      <li>Test every string at 1.4× length; Bengali runs longer than English</li>
+    </ul></div>
+    <div class="dd dont"><b>Don't</b><ul>
+      <li>Go below 12px for anything a supervisor reads standing up</li>
+      <li>Use weight 700+ for body copy on dark — it blooms</li>
+      <li>Set Bengali in a Latin fallback; the conjuncts break</li>
+      <li>Hard-code strings — every label is an i18n key from day one</li>
+    </ul></div>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">Signature</div>
+  <h2>The thread motif</h2>
+  <p class="sub">One borrowed element, used in exactly four places. It comes from the crossing strokes in the mark, so it belongs to this product and no other.</p>
+
+  <div class="grid g2">
+    <div class="card">
+      <h3 style="margin-top:0">Thread rule</h3>
+      <p style="font-size:13px;color:var(--text-dim);margin-bottom:14px">Separates a page header from its content. Amber at the top of a page, ink between sections. Never both on one screen.</p>
+      <div class="thread"></div>
+      <div style="height:12px"></div>
+      <div class="thread thread--ink"></div>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">Weave loader</h3>
+      <p style="font-size:13px;color:var(--text-dim);margin-bottom:14px">Replaces every spinner. Threads interlacing while MARBIM works — and the honest signal that something is being made, not just fetched.</p>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="weave"><i></i><i></i><i></i><i></i></div>
+        <span style="font-size:13px;color:var(--text-dim)">Reading the tech pack…</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="margin-top:14px">
+    <div class="kpi ok"><span class="lbl">On-time delivery</span><span class="num">94.2%</span><span class="delta"><b>▲ 3.1</b> vs last month</span></div>
+    <div class="kpi rk"><span class="lbl">Orders at risk</span><span class="num">7</span><span class="delta"><b class="dn">▲ 2</b> since Monday</span></div>
+  </div>
+  <p class="hint" style="margin-top:10px"><strong style="color:var(--text)">Selvage edge</strong> — the third use. A 3px stripe on the left of a card or row carries its status, the way the finished edge of a fabric roll tells you what it is before you unroll it. It replaces the coloured-background card, which turns dashboards into traffic lights.</p>
+</section>
+
+<section>
+  <div class="eyebrow">Components</div>
+  <h2>Core patterns</h2>
+  <p class="sub">Built on the existing Radix layer. These are the ones that carry the product's character; everything else stays deliberately plain.</p>
+
+  <h3>Buttons</h3>
+  <div class="btns">
+    <button class="btn btn-p">Approve draft</button>
+    <button class="btn btn-s">Ask MARBIM</button>
+    <button class="btn btn-g">Cancel</button>
+    <button class="btn btn-d">Reject</button>
+    <button class="btn btn-p" disabled>Approve draft</button>
+  </div>
+  <p class="hint" style="margin-top:10px">One primary per screen. The label names what happens: "Approve draft" produces "Draft approved" — the same verb, start to finish.</p>
+
+  <h3>Fields</h3>
+  <div class="card" style="max-width:420px">
+    <div class="field"><label>Order quantity</label><input value="24,000" ></div>
+    <div class="field" style="margin-bottom:0"><label>Ex-factory date</label><input placeholder="dd/mm/yyyy"><p class="hint">Latest shipment date on LC-4471 is 28/09/2026.</p></div>
+  </div>
+
+  <h3>Data table</h3>
+  <div class="card tblwrap" style="padding:18px 6px 6px">
+    <table class="tbl">
+      <thead><tr><th>Order</th><th>Buyer</th><th class="n">Qty</th><th class="n">FOB</th><th>Ex-factory</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td class="id">PO-889</td><td>H&amp;M Bangladesh</td><td class="n">24,000</td><td class="n">$14.15</td><td>14 Sep</td><td><span class="chip c-ok"><s></s>On track</span></td></tr>
+        <tr><td class="id">PO-902</td><td>Primark</td><td class="n">61,500</td><td class="n">$6.80</td><td>02 Oct</td><td><span class="chip c-rk"><s></s>At risk</span></td></tr>
+        <tr><td class="id">PO-874</td><td>C&amp;A</td><td class="n">8,200</td><td class="n">$21.40</td><td>29 Aug</td><td><span class="chip c-lt"><s></s>Late</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>MARBIM draft — the most important screen in the product</h3>
+  <p style="font-size:13px;color:var(--text-dim);margin-bottom:14px">Nothing the AI produces enters the system without passing through this card. Every field shows where it came from and how sure the model is. Low confidence is stated plainly, in orange, not hidden behind a rounded average.</p>
+  <div class="draft" style="max-width:620px">
+    <div class="draft-h">
+      <span class="chip c-ai"><s></s>MARBIM draft</span>
+      <span class="t">New RFQ from Primark</span>
+      <span style="margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--text-mute)">from email · 2 min ago</span>
+    </div>
+    <div class="draft-b">
+      <div class="fld"><span class="k">Product</span><span class="v">Men's polo, 180gsm cotton</span><span class="conf"><span class="bar"><i style="width:94%"></i></span>94%</span></div>
+      <div class="fld"><span class="k">Quantity</span><span class="v">61,500 pcs</span><span class="conf"><span class="bar"><i style="width:97%"></i></span>97%</span></div>
+      <div class="fld"><span class="k">Target price</span><span class="v">$6.80 FOB</span><span class="conf"><span class="bar"><i style="width:88%"></i></span>88%</span></div>
+      <div class="fld"><span class="k">Ship date</span><span class="v">02 Oct 2026</span><span class="conf"><span class="bar lo"><i style="width:61%"></i></span>61%</span></div>
+    </div>
+    <div class="draft-f">
+      <button class="btn btn-p">Approve &amp; create RFQ</button>
+      <button class="btn btn-s">Edit fields</button>
+      <button class="btn btn-g" style="margin-left:auto">Reject</button>
+    </div>
+  </div>
+  <div class="note">Clicking any field scrolls the source email to the sentence it came from and highlights it. That single interaction is what converts a sceptical factory owner — not the accuracy number.</div>
+</section>
+
+<section>
+  <div class="eyebrow">Voice</div>
+  <h2>How the product talks</h2>
+  <p class="sub">Two languages, one register: direct, specific, never chatty. English is written to be translated — no idioms, no wordplay in UI strings.</p>
+  <div class="card">
+    <div class="rule"><span class="n">01</span><p><strong>Name what the person controls, not how it's built.</strong> "Pending approvals," never "pending_changes queue." "Fabric in store," never "inventory sync status."</p></div>
+    <div class="rule"><span class="n">02</span><p><strong>Errors say what happened and what to do.</strong> "Couldn't save — you're offline. Your entry is queued and will send when you reconnect." Not "Something went wrong."</p></div>
+    <div class="rule"><span class="n">03</span><p><strong>Empty states are instructions.</strong> "No orders yet. Upload a buyer PO and MARBIM will draft one for you to check."</p></div>
+    <div class="rule"><span class="n">04</span><p><strong>MARBIM never claims certainty it doesn't have.</strong> "I read 61,500 pcs, but the date was ambiguous — confirm 02 Oct?" beats a confident wrong answer every time.</p></div>
+    <div class="rule"><span class="n">05</span><p><strong>Numbers carry their unit and currency, always.</strong> "$6.80 FOB/pc" and "৳ 12,400" — never a bare figure. Two currencies live in this product and mixing them costs real money.</p></div>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">Implementation</div>
+  <h2>Space, depth, and the floor test</h2>
+  <div class="grid g2">
+    <div class="card">
+      <h3 style="margin-top:0">Scale</h3>
+      <p style="font-size:13px;color:var(--text-dim)">4px base. Steps: 4 · 8 · 12 · 16 · 24 · 32 · 48 · 64. Table rows 44px on desktop, <strong style="color:var(--text)">56px on floor devices</strong>. Radius: 8 controls · 12 inputs · 16 cards · 20 drawers.</p>
+      <h3>Depth</h3>
+      <p style="font-size:13px;color:var(--text-dim)">Three surfaces only — canvas, surface, raised. Depth comes from a 1px border at 9% white, not shadow. Glass (<code>blur(20px)</code>) is reserved for drawers, modals, and the sticky top bar.</p>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">The floor test</h3>
+      <p style="font-size:13px;color:var(--text-dim)">Every screen a supervisor touches must pass all five, or it doesn't ship:</p>
+      <ul class="dd" style="border:0;background:none;padding:12px 0 0;list-style:none">
+        <li style="padding:5px 0 5px 15px;position:relative;font-size:13px;color:var(--text-dim)">Readable at arm's length on a 1366×768 monitor</li>
+        <li style="padding:5px 0 5px 15px;font-size:13px;color:var(--text-dim)">Touch targets ≥44px, reachable with one thumb</li>
+        <li style="padding:5px 0 5px 15px;font-size:13px;color:var(--text-dim)">Entered data survives a dropped connection</li>
+        <li style="padding:5px 0 5px 15px;font-size:13px;color:var(--text-dim)">Works with <code>backdrop-filter</code> disabled</li>
+        <li style="padding:5px 0 5px 15px;font-size:13px;color:var(--text-dim)">Full task completable in Bengali</li>
+      </ul>
+    </div>
+  </div>
+  <div class="note"><strong>Migration note.</strong> The codebase currently runs teal <code>#57ACAF</code> across ~5,500 usages. Don't find-and-replace it. Map it to <code>--color-brand</code> once, repoint that token to amber, then let the per-module frontend rebuild remove the raw hex. Teal survives as data-viz series 3 — it earned a retirement, not a deletion.</div>
+</section>
+
+<footer class="wrap" style="border-top:1px solid var(--line)">
+  FabricXAI design system v1.0 — palette derived from the supplied logo (#101725 / #EAB308). Pair with <code>theme.css</code> for the Tailwind v4 token layer.
+</footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,184 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  # ── Fast feedback: everything that needs no services ────────────────────────
+  static:
+    name: lint · typecheck · unit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # Includes the two rules that are the ONLY enforcement behind CLAUDE.md rules 4
+      # and 9 (no-float-money, analytics-no-writes). Their own tests run under `unit`.
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit tests
+        run: pnpm test
+
+  # ── Schema and migrations ──────────────────────────────────────────────────
+  migrations:
+    name: migrate-check
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: fabricxai
+          POSTGRES_PASSWORD: fabricxai
+          POSTGRES_DB: fabricxai
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U fabricxai" --health-interval 5s
+          --health-timeout 5s --health-retries 20
+    env:
+      DIRECT_DATABASE_URL: postgres://fabricxai:fabricxai@localhost:5432/fabricxai
+      DATABASE_URL: postgres://fabricxai_app_rw:ci-secret@localhost:5432/fabricxai
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Migration chain is consistent
+        run: pnpm exec drizzle-kit check
+
+      # The check that catches real mistakes: someone edited schema.ts and forgot to
+      # generate the migration. With no drift, generate writes nothing.
+      - name: No schema drift
+        run: |
+          before=$(ls src/db/migrations/*.sql | wc -l)
+          pnpm exec drizzle-kit generate
+          after=$(ls src/db/migrations/*.sql | wc -l)
+          if [ "$before" != "$after" ]; then
+            echo "::error::schema.ts changed without a generated migration:"
+            git status --porcelain src/db/migrations
+            exit 1
+          fi
+          git diff --exit-code -- src/db/migrations
+
+      # Proves a fresh production database can be provisioned from zero — which is why
+      # extensions live in 0000_extensions.sql and not only in the compose init hook.
+      - name: Apply every migration to an empty database
+        run: pnpm db:migrate
+
+      - name: Application role exists and cannot bypass RLS
+        run: pnpm db:setup-roles
+
+  # ── Services against real infrastructure ───────────────────────────────────
+  integration:
+    name: integration
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: fabricxai
+          POSTGRES_PASSWORD: fabricxai
+          POSTGRES_DB: fabricxai
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U fabricxai" --health-interval 5s
+          --health-timeout 5s --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s
+          --health-timeout 5s --health-retries 20
+      minio:
+        image: bitnami/minio:latest
+        env:
+          MINIO_ROOT_USER: fabricxai
+          MINIO_ROOT_PASSWORD: fabricxai-dev-secret
+          MINIO_DEFAULT_BUCKETS: fabricxai-documents
+        ports: ['9000:9000']
+      mailpit:
+        image: axllent/mailpit:latest
+        env:
+          MP_SMTP_AUTH_ACCEPT_ANY: '1'
+          MP_SMTP_AUTH_ALLOW_INSECURE: '1'
+        ports: ['1025:1025', '8025:8025']
+    env:
+      # NOTE: no PgBouncer in CI — the pooler is exercised locally and in prod. What CI
+      # must prove is that RLS binds the non-owner role, and that holds either way.
+      DATABASE_URL: postgres://fabricxai_app_rw:ci-secret@localhost:5432/fabricxai
+      DIRECT_DATABASE_URL: postgres://fabricxai:fabricxai@localhost:5432/fabricxai
+      REDIS_URL: redis://localhost:6379
+      APP_URL: http://localhost:3100
+      BETTER_AUTH_URL: http://localhost:3100
+      BETTER_AUTH_SECRET: ci-only-secret-0123456789abcdef0123456789
+      S3_ENDPOINT: http://localhost:9000
+      S3_ACCESS_KEY_ID: fabricxai
+      S3_SECRET_ACCESS_KEY: fabricxai-dev-secret
+      S3_BUCKET: fabricxai-documents
+      S3_FORCE_PATH_STYLE: 'true'
+      SMTP_HOST: localhost
+      SMTP_PORT: '1025'
+      MAILPIT_URL: http://localhost:8025
+      MARBIM_MOCK: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Migrate and create the application role
+        run: |
+          pnpm db:migrate
+          pnpm db:setup-roles
+
+      # Gate A (auth), gate B (pending flow) and the core services. The suite starts its
+      # own `next dev` on an exclusive port, so nothing here needs to babysit a server.
+      - name: Integration tests
+        run: pnpm test:integration
+
+      # Phase 0 exit criterion C.
+      - name: Seed is re-runnable
+        run: |
+          pnpm seed --scale=pilot
+          pnpm seed --scale=pilot
+
+  # ── Image builds ───────────────────────────────────────────────────────────
+  docker:
+    name: docker build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: fabricxai:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

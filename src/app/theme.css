@@ -1,0 +1,179 @@
+/* ============================================================
+   FabricXAI — design tokens (Tailwind v4)
+   Drop in at src/app/theme.css and @import after tailwindcss.
+   Palette derived from the logo: ink #101725, amber #EAB308.
+   ============================================================ */
+
+@theme {
+  /* ── Ink ─────────────────────────────────────────────── */
+  --color-ink-950: #0A0E17;
+  --color-ink-900: #101725;   /* logo navy */
+  --color-ink-850: #141C2C;
+  --color-ink-800: #18202F;
+  --color-ink-700: #212A3B;
+  --color-ink-600: #2C3648;
+  --color-ink-500: #3C4759;
+  --color-ink-400: #5A6577;
+  --color-ink-300: #808B9D;
+  --color-ink-200: #A8B2C1;
+  --color-ink-100: #D2D8E2;
+  --color-ink-50:  #EFF2F7;
+
+  /* ── Amber (brand) ───────────────────────────────────── */
+  --color-amber-300: #F5D661;
+  --color-amber-400: #F0C531;
+  --color-amber-500: #EAB308;  /* logo amber */
+  --color-amber-600: #C89806;
+  --color-amber-700: #9A7505;
+
+  /* ── Warp indigo (secondary) ─────────────────────────── */
+  --color-warp-400: #8BA4FF;
+  --color-warp-500: #6B8AFF;
+  --color-warp-600: #4B63E0;
+  --color-warp-700: #3B4DB8;
+
+  /* ── Status ──────────────────────────────────────────── */
+  --color-on-track: #34D399;
+  --color-at-risk:  #FF8A3D;   /* NOT amber — see the amber rule */
+  --color-late:     #FB4E5E;
+  --color-info:     #60A5FA;
+  --color-done:     #808B9D;
+
+  /* ── Data viz (luminance-ordered) ────────────────────── */
+  --color-viz-1: #EAB308;
+  --color-viz-2: #6B8AFF;
+  --color-viz-3: #2DD4BF;   /* the retired brand teal */
+  --color-viz-4: #FB7185;
+  --color-viz-5: #A78BFA;
+  --color-viz-6: #A3E635;
+  --color-viz-7: #38BDF8;
+
+  /* ── Type ────────────────────────────────────────────── */
+  --font-display: 'Archivo', system-ui, sans-serif;
+  --font-sans:    'Inter', system-ui, sans-serif;
+  --font-bangla:  'Anek Bangla', 'Noto Sans Bengali', sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, monospace;
+
+  /* ── Radius ──────────────────────────────────────────── */
+  --radius-xs: 4px;
+  --radius-sm: 8px;    /* buttons, chips */
+  --radius-md: 12px;   /* inputs */
+  --radius-lg: 16px;   /* cards */
+  --radius-xl: 20px;   /* drawers, modals */
+}
+
+/* ── Semantic aliases: components reference these, never raw hex ── */
+:root {
+  --canvas:      var(--color-ink-950);
+  --surface:     var(--color-ink-900);
+  --raised:      var(--color-ink-850);
+  --line:        rgb(255 255 255 / 0.09);
+  --line-strong: rgb(255 255 255 / 0.16);
+
+  --text:        #E8EBF0;
+  --text-dim:    var(--color-ink-200);
+  --text-mute:   var(--color-ink-300);
+
+  --brand:       var(--color-amber-500);   /* repoint here to migrate */
+  --brand-hover: var(--color-amber-400);
+  --on-brand:    var(--color-ink-950);
+
+  --glass:       rgb(20 28 44 / 0.72);
+  --glass-blur:  20px;
+
+  --focus-ring:  0 0 0 3px rgb(234 179 8 / 0.15);
+}
+
+/* ── Base ─────────────────────────────────────────────── */
+body {
+  background: var(--canvas);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Every stacked figure aligns. Non-negotiable in an ERP. */
+.tabular,
+table td,
+[data-numeric] { font-variant-numeric: tabular-nums; }
+
+:where(:lang(bn)) { font-family: var(--font-bangla); }
+
+*:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+/* ── Signature: warp/weft thread motif ────────────────── */
+.thread-rule {
+  height: 6px;
+  background-image: repeating-linear-gradient(
+    115deg, var(--brand) 0 2px, transparent 2px 9px
+  );
+  opacity: .85;
+}
+.thread-rule--ink {
+  background-image: repeating-linear-gradient(
+    115deg, var(--color-ink-500) 0 2px, transparent 2px 9px
+  );
+}
+
+/* Selvage edge — status on the left rim of a card or row */
+.selvage { position: relative; overflow: hidden; }
+.selvage::before {
+  content: ''; position: absolute; inset: 0 auto 0 0; width: 3px;
+  background: var(--brand);
+}
+.selvage[data-status="on-track"]::before { background: var(--color-on-track); }
+.selvage[data-status="at-risk"]::before  { background: var(--color-at-risk); }
+.selvage[data-status="late"]::before     { background: var(--color-late); }
+.selvage[data-status="done"]::before     { background: var(--color-done); }
+
+/* Glass — drawers, modals, sticky top bar only */
+.glass {
+  background: var(--glass);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--line);
+}
+/* Floor devices: solid fallback, no compositing cost */
+@supports not (backdrop-filter: blur(1px)) {
+  .glass { background: var(--raised); }
+}
+html[data-perf="low"] .glass {
+  background: var(--raised);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* Weave loader — replaces every spinner */
+@keyframes fx-weave {
+  0%, 100% { opacity: .25; transform: skewX(-22deg) scaleY(.62); }
+  50%      { opacity: 1;   transform: skewX(-22deg) scaleY(1); }
+}
+.weave { display: inline-flex; gap: 3px; align-items: center; }
+.weave > i {
+  display: block; width: 3px; height: 15px; border-radius: 1px;
+  background: var(--brand); transform: skewX(-22deg);
+  animation: fx-weave 1.05s ease-in-out infinite;
+}
+.weave > i:nth-child(2) { animation-delay: .13s; background: var(--color-ink-300); }
+.weave > i:nth-child(3) { animation-delay: .26s; }
+.weave > i:nth-child(4) { animation-delay: .39s; background: var(--color-ink-300); }
+
+@media (prefers-reduced-motion: reduce) {
+  .weave > i { animation: none; opacity: .7; }
+}
+
+/* ── Density: floor devices get bigger rows and targets ── */
+html[data-density="floor"] {
+  --row-height: 56px;
+  --tap-min: 48px;
+  font-size: 15px;
+}
+html[data-density="desk"] {
+  --row-height: 44px;
+  --tap-min: 36px;
+}

@@ -1,0 +1,20 @@
+node_modules
+.next
+.git
+.github
+coverage
+dist
+docs
+
+# Secrets never enter an image (dev-plan §6).
+.env
+.env.*
+!.env.example
+
+# Dev-only infrastructure, including the plaintext PgBouncer userlist.
+docker-compose.dev.yml
+docker/
+
+*.log
+*.tsbuildinfo
+.DS_Store
