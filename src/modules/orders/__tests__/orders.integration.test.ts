@@ -25,6 +25,10 @@ import {
   setOrderStatus,
 } from '@/modules/orders/service'
 import { runTnaScan } from '@/modules/orders/jobs'
+import { ordersModule } from '@/modules/orders/register'
+import { approve, propose } from '@/modules/core/pending-changes'
+import { __resetRegistry, registerModule } from '@/modules/core/registry'
+import { pendingChanges } from '@/db/schema/core'
 import { withTenantRead } from '@/modules/core/tenancy'
 
 const client = createDirectClient()
@@ -382,5 +386,107 @@ describe('1.3 · order state machine', () => {
 
     expect(result.isNewRevision).toBe(true)
     expect(result.revision).toBe(3)
+  })
+})
+
+describe('1.3 · applyRevision — the AI → approve → commit loop', () => {
+  it('an approved buyer amendment lands as a new revision with its evidence', async () => {
+    // Registering here rather than in beforeAll: the registry is module-global and other
+    // suites reset it, so the module has to be present at the moment approve() resolves.
+    __resetRegistry()
+    registerModule({ ...ordersModule })
+
+    const [styleBefore] = await db.select().from(orderStyles).where(eq(orderStyles.id, styleId))
+    const revisionBefore = styleBefore!.activeRevision
+
+    // MARBIM extracts this from the buyer's amendment email, with real per-field
+    // confidence — not a constant.
+    const draft = await propose(ctxA, {
+      moduleId: 'orders',
+      targetTable: 'order_breakdowns',
+      operation: 'insert',
+      zodSchemaKey: 'order_revision_v1',
+      payload: {
+        orderStyleId: styleId,
+        cells: [
+          { color: 'Navy', size: 'M', qty: 5_200 },
+          { color: 'Navy', size: 'L', qty: 4_800 },
+        ],
+        reason: 'Buyer email 2026-05-20: swap 100 pcs L to M',
+      },
+      fieldConfidence: { orderStyleId: 0.99, cells: 0.86, reason: 0.94 },
+      source: 'ai_extraction',
+      extractorVersion: 'po-extract-v3',
+    })
+
+    expect(draft.status).toBe('pending')
+
+    const approved = await approve(ctxA, { pendingChangeId: draft.id })
+
+    // The handler returns the ORDER id — a revision is a change to the order, not to one
+    // breakdown row, and the audit trail should point where a human would look.
+    expect(approved.committedRowId).toBe(orderId)
+
+    const [styleAfter] = await db.select().from(orderStyles).where(eq(orderStyles.id, styleId))
+    expect(styleAfter!.activeRevision).toBe(revisionBefore + 1)
+
+    const cells = await db
+      .select()
+      .from(orderBreakdowns)
+      .where(
+        and(
+          eq(orderBreakdowns.orderStyleId, styleId),
+          eq(orderBreakdowns.revision, styleAfter!.activeRevision),
+        ),
+      )
+    expect(cells.map((c) => c.qty).sort((a, b) => a - b)).toEqual([4_800, 5_200])
+
+    // The evidence row: who asked, and why.
+    const [revisionRow] = await db
+      .select()
+      .from(orderRevisions)
+      .where(
+        and(eq(orderRevisions.orderId, orderId), eq(orderRevisions.revision, styleAfter!.activeRevision)),
+      )
+    expect(revisionRow?.reason).toContain('Buyer email')
+
+    // And the draft is closed with a pointer to what it became.
+    const [committed] = await db
+      .select()
+      .from(pendingChanges)
+      .where(eq(pendingChanges.id, draft.id))
+    expect(committed?.status).toBe('committed')
+    expect(committed?.committedRowId).toBe(orderId)
+  })
+
+  it('a draft that would break the tolerance gate fails at approve, committing nothing', async () => {
+    __resetRegistry()
+    registerModule({ ...ordersModule })
+
+    const [styleBefore] = await db.select().from(orderStyles).where(eq(orderStyles.id, styleId))
+
+    const draft = await propose(ctxA, {
+      moduleId: 'orders',
+      targetTable: 'order_breakdowns',
+      operation: 'insert',
+      zodSchemaKey: 'order_revision_v1',
+      payload: {
+        orderStyleId: styleId,
+        // 6,000 against a contracted 10,000 with 3% tolerance.
+        cells: [{ color: 'Navy', size: 'M', qty: 6_000 }],
+        reason: 'Misread scan',
+      },
+      fieldConfidence: { orderStyleId: 0.99, cells: 0.41, reason: 0.7 },
+      source: 'ai_extraction',
+    })
+
+    // The gate is server-side and applies to approved AI writes exactly as it applies to
+    // a merchandiser typing — approval is not a bypass.
+    await expect(approve(ctxA, { pendingChangeId: draft.id })).rejects.toMatchObject({
+      messageKey: 'orders.errors.breakdown_outside_tolerance',
+    })
+
+    const [styleAfter] = await db.select().from(orderStyles).where(eq(orderStyles.id, styleId))
+    expect(styleAfter!.activeRevision).toBe(styleBefore!.activeRevision)
   })
 })

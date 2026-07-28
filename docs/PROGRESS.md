@@ -22,7 +22,7 @@ which cannot start until `docs/handoffs/HANDOFF-X.1.md` exists with §8 resolved
 |---|---|---|---|---|---|---|
 | X.1 approve-inbox | | | | | — | |
 | X.2 marbim | | | | | | |
-| 1.3 order-desk-tna | ⬜ handoff pending | — | 🟡 backend-first: schema, zod, TNA engine, service, events, jobs, register. queries.ts + actions.ts await HANDOFF §3/§5 | | | |
+| 1.3 order-desk-tna | ⬜ handoff pending | — | 🟡 backend-first: schema, zod, TNA engine, service, events, scheduled jobs, applyRevision loop, register. queries.ts + actions.ts await HANDOFF §3/§5 | | | |
 | 3.1 store | | | | | | |
 | 6.1 line-tracking | | | | | ⚡ req | |
 (…add all 23 from 02-backend/briefs/README.md)
