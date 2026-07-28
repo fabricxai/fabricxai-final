@@ -110,13 +110,8 @@ jobs:
         options: >-
           --health-cmd "redis-cli ping" --health-interval 5s
           --health-timeout 5s --health-retries 20
-      minio:
-        image: bitnami/minio:latest
-        env:
-          MINIO_ROOT_USER: fabricxai
-          MINIO_ROOT_PASSWORD: fabricxai-dev-secret
-          MINIO_DEFAULT_BUCKETS: fabricxai-documents
-        ports: ['9000:9000']
+      # MinIO is NOT a service container: it needs `server /data` as its command, and
+      # GitHub service containers cannot override one. It is started as a step below.
       mailpit:
         image: axllent/mailpit:latest
         env:
@@ -149,6 +144,27 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+
+      - name: Start MinIO and create the private bucket
+        run: |
+          docker run -d --name minio -p 9000:9000 \
+            -e MINIO_ROOT_USER=fabricxai \
+            -e MINIO_ROOT_PASSWORD=fabricxai-dev-secret \
+            minio/minio:latest server /data
+
+          for i in $(seq 1 40); do
+            curl -sf http://localhost:9000/minio/health/live >/dev/null && break
+            sleep 2
+          done
+          curl -sf http://localhost:9000/minio/health/live >/dev/null \
+            || { echo "::error::MinIO did not become ready"; docker logs minio; exit 1; }
+
+          # `minio/mc` has `mc` as its entrypoint, so a shell has to be asked for
+          # explicitly. No public buckets, ever (dev-plan §6).
+          docker run --rm --network host --entrypoint sh minio/mc:latest -c "
+            mc alias set local http://localhost:9000 fabricxai fabricxai-dev-secret &&
+            mc mb --ignore-existing local/fabricxai-documents &&
+            mc anonymous set none local/fabricxai-documents"
 
       - name: Migrate and create the application role
         run: |
