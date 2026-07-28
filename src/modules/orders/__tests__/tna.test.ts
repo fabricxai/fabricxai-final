@@ -16,6 +16,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  deriveMilestoneStatus,
   generateSchedule,
   previewRipple,
   TnaError,
@@ -261,5 +262,45 @@ describe('previewRipple · what a slip actually costs', () => {
     expect(() =>
       previewRipple({ schedule: base(), milestone: 'nope', actualDate: '2026-05-07' }),
     ).toThrow(/unknown milestone/i)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Status derivation
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('deriveMilestoneStatus', () => {
+  const TODAY = '2026-05-16'
+
+  it('16 · a milestone that happened is done, even if it happened late', () => {
+    // Whether it was late is a variance-report question, not a status chip.
+    expect(
+      deriveMilestoneStatus({ plannedDate: '2026-05-01', actualDate: '2026-05-14', today: TODAY }),
+    ).toBe('done')
+  })
+
+  it('17 · past its planned date and not done is late', () => {
+    expect(deriveMilestoneStatus({ plannedDate: '2026-05-15', today: TODAY })).toBe('late')
+  })
+
+  it('18 · today counts as at risk, not late — there is still a shift left to do it', () => {
+    expect(deriveMilestoneStatus({ plannedDate: TODAY, today: TODAY })).toBe('at_risk')
+  })
+
+  it('19 · inside the risk window is at risk; outside it is on track', () => {
+    expect(deriveMilestoneStatus({ plannedDate: '2026-05-19', today: TODAY })).toBe('at_risk')
+    expect(deriveMilestoneStatus({ plannedDate: '2026-05-20', today: TODAY })).toBe('on_track')
+  })
+
+  it('20 · the risk window widens for long-lead steps', () => {
+    expect(
+      deriveMilestoneStatus({ plannedDate: '2026-05-30', today: TODAY, riskWindowDays: 21 }),
+    ).toBe('at_risk')
+  })
+
+  it('21 · an unscheduled milestone is pending, not on track', () => {
+    // The DB default before the first scan. Claiming "on track" for something with no
+    // date is the kind of green light that gets believed.
+    expect(deriveMilestoneStatus({ plannedDate: null, today: TODAY })).toBe('pending')
   })
 })

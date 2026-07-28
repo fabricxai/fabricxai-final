@@ -83,6 +83,15 @@ export const orders = pgTable(
     currency: text('currency').notNull().default('USD'),
 
     /**
+     * Over/under shipment the buyer accepts, e.g. 3.00 for ±3%. A breakdown outside it is
+     * refused: shipping 5% short against a buyer who allows 2% is a claim, not a rounding
+     * difference. Usually mirrors the LC's own tolerance but is negotiated separately.
+     */
+    qtyTolerancePct: numeric('qty_tolerance_pct', { precision: 5, scale: 2 })
+      .notNull()
+      .default('0'),
+
+    /**
      * The buying agent's terms AS AT confirmation. A snapshot, not a reference: agents
      * renegotiate, and an order's commission must not silently change afterwards.
      */
@@ -109,6 +118,10 @@ export const orders = pgTable(
     // "Which order is PO-9931?" — merchandisers search by the buyer's number, not ours.
     index('orders_po_numbers_idx').using('gin', t.poNumbers),
     check('orders_currency_iso', sql`char_length(${t.currency}) = 3`),
+    check(
+      'orders_qty_tolerance_range',
+      sql`${t.qtyTolerancePct} >= 0 AND ${t.qtyTolerancePct} <= 100`,
+    ),
   ],
 ).enableRLS()
 
@@ -125,6 +138,8 @@ export const orderStyles = pgTable(
 
     styleCode: text('style_code').notNull(),
     description: text('description'),
+    /** Pieces the buyer ordered for this style — what the breakdown must add up to. */
+    contractedQty: integer('contracted_qty'),
     unitPrice: numeric('unit_price', { precision: 14, scale: 2 }),
     currency: text('currency').notNull().default('USD'),
 
@@ -139,6 +154,10 @@ export const orderStyles = pgTable(
     index('order_styles_company_order_idx').on(t.companyId, t.orderId),
     check('order_styles_currency_iso', sql`char_length(${t.currency}) = 3`),
     check('order_styles_active_revision_positive', sql`${t.activeRevision} >= 1`),
+    check(
+      'order_styles_contracted_qty_positive',
+      sql`${t.contractedQty} IS NULL OR ${t.contractedQty} > 0`,
+    ),
   ],
 ).enableRLS()
 

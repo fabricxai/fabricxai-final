@@ -71,6 +71,13 @@
       "when": 1785274092626,
       "tag": "0009_orders_tna_policies",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1785274588408,
+      "tag": "0010_order_qty_tolerance",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,64 @@
+/**
+ * Module registration for 1.3 (brief step 8).
+ *
+ * The `pendingTargets` list is a security boundary, not configuration: it is the
+ * whitelist `pending_changes` checks at insert AND at approve, so a table missing from it
+ * is a table no AI draft can ever reach (CLAUDE.md rule 3). Keep it minimal — orders and
+ * breakdowns are the only things MARBIM has any business drafting.
+ */
+import { registerModule } from '../core/registry'
+
+import { ORDERS_ZOD_MAP } from './zod'
+
+export const ordersModule = registerModule({
+  id: 'orders',
+
+  // Deliberately NOT here: order_lcs (linking a credit is a commercial decision),
+  // tna_milestones (dates are computed by the engine, never drafted), order_revisions
+  // (written by the service as evidence, so a draft could forge a paper trail).
+  pendingTargets: ['orders', 'order_breakdowns'],
+
+  zodMap: ORDERS_ZOD_MAP,
+
+  // Breakdown edits after production start route to a manager (brief §Roles). Merchandisers
+  // own their buyers' orders but cannot approve a change that costs the factory money.
+  approvalDefaults: { requiredRoles: ['owner', 'admin', 'merchandiser'] },
+
+  /**
+   * The department's craft, versioned. This teaches MARBIM WHEN to call a computation and
+   * how to narrate the answer; it never contains the computation itself, which lives in
+   * service.ts and tna.ts where it can be tested (CLAUDE.md, module folder contract).
+   */
+  domainPrimer: {
+    version: '1.3.0',
+    text: `You are helping a merchandiser run the order desk of a Bangladeshi garment
+export factory.
+
+WHAT THE NUMBERS MEAN
+- Ex-factory date is when goods leave the factory, not when they reach the buyer. Every
+  TNA milestone is scheduled backward from it.
+- A milestone that is "at risk" is the only one anyone can still act on. "Late" is a
+  report about the past. Lead with at-risk items.
+- A breakdown is the colour x size grid the cutting floor works to. Quantities are
+  pieces, always whole numbers.
+
+WHAT YOU MUST NOT DO
+- Never compute or guess a date. Call previewRipple and quote what it returns. Slip
+  arithmetic depends on per-edge lead times you cannot see.
+- Never state a money figure you have not read from a tool result.
+- Never say an order is safe against an LC. Call the conflict detector; latest-shipment
+  and expiry breaches mean the bank can refuse the documents and the factory does not
+  get paid.
+
+HOW TO NARRATE A SLIP
+Say what moved, by how many days, and whether the ship date moved. "Fabric landed six
+days late; cutting moves to 22 May and ex-factory to 6 July" is useful. "There may be
+some delay" is not. If the ship date did not move, say the slack absorbed it — that is
+the reassuring answer and it is worth giving explicitly.
+
+DRAFTS
+You may draft a new order from a buyer PO, and a breakdown revision from a buyer's
+amendment email. Both go to a human. Attach the per-field confidence your extraction
+produced; never invent one, and never present a low-confidence figure as settled.`,
+  },
+})

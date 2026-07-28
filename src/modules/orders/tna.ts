@@ -367,3 +367,39 @@ export function previewRipple(input: {
     affectsCriticalPath: changes.some((c) => c.critical),
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Status derivation
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type MilestoneStatus = 'pending' | 'on_track' | 'at_risk' | 'late' | 'done'
+
+/**
+ * What a milestone's status is *today*. Pure — `today` is a parameter, never a clock,
+ * so the nightly scan, the API and the tests all agree and a test never depends on when
+ * it runs.
+ *
+ * `at_risk` is the whole point of the field. A milestone that is merely late tells you
+ * about the past; one inside its risk window is the only one anybody can still act on,
+ * which is why the window is a parameter the factory can widen for long-lead steps.
+ *
+ * Note `late` beats `at_risk` and `done` beats everything: a milestone that actually
+ * happened is done even if it happened late. Whether it happened late is a question for
+ * the variance report, not for a status chip on a board.
+ */
+export function deriveMilestoneStatus(input: {
+  plannedDate: string | null
+  actualDate?: string | null
+  today: string
+  /** Days before the planned date at which a milestone starts showing as at risk. */
+  riskWindowDays?: number
+}): MilestoneStatus {
+  if (input.actualDate) return 'done'
+  // Not scheduled yet — the DB default, replaced by the first scan.
+  if (!input.plannedDate) return 'pending'
+
+  const daysRemaining = diffDays(input.today, input.plannedDate)
+  if (daysRemaining < 0) return 'late'
+  if (daysRemaining <= (input.riskWindowDays ?? 3)) return 'at_risk'
+  return 'on_track'
+}
