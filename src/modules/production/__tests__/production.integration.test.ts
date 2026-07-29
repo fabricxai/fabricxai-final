@@ -36,8 +36,8 @@ import {
   downtimes,
   efficiencyDaily,
   hourlyOutputs,
-  lines,
 } from '@/modules/production/schema'
+import { lines } from '@/modules/planning/schema'
 
 const client = createDirectClient()
 const db = createDirectDb(client)

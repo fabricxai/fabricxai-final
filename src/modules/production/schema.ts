@@ -19,7 +19,6 @@
  */
 import { sql } from 'drizzle-orm'
 import {
-  boolean,
   check,
   date,
   index,
@@ -36,6 +35,9 @@ import {
 
 import { companies, users } from '@/db/schema/core'
 import { orders } from '@/modules/orders/schema'
+// `lines` is master data owned by module 4.1 Planning (rule 11). Production records
+// output against lines; it does not create them.
+import { lines } from '@/modules/planning/schema'
 
 export const downtimeReasonEnum = pgEnum('downtime_reason', [
   'machine',
@@ -45,28 +47,6 @@ export const downtimeReasonEnum = pgEnum('downtime_reason', [
   'other',
 ])
 
-/** A sewing line. Owned here; module 4.1 Planning schedules against it. */
-export const lines = pgTable(
-  'lines',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    companyId: uuid('company_id')
-      .notNull()
-      .references(() => companies.id, { onDelete: 'cascade' }),
-
-    code: text('code').notNull(),
-    name: text('name').notNull(),
-    /** Nominal head count; the day plan carries what is actually rostered. */
-    capacityManpower: integer('capacity_manpower'),
-
-    isActive: boolean('is_active').notNull().default(true),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => [
-    uniqueIndex('lines_company_code_key').on(t.companyId, t.code),
-    index('lines_company_idx').on(t.companyId),
-  ],
-).enableRLS()
 
 export const dailyLinePlans = pgTable(
   'daily_line_plans',
