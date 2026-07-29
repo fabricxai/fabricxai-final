@@ -100,6 +100,16 @@ export default tseslint.config(
     },
   },
 
+  // k6 scenarios run inside k6's own runtime, not Node: `__ENV`, `__VU` and `__ITER` are
+  // injected by it. Declaring them keeps `no-undef` doing its job here rather than being
+  // switched off for the whole directory.
+  {
+    files: ['k6/**/*.js'],
+    languageOptions: {
+      globals: { __ENV: 'readonly', __VU: 'readonly', __ITER: 'readonly' },
+    },
+  },
+
   // Tests reach into fixtures and raw SQL on purpose.
   {
     files: ['**/__tests__/**/*.ts', 'eslint-rules/**/*.js', 'scripts/**/*.mjs'],

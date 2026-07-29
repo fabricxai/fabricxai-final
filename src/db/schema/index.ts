@@ -17,3 +17,6 @@ export * from '@/modules/workforce/schema'
 
 // Phase 4 — 3.1 Fabric & Trims Store (floor-facing; draws bonded stock via 2.2).
 export * from '@/modules/store/schema'
+
+// Phase 4 — 6.1 Line Tracking. hourly_outputs is partitioned by month; see its migration.
+export * from '@/modules/production/schema'

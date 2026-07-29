@@ -26,5 +26,5 @@ which cannot start until `docs/handoffs/HANDOFF-X.1.md` exists with §8 resolved
 | 2.2 bonded-warehouse-ud | ⬜ handoff pending | — | 🟡 backend-first: schema, zod, UD gate + concurrency, service, events, jobs, register | | | |
 | 3.1 store | ⬜ handoff pending | — | 🟡 backend-first: stock math, GRN, requisition, issue w/ UD draw, offline handlers | | | |
 | 10.1 workforce-payroll 🔒 | ⬜ handoff pending | — | 🟡 backend-first: uploadable gazette, pure compute (22 vectors), 🔒 lockout, run lifecycle | | | |
-| 6.1 line-tracking | | | | | ⚡ req | |
+| 6.1 line-tracking ⚡ | ⬜ handoff pending | — | 🟡 backend-first: partitioned hourly_outputs, burst upsert, downtime, day-close, run rate | | ⚡ scenario written, never run | |
 (…add all 23 from 02-backend/briefs/README.md)

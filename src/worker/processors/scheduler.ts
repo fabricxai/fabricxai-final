@@ -21,6 +21,7 @@ import { sql } from 'drizzle-orm'
 
 import { db } from '@/db/client'
 import { runUdAlerts } from '@/modules/commercial/jobs'
+import { ensureOutputPartitions, runDayClose } from '@/modules/production/jobs'
 import { runLcCountdown, runTnaScan } from '@/modules/orders/jobs'
 import type { SystemCtx } from '@/modules/core/ctx'
 
@@ -44,6 +45,19 @@ export const SCHEDULED_TASKS = [
     task: 'commercial.lc_countdown',
     // 02:00 Dhaka, so the commercial team finds the countdown waiting at 09:00.
     pattern: '0 2 * * *',
+  },
+  {
+    id: 'partitions-nightly',
+    task: 'production.ensure_partitions',
+    // 00:30 Dhaka, before anything else. If the monthly window has run out, every write
+    // for the rest of the night lands in the DEFAULT partition and stops being pruned.
+    pattern: '30 0 * * *',
+  },
+  {
+    id: 'day-close-nightly',
+    task: 'production.day_close',
+    // 01:00 Dhaka: after the night shift's last entries, before the TNA scan reads them.
+    pattern: '0 1 * * *',
   },
   {
     id: 'ud-alerts-nightly',
@@ -137,6 +151,10 @@ export async function runDeriveTask(job: Job<DeriveJobData>): Promise<unknown> {
       return runLcCountdown(ctx)
     case 'commercial.ud_alerts':
       return runUdAlerts(ctx)
+    case 'production.ensure_partitions':
+      return ensureOutputPartitions(ctx)
+    case 'production.day_close':
+      return runDayClose(ctx)
     default: {
       // Exhaustiveness: a task added to SCHEDULED_TASKS without a branch here fails to
       // compile rather than silently doing nothing every night.

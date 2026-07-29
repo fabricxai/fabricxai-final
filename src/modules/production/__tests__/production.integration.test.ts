@@ -1,0 +1,326 @@
+/**
+ * 6.1 integration ⚡
+ *
+ * The properties k6 measures at load, asserted here for correctness first — a burst path
+ * that is fast and wrong is worse than one that is slow and right.
+ *
+ *  - a replayed batch changes no row count (the k6 assertion, at unit scale);
+ *  - writes land in the right monthly partition and the board read prunes to it;
+ *  - one open downtime per line;
+ *  - day-close is idempotent and rebuildable.
+ */
+import { randomUUID } from 'node:crypto'
+
+import { eq, sql } from 'drizzle-orm'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+
+import { createDirectClient, createDirectDb } from '@/db/direct'
+import { companies, users } from '@/db/schema/core'
+import { buyers } from '@/modules/buyers/schema'
+import type { RequestCtx } from '@/modules/core/ctx'
+import { syncBatch } from '@/modules/core/offline-sync'
+import { withTenantRead } from '@/modules/core/tenancy'
+import { orders } from '@/modules/orders/schema'
+import '@/modules/production/register'
+import {
+  closeDay,
+  closeLineDowntime,
+  getBoard,
+  openLineDowntime,
+  recordEndlineCount,
+  recordHourlyOutputs,
+  runRate,
+} from '@/modules/production/service'
+import {
+  dailyLinePlans,
+  downtimes,
+  efficiencyDaily,
+  hourlyOutputs,
+  lines,
+} from '@/modules/production/schema'
+
+const client = createDirectClient()
+const db = createDirectDb(client)
+
+const COMPANY = randomUUID()
+const OTHER = randomUUID()
+const USER = `prod-${randomUUID().slice(0, 8)}`
+const ctx: RequestCtx = { companyId: COMPANY, userId: USER, roles: ['production'] }
+const otherCtx: RequestCtx = { companyId: OTHER, userId: USER, roles: ['production'] }
+
+const DAY = '2026-06-15'
+let lineId: string
+let orderId: string
+
+beforeAll(async () => {
+  await db.insert(companies).values([
+    { id: COMPANY, name: 'Prod Co', slug: `prod-${COMPANY.slice(0, 8)}` },
+    { id: OTHER, name: 'Other Co', slug: `oth-${OTHER.slice(0, 8)}` },
+  ])
+  await db.insert(users).values({ id: USER, email: `${USER}@fabricxai.test`, name: 'Supervisor' })
+
+  const [buyer] = await db
+    .insert(buyers)
+    .values({ companyId: COMPANY, code: 'HM', name: 'H&M' })
+    .returning({ id: buyers.id })
+  const [order] = await db
+    .insert(orders)
+    .values({ companyId: COMPANY, buyerId: buyer!.id, poNumbers: ['PO-9'], createdBy: USER })
+    .returning({ id: orders.id })
+  orderId = order!.id
+
+  const [line] = await db
+    .insert(lines)
+    .values({ companyId: COMPANY, code: 'L-07', name: 'Line 7', capacityManpower: 40 })
+    .returning({ id: lines.id })
+  lineId = line!.id
+
+  await db.insert(dailyLinePlans).values({
+    companyId: COMPANY,
+    lineId,
+    orderId,
+    planDate: DAY,
+    targetPerHour: 120,
+    manpowerPlanned: 40,
+    smv: '12.50',
+    createdBy: USER,
+  })
+})
+
+afterAll(async () => {
+  await db.execute(sql`delete from audit_log where company_id in (${COMPANY}, ${OTHER})`)
+  await db.delete(companies).where(eq(companies.id, COMPANY))
+  await db.delete(companies).where(eq(companies.id, OTHER))
+  await db.delete(users).where(eq(users.id, USER))
+  await client.end()
+})
+
+const countRows = async () => {
+  const rows = await db.execute<{ n: string }>(
+    sql`select count(*)::text as n from hourly_outputs where company_id = ${COMPANY} and produced_on = ${DAY}`,
+  )
+  const list = Array.isArray(rows) ? rows : ((rows as { rows?: unknown[] }).rows ?? [])
+  return Number((list[0] as { n: string }).n)
+}
+
+describe('6.1 ⚡ · burst writes', () => {
+  it('writes a whole batch and is idempotent on replay', async () => {
+    const entries = Array.from({ length: 10 }, (_, hour) => ({
+      lineId,
+      orderId,
+      producedOn: DAY,
+      hourSlot: hour,
+      target: 120,
+      actual: 100 + hour,
+    }))
+
+    const first = await recordHourlyOutputs(ctx, { entries })
+    expect(first.written).toBe(10)
+    expect(await countRows()).toBe(10)
+
+    // The same batch again — a tablet resending, or k6 running twice. The natural key
+    // makes this an upsert, so the row COUNT is what proves it rather than the response.
+    await recordHourlyOutputs(ctx, { entries })
+    expect(await countRows()).toBe(10)
+  })
+
+  it('a corrected count replaces the cell rather than adding one', async () => {
+    // A supervisor fixes the 14:00 figure. Same path, same key.
+    await recordHourlyOutputs(ctx, {
+      entries: [{ lineId, orderId, producedOn: DAY, hourSlot: 3, target: 120, actual: 77 }],
+    })
+
+    expect(await countRows()).toBe(10)
+
+    const [cell] = await db
+      .select()
+      .from(hourlyOutputs)
+      .where(sql`${hourlyOutputs.lineId} = ${lineId} and ${hourlyOutputs.producedOn} = ${DAY} and ${hourlyOutputs.hourSlot} = 3`)
+
+    expect(cell?.actual).toBe(77)
+  })
+
+  it('lands in the right monthly partition', async () => {
+    // The whole point of partitioning from day one: verify rows physically route.
+    const rows = await db.execute<{ partition: string; n: string }>(sql`
+      select tableoid::regclass::text as partition, count(*)::text as n
+      from hourly_outputs where company_id = ${COMPANY} and produced_on = ${DAY}
+      group by 1`)
+    const list = Array.isArray(rows) ? rows : ((rows as { rows?: unknown[] }).rows ?? [])
+
+    expect((list[0] as { partition: string }).partition).toBe('hourly_outputs_2026_06')
+    // Not the default partition — landing there would mean the window has run out.
+    expect((list[0] as { partition: string }).partition).not.toContain('default')
+  })
+
+  it('the board read prunes to a single partition', async () => {
+    const plan = await db.execute<{ 'QUERY PLAN': string }>(
+      sql`explain (costs off) select * from hourly_outputs where company_id = ${COMPANY} and produced_on = ${DAY}`,
+    )
+    const list = Array.isArray(plan) ? plan : ((plan as { rows?: unknown[] }).rows ?? [])
+    const text = (list as { 'QUERY PLAN': string }[]).map((r) => r['QUERY PLAN']).join('\n')
+
+    // Assert the OUTCOME, not the mechanism. With a literal date Postgres prunes at plan
+    // time and the other partitions never appear; with a parameter or CURRENT_DATE it
+    // prunes at run time and they appear as "Subplans Removed". Both are pruning, and a
+    // test that demanded one would fail the day the query became parameterised.
+    const partitionsTouched = [...text.matchAll(/hourly_outputs_(\d{4}_\d{2}|default)/g)].map(
+      (match) => match[1],
+    )
+
+    expect(new Set(partitionsTouched)).toEqual(new Set(['2026_06']))
+    // The default partition holding rows would mean the monthly window has run out.
+    expect(text).not.toContain('hourly_outputs_default')
+  })
+
+  it('is invisible to another company', async () => {
+    expect(await getBoard(otherCtx, { producedOn: DAY })).toHaveLength(0)
+    expect((await getBoard(ctx, { producedOn: DAY })).length).toBeGreaterThan(0)
+
+    const visible = await withTenantRead(otherCtx, (tx) =>
+      tx.select().from(hourlyOutputs).where(eq(hourlyOutputs.lineId, lineId)),
+    )
+    expect(visible).toHaveLength(0)
+  })
+
+  it('a replayed offline batch is a no-op through the sync endpoint too', async () => {
+    const before = await countRows()
+    const batch = [
+      {
+        offlineKey: `burst-${randomUUID()}`,
+        moduleId: 'production',
+        operation: 'record_hourly_outputs',
+        payload: {
+          entries: [{ lineId, orderId, producedOn: DAY, hourSlot: 11, target: 120, actual: 95 }],
+        },
+      },
+    ]
+
+    expect((await syncBatch(ctx, batch))[0]?.status).toBe('applied')
+    const after = await countRows()
+
+    expect((await syncBatch(ctx, batch))[0]?.status).toBe('duplicate')
+    expect(await countRows()).toBe(after)
+    expect(after).toBe(before + 1)
+  })
+})
+
+describe('6.1 · downtime', () => {
+  it('opens, refuses a second, then closes with the minutes lost', async () => {
+    const opened = await openLineDowntime(ctx, {
+      lineId,
+      startedAt: '2026-06-15T09:00:00.000Z',
+      reason: 'machine',
+      note: 'needle bar',
+    })
+
+    // Two open downtimes on one line would double-count lost minutes.
+    await expect(
+      openLineDowntime(ctx, {
+        lineId,
+        startedAt: '2026-06-15T09:10:00.000Z',
+        reason: 'power',
+      }),
+    ).rejects.toMatchObject({ messageKey: 'production.errors.downtime_already_open' })
+
+    const closed = await closeLineDowntime(ctx, {
+      downtimeId: opened.downtimeId,
+      endedAt: '2026-06-15T09:40:00.000Z',
+    })
+    expect(closed.minutes).toBe(40)
+
+    const [row] = await db.select().from(downtimes).where(eq(downtimes.id, opened.downtimeId))
+    expect(row?.endedAt).not.toBeNull()
+  })
+
+  it('refuses a close that predates the start', async () => {
+    const opened = await openLineDowntime(ctx, {
+      lineId,
+      startedAt: '2026-06-15T14:00:00.000Z',
+      reason: 'feeding',
+    })
+
+    await expect(
+      closeLineDowntime(ctx, {
+        downtimeId: opened.downtimeId,
+        endedAt: '2026-06-15T13:00:00.000Z',
+      }),
+    ).rejects.toMatchObject({ messageKey: 'production.errors.downtime_ends_before_start' })
+
+    await closeLineDowntime(ctx, {
+      downtimeId: opened.downtimeId,
+      endedAt: '2026-06-15T14:15:00.000Z',
+    })
+  })
+})
+
+describe('6.1 · endline and derived', () => {
+  it('records the endline count and returns DHU', async () => {
+    const result = await recordEndlineCount(ctx, {
+      lineId,
+      countedOn: DAY,
+      checked: 1200,
+      passed: 1164,
+      defective: 36,
+      defects: 36,
+      rework: 30,
+    })
+
+    expect(result.dhu).toBe('3.00')
+    expect(result.passRatePct).toBe('97.00')
+  })
+
+  it('refuses a count that adds up to more than was checked', async () => {
+    await expect(
+      recordEndlineCount(ctx, {
+        lineId,
+        countedOn: DAY,
+        checked: 100,
+        passed: 90,
+        defective: 20,
+        defects: 20,
+        rework: 0,
+      }),
+    ).rejects.toMatchObject({ messageKey: 'production.errors.count_exceeds_checked' })
+  })
+
+  it('day-close computes efficiency and is idempotent', async () => {
+    const first = await closeDay(ctx, { forDate: DAY })
+    expect(first.lines).toBe(1)
+
+    const [row] = await db.select().from(efficiencyDaily).where(eq(efficiencyDaily.lineId, lineId))
+    expect(row?.efficiencyPct).toBeTruthy()
+    expect(Number(row!.outputTotal)).toBeGreaterThan(0)
+
+    // Re-running the day-close must not create a second row — derived tables are
+    // rebuildable from source at any time (architecture §4).
+    await closeDay(ctx, { forDate: DAY })
+    const all = await db.select().from(efficiencyDaily).where(eq(efficiencyDaily.lineId, lineId))
+    expect(all).toHaveLength(1)
+  })
+
+  it('forecasts completion from the trailing rate', async () => {
+    const forecast = await runRate(ctx, {
+      orderId,
+      remainingQty: 2000,
+      asOf: DAY,
+      milestoneDate: '2026-06-16',
+    })
+
+    expect(forecast.ratePerDay).not.toBe('0.00')
+    expect(forecast.forecastDate).toBeTruthy()
+    // One day of data only.
+    expect(forecast.confidence).toBe('low')
+  })
+
+  it('says it cannot forecast an order that has not been sewn', async () => {
+    const forecast = await runRate(ctx, {
+      orderId: randomUUID(),
+      remainingQty: 500,
+      asOf: DAY,
+    })
+
+    expect(forecast.forecastDate).toBeNull()
+    expect(forecast.confidence).toBe('none')
+  })
+})

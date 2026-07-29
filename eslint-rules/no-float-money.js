@@ -34,6 +34,19 @@ const isMoneyName = (name) =>
   typeof name === 'string' &&
   MONEY_NAME.test(name.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase())
 
+/** A BigInt literal, or an expression built from one. */
+function isBigIntExpression(node) {
+  if (!node) return false
+  if (node.type === 'Literal') return typeof node.value === 'bigint'
+  if (node.type === 'BinaryExpression') {
+    return isBigIntExpression(node.left) || isBigIntExpression(node.right)
+  }
+  if (node.type === 'CallExpression') {
+    return node.callee?.type === 'Identifier' && node.callee.name === 'BigInt'
+  }
+  return false
+}
+
 /** Does this expression look like it holds money? `line.unitPrice`, `unitPrice`, … */
 function looksLikeMoney(node) {
   if (!node) return false
@@ -86,6 +99,13 @@ const noFloatMoney = {
 
       BinaryExpression(node) {
         if (!['+', '-', '*', '/', '%'].includes(node.operator)) return
+
+        // BigInt arithmetic is exact by construction — it is the thing this rule exists
+        // to push people towards. A `1n` anywhere in the expression means the whole
+        // expression is integer maths, so flagging it would be telling someone off for
+        // doing exactly the right thing. (Mixing BigInt and Number throws at runtime, so
+        // there is no half-BigInt case to worry about.)
+        if (isBigIntExpression(node.left) || isBigIntExpression(node.right)) return
 
         for (const side of [node.left, node.right]) {
           if (looksLikeMoney(side)) {

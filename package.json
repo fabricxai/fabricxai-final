@@ -25,7 +25,8 @@
     "test:watch": "vitest",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "verify:phase0": "node scripts/verify-phase0.mjs",
-    "db:setup-roles": "node scripts/setup-db-roles.mjs"
+    "db:setup-roles": "node scripts/setup-db-roles.mjs",
+    "k6": "k6 run"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.926.0",

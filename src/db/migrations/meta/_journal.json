@@ -127,6 +127,27 @@
       "when": 1785310973118,
       "tag": "0017_store_policies",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1785326193206,
+      "tag": "0018_production",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1785326229126,
+      "tag": "0019_hourly_outputs_partitions",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1785326231191,
+      "tag": "0020_production_policies",
+      "breakpoints": true
     }
   ]
 }

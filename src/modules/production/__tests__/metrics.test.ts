@@ -1,0 +1,170 @@
+/**
+ * Production metric vectors — written before the implementation.
+ *
+ * Three numbers a sewing floor is run on, and every one of them is quoted in a morning
+ * meeting where somebody is held responsible:
+ *
+ *   efficiency = earned minutes (SMV × output) ÷ available minutes
+ *   DHU        = defects per hundred units
+ *   run rate   = trailing output per day, forecast to a completion date
+ *
+ * Pure — no clock, no database. `today` and the trailing window are parameters, so the
+ * nightly day-close, the live board and these tests all agree.
+ */
+import { describe, expect, it } from 'vitest'
+
+import {
+  computeDhu,
+  computeEfficiency,
+  forecastCompletion,
+  ProductionError,
+} from '../metrics'
+
+describe('computeEfficiency', () => {
+  it('1 · earned = SMV × output; available = manpower × minutes', () => {
+    // 40 operators for a 480-minute shift = 19,200 available minutes.
+    // 1,200 pieces at 12.5 SMV = 15,000 earned minutes.
+    const result = computeEfficiency({
+      smv: '12.5',
+      output: 1200,
+      manpower: 40,
+      workingMinutes: 480,
+    })
+
+    expect(result.earnedMinutes).toBe('15000.00')
+    expect(result.availableMinutes).toBe('19200.00')
+    expect(result.efficiencyPct).toBe('78.13')
+  })
+
+  it('2 · reports over 100% rather than capping it', () => {
+    // A good line beats the SMV. Capping at 100 would hide the fact that the SMV is
+    // wrong, which is worth more than the flattering number.
+    const result = computeEfficiency({ smv: '10', output: 2500, manpower: 40, workingMinutes: 480 })
+    expect(result.efficiencyPct).toBe('130.21')
+  })
+
+  it('3 · zero output is zero efficiency, not an error', () => {
+    const result = computeEfficiency({ smv: '10', output: 0, manpower: 40, workingMinutes: 480 })
+    expect(result.efficiencyPct).toBe('0.00')
+  })
+
+  it('4 · refuses zero available minutes instead of dividing by zero', () => {
+    // A line with nobody on it has no efficiency — not 0%, not Infinity. Reporting 0%
+    // would drag a factory average down for a line that never ran.
+    expect(() =>
+      computeEfficiency({ smv: '10', output: 100, manpower: 0, workingMinutes: 480 }),
+    ).toThrow(ProductionError)
+  })
+
+  it('5 · is exact — SMV is quoted to two decimals and must not drift', () => {
+    const result = computeEfficiency({ smv: '0.33', output: 3, manpower: 1, workingMinutes: 1 })
+    expect(result.earnedMinutes).toBe('0.99')
+  })
+})
+
+describe('computeDhu', () => {
+  it('6 · defects per hundred units', () => {
+    expect(computeDhu({ checked: 1200, defects: 36 }).dhu).toBe('3.00')
+  })
+
+  it('7 · counts DEFECTS, not defective garments', () => {
+    // One garment can carry three defects. DHU counts defects; the pass rate counts
+    // garments. Conflating them understates quality problems.
+    const result = computeDhu({ checked: 100, defects: 150 })
+    expect(result.dhu).toBe('150.00')
+  })
+
+  it('8 · refuses a zero check count rather than reporting a clean line', () => {
+    // Nothing checked is not the same as nothing wrong, and a board showing 0.00 DHU for
+    // an unchecked line is worse than a blank.
+    expect(() => computeDhu({ checked: 0, defects: 0 })).toThrow(ProductionError)
+  })
+
+  it('9 · is exact on awkward ratios', () => {
+    expect(computeDhu({ checked: 3, defects: 1 }).dhu).toBe('33.33')
+  })
+})
+
+describe('forecastCompletion · run rate', () => {
+  const trailing = [
+    { date: '2026-06-10', output: 900 },
+    { date: '2026-06-11', output: 1100 },
+    { date: '2026-06-12', output: 1000 },
+  ]
+
+  it('10 · averages the trailing window and forecasts a completion date', () => {
+    // 3,000 over three days = 1,000/day. 2,500 remaining = 3 more days (rounded up).
+    const result = forecastCompletion({
+      remainingQty: 2500,
+      trailing,
+      fromDate: '2026-06-12',
+    })
+
+    expect(result.ratePerDay).toBe('1000.00')
+    expect(result.daysNeeded).toBe(3)
+    expect(result.forecastDate).toBe('2026-06-15')
+  })
+
+  it('11 · rounds days UP — a part day is still a day on a shipping calendar', () => {
+    const result = forecastCompletion({ remainingQty: 2001, trailing, fromDate: '2026-06-12' })
+    expect(result.daysNeeded).toBe(3)
+  })
+
+  it('12 · says it cannot forecast when the line has not run', () => {
+    // Rate zero would divide by zero, and "completes today" is the dangerous answer.
+    const result = forecastCompletion({
+      remainingQty: 500,
+      trailing: [{ date: '2026-06-12', output: 0 }],
+      fromDate: '2026-06-12',
+    })
+
+    expect(result.ratePerDay).toBe('0.00')
+    expect(result.forecastDate).toBeNull()
+    expect(result.confidence).toBe('none')
+  })
+
+  it('13 · flags a forecast that lands after the sewing milestone', () => {
+    const result = forecastCompletion({
+      remainingQty: 5000,
+      trailing,
+      fromDate: '2026-06-12',
+      milestoneDate: '2026-06-14',
+    })
+
+    // 5 days needed, milestone in 2 — the order is late unless something changes.
+    expect(result.forecastDate).toBe('2026-06-17')
+    expect(result.slipDays).toBe(3)
+    expect(result.atRisk).toBe(true)
+  })
+
+  it('14 · is quiet when the forecast comfortably beats the milestone', () => {
+    const result = forecastCompletion({
+      remainingQty: 1000,
+      trailing,
+      fromDate: '2026-06-12',
+      milestoneDate: '2026-06-20',
+    })
+
+    expect(result.atRisk).toBe(false)
+    expect(result.slipDays).toBe(0)
+  })
+
+  it('15 · marks a one-day window as low confidence', () => {
+    // A single day is a data point, not a rate. The forecast is still given — a planner
+    // would rather have a weak number than none — but it says how weak it is.
+    const result = forecastCompletion({
+      remainingQty: 1000,
+      trailing: [{ date: '2026-06-12', output: 1000 }],
+      fromDate: '2026-06-12',
+    })
+
+    expect(result.confidence).toBe('low')
+    expect(result.forecastDate).toBe('2026-06-13')
+  })
+
+  it('16 · refuses an empty trailing window', () => {
+    expect(() =>
+      forecastCompletion({ remainingQty: 100, trailing: [], fromDate: '2026-06-12' }),
+    ).toThrow(ProductionError)
+  })
+})

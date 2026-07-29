@@ -32,6 +32,11 @@ describe('fabricxai/no-float-money', () => {
         { code: `const page = parseInt2(x)` },
         // Money compared by identity or passed around is fine; only coercion is banned.
         { code: `if (line.unitPrice === other.unitPrice) {}` },
+        // BigInt IS the exact path this rule pushes people towards. Flagging it would be
+        // telling someone off for doing the right thing.
+        { code: `const total = amountMinor * 100n` },
+        { code: `const t = BigInt(qty) * rateMinor` },
+        { code: `const t = (amount * 10n) / 3n` },
         { code: `const m = { amount: line.amount, currency: 'USD' }` },
       ],
       invalid: [
