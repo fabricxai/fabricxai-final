@@ -24,7 +24,8 @@ import { AppError } from '@/modules/core/errors'
 import { syncBatch } from '@/modules/core/offline-sync'
 import { withTenantRead } from '@/modules/core/tenancy'
 import { orders } from '@/modules/orders/schema'
-import { issueLines, issues, items, locations, rolls } from '@/modules/store/schema'
+import { bomLines, boms } from '@/modules/costing/schema'
+import { issueLines, issues, items, locations, requisitionLines, rolls } from '@/modules/store/schema'
 import '@/modules/store/register' // registers the sync handlers
 import { createRequisition, getStock, issueStock, receiveGrn } from '@/modules/store/service'
 
@@ -279,5 +280,76 @@ describe('3.1 · offline replay is a no-op', () => {
 
     expect((await syncBatch(ctx, batch))[0]?.status).toBe('rejected')
     expect((await syncBatch(ctx, batch))[0]?.status).toBe('rejected')
+  })
+})
+
+describe('3.1 · requisitions size from what the order was PRICED on', () => {
+  it('reads consumption from the BOM rather than trusting the caller', async () => {
+    // A quote built on 1.4523 m per garment and a requisition built on somebody's memory
+    // of "about 1.45" is how an order quietly runs 2.3 metres short per thousand pieces.
+    const [bom] = await db
+      .insert(boms)
+      .values({ companyId: COMPANY, styleCode: 'ST-WIRED', source: 'manual', createdBy: USER })
+      .returning({ id: boms.id })
+
+    await db.insert(bomLines).values({
+      companyId: COMPANY,
+      bomId: bom!.id,
+      lineGroup: 'fabric',
+      // The store item's own code — that is how a BOM line finds its item.
+      itemRef: 'FAB-COTTON-160',
+      consumption: '1.4523',
+      uom: 'M',
+      wastagePct: '5.00',
+    })
+
+    const result = await createRequisition(ctx, {
+      orderId,
+      orderQty: 1000,
+      bomId: bom!.id,
+    })
+
+    expect(result.source).toBe('bom')
+
+    const lines = await db
+      .select()
+      .from(requisitionLines)
+      .where(eq(requisitionLines.requisitionId, result.requisitionId))
+
+    // 1.4523 × 1000 × 1.05 = 1524.915 → 1524.92, not the 1522.50 a rounded 1.45 gives.
+    expect(lines[0]?.requiredQty).toBe('1524.92')
+  })
+
+  it('refuses a BOM naming an item the store has never seen', async () => {
+    const [bom] = await db
+      .insert(boms)
+      .values({ companyId: COMPANY, styleCode: 'ST-GHOST', source: 'manual', createdBy: USER })
+      .returning({ id: boms.id })
+
+    await db.insert(bomLines).values({
+      companyId: COMPANY,
+      bomId: bom!.id,
+      lineGroup: 'fabric',
+      itemRef: 'FAB-DOES-NOT-EXIST',
+      consumption: '1.0000',
+      uom: 'M',
+      wastagePct: '0',
+    })
+
+    // Dropping the line would produce a requisition a line stops waiting for.
+    await expect(
+      createRequisition(ctx, { orderId, orderQty: 100, bomId: bom!.id }),
+    ).rejects.toMatchObject({ messageKey: 'store.errors.bom_item_unknown' })
+  })
+
+  it('still accepts explicit lines for a style with no cost sheet', async () => {
+    const result = await createRequisition(ctx, {
+      orderId,
+      orderQty: 50,
+      wastagePct: '0',
+      lines: [{ itemId: fabricId, consumptionPerPiece: '2.00', unit: 'M' }],
+    })
+
+    expect(result.source).toBe('explicit')
   })
 })

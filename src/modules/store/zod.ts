@@ -55,21 +55,32 @@ export const grnReceipt = z.object({
     .min(1),
 })
 
-export const requisitionRequest = z.object({
-  orderId: z.uuid(),
-  orderQty: z.number().int().positive(),
-  /** Cloth lost to the marker, end bits and shrinkage — not padding. */
-  wastagePct: z.string().regex(/^\d{1,3}(\.\d{1,2})?$/).default('0'),
-  lines: z
-    .array(
-      z.object({
-        itemId: z.uuid(),
-        consumptionPerPiece: quantity,
-        unit: z.string().min(1),
-      }),
-    )
-    .min(1),
-})
+/**
+ * Either a `bomId` — the normal path, sizing from what the order was priced on — or
+ * explicit lines, for a sample run or a style not yet costed. One of the two is required;
+ * a requisition with neither would size to nothing and stop a line.
+ */
+export const requisitionRequest = z
+  .object({
+    orderId: z.uuid(),
+    orderQty: z.number().int().positive(),
+    /** Cloth lost to the marker, end bits and shrinkage — not padding. */
+    wastagePct: z.string().regex(/^\d{1,3}(\.\d{1,2})?$/).default('0'),
+    bomId: z.uuid().optional(),
+    lines: z
+      .array(
+        z.object({
+          itemId: z.uuid(),
+          /** Accepts the BOM's four-decimal precision; the RESULT is what gets rounded. */
+          consumptionPerPiece: z.string().regex(/^\d{1,10}(\.\d{1,4})?$/),
+          unit: z.string().min(1),
+        }),
+      )
+      .optional(),
+  })
+  .refine((value) => Boolean(value.bomId) || (value.lines?.length ?? 0) > 0, {
+    message: 'a requisition needs either a bomId or explicit lines',
+  })
 
 export const issueRequest = z.object({
   orderId: z.uuid(),

@@ -131,15 +131,18 @@ describe('computeRequisitionLines · what to issue', () => {
     expect(lines[0]?.requiredQty).toBe('6000.00')
   })
 
-  it('10 · is exact on awkward consumption figures', () => {
-    // 0.333 per piece would silently truncate at 2dp; the caller must round first.
-    expect(() =>
-      computeRequisitionLines({
-        orderQty: 1000,
-        wastagePct: '0',
-        lines: [{ itemId: 'F', consumptionPerPiece: '0.333', unit: 'M' }],
-      }),
-    ).toThrow(/decimal places/i)
+  it('10 · accepts consumption more precise than the output and stays exact', () => {
+    // This originally asserted that 3-decimal consumption was REFUSED — which encoded a
+    // limitation as if it were a requirement. A BOM legitimately quotes 0.333 m per
+    // garment; refusing it forced the caller to round first and lose the precision. The
+    // product now stays exact and rounds once at the end.
+    const lines = computeRequisitionLines({
+      orderQty: 1000,
+      wastagePct: '0',
+      lines: [{ itemId: 'F', consumptionPerPiece: '0.333', unit: 'M' }],
+    })
+
+    expect(lines[0]?.requiredQty).toBe('333.00')
   })
 
   it('11 · refuses a negative order quantity or wastage', () => {
@@ -189,5 +192,28 @@ describe('checkShadeMix · warn, never block', () => {
   it('15 · ignores rolls with no shade group — trims do not have one', () => {
     const result = checkShadeMix({ alreadyIssued: [], picking: [null, null] })
     expect(result.mixed).toBe(false)
+  })
+})
+
+describe('computeRequisitionLines · BOM precision', () => {
+  it('16 · keeps four-decimal consumption exact and rounds once at the end', () => {
+    // A BOM quotes 1.4523 m per garment. Rounding that to 1.45 before multiplying loses
+    // 2.3 metres per thousand garments — enough to stop a line short.
+    const lines = computeRequisitionLines({
+      orderQty: 1000,
+      wastagePct: '5',
+      lines: [{ itemId: 'FAB-A', consumptionPerPiece: '1.4523', unit: 'M' }],
+    })
+
+    // 1.4523 × 1000 × 1.05 = 1524.915 → 1524.92
+    expect(lines[0]?.requiredQty).toBe('1524.92')
+
+    // What the naive version would have produced, for contrast: 1.45 × 1000 × 1.05.
+    const rounded = computeRequisitionLines({
+      orderQty: 1000,
+      wastagePct: '5',
+      lines: [{ itemId: 'FAB-A', consumptionPerPiece: '1.45', unit: 'M' }],
+    })
+    expect(rounded[0]?.requiredQty).toBe('1522.50')
   })
 })

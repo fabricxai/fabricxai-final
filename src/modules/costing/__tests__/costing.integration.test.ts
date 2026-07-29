@@ -14,11 +14,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createDirectClient, createDirectDb } from '@/db/direct'
 import { companies, outbox, users } from '@/db/schema/core'
 import { bomLines, boms, costSheets } from '@/modules/costing/schema'
+import { getBomForStyle, getRequisitionConsumption } from '@/modules/costing/queries'
 import {
   approveCostSheet,
   createCostSheet,
   getApprovedSheet,
-  getConsumptionForRequisition,
   previewCostSheet,
 } from '@/modules/costing/service'
 import type { RequestCtx } from '@/modules/core/ctx'
@@ -215,12 +215,19 @@ describe('1.5 · feeds the store', () => {
   it('supplies BOM consumption for a requisition', async () => {
     // This is what 3.1 currently takes as caller input — routing it through here means
     // the requisition is sized from the numbers the order was priced on.
-    const lines = await getConsumptionForRequisition(merchCtx, bomId)
+    const lines = await getRequisitionConsumption(merchCtx, bomId)
 
     expect(lines).toHaveLength(2)
-    expect(lines.find((l) => l.itemRef === 'FAB-A')).toMatchObject({
+    expect(lines.find((line) => line.itemRef === 'FAB-A')).toMatchObject({
+      // Full BOM precision — the caller rounds the RESULT, not this.
       consumptionPerPiece: '1.4500',
       unit: 'M',
     })
+  })
+
+  it('resolves a style to the BOM behind its live cost sheet', async () => {
+    const result = await getBomForStyle(merchCtx, 'ST-100')
+    expect(result.bomId).toBe(bomId)
+    expect(result.sheetVersion).toBe(2)
   })
 })

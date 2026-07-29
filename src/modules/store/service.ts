@@ -17,6 +17,7 @@
 import { and, eq, inArray, sql } from 'drizzle-orm'
 
 import { drawUd } from '../commercial/service'
+import { getRequisitionConsumption } from '../costing/queries'
 import { recordChange, registerAuditedTables } from '../core/audit'
 import type { AnyCtx, RequestCtx } from '../core/ctx'
 import { AppError, conflict, notFound } from '../core/errors'
@@ -240,16 +241,60 @@ export async function receiveGrn(
 // Requisitions
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Size an order's material need from cost-sheet consumption. */
+/**
+ * Size an order's material need.
+ *
+ * Two ways in, and the first is the one that should be used: give a `bomId` and the
+ * consumption is read from module 1.5, so the requisition is sized from the very numbers
+ * the order was PRICED on. A quote built on 1.4523 m per garment and a requisition built
+ * on someone's memory of "about 1.45" is how an order quietly runs short.
+ *
+ * Explicit `lines` remain accepted for the cases with no cost sheet behind them — a
+ * sample run, a re-cut, a style being made before it has been costed.
+ */
 export async function createRequisition(
   ctx: RequestCtx,
   input: unknown,
-): Promise<{ requisitionId: string; lines: number }> {
+): Promise<{ requisitionId: string; lines: number; source: 'bom' | 'explicit' }> {
   const payload = requisitionRequest.parse(input)
+
+  let sourceLines = payload.lines ?? []
+  let source: 'bom' | 'explicit' = 'explicit'
+  let wastagePct = payload.wastagePct
+
+  if (payload.bomId) {
+    // Cross-module read through the OWNER's queries.ts, never its tables (rule 11).
+    const bom = await getRequisitionConsumption(ctx, payload.bomId)
+    const items = await resolveItemsByRef(
+      ctx,
+      bom.map((line) => line.itemRef),
+    )
+
+    sourceLines = bom.map((line) => {
+      const itemId = items.get(line.itemRef)
+      if (!itemId) {
+        // The BOM names something the store has never received. Refuse rather than drop
+        // the line — a requisition missing an item is one a line stops waiting for.
+        throw new AppError('validation_failed', 'store.errors.bom_item_unknown', {
+          itemRef: line.itemRef,
+        })
+      }
+      return { itemId, consumptionPerPiece: line.consumptionPerPiece, unit: line.unit }
+    })
+
+    // The BOM's own per-line wastage is the authority when it has one.
+    wastagePct = bom[0]?.wastagePct ?? payload.wastagePct
+    source = 'bom'
+  }
+
+  if (sourceLines.length === 0) {
+    throw new AppError('validation_failed', 'store.errors.requisition_has_no_lines', {})
+  }
+
   const computed = computeRequisitionLines({
     orderQty: payload.orderQty,
-    wastagePct: payload.wastagePct,
-    lines: payload.lines,
+    wastagePct,
+    lines: sourceLines,
   })
 
   return withTenantTx(ctx, async (tx) => {
@@ -258,7 +303,15 @@ export async function createRequisition(
       .values({
         companyId: ctx.companyId,
         orderId: payload.orderId,
-        basis: { orderQty: payload.orderQty, wastagePct: payload.wastagePct, lines: payload.lines },
+        // Kept so a requisition can be explained months later — including WHERE the
+        // consumption figures came from.
+        basis: {
+          orderQty: payload.orderQty,
+          wastagePct,
+          source,
+          bomId: payload.bomId ?? null,
+          lines: sourceLines,
+        },
         createdBy: ctx.userId,
       })
       .returning({ id: requisitions.id })
@@ -275,7 +328,7 @@ export async function createRequisition(
       })),
     )
 
-    return { requisitionId: requisition.id, lines: computed.length }
+    return { requisitionId: requisition.id, lines: computed.length, source }
   })
 }
 
@@ -520,5 +573,22 @@ export function registerStoreSyncHandlers(): void {
   registerSyncHandler('store', 'issue_stock', async (ctx, tx, row) => {
     const result = await issueStockIn(ctx, tx, { ...row.payload, offlineKey: row.offlineKey })
     return { rowId: result.issueId }
+  })
+}
+
+/** Map BOM item references onto store item ids. */
+async function resolveItemsByRef(
+  ctx: AnyCtx,
+  refs: readonly string[],
+): Promise<Map<string, string>> {
+  if (refs.length === 0) return new Map()
+
+  return withTenantRead(ctx, async (tx) => {
+    const rows = await tx
+      .select({ id: items.id, code: items.code })
+      .from(items)
+      .where(inArray(items.code, [...refs]))
+
+    return new Map(rows.map((row) => [row.code, row.id]))
   })
 }

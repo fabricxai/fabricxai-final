@@ -14,9 +14,10 @@ import {
   compareQty,
   fromMinor,
   isNegativeQty,
-  multiplyQty,
+  multiplyDecimalStrings,
   type Quantity,
   quantity,
+  roundToScale,
   subtractQty,
   toMinor,
   zeroQty,
@@ -177,13 +178,20 @@ export function computeRequisitionLines(input: {
   const factor = fromMinor(10_000n + wastageMinor)
 
   return input.lines.map((line) => {
-    const perPiece = quantity(line.consumptionPerPiece, line.unit)
-    const forOrder = multiplyQty(perPiece, input.orderQty)
-    // factor is (100 + pct)/100 expressed at scale 2, i.e. 105.00 for 5% — so divide by
-    // 100 after multiplying rather than before, keeping the rounding at the end.
-    const withWastage = multiplyQty(forOrder, divideBy100(factor))
+    // Consumption arrives at the BOM's precision — four places, because 1.4523 m per
+    // garment is a real figure. Rounding it to 1.45 first loses 2.3 metres per thousand
+    // garments, which is enough to stop a line. So the whole product stays exact and the
+    // single rounding happens at the end.
+    const exact = multiplyDecimalStrings(
+      multiplyDecimalStrings(line.consumptionPerPiece, String(input.orderQty)),
+      divideBy100(factor),
+    )
 
-    return { itemId: line.itemId, requiredQty: withWastage.value, unit: line.unit }
+    return {
+      itemId: line.itemId,
+      requiredQty: roundToScale(exact),
+      unit: line.unit,
+    }
   })
 }
 

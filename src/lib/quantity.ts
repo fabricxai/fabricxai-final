@@ -109,6 +109,55 @@ function divideRoundHalfUp(numerator: bigint, denominator: bigint): bigint {
   return negative ? -rounded : rounded
 }
 
+/**
+ * Multiply two decimal strings EXACTLY, keeping every digit.
+ *
+ * Needed wherever an input is more precise than the output. BOM consumption is quoted to
+ * four places (1.4523 m per garment is a real figure) while stock quantities are two, so
+ * `consumption × qty × wastage` has to stay exact until the end. Rounding the consumption
+ * to 1.45 first loses 2.3 metres per thousand garments — enough to stop a line.
+ *
+ * Shared rather than reimplemented: this is the third place the same folding was needed
+ * (payroll overtime, cost-sheet materials, requisition sizing) and each earlier copy was
+ * written only after the round-twice bug had already been shipped into a test.
+ */
+export function multiplyDecimalStrings(a: string, b: string): string {
+  const split = (value: string) => {
+    if (!DECIMAL.test(value)) throw new QuantityError(`"${value}" is not a decimal`)
+    const [whole = '0', fraction = ''] = value.replace('-', '').split('.')
+    return { digits: BigInt(whole + fraction), scale: fraction.length }
+  }
+
+  const left = split(a)
+  const right = split(b)
+  const negative = a.startsWith('-') !== b.startsWith('-')
+
+  const product = left.digits * right.digits
+  const scale = left.scale + right.scale
+  if (scale === 0) return `${negative ? '-' : ''}${product}`
+
+  const padded = product.toString().padStart(scale + 1, '0')
+  return `${negative ? '-' : ''}${padded.slice(0, -scale)}.${padded.slice(-scale)}`
+}
+
+/** Round a decimal string to `scale` places, half-up. The single rounding at the end. */
+export function roundToScale(value: string, scale = QUANTITY_SCALE): string {
+  if (!DECIMAL.test(value)) throw new QuantityError(`"${value}" is not a decimal`)
+
+  const negative = value.startsWith('-')
+  const [whole = '0', fraction = ''] = value.replace('-', '').split('.')
+  if (fraction.length <= scale) {
+    return `${negative ? '-' : ''}${whole}.${fraction.padEnd(scale, '0')}`
+  }
+
+  const keep = BigInt(whole + fraction.slice(0, scale))
+  const nextDigit = Number(fraction[scale])
+  const rounded = nextDigit >= 5 ? keep + 1n : keep
+
+  const digits = rounded.toString().padStart(scale + 1, '0')
+  return `${negative ? '-' : ''}${digits.slice(0, -scale)}.${digits.slice(-scale)}`
+}
+
 export function compareQty(a: Quantity, b: Quantity): -1 | 0 | 1 {
   assertSameUnit(a, b)
   const left = toMinor(a.value)

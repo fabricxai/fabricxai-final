@@ -28,7 +28,6 @@
 | **Payroll has NOT been parallel-run** | PLAYBOOK §3 requires one full month diffed against the factory's existing sheet before any real go-live. The engine is vector-tested; it has never met a real gazette or real attendance. | workforce | 2026-07-29 | Before first factory go-live — non-negotiable |
 | `grns.supplier_po_id` has no FK | `supplier_pos` belongs to module 3.2 (Procurement). | store | 2026-07-29 | Phase 6 (3.2) |
 | `ud_consumptions.store_issue_id` still has no FK | 3.1 now exists and populates it, but adding the constraint is a separate migration in commercial (rule 11: one writer module per table). | commercial | 2026-07-29 | Next commercial slice |
-| 3.1 `createRequisition` does not yet CALL costing | 1.5 now exposes `getConsumptionForRequisition`, but 3.1 still takes the per-piece figure as caller input. Wiring them is a small change in store's service. | store | 2026-07-29 | Next store slice |
 | Store returns and inspection flow not built | `rolls.status` has `returned` and `grns.inspection_status` exists, but no service operation moves them. | store | 2026-07-29 | With HANDOFF-3.1 |
 | No k6 scenario for the store | 3.1 is floor-facing, so dev-plan §9 wants `store_grn.js`. | store | 2026-07-29 | Phase 4 close |
 | `downtimes.machine_id` / `ticket_id` have no FK | `machines` and `tickets` belong to module 9.1 (Maintenance). The machine-downtime event is emitted; nothing consumes it yet, so no ticket is raised. | production | 2026-07-29 | Phase 8 (9.1) |

@@ -28,6 +28,7 @@ import {
   subtract,
   sum,
 } from '@/lib/money'
+import { multiplyDecimalStrings } from '@/lib/quantity'
 
 export class CostingError extends Error {
   override readonly name = 'CostingError'
@@ -131,34 +132,6 @@ function assertNonNegative(value: string, what: string): string {
   return value
 }
 
-/**
- * Multiply two decimal strings EXACTLY, keeping every digit.
- *
- * The reason this exists: `multiply(multiply(qty, wastage), rate)` rounds to two places
- * in the middle. 1.45 m × 1.05 wastage is 1.5225, which rounds to 1.52, and the cost
- * comes out a cent light on every garment — a systematic under-quote nobody would spot.
- * Folding the factors together first means the single rounding happens at the end, where
- * it belongs. (Third time this pattern has bitten in this codebase: payroll overtime,
- * CM, and now materials.)
- */
-function multiplyDecimals(a: string, b: string): string {
-  const split = (value: string) => {
-    const [whole = '0', fraction = ''] = value.replace('-', '').split('.')
-    return { digits: BigInt(whole + fraction), scale: fraction.length }
-  }
-
-  const left = split(a)
-  const right = split(b)
-  const negative = a.startsWith('-') !== b.startsWith('-')
-
-  const product = left.digits * right.digits
-  const scale = left.scale + right.scale
-  if (scale === 0) return `${negative ? '-' : ''}${product}`
-
-  const padded = product.toString().padStart(scale + 1, '0')
-  return `${negative ? '-' : ''}${padded.slice(0, -scale)}.${padded.slice(-scale)}`
-}
-
 /** `3.50` → `350`, exactly — a numerator for mulDiv, so the division rounds once. */
 function scaleBy100(value: string): string {
   assertNonNegative(value, 'rate')
@@ -184,7 +157,7 @@ function materialSection(lines: readonly MaterialLine[], currency: string): Sect
 
     // Wastage and rate folded into ONE factor, so the rounding happens once at the end.
     // Costing the cloth you actually buy, not the cloth that ends up in the garment.
-    const factor = multiplyDecimals(wastageFactor(line.wastagePct), line.ratePerUom)
+    const factor = multiplyDecimalStrings(wastageFactor(line.wastagePct), line.ratePerUom)
     const amount = multiply(money(line.consumption, currency), factor)
 
     return { ref: line.ref, amount: amount.amount, money: amount }

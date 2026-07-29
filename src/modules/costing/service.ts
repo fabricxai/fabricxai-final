@@ -331,29 +331,6 @@ export async function getApprovedSheet(
   return sheet
 }
 
-/**
- * BOM consumption for an order's requisition (brief §Feeds → 1.3/3.1).
- *
- * This is what module 3.1 currently takes as caller input; routing it through here means
- * the requisition is sized from the same numbers the order was priced on.
- */
-export async function getConsumptionForRequisition(
-  ctx: AnyCtx,
-  bomId: string,
-): Promise<{ itemRef: string; consumptionPerPiece: string; unit: string; wastagePct: string }[]> {
-  return withTenantRead(ctx, async (tx) => {
-    const lines = await tx.select().from(bomLines).where(eq(bomLines.bomId, bomId))
-    if (lines.length === 0) throw notFound('costing.errors.bom_not_found', { bomId })
-
-    return lines.map((line) => ({
-      itemRef: line.itemRef ?? line.id,
-      consumptionPerPiece: line.consumption,
-      unit: line.uom,
-      wastagePct: line.wastagePct,
-    }))
-  })
-}
-
 /** Bump usage so the staleness report can tell a live template from a forgotten one. */
 export async function touchTemplate(ctx: RequestCtx, productType: string): Promise<void> {
   await withTenantTx(ctx, async (tx) => {
