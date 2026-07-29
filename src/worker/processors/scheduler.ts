@@ -20,6 +20,7 @@ import type { Job } from 'bullmq'
 import { sql } from 'drizzle-orm'
 
 import { db } from '@/db/client'
+import { runUdAlerts } from '@/modules/commercial/jobs'
 import { runLcCountdown, runTnaScan } from '@/modules/orders/jobs'
 import type { SystemCtx } from '@/modules/core/ctx'
 
@@ -43,6 +44,14 @@ export const SCHEDULED_TASKS = [
     task: 'commercial.lc_countdown',
     // 02:00 Dhaka, so the commercial team finds the countdown waiting at 09:00.
     pattern: '0 2 * * *',
+  },
+  {
+    id: 'ud-alerts-nightly',
+    task: 'commercial.ud_alerts',
+    // 02:15 Dhaka: after the LC countdown, before the store opens. Expiring bonded
+    // declarations stop a warehouse issuing anything, so the storekeeper needs to
+    // know at the start of the shift rather than halfway through it.
+    pattern: '15 2 * * *',
   },
 ] as const
 
@@ -126,6 +135,8 @@ export async function runDeriveTask(job: Job<DeriveJobData>): Promise<unknown> {
       return runTnaScan(ctx)
     case 'commercial.lc_countdown':
       return runLcCountdown(ctx)
+    case 'commercial.ud_alerts':
+      return runUdAlerts(ctx)
     default: {
       // Exhaustiveness: a task added to SCHEDULED_TASKS without a branch here fails to
       // compile rather than silently doing nothing every night.

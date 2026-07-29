@@ -85,6 +85,20 @@
       "when": 1785275643334,
       "tag": "0011_scheduler_helpers",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1785299265476,
+      "tag": "0012_bonded_ud",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1785299266374,
+      "tag": "0013_bonded_ud_policies",
+      "breakpoints": true
     }
   ]
 }

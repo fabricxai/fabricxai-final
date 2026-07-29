@@ -129,3 +129,119 @@ export const btbLcs = pgTable(
     check('btb_lcs_value_positive', sql`${t.value} > 0`),
   ],
 ).enableRLS()
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Bonded warehouse — Utilization Declarations ⚖ (brief 2.2)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const udStatusEnum = pgEnum('ud_status', ['active', 'exhausted', 'expired', 'closed'])
+
+/**
+ * The customs document authorising duty-free import of specific items in specific
+ * quantities, against a promise they leave again as exported garments.
+ *
+ * `authorized_items` is jsonb rather than a child table on purpose: it is a transcription
+ * of what the declaration says, amended only by customs, and it is read as a whole every
+ * time the gate runs. Splitting it into rows would invite the application to "correct" a
+ * line, and the one thing this data must not be is editable piecemeal.
+ */
+export const uds = pgTable(
+  'uds',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    companyId: uuid('company_id')
+      .notNull()
+      .references(() => companies.id, { onDelete: 'cascade' }),
+
+    number: text('number').notNull(),
+    issueDate: date('issue_date'),
+    /** Inclusive — a draw on this date is still valid. */
+    validUntil: date('valid_until'),
+
+    /** `UdAuthorizedItem[]` — validated by zod on write, read whole by the gate. */
+    authorizedItems: jsonb('authorized_items').$type<unknown[]>().notNull().default([]),
+
+    status: udStatusEnum('status').notNull().default('active'),
+    /** The scanned declaration; every figure above should be checkable against it. */
+    documentId: uuid('document_id').references(() => documents.id, { onDelete: 'set null' }),
+
+    createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('uds_company_number_key').on(t.companyId, t.number),
+    // The nightly expiry alert: live declarations by the date that bites.
+    index('uds_company_valid_until_idx').on(t.companyId, t.status, t.validUntil),
+  ],
+).enableRLS()
+
+/**
+ * Every draw against a UD ⚖. Written automatically by a bonded store issue, never by
+ * hand — the ledger is what a customs reconciliation is built from, so a row here always
+ * corresponds to material that actually left the bonded warehouse.
+ */
+export const udConsumptions = pgTable(
+  'ud_consumptions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    companyId: uuid('company_id')
+      .notNull()
+      .references(() => companies.id, { onDelete: 'cascade' }),
+    udId: uuid('ud_id')
+      .notNull()
+      .references(() => uds.id, { onDelete: 'restrict' }),
+
+    /**
+     * No FK yet: `store_issues` belongs to module 3.1 and does not exist. The constraint
+     * lands with that module — see docs/STUBS.md.
+     */
+    storeIssueId: uuid('store_issue_id'),
+
+    itemRef: text('item_ref').notNull(),
+    /** numeric(12,2) per the brief; metres, kilograms or pieces. Never a float. */
+    qty: numeric('qty', { precision: 12, scale: 2 }).notNull(),
+    unit: text('unit').notNull(),
+
+    /** Set when an owner approved a deliberate overdraw through pending_changes. */
+    overrideOf: uuid('override_of').references(() => uds.id, { onDelete: 'set null' }),
+
+    createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // The gate's own query: every draw against one UD, read under a row lock.
+    index('ud_consumptions_ud_idx').on(t.companyId, t.udId, t.itemRef),
+    index('ud_consumptions_store_issue_idx').on(t.storeIssueId),
+    check('ud_consumptions_qty_positive', sql`${t.qty} > 0`),
+  ],
+).enableRLS()
+
+/** A period snapshot plus the customs-format PDF generated from it. */
+export const udReconciliations = pgTable(
+  'ud_reconciliations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    companyId: uuid('company_id')
+      .notNull()
+      .references(() => companies.id, { onDelete: 'cascade' }),
+    udId: uuid('ud_id')
+      .notNull()
+      .references(() => uds.id, { onDelete: 'cascade' }),
+
+    /** `YYYY-MM` — reconciliation is monthly. */
+    period: text('period').notNull(),
+    /** Frozen balances as at generation; the PDF must stay reproducible. */
+    snapshot: jsonb('snapshot').$type<Record<string, unknown>>().notNull(),
+    generatedDocumentId: uuid('generated_document_id').references(() => documents.id, {
+      onDelete: 'set null',
+    }),
+
+    createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('ud_reconciliations_ud_period_key').on(t.udId, t.period),
+    index('ud_reconciliations_company_period_idx').on(t.companyId, t.period),
+  ],
+).enableRLS()
