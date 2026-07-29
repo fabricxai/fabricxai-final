@@ -110,6 +110,54 @@ export function multiply(value: Money, factor: string | number | bigint): Money 
   return fromMinor(divideRoundHalfUp(scaled, divisor), value.currency)
 }
 
+/**
+ * Multiply then divide, rounding ONCE at the end.
+ *
+ * This exists for wage arithmetic. Overtime is `hours × 2 × basic / 208`, and computing
+ * it as `divide(basic, 208)` first rounds an hourly rate to two decimals before it is
+ * multiplied by the hours — an error of up to half a paisa per hour, times every hour of
+ * overtime, times 2,400 workers, every month. Doing the whole thing in one scaled
+ * division keeps it exact until the final rounding.
+ *
+ * Half-up, the convention every payslip in this domain uses.
+ */
+export function mulDiv(
+  value: Money,
+  numerator: string | number | bigint,
+  denominator: string | number | bigint,
+): Money {
+  const num = toScaledFactor(numerator, 'numerator')
+  const den = toScaledFactor(denominator, 'denominator')
+  if (den.value === 0n) throw new MoneyError('division by zero')
+
+  // (amount × num/10^numScale) ÷ (den/10^denScale)
+  //   = amount × num × 10^denScale ÷ (den × 10^numScale)
+  const scaledNumerator = toMinor(value.amount) * num.value * 10n ** BigInt(den.scale)
+  const scaledDenominator = den.value * 10n ** BigInt(num.scale)
+
+  return fromMinor(divideRoundHalfUp(scaledNumerator, scaledDenominator), value.currency)
+}
+
+/** Exact division, rounded half-up once. */
+export function divide(value: Money, divisor: string | number | bigint): Money {
+  return mulDiv(value, 1, divisor)
+}
+
+/** Parse a decimal factor into an integer and the power of ten it was scaled by. */
+function toScaledFactor(
+  input: string | number | bigint,
+  what: string,
+): { value: bigint; scale: number } {
+  const text = String(input).trim()
+  if (!DECIMAL_RE.test(text)) throw new MoneyError(`"${input}" is not a decimal ${what}`)
+
+  const negative = text.startsWith('-')
+  const [whole = '0', fraction = ''] = text.replace('-', '').split('.')
+  const value = BigInt(whole + fraction) * (negative ? -1n : 1n)
+
+  return { value, scale: fraction.length }
+}
+
 function divideRoundHalfUp(numerator: bigint, denominator: bigint): bigint {
   const negative = numerator < 0n
   const abs = negative ? -numerator : numerator

@@ -11,3 +11,6 @@ export * from './auth'
 export * from '@/modules/buyers/schema'
 export * from '@/modules/commercial/schema'
 export * from '@/modules/orders/schema'
+
+// Phase 8 — 10.1 Workforce & Wage Engine (gazette is uploaded data, never hardcoded).
+export * from '@/modules/workforce/schema'

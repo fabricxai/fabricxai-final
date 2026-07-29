@@ -25,5 +25,6 @@ which cannot start until `docs/handoffs/HANDOFF-X.1.md` exists with §8 resolved
 | 1.3 order-desk-tna | ⬜ handoff pending | — | 🟡 backend-first: schema, zod, TNA engine, service, events, scheduled jobs, applyRevision loop, register. queries.ts + actions.ts await HANDOFF §3/§5 | | | |
 | 2.2 bonded-warehouse-ud | ⬜ handoff pending | — | 🟡 backend-first: schema, zod, UD gate + concurrency, service, events, jobs, register | | | |
 | 3.1 store | | | | | | |
+| 10.1 workforce-payroll 🔒 | ⬜ handoff pending | — | 🟡 backend-first: uploadable gazette, pure compute (22 vectors), 🔒 lockout, run lifecycle | | | |
 | 6.1 line-tracking | | | | | ⚡ req | |
 (…add all 23 from 02-backend/briefs/README.md)

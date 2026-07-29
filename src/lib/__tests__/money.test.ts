@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { add, compare, format, money, multiply, subtract, sum, zero } from '../money'
+import { add, compare, divide, format, money, mulDiv, multiply, subtract, sum, zero } from '../money'
 
 describe('money', () => {
   it('normalises to two decimal places', () => {
@@ -56,5 +56,35 @@ describe('money', () => {
 
   it('formats for display only', () => {
     expect(format(money('1250.5', 'USD'))).toBe('$1,250.50')
+  })
+})
+
+describe('money · division for wage arithmetic', () => {
+  it('divides exactly, rounding half up', () => {
+    expect(divide(money('100.00', 'BDT'), 3).amount).toBe('33.33')
+    expect(divide(money('10.00', 'BDT'), 4).amount).toBe('2.50')
+    // 0.005 rounds away from zero, not to even.
+    expect(divide(money('0.01', 'BDT'), 2).amount).toBe('0.01')
+  })
+
+  it('rounds once, not twice — the reason mulDiv exists', () => {
+    // Overtime: 20 hours at 2× the hourly rate on a basic of 8,000 BDT.
+    // Correct:  8000 × 40 / 208            = 1538.4615… → 1538.46
+    // Naive:    round(8000/208) × 40       = 38.46 × 40 = 1538.40
+    // Six paisa per worker per month is not much. Times 2,400 workers, every month,
+    // it is a wage complaint with a spreadsheet attached.
+    const basic = money('8000.00', 'BDT')
+
+    expect(mulDiv(basic, 40, 208).amount).toBe('1538.46')
+    expect(multiply(divide(basic, 208), 40).amount).toBe('1538.40')
+  })
+
+  it('handles decimal numerators — overtime is recorded in part hours', () => {
+    // 7.5 hours of OT at 2×: 8000 × 15 / 208
+    expect(mulDiv(money('8000.00', 'BDT'), '15', 208).amount).toBe('576.92')
+  })
+
+  it('refuses division by zero rather than producing Infinity', () => {
+    expect(() => divide(money('100.00', 'BDT'), 0)).toThrow(/zero/i)
   })
 })

@@ -1,0 +1,70 @@
+/**
+ * Payload schemas for 10.1, including every `pending_changes` payload.
+ *
+ * The gazette upload is the important one: it is how a factory's own wage rates enter the
+ * system, so it validates shape rigorously and rates not at all. What the government
+ * notified is not ours to second-guess — but "basic" being a number rather than a decimal
+ * string is a bug we can catch.
+ */
+import { z } from 'zod'
+
+export const wageAmount = z
+  .string()
+  .regex(/^\d{1,12}(\.\d{1,2})?$/, 'expected a positive decimal amount with at most 2 places')
+
+export const calendarDate = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'expected YYYY-MM-DD')
+  .refine((value) => new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value, {
+    message: 'not a real calendar date',
+  })
+
+export const period = z.string().regex(/^\d{4}-\d{2}$/, 'expected YYYY-MM')
+
+/** One grade as printed in the notification. */
+export const gazetteGrade = z.object({
+  grade: z.string().min(1).max(16),
+  basic: wageAmount,
+  houseRent: wageAmount.default('0'),
+  medical: wageAmount.default('0'),
+  transport: wageAmount.default('0'),
+  food: wageAmount.default('0'),
+})
+
+/**
+ * A whole gazette. Uploaded as a unit and activated as a unit — half a gazette would pay
+ * some grades at new rates and some at old ones inside one run.
+ */
+export const gazetteUpload = z.object({
+  version: z.string().min(1).max(64),
+  effectiveFrom: calendarDate,
+  grades: z.array(gazetteGrade).min(1, 'a gazette needs at least one grade'),
+  documentId: z.uuid().optional(),
+  notes: z.string().max(2000).optional(),
+})
+
+/** Factory policy, snapshotted onto each run. */
+export const payrollRules = z.object({
+  currency: z.string().length(3).default('BDT'),
+  monthDays: z.number().int().min(28).max(31).default(30),
+  attendanceBonus: wageAmount.nullable().default(null),
+  attendanceBonusMaxAbsentDays: z.number().int().min(0).default(0),
+  festivalBonusBasicPct: z.string().regex(/^\d{1,3}(\.\d{1,2})?$/).default('100'),
+  festivalBonusMinServiceMonths: z.number().int().min(0).default(12),
+})
+
+export const computeRunPayload = z.object({
+  period,
+  festival: z.string().min(1).nullable().optional(),
+  rules: payrollRules.partial().optional(),
+})
+
+/** What MARBIM extracts from a scanned gazette notification. Always human-reviewed. */
+export const gazetteFromScanDraft = gazetteUpload
+
+export const WORKFORCE_ZOD_MAP = {
+  gazette_from_scan_v1: gazetteFromScanDraft,
+} as const
+
+export type GazetteUpload = z.infer<typeof gazetteUpload>
+export type ComputeRunPayload = z.infer<typeof computeRunPayload>

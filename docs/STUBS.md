@@ -22,3 +22,8 @@
 | No `queries.ts` / `actions.ts` for commercial | Built backend-first like 1.3 — read models are shaped by locked screens. | commercial | 2026-07-29 | When HANDOFF-2.2 / 2.1 land |
 | UD reconciliation PDF not generated | `snapshotReconciliation` freezes the figures; rendering the customs-format PDF needs the Playwright pipeline. | commercial | 2026-07-29 | Phase 6 (first PDF consumer) |
 | `runReconciliationReminder` is not scheduled | It is monthly, and SCHEDULED_TASKS currently only carries nightly crons. | commercial | 2026-07-29 | When a monthly cadence is added |
+| `wage_gazettes` is a parent table the brief does not list | The brief puts `gazette_version` flat on `wage_grades`. Splitting the parent out is what makes upload-then-activate atomic — activating half a gazette would pay some grades at new rates and some at old ones in one run. | workforce | 2026-07-29 | Reconcile in HANDOFF-10.1 §4 |
+| `workers.line_id` has no FK | `lines` belongs to module 4.1 (Planning) and does not exist yet. | workforce | 2026-07-29 | Phase 5 (4.1) |
+| Disbursement export and payslip PDF not built | Bank/bKash sheet formats and the bn+en payslip need the Playwright pipeline and real format specs from the factory's bank. | workforce | 2026-07-29 | Phase 8 |
+| Attendance device importer not built | Device CSV formats vary by vendor; the brief calls for pluggable parsers. Attendance is currently written directly. | workforce | 2026-07-29 | Phase 8 |
+| **Payroll has NOT been parallel-run** | PLAYBOOK §3 requires one full month diffed against the factory's existing sheet before any real go-live. The engine is vector-tested; it has never met a real gazette or real attendance. | workforce | 2026-07-29 | Before first factory go-live — non-negotiable |
