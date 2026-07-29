@@ -1,0 +1,120 @@
+/**
+ * Quantities — metres, kilograms, pieces, dozens.
+ *
+ * The same discipline as `lib/money` and for the same reason: quantities are
+ * `numeric(12,2)` decimal strings, and a float is how a bonded ledger stops reconciling
+ * or a cutting floor over-issues by a roll. Scaled BigInt throughout; there is no float
+ * path in this file.
+ *
+ * Separate from Money on purpose. A quantity has a UNIT, not a currency, and the two must
+ * never be added — 12 metres plus 12 US dollars is a bug the type system should catch,
+ * not a number. Mixing units throws for the same reason mixing currencies does: there is
+ * no honest conversion without a factor somebody has to supply.
+ */
+
+/** Matches numeric(12,2). */
+export const QUANTITY_SCALE = 2
+
+export class QuantityError extends Error {
+  override readonly name = 'QuantityError'
+}
+
+export interface Quantity {
+  /** Decimal string, normalised to QUANTITY_SCALE places. */
+  readonly value: string
+  /** 'M', 'KG', 'PCS', 'DZN' — whatever the item's UoM says. */
+  readonly unit: string
+}
+
+const DECIMAL = /^-?\d+(\.\d+)?$/
+
+export function toMinor(value: string, what = 'quantity'): bigint {
+  const trimmed = value.trim()
+  if (!DECIMAL.test(trimmed)) throw new QuantityError(`"${value}" is not a decimal ${what}`)
+
+  const negative = trimmed.startsWith('-')
+  const [whole = '0', fraction = ''] = trimmed.replace('-', '').split('.')
+
+  // Silently dropping a digit is how a 0.005 discrepancy per roll becomes a stock count
+  // nobody can explain. Make the caller round.
+  if (fraction.length > QUANTITY_SCALE && /[1-9]/.test(fraction.slice(QUANTITY_SCALE))) {
+    throw new QuantityError(
+      `"${value}" has more than ${QUANTITY_SCALE} decimal places — round explicitly`,
+    )
+  }
+
+  const minor = BigInt(whole + fraction.padEnd(QUANTITY_SCALE, '0').slice(0, QUANTITY_SCALE))
+  return negative ? -minor : minor
+}
+
+export function fromMinor(minor: bigint): string {
+  const negative = minor < 0n
+  const digits = (negative ? -minor : minor).toString().padStart(QUANTITY_SCALE + 1, '0')
+  return `${negative ? '-' : ''}${digits.slice(0, -QUANTITY_SCALE)}.${digits.slice(-QUANTITY_SCALE)}`
+}
+
+export const quantity = (value: string | number, unit: string): Quantity => ({
+  value: fromMinor(toMinor(String(value))),
+  unit,
+})
+
+export const zeroQty = (unit: string): Quantity => ({ value: fromMinor(0n), unit })
+
+function assertSameUnit(a: Quantity, b: Quantity): void {
+  if (a.unit !== b.unit) {
+    throw new QuantityError(
+      `cannot combine ${a.unit} and ${b.unit} — units are never converted implicitly`,
+    )
+  }
+}
+
+export function addQty(a: Quantity, b: Quantity): Quantity {
+  assertSameUnit(a, b)
+  return { value: fromMinor(toMinor(a.value) + toMinor(b.value)), unit: a.unit }
+}
+
+export function subtractQty(a: Quantity, b: Quantity): Quantity {
+  assertSameUnit(a, b)
+  return { value: fromMinor(toMinor(a.value) - toMinor(b.value)), unit: a.unit }
+}
+
+export function sumQty(values: readonly Quantity[], unit?: string): Quantity {
+  const first = values[0]
+  if (!first) {
+    if (!unit) throw new QuantityError('sum of an empty list needs an explicit unit')
+    return zeroQty(unit)
+  }
+  return values.reduce(addQty, zeroQty(first.unit))
+}
+
+/** Multiply by a plain factor — consumption per piece × order quantity, or × (1 + wastage). */
+export function multiplyQty(value: Quantity, factor: string | number): Quantity {
+  const text = String(factor).trim()
+  if (!DECIMAL.test(text)) throw new QuantityError(`"${factor}" is not a decimal factor`)
+
+  const negative = text.startsWith('-')
+  const [whole = '0', fraction = ''] = text.replace('-', '').split('.')
+  const factorMinor = BigInt(whole + fraction) * (negative ? -1n : 1n)
+
+  const scaled = toMinor(value.value) * factorMinor
+  return { value: fromMinor(divideRoundHalfUp(scaled, 10n ** BigInt(fraction.length))), unit: value.unit }
+}
+
+function divideRoundHalfUp(numerator: bigint, denominator: bigint): bigint {
+  const negative = numerator < 0n
+  const abs = negative ? -numerator : numerator
+  const quotient = abs / denominator
+  const remainder = abs % denominator
+  const rounded = remainder * 2n >= denominator ? quotient + 1n : quotient
+  return negative ? -rounded : rounded
+}
+
+export function compareQty(a: Quantity, b: Quantity): -1 | 0 | 1 {
+  assertSameUnit(a, b)
+  const left = toMinor(a.value)
+  const right = toMinor(b.value)
+  return left < right ? -1 : left > right ? 1 : 0
+}
+
+export const isZeroQty = (value: Quantity): boolean => toMinor(value.value) === 0n
+export const isNegativeQty = (value: Quantity): boolean => toMinor(value.value) < 0n
