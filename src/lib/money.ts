@@ -6,8 +6,11 @@
  * there must be none anywhere else: `parseFloat`/`Number()` on a money value is
  * lint-banned, because 0.1 + 0.2 on a factory's margin is a real invoice being wrong.
  *
- * Mixed-currency arithmetic throws rather than guessing at a rate. Conversion is an
- * explicit, rate-carrying operation that belongs in the commercial module, not here.
+ * Mixed-currency arithmetic throws rather than guessing at a rate. Conversion exists
+ * (`convert`) but only as a rate-CARRYING operation: the caller must supply the rate and
+ * say where it came from. There is no ambient exchange rate anywhere in this system,
+ * because an FOB quoted in January at 110 BDT/USD is a different quote from the same
+ * figure at 120, and a system that silently picks one is a system that reprices history.
  */
 
 /** Minor units kept. 2 matches numeric(14,2). */
@@ -165,6 +168,29 @@ function divideRoundHalfUp(numerator: bigint, denominator: bigint): bigint {
   const remainder = abs % denominator
   const rounded = remainder * 2n >= denominator ? quotient + 1n : quotient
   return negative ? -rounded : rounded
+}
+
+/**
+ * Convert at an EXPLICIT rate. There is no default and no lookup — the rate is an input,
+ * and whoever supplies it is responsible for recording where it came from.
+ *
+ * `rate` is units of `to` per one unit of `value.currency`: converting 1,000 BDT to USD
+ * at 0.0091 gives 9.10 USD. Costing snapshots the rate onto the sheet, so re-opening a
+ * quote a year later reproduces the price that was actually given.
+ */
+export function convert(value: Money, params: { to: string; rate: string | number }): Money {
+  const rate = String(params.rate).trim()
+  if (!DECIMAL_RE.test(rate) || Number.parseFloat(rate) <= 0) {
+    throw new MoneyError(`"${params.rate}" is not a positive exchange rate`)
+  }
+  if (params.to === value.currency) return value
+
+  const [whole = '0', fraction = ''] = rate.split('.')
+  const scaled = toMinor(value.amount) * BigInt(whole + fraction)
+  return fromMinor(
+    divideRoundHalfUp(scaled, 10n ** BigInt(fraction.length)),
+    params.to as Currency,
+  )
 }
 
 export function compare(a: Money, b: Money): -1 | 0 | 1 {

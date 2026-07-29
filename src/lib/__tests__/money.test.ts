@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { add, compare, divide, format, money, mulDiv, multiply, subtract, sum, zero } from '../money'
+import { add, compare, convert, divide, format, money, mulDiv, multiply, subtract, sum, zero } from '../money'
 
 describe('money', () => {
   it('normalises to two decimal places', () => {
@@ -86,5 +86,26 @@ describe('money · division for wage arithmetic', () => {
 
   it('refuses division by zero rather than producing Infinity', () => {
     expect(() => divide(money('100.00', 'BDT'), 0)).toThrow(/zero/i)
+  })
+})
+
+describe('money · conversion carries its rate', () => {
+  it('converts at the supplied rate and nothing else', () => {
+    // 1,000 BDT at 0.0091 USD/BDT
+    expect(convert(money('1000.00', 'BDT'), { to: 'USD', rate: '0.0091' })).toEqual({
+      amount: '9.10',
+      currency: 'USD',
+    })
+  })
+
+  it('is a no-op when the currency already matches', () => {
+    const value = money('12.34', 'USD')
+    expect(convert(value, { to: 'USD', rate: '999' })).toEqual(value)
+  })
+
+  it('refuses a zero or malformed rate rather than inventing one', () => {
+    // There is no ambient exchange rate in this system, by design.
+    expect(() => convert(money('100.00', 'BDT'), { to: 'USD', rate: '0' })).toThrow(/rate/i)
+    expect(() => convert(money('100.00', 'BDT'), { to: 'USD', rate: 'market' })).toThrow(/rate/i)
   })
 })

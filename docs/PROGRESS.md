@@ -21,6 +21,7 @@ which cannot start until `docs/handoffs/HANDOFF-X.1.md` exists with §8 resolved
 | Module | Design locked | HANDOFF §8 empty | Backend merged | Frontend merged | k6 | In pilot use |
 |---|---|---|---|---|---|---|
 | X.1 approve-inbox | | | | | — | |
+| 1.5 costing-studio | ⬜ handoff pending | — | 🟡 backend-first: BOM, versioned sheets, scenarios, margin-floor gate | | | |
 | X.2 marbim | | | | | | |
 | 1.3 order-desk-tna | ⬜ handoff pending | — | 🟡 backend-first: schema, zod, TNA engine, service, events, scheduled jobs, applyRevision loop, register. queries.ts + actions.ts await HANDOFF §3/§5 | | | |
 | 2.2 bonded-warehouse-ud | ⬜ handoff pending | — | 🟡 backend-first: schema, zod, UD gate + concurrency, service, events, jobs, register | | | |

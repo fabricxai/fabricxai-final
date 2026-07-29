@@ -20,3 +20,6 @@ export * from '@/modules/store/schema'
 
 // Phase 4 — 6.1 Line Tracking. hourly_outputs is partitioned by month; see its migration.
 export * from '@/modules/production/schema'
+
+// Phase 5 — 1.5 Costing Studio. Feeds quotes (1.2), requisitions (3.1) and finance (11.1).
+export * from '@/modules/costing/schema'
