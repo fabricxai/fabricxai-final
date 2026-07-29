@@ -105,8 +105,12 @@ export const btbLcs = pgTable(
 
     number: text('number').notNull(),
     /**
-     * No FK yet: `suppliers` is owned by module 3.2 (Procurement) and does not exist.
-     * The constraint lands with that module — see docs/STUBS.md.
+     * The FK exists in the database (migration 0030) but is deliberately NOT expressed
+     * here: `suppliers` is owned by 3.2 Procurement, whose schema already imports
+     * `btb_lcs` for the import-PO gate, so declaring it would make the two module schemas
+     * import each other. Drizzle diffs against its own snapshot rather than the live
+     * database, so an unmodelled constraint is invisible to `db:generate` and safe —
+     * but the next reader needs to know it is enforced.
      */
     supplierId: uuid('supplier_id'),
 

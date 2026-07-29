@@ -19,7 +19,8 @@ import { emit } from '../core/outbox'
 import { type TenantDb, withTenantRead, withTenantTx } from '../core/tenancy'
 
 import { COMMERCIAL_EVENTS } from './events'
-import { udConsumptions, udReconciliations, uds } from './schema'
+import { btbHeadroom } from './lc-conflicts'
+import { btbLcs, lcs, udConsumptions, udReconciliations, uds } from './schema'
 import {
   checkUdDraw,
   computeUdBalance,
@@ -328,3 +329,97 @@ export async function expireLapsedUds(
 }
 
 export { UdError }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BTB headroom — the gate 3.2 Procurement calls before issuing an import PO
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Is there room under the master LC for this back-to-back?
+ *
+ * Exposed here because `btb_lcs` and `lcs` belong to this module (rule 11) — procurement
+ * reads the answer, not the tables. A BTB funds the fabric and trims for an order against
+ * the master LC the buyer opened; over-opening BTBs against a master is how a factory ends
+ * up owing its suppliers more than the buyer will ever pay it.
+ *
+ * `excludeBtbId` exists for re-checks on an existing BTB: counting it as used would
+ * compare it with itself.
+ */
+export async function checkBtbHeadroom(
+  ctx: AnyCtx,
+  input: { btbLcId: string; limitPct: number; excludeBtbId?: string },
+): Promise<{
+  passed: boolean
+  reasonKey?: string
+  facts?: Record<string, unknown>
+}> {
+  return withTenantRead(ctx, async (tx) => {
+    const [btb] = await tx.select().from(btbLcs).where(eq(btbLcs.id, input.btbLcId))
+    if (!btb) {
+      return {
+        passed: false,
+        reasonKey: 'gates.btb_headroom.btb_not_found',
+        facts: { btbLcId: input.btbLcId },
+      }
+    }
+
+    const [master] = await tx.select().from(lcs).where(eq(lcs.id, btb.masterLcId))
+    if (!master) {
+      return {
+        passed: false,
+        reasonKey: 'gates.btb_headroom.master_not_found',
+        facts: { masterLcId: btb.masterLcId },
+      }
+    }
+
+    if (master.status !== 'active') {
+      // A BTB drawn against a master that is not live has nothing funding it.
+      return {
+        passed: false,
+        reasonKey: 'gates.btb_headroom.master_not_active',
+        facts: { masterLcId: master.id, masterStatus: master.status },
+      }
+    }
+
+    if (btb.currency !== master.currency) {
+      // Netting a BTB against a master in another currency needs a rate nobody has
+      // stated. Refusing is the only honest answer.
+      return {
+        passed: false,
+        reasonKey: 'gates.btb_headroom.currency_mismatch',
+        facts: { btbCurrency: btb.currency, masterCurrency: master.currency },
+      }
+    }
+
+    const siblings = await tx
+      .select({ id: btbLcs.id, value: btbLcs.value })
+      .from(btbLcs)
+      .where(and(eq(btbLcs.masterLcId, master.id), sql`${btbLcs.status} <> 'closed'`))
+
+    const headroom = btbHeadroom({
+      masterValue: master.value,
+      existingBtbValues: siblings
+        .filter((row) => row.id !== input.excludeBtbId)
+        .map((row) => row.value),
+      limitPct: input.limitPct,
+    })
+
+    return headroom.exceeded
+      ? {
+          passed: false,
+          reasonKey: 'gates.btb_headroom.exceeded',
+          facts: {
+            masterLcId: master.id,
+            limit: headroom.limit,
+            used: headroom.used,
+            free: headroom.free,
+            currency: master.currency,
+            limitPct: input.limitPct,
+          },
+        }
+      : {
+          passed: true,
+          facts: { limit: headroom.limit, used: headroom.used, free: headroom.free },
+        }
+  })
+}
