@@ -1,0 +1,524 @@
+/**
+ * 3.1 Fabric & Trims Store — service layer.
+ *
+ * The first floor-facing module, and the first consumer of two things built earlier:
+ *
+ *  - **the UD gate (2.2).** A bonded issue calls `drawUd` inside this transaction, so the
+ *    issue and the customs draw commit together. An issue without its draw is a
+ *    reconciliation that will not balance; a draw without its issue is material customs
+ *    thinks left the warehouse and never did.
+ *  - **offline sync (core).** Both operations register a sync handler, so a tablet can
+ *    replay its whole batch and get the original result back rather than a duplicate.
+ *
+ * Shade mixing WARNS and does not block — the brief is explicit that the UI decides.
+ * Blocking would get people working around the system by not recording the shade, which
+ * is strictly worse than a warning nobody reads.
+ */
+import { and, eq, inArray, sql } from 'drizzle-orm'
+
+import { drawUd } from '../commercial/service'
+import { recordChange, registerAuditedTables } from '../core/audit'
+import type { AnyCtx, RequestCtx } from '../core/ctx'
+import { AppError, conflict, notFound } from '../core/errors'
+import { registerSyncHandler } from '../core/offline-sync'
+import { emit } from '../core/outbox'
+import { type TenantDb, withTenantRead, withTenantTx } from '../core/tenancy'
+
+import { STORE_EVENTS } from './events'
+import {
+  grnLines,
+  grns,
+  issueLines,
+  issues,
+  items,
+  requisitionLines,
+  requisitions,
+  rolls,
+} from './schema'
+import {
+  checkShadeMix,
+  computeRequisitionLines,
+  computeStock,
+  type ItemStock,
+  type StoreWarning,
+} from './stock'
+import { grnReceipt, issueRequest, requisitionRequest } from './zod'
+
+/** ⚖ — adjustments move stock value; GRNs are the customs-facing record of receipt. */
+registerAuditedTables('grns', 'stock_adjustments')
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Stock reads
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * On-hand / reserved / free per item.
+ *
+ * Reads rolls and open requisitions and computes free — never a stored balance
+ * (architecture §4). The covering indexes on `(company_id, item_id, status)` are what
+ * keep this honest at 10^5 rolls, which the brief calls out explicitly.
+ */
+export async function getStock(
+  ctx: AnyCtx,
+  filter: { itemIds?: readonly string[] } = {},
+): Promise<Map<string, ItemStock>> {
+  return withTenantRead(ctx, async (tx) => {
+    const rollRows = await tx
+      .select()
+      .from(rolls)
+      .where(filter.itemIds?.length ? inArray(rolls.itemId, [...filter.itemIds]) : undefined)
+
+    const reservationRows = await tx
+      .select({
+        itemId: requisitionLines.itemId,
+        requiredQty: requisitionLines.requiredQty,
+        issuedQty: requisitionLines.issuedQty,
+        unit: requisitionLines.unit,
+        status: requisitions.status,
+      })
+      .from(requisitionLines)
+      .innerJoin(requisitions, eq(requisitions.id, requisitionLines.requisitionId))
+
+    return computeStock({
+      rolls: rollRows.map((roll) => ({
+        rollId: roll.id,
+        itemId: roll.itemId,
+        qty: roll.qty,
+        unit: roll.unit,
+        status: roll.status,
+        locationId: roll.locationId,
+        shadeGroup: roll.shadeGroup,
+      })),
+      // Only the UNISSUED remainder of an open requisition still reserves stock.
+      reservations: reservationRows.map((row) => ({
+        itemId: row.itemId,
+        qty: remaining(row.requiredQty, row.issuedQty),
+        unit: row.unit,
+        status: row.status === 'open' || row.status === 'partial' ? 'open' : 'fulfilled',
+      })),
+    })
+  })
+}
+
+/** required − issued, exactly. */
+function remaining(required: string, issued: string): string {
+  const toMinor = (value: string): bigint => {
+    const [whole = '0', fraction = ''] = value.split('.')
+    return BigInt(whole + fraction.padEnd(2, '0').slice(0, 2))
+  }
+  const left = toMinor(required) - toMinor(issued)
+  const clamped = left < 0n ? 0n : left
+  const digits = clamped.toString().padStart(3, '0')
+  return `${digits.slice(0, -2)}.${digits.slice(-2)}`
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Goods in
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Receive a delivery. Creates the GRN, its lines, and a roll per physical roll.
+ *
+ * A bonded receipt REQUIRES a UD. Enforced here, and by a check constraint on the table,
+ * because a bonded receipt with no declaration behind it is a customs problem rather than
+ * a data-entry preference — and the two walls cost nothing.
+ *
+ * Note what receiving does NOT do: it does not draw the UD. Receiving bonded material is
+ * not consuming it; the draw happens when it leaves the bonded warehouse on an issue.
+ */
+export async function receiveGrnIn(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  input: unknown,
+): Promise<{ grnId: string; rolls: number }> {
+  const payload = grnReceipt.parse(input)
+
+  if (payload.bonded && !payload.udId) {
+    throw new AppError('gate_blocked', 'store.errors.bonded_requires_ud', {
+      gate: 'ud_balance',
+      challanNo: payload.challanNo,
+    })
+  }
+
+  const [grn] = await tx
+    .insert(grns)
+    .values({
+      companyId: ctx.companyId,
+      challanNo: payload.challanNo,
+      receivedAt: payload.receivedAt,
+      supplierPoId: payload.supplierPoId ?? null,
+      bonded: payload.bonded,
+      udId: payload.udId ?? null,
+      documentId: payload.documentId ?? null,
+      offlineKey: payload.offlineKey ?? null,
+      createdBy: ctx.userId,
+    })
+    .returning({ id: grns.id })
+
+  if (!grn) throw new Error('grns insert returned nothing')
+
+  let rollCount = 0
+  for (const line of payload.lines) {
+    const [item] = await tx.select().from(items).where(eq(items.id, line.itemId))
+    if (!item) throw notFound('store.errors.item_not_found', { itemId: line.itemId })
+
+    if (item.uom !== line.unit) {
+      // The item's UoM is the truth. A challan recorded in the wrong unit would make
+      // every stock figure for that item meaningless.
+      throw new AppError('validation_failed', 'store.errors.unit_mismatch', {
+        itemId: line.itemId,
+        itemUom: item.uom,
+        receivedUnit: line.unit,
+      })
+    }
+
+    const [grnLine] = await tx
+      .insert(grnLines)
+      .values({
+        companyId: ctx.companyId,
+        grnId: grn.id,
+        itemId: line.itemId,
+        qty: line.qty,
+        unit: line.unit,
+        unitPrice: line.unitPrice ?? null,
+        currency: line.currency ?? null,
+      })
+      .returning({ id: grnLines.id })
+
+    if (!grnLine) throw new Error('grn_lines insert returned nothing')
+
+    if (line.rolls.length > 0) {
+      await tx.insert(rolls).values(
+        line.rolls.map((roll) => ({
+          companyId: ctx.companyId,
+          grnLineId: grnLine.id,
+          itemId: line.itemId,
+          rollNo: roll.rollNo,
+          lot: roll.lot ?? null,
+          dyeLot: roll.dyeLot ?? null,
+          shadeGroup: roll.shadeGroup ?? null,
+          qty: roll.qty,
+          unit: line.unit,
+          locationId: roll.locationId,
+        })),
+      )
+      rollCount += line.rolls.length
+    }
+  }
+
+  await recordChange(ctx, tx, {
+    action: 'insert',
+    targetTable: 'grns',
+    targetId: grn.id,
+    after: {
+      challanNo: payload.challanNo,
+      bonded: payload.bonded,
+      udId: payload.udId ?? null,
+      lines: payload.lines.length,
+      rolls: rollCount,
+    },
+  })
+
+  await emit(ctx, tx, {
+    eventName: STORE_EVENTS.grnReceived,
+    payload: { grnId: grn.id, challanNo: payload.challanNo, bonded: payload.bonded, rolls: rollCount },
+    aggregateTable: 'grns',
+    aggregateId: grn.id,
+  })
+
+  return { grnId: grn.id, rolls: rollCount }
+}
+
+export async function receiveGrn(
+  ctx: RequestCtx,
+  input: unknown,
+): Promise<{ grnId: string; rolls: number }> {
+  return withTenantTx(ctx, (tx) => receiveGrnIn(ctx, tx, input))
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Requisitions
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Size an order's material need from cost-sheet consumption. */
+export async function createRequisition(
+  ctx: RequestCtx,
+  input: unknown,
+): Promise<{ requisitionId: string; lines: number }> {
+  const payload = requisitionRequest.parse(input)
+  const computed = computeRequisitionLines({
+    orderQty: payload.orderQty,
+    wastagePct: payload.wastagePct,
+    lines: payload.lines,
+  })
+
+  return withTenantTx(ctx, async (tx) => {
+    const [requisition] = await tx
+      .insert(requisitions)
+      .values({
+        companyId: ctx.companyId,
+        orderId: payload.orderId,
+        basis: { orderQty: payload.orderQty, wastagePct: payload.wastagePct, lines: payload.lines },
+        createdBy: ctx.userId,
+      })
+      .returning({ id: requisitions.id })
+
+    if (!requisition) throw new Error('requisitions insert returned nothing')
+
+    await tx.insert(requisitionLines).values(
+      computed.map((line) => ({
+        companyId: ctx.companyId,
+        requisitionId: requisition.id,
+        itemId: line.itemId,
+        requiredQty: line.requiredQty,
+        unit: line.unit,
+      })),
+    )
+
+    return { requisitionId: requisition.id, lines: computed.length }
+  })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Goods out
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface IssueResult {
+  issueId: string
+  lines: number
+  warnings: StoreWarning[]
+  /** Set when bonded rolls were drawn against a UD. */
+  udDraws: { udId: string; itemRef: string; qty: string }[]
+}
+
+/**
+ * Issue stock to an order.
+ *
+ * The order of operations matters and is not arbitrary:
+ *   1. lock the rolls — two storekeepers must not issue the same roll;
+ *   2. validate against the requisition remainder;
+ *   3. draw the UD for anything bonded — the gate can still refuse here;
+ *   4. write the issue, flip the rolls, advance the requisition.
+ *
+ * All in one transaction. A partial issue — rolls marked out with no UD draw behind them —
+ * is exactly the discrepancy a customs reconciliation surfaces months later.
+ */
+export async function issueStockIn(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  input: unknown,
+): Promise<IssueResult> {
+  const payload = issueRequest.parse(input)
+
+  // Lock every roll up front, in a stable order, so two concurrent issues cannot
+  // interleave into a deadlock.
+  const rollIds = [...new Set(payload.lines.map((line) => line.rollId).filter(Boolean))] as string[]
+  const picked = rollIds.length
+    ? await tx
+        .select()
+        .from(rolls)
+        .where(inArray(rolls.id, rollIds))
+        .orderBy(rolls.id)
+        .for('update')
+    : []
+
+  const rollById = new Map(picked.map((roll) => [roll.id, roll]))
+
+  for (const line of payload.lines) {
+    if (!line.rollId) continue
+    const roll = rollById.get(line.rollId)
+    if (!roll) throw notFound('store.errors.roll_not_found', { rollId: line.rollId })
+    if (roll.status !== 'in_stock') {
+      throw conflict('store.errors.roll_not_in_stock', { rollId: roll.id, status: roll.status })
+    }
+  }
+
+  // Shade mixing: what this order already holds, plus what is being picked now.
+  const alreadyIssued = await tx
+    .select({ shadeGroup: rolls.shadeGroup })
+    .from(issueLines)
+    .innerJoin(issues, eq(issues.id, issueLines.issueId))
+    .innerJoin(rolls, eq(rolls.id, issueLines.rollId))
+    .where(eq(issues.orderId, payload.orderId))
+
+  const shade = checkShadeMix({
+    alreadyIssued: alreadyIssued.map((row) => row.shadeGroup),
+    picking: picked.map((roll) => roll.shadeGroup),
+  })
+
+  // Requisition remainder — issuing beyond it is how one order eats another's cloth.
+  if (payload.requisitionId) {
+    for (const line of payload.lines) {
+      const [reqLine] = await tx
+        .select()
+        .from(requisitionLines)
+        .where(
+          and(
+            eq(requisitionLines.requisitionId, payload.requisitionId),
+            eq(requisitionLines.itemId, line.itemId),
+          ),
+        )
+        .for('update')
+
+      if (!reqLine) {
+        throw new AppError('validation_failed', 'store.errors.item_not_requisitioned', {
+          itemId: line.itemId,
+        })
+      }
+
+      const left = remaining(reqLine.requiredQty, reqLine.issuedQty)
+      if (compareDecimal(line.qty, left) > 0) {
+        throw new AppError('validation_failed', 'store.errors.exceeds_requisition', {
+          itemId: line.itemId,
+          requested: line.qty,
+          remaining: left,
+        })
+      }
+    }
+  }
+
+  const [issue] = await tx
+    .insert(issues)
+    .values({
+      companyId: ctx.companyId,
+      requisitionId: payload.requisitionId ?? null,
+      orderId: payload.orderId,
+      offlineKey: payload.offlineKey ?? null,
+      warnings: shade.warnings as unknown[],
+      createdBy: ctx.userId,
+    })
+    .returning({ id: issues.id })
+
+  if (!issue) throw new Error('issues insert returned nothing')
+
+  const udDraws: IssueResult['udDraws'] = []
+
+  for (const line of payload.lines) {
+    const roll = line.rollId ? rollById.get(line.rollId) : undefined
+
+    // Bonded material leaving the warehouse draws the declaration. In THIS transaction,
+    // so the issue and the draw share a fate (module 2.2 owns the gate itself).
+    //
+    // Keyed on `udId` alone, NOT on a roll being named. Trims and accessories are issued
+    // by quantity with no roll behind them, and an earlier version that required a roll
+    // let those lines skip the customs gate entirely — bonded material leaving with no
+    // draw recorded against it.
+    if (line.udId) {
+      const [item] = await tx.select().from(items).where(eq(items.id, line.itemId))
+      const itemRef = item?.code ?? line.itemId
+
+      await drawUd(ctx, tx, {
+        udId: line.udId,
+        itemRef,
+        qty: line.qty,
+        unit: line.unit,
+        storeIssueId: issue.id,
+      })
+
+      udDraws.push({ udId: line.udId, itemRef, qty: line.qty })
+    }
+
+    await tx.insert(issueLines).values({
+      companyId: ctx.companyId,
+      issueId: issue.id,
+      itemId: line.itemId,
+      rollId: line.rollId ?? null,
+      qty: line.qty,
+      unit: line.unit,
+    })
+
+    if (roll) {
+      await tx
+        .update(rolls)
+        .set({ status: 'issued', updatedAt: new Date() })
+        .where(eq(rolls.id, roll.id))
+    }
+
+    if (payload.requisitionId) {
+      await tx
+        .update(requisitionLines)
+        .set({ issuedQty: sql`${requisitionLines.issuedQty} + ${line.qty}`, updatedAt: new Date() })
+        .where(
+          and(
+            eq(requisitionLines.requisitionId, payload.requisitionId),
+            eq(requisitionLines.itemId, line.itemId),
+          ),
+        )
+    }
+  }
+
+  if (payload.requisitionId) await advanceRequisitionStatus(tx, payload.requisitionId)
+
+  await emit(ctx, tx, {
+    eventName: STORE_EVENTS.stockIssued,
+    payload: {
+      issueId: issue.id,
+      orderId: payload.orderId,
+      lines: payload.lines.length,
+      shadeMixed: shade.mixed,
+      udDraws: udDraws.length,
+    },
+    aggregateTable: 'issues',
+    aggregateId: issue.id,
+  })
+
+  return { issueId: issue.id, lines: payload.lines.length, warnings: shade.warnings, udDraws }
+}
+
+export async function issueStock(ctx: RequestCtx, input: unknown): Promise<IssueResult> {
+  return withTenantTx(ctx, (tx) => issueStockIn(ctx, tx, input))
+}
+
+/** open → partial → fulfilled, derived from what has actually been issued. */
+async function advanceRequisitionStatus(tx: TenantDb, requisitionId: string): Promise<void> {
+  const lines = await tx
+    .select()
+    .from(requisitionLines)
+    .where(eq(requisitionLines.requisitionId, requisitionId))
+
+  const anyIssued = lines.some((line) => compareDecimal(line.issuedQty, '0') > 0)
+  const allDone = lines.every((line) => compareDecimal(line.issuedQty, line.requiredQty) >= 0)
+
+  await tx
+    .update(requisitions)
+    .set({
+      status: allDone ? 'fulfilled' : anyIssued ? 'partial' : 'open',
+      updatedAt: new Date(),
+    })
+    .where(eq(requisitions.id, requisitionId))
+}
+
+function compareDecimal(a: string, b: string): number {
+  const toMinor = (value: string): bigint => {
+    const [whole = '0', fraction = ''] = value.split('.')
+    return BigInt(whole + fraction.padEnd(2, '0').slice(0, 2))
+  }
+  const left = toMinor(a)
+  const right = toMinor(b)
+  return left < right ? -1 : left > right ? 1 : 0
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Offline sync
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Register the floor operations with the core batch endpoint.
+ *
+ * Both handlers take the sync transaction, so the write, the `offline_keys` claim and any
+ * UD draw all commit together — which is what makes "replay the batch" safe rather than
+ * merely convenient.
+ */
+export function registerStoreSyncHandlers(): void {
+  registerSyncHandler('store', 'receive_grn', async (ctx, tx, row) => {
+    // The device's key goes onto the GRN itself, so a storekeeper reconciling a tablet
+    // can find the record without being shown an internal ledger table.
+    const result = await receiveGrnIn(ctx, tx, { ...row.payload, offlineKey: row.offlineKey })
+    return { rowId: result.grnId }
+  })
+
+  registerSyncHandler('store', 'issue_stock', async (ctx, tx, row) => {
+    const result = await issueStockIn(ctx, tx, { ...row.payload, offlineKey: row.offlineKey })
+    return { rowId: result.issueId }
+  })
+}

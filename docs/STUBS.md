@@ -18,7 +18,6 @@
 | `ex_factory_slipped` event carries `lcConflict: null` | The consumer runs the detector against live credits under its own scope. Embedding an answer at emit time would age badly in a queue. | orders | 2026-07-29 | With the event's consumer (Phase 3 digest) |
 | TNA uses calendar days, not working days | A Bangladeshi factory calendar (two lunar Eids, national days, factory closures) needs a holidays table. Template offsets currently absorb weekends. | orders | 2026-07-29 | When a factory supplies its calendar |
 | `orders` is a pending target with no commit handler | Drafting a whole new order from a PO scan still uses core's generic single-row write. Adequate today; revisit if creating an order grows side effects (TNA generation, LC linking). | orders | 2026-07-29 | When order creation gains side effects |
-| `ud_consumptions.store_issue_id` has no FK | `store_issues` belongs to module 3.1 and does not exist yet. The constraint lands with it. | commercial | 2026-07-29 | Phase 4 (3.1 Store) |
 | No `queries.ts` / `actions.ts` for commercial | Built backend-first like 1.3 — read models are shaped by locked screens. | commercial | 2026-07-29 | When HANDOFF-2.2 / 2.1 land |
 | UD reconciliation PDF not generated | `snapshotReconciliation` freezes the figures; rendering the customs-format PDF needs the Playwright pipeline. | commercial | 2026-07-29 | Phase 6 (first PDF consumer) |
 | `runReconciliationReminder` is not scheduled | It is monthly, and SCHEDULED_TASKS currently only carries nightly crons. | commercial | 2026-07-29 | When a monthly cadence is added |
@@ -27,3 +26,8 @@
 | Disbursement export and payslip PDF not built | Bank/bKash sheet formats and the bn+en payslip need the Playwright pipeline and real format specs from the factory's bank. | workforce | 2026-07-29 | Phase 8 |
 | Attendance device importer not built | Device CSV formats vary by vendor; the brief calls for pluggable parsers. Attendance is currently written directly. | workforce | 2026-07-29 | Phase 8 |
 | **Payroll has NOT been parallel-run** | PLAYBOOK §3 requires one full month diffed against the factory's existing sheet before any real go-live. The engine is vector-tested; it has never met a real gazette or real attendance. | workforce | 2026-07-29 | Before first factory go-live — non-negotiable |
+| `grns.supplier_po_id` has no FK | `supplier_pos` belongs to module 3.2 (Procurement). | store | 2026-07-29 | Phase 6 (3.2) |
+| `ud_consumptions.store_issue_id` still has no FK | 3.1 now exists and populates it, but adding the constraint is a separate migration in commercial (rule 11: one writer module per table). | commercial | 2026-07-29 | Next commercial slice |
+| Requisition consumption comes from the caller | Module 1.5 (Costing) owns cost-sheet consumption; until it exists, `createRequisition` takes the per-piece figure as input. | store | 2026-07-29 | Phase 5 (1.5) |
+| Store returns and inspection flow not built | `rolls.status` has `returned` and `grns.inspection_status` exists, but no service operation moves them. | store | 2026-07-29 | With HANDOFF-3.1 |
+| No k6 scenario for the store | 3.1 is floor-facing, so dev-plan §9 wants `store_grn.js`. | store | 2026-07-29 | Phase 4 close |

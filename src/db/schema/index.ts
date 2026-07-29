@@ -14,3 +14,6 @@ export * from '@/modules/orders/schema'
 
 // Phase 8 — 10.1 Workforce & Wage Engine (gazette is uploaded data, never hardcoded).
 export * from '@/modules/workforce/schema'
+
+// Phase 4 — 3.1 Fabric & Trims Store (floor-facing; draws bonded stock via 2.2).
+export * from '@/modules/store/schema'
