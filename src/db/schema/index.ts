@@ -18,6 +18,9 @@ export * from '@/modules/workforce/schema'
 // Phase 4 — 3.1 Fabric & Trims Store (floor-facing; draws bonded stock via 2.2).
 export * from '@/modules/store/schema'
 
+// Phase 6 — 1.4 Sampling. Owns the PP-approval gate that 5.1 Cutting fails closed against.
+export * from '@/modules/sampling/schema'
+
 // Phase 6 — 3.2 Procurement & Suppliers. Owns `suppliers`, which 2.1's btb_lcs points at.
 export * from '@/modules/procurement/schema'
 
