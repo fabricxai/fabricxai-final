@@ -1,0 +1,2 @@
+ALTER TABLE "allocations" ADD COLUMN "order_style_id" uuid;--> statement-breakpoint
+ALTER TABLE "allocations" ADD CONSTRAINT "allocations_order_style_id_order_styles_id_fk" FOREIGN KEY ("order_style_id") REFERENCES "public"."order_styles"("id") ON DELETE cascade ON UPDATE no action;
