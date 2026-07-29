@@ -197,6 +197,27 @@
       "when": 1785336869172,
       "tag": "0027_cutting_policies",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1785337633829,
+      "tag": "0028_procurement",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1785337634829,
+      "tag": "0029_procurement_policies",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1785337635829,
+      "tag": "0030_btb_supplier_fk",
+      "breakpoints": true
     }
   ]
 }

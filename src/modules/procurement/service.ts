@@ -1,0 +1,856 @@
+/**
+ * 3.2 Procurement & Suppliers — service layer ⚖
+ *
+ * The gate here is BTB headroom (rule 8, `GATES.btbHeadroom`): an import PO may not be
+ * issued without a back-to-back LC that still has room under its master. A back-to-back
+ * funds the fabric and trims for an order against the LC the buyer opened, and
+ * over-opening BTBs against a master is how a factory ends up owing its suppliers more
+ * than the buyer will ever pay it.
+ *
+ * The headroom answer comes from module 2.1 Commercial, which owns `btb_lcs` and `lcs`
+ * (rule 11). This module reads the decision, never those tables.
+ *
+ * Supplier scores are computed from GRN and inspection records — the brief's "never
+ * manual vibes". There is no operation in this file that writes a score by hand.
+ */
+import { and, desc, eq, gte, inArray, lt, lte, sql } from 'drizzle-orm'
+
+import { recordChange, registerAuditedTables } from '../core/audit'
+import type { AnyCtx, RequestCtx } from '../core/ctx'
+import { AppError, conflict, notFound } from '../core/errors'
+import { assertGate, GATES } from '../core/gates'
+import { emit } from '../core/outbox'
+import { defineStateMachine } from '../core/state-machine'
+import { withTenantRead, withTenantTx, type TenantDb } from '../core/tenancy'
+
+import { PROCUREMENT_EVENTS } from './events'
+import {
+  compareQuotes,
+  matchReceipt,
+  ProcurementError,
+  supplierScore,
+  type ComparisonRequirement,
+  type QuoteComparison,
+  type QuoteForComparison,
+} from './procurement'
+import {
+  purchaseRequisitionLines,
+  purchaseRequisitions,
+  suppliers,
+  supplierPoLines,
+  supplierPos,
+  supplierQuoteLines,
+  supplierQuotes,
+  supplierScores,
+} from './schema'
+import {
+  issuePoPayload,
+  purchaseRequisitionPayload,
+  supplierPayload,
+  supplierQuotePayload,
+  type IssuePoPayload,
+} from './zod'
+
+/** ⚖ — a supplier PO is the factory committing its own money. */
+registerAuditedTables('supplier_pos', 'supplier_po_lines')
+
+/**
+ * The PO lifecycle. `cancelled` is reachable until goods start arriving: once anything is
+ * received the PO is a partly-settled account, and cancelling it would orphan a receipt
+ * the store has already booked into stock.
+ */
+export const supplierPoMachine = defineStateMachine({
+  field: 'status',
+  initial: 'issued',
+  transitions: {
+    issued: ['confirmed', 'cancelled'],
+    confirmed: ['in_production', 'shipped', 'received_partial', 'received', 'cancelled'],
+    in_production: ['shipped', 'received_partial', 'received', 'cancelled'],
+    shipped: ['received_partial', 'received'],
+    received_partial: ['received'],
+    received: [],
+    cancelled: [],
+  },
+})
+
+export type SupplierPoStatus = (typeof supplierPoMachine.states)[number]
+
+/** Company policy. Owned by Settings (X.3); passed in until that module exists. */
+export interface ProcurementPolicy {
+  /** BTB ceiling as a percentage of the master LC. Required for import POs. */
+  btbLimitPct?: number
+  /** Receiving more than ordered by more than this is reported, not absorbed. */
+  overReceiptTolerancePct: string
+}
+
+function wrapProcurementError<T>(run: () => T): T {
+  try {
+    return run()
+  } catch (error) {
+    if (error instanceof ProcurementError) {
+      throw new AppError('validation_failed', 'procurement.errors.uncomputable', {
+        reason: error.message,
+      })
+    }
+    throw error
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Suppliers, PRs, quotes
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function createSupplier(
+  ctx: RequestCtx,
+  input: unknown,
+): Promise<{ supplierId: string }> {
+  const payload = supplierPayload.parse(input)
+
+  return withTenantTx(ctx, async (tx) => {
+    const [row] = await tx
+      .insert(suppliers)
+      .values({
+        companyId: ctx.companyId,
+        code: payload.code,
+        name: payload.name,
+        type: payload.type,
+        origin: payload.origin,
+        paymentTerms: payload.paymentTerms ?? null,
+        contacts: payload.contacts,
+        defaultCurrency: payload.defaultCurrency,
+        createdBy: ctx.userId,
+      })
+      .returning({ id: suppliers.id })
+
+    if (!row) throw new Error('suppliers insert returned nothing')
+    return { supplierId: row.id }
+  })
+}
+
+/**
+ * Raise a purchase requisition (brief: "PR from order material plan").
+ *
+ * `requisitionId` traces the purchase back to the store requisition that could not be met
+ * from stock, and through it to the order. Without that link nobody can answer "why did we
+ * buy this", which is the first question asked when the fabric arrives after shipment.
+ */
+export async function createPurchaseRequisition(
+  ctx: RequestCtx,
+  input: unknown,
+): Promise<{ purchaseRequisitionId: string; lineCount: number }> {
+  const payload = purchaseRequisitionPayload.parse(input)
+
+  return withTenantTx(ctx, async (tx) => {
+    const [row] = await tx
+      .insert(purchaseRequisitions)
+      .values({
+        companyId: ctx.companyId,
+        orderId: payload.orderId ?? null,
+        requisitionId: payload.requisitionId ?? null,
+        prNo: payload.prNo,
+        neededBy: payload.neededBy,
+        createdBy: ctx.userId,
+      })
+      .returning({ id: purchaseRequisitions.id })
+
+    if (!row) throw new Error('purchase_requisitions insert returned nothing')
+
+    await tx.insert(purchaseRequisitionLines).values(
+      payload.lines.map((line) => ({
+        companyId: ctx.companyId,
+        purchaseRequisitionId: row.id,
+        itemId: line.itemId,
+        qty: line.qty,
+        unit: line.unit,
+      })),
+    )
+
+    await emit(ctx, tx, {
+      eventName: PROCUREMENT_EVENTS.prRaised,
+      payload: { purchaseRequisitionId: row.id, prNo: payload.prNo, neededBy: payload.neededBy },
+      aggregateTable: 'purchase_requisitions',
+      aggregateId: row.id,
+    })
+
+    return { purchaseRequisitionId: row.id, lineCount: payload.lines.length }
+  })
+}
+
+export async function recordSupplierQuote(
+  ctx: RequestCtx,
+  input: unknown,
+): Promise<{ supplierQuoteId: string }> {
+  const payload = supplierQuotePayload.parse(input)
+
+  return withTenantTx(ctx, async (tx) => {
+    const [pr] = await tx
+      .select()
+      .from(purchaseRequisitions)
+      .where(eq(purchaseRequisitions.id, payload.purchaseRequisitionId))
+
+    if (!pr) {
+      throw notFound('procurement.errors.pr_not_found', {
+        purchaseRequisitionId: payload.purchaseRequisitionId,
+      })
+    }
+
+    const [row] = await tx
+      .insert(supplierQuotes)
+      .values({
+        companyId: ctx.companyId,
+        purchaseRequisitionId: payload.purchaseRequisitionId,
+        supplierId: payload.supplierId,
+        currency: payload.currency,
+        quotedOn: payload.quotedOn,
+        validUntil: payload.validUntil ?? null,
+        documentId: payload.documentId ?? null,
+        createdBy: ctx.userId,
+      })
+      .returning({ id: supplierQuotes.id })
+
+    if (!row) throw new Error('supplier_quotes insert returned nothing')
+
+    await tx.insert(supplierQuoteLines).values(
+      payload.lines.map((line) => ({
+        companyId: ctx.companyId,
+        supplierQuoteId: row.id,
+        itemId: line.itemId,
+        unitPrice: line.unitPrice,
+        leadTimeDays: line.leadTimeDays,
+        moq: line.moq,
+        freight: line.freight,
+        dutyPct: line.dutyPct,
+      })),
+    )
+
+    if (pr.status === 'open') {
+      await tx
+        .update(purchaseRequisitions)
+        .set({ status: 'quoted', updatedAt: new Date() })
+        .where(eq(purchaseRequisitions.id, pr.id))
+    }
+
+    await emit(ctx, tx, {
+      eventName: PROCUREMENT_EVENTS.quoteReceived,
+      payload: {
+        supplierQuoteId: row.id,
+        purchaseRequisitionId: pr.id,
+        supplierId: payload.supplierId,
+      },
+      aggregateTable: 'supplier_quotes',
+      aggregateId: row.id,
+    })
+
+    return { supplierQuoteId: row.id }
+  })
+}
+
+/**
+ * Compare every quote on a PR for one item (brief: "quote comparison").
+ *
+ * Ranked on LANDED cost — price × the quantity actually charged, plus duty and freight —
+ * and quotes that cannot arrive by the PR's needed-by date are excluded rather than ranked
+ * last. A late quote is not a worse option; leaving it in the list is how somebody picks
+ * it because the price column looked good.
+ */
+export async function compareQuotesForItem(
+  ctx: AnyCtx,
+  input: {
+    purchaseRequisitionId: string
+    itemId: string
+    baseCurrency?: string
+    rates?: Record<string, string>
+  },
+): Promise<QuoteComparison> {
+  return withTenantRead(ctx, async (tx) => {
+    const [pr] = await tx
+      .select()
+      .from(purchaseRequisitions)
+      .where(eq(purchaseRequisitions.id, input.purchaseRequisitionId))
+
+    if (!pr) {
+      throw notFound('procurement.errors.pr_not_found', {
+        purchaseRequisitionId: input.purchaseRequisitionId,
+      })
+    }
+
+    const [prLine] = await tx
+      .select({ qty: purchaseRequisitionLines.qty, unit: purchaseRequisitionLines.unit })
+      .from(purchaseRequisitionLines)
+      .where(
+        and(
+          eq(purchaseRequisitionLines.purchaseRequisitionId, pr.id),
+          eq(purchaseRequisitionLines.itemId, input.itemId),
+        ),
+      )
+
+    if (!prLine) {
+      throw notFound('procurement.errors.pr_line_not_found', {
+        purchaseRequisitionId: pr.id,
+        itemId: input.itemId,
+      })
+    }
+
+    const rows = await tx
+      .select({
+        quoteId: supplierQuotes.id,
+        supplierId: supplierQuotes.supplierId,
+        currency: supplierQuotes.currency,
+        quotedOn: supplierQuotes.quotedOn,
+        unitPrice: supplierQuoteLines.unitPrice,
+        leadTimeDays: supplierQuoteLines.leadTimeDays,
+        moq: supplierQuoteLines.moq,
+        freight: supplierQuoteLines.freight,
+        dutyPct: supplierQuoteLines.dutyPct,
+      })
+      .from(supplierQuoteLines)
+      .innerJoin(supplierQuotes, eq(supplierQuoteLines.supplierQuoteId, supplierQuotes.id))
+      .where(
+        and(
+          eq(supplierQuotes.purchaseRequisitionId, pr.id),
+          eq(supplierQuoteLines.itemId, input.itemId),
+        ),
+      )
+
+    if (rows.length === 0) {
+      throw notFound('procurement.errors.no_quotes', {
+        purchaseRequisitionId: pr.id,
+        itemId: input.itemId,
+      })
+    }
+
+    const quotes: QuoteForComparison[] = rows.map((row) => ({
+      quoteId: row.quoteId,
+      supplierId: row.supplierId,
+      unitPrice: row.unitPrice,
+      currency: row.currency,
+      leadTimeDays: row.leadTimeDays,
+      moq: row.moq,
+      freight: row.freight,
+      dutyPct: row.dutyPct,
+    }))
+
+    // Lead time is counted from the LATEST quote date in the set. Counting each from its
+    // own date would let a quote received three weeks ago look like it still arrives on
+    // time, because its clock started before the decision is being made.
+    const quotedOn = rows.map((row) => row.quotedOn).sort().at(-1)!
+
+    const requirement: ComparisonRequirement = {
+      qty: prLine.qty,
+      unit: prLine.unit,
+      neededBy: pr.neededBy,
+      quotedOn,
+      baseCurrency: input.baseCurrency,
+      rates: input.rates,
+    }
+
+    return wrapProcurementError(() => compareQuotes(quotes, requirement))
+  })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Issuing a PO — the BTB gate
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface IssuePoResult {
+  supplierPoId: string
+  totalValue: string
+  currency: string
+}
+
+/**
+ * Issue a purchase order ⚖ (brief: "import PO requires btb_lc link before issue").
+ *
+ * The gate is on the SUPPLIER's origin, not on the currency. A local mill invoicing in USD
+ * is still a local purchase; an import is an import even when it prices in taka. Getting
+ * that backwards would gate the wrong half of the supplier book.
+ */
+export async function issuePo(
+  ctx: RequestCtx,
+  input: unknown,
+  policy: ProcurementPolicy,
+): Promise<IssuePoResult> {
+  const payload: IssuePoPayload = issuePoPayload.parse(input)
+
+  return withTenantTx(ctx, async (tx) => {
+    const [supplier] = await tx
+      .select()
+      .from(suppliers)
+      .where(eq(suppliers.id, payload.supplierId))
+
+    if (!supplier) {
+      throw notFound('procurement.errors.supplier_not_found', { supplierId: payload.supplierId })
+    }
+    if (!supplier.isActive) {
+      throw conflict('procurement.errors.supplier_inactive', { supplierId: supplier.id })
+    }
+
+    if (supplier.origin === 'import') {
+      if (!payload.btbLcId) {
+        throw new AppError('gate_blocked', 'gates.btb_headroom.no_btb', {
+          gate: GATES.btbHeadroom,
+          supplierId: supplier.id,
+        })
+      }
+      if (policy.btbLimitPct === undefined) {
+        // Checking headroom against an unstated ceiling would produce a pass that means
+        // nothing. Refuse rather than invent a limit.
+        throw new AppError('validation_failed', 'procurement.errors.no_btb_limit', {})
+      }
+
+      const { checkBtbHeadroom } = await import('../commercial/service')
+      assertGate(
+        GATES.btbHeadroom,
+        await checkBtbHeadroom(ctx, {
+          btbLcId: payload.btbLcId,
+          limitPct: policy.btbLimitPct,
+        }),
+      )
+    }
+
+    const totalValue = payload.lines.reduce(
+      (sum, line) => sum + mulMinor(toMinor(line.qty), toMinor(line.unitPrice)),
+      0n,
+    )
+
+    const [row] = await tx
+      .insert(supplierPos)
+      .values({
+        companyId: ctx.companyId,
+        supplierId: payload.supplierId,
+        purchaseRequisitionId: payload.purchaseRequisitionId ?? null,
+        supplierQuoteId: payload.supplierQuoteId ?? null,
+        poNumber: payload.poNumber,
+        currency: payload.currency,
+        totalValue: fromMinor(totalValue),
+        btbLcId: payload.btbLcId ?? null,
+        expectedDeliveryDate: payload.expectedDeliveryDate ?? null,
+        createdBy: ctx.userId,
+      })
+      .returning({ id: supplierPos.id })
+
+    if (!row) throw new Error('supplier_pos insert returned nothing')
+
+    await tx.insert(supplierPoLines).values(
+      payload.lines.map((line) => ({
+        companyId: ctx.companyId,
+        supplierPoId: row.id,
+        itemId: line.itemId,
+        qty: line.qty,
+        unit: line.unit,
+        unitPrice: line.unitPrice,
+      })),
+    )
+
+    if (payload.purchaseRequisitionId) {
+      await tx
+        .update(purchaseRequisitions)
+        .set({ status: 'ordered', updatedAt: new Date() })
+        .where(eq(purchaseRequisitions.id, payload.purchaseRequisitionId))
+    }
+
+    await recordChange(ctx, tx, {
+      action: 'insert',
+      targetTable: 'supplier_pos',
+      targetId: row.id,
+      after: {
+        poNumber: payload.poNumber,
+        supplierId: payload.supplierId,
+        totalValue: fromMinor(totalValue),
+        currency: payload.currency,
+        btbLcId: payload.btbLcId ?? null,
+      },
+    })
+
+    await emit(ctx, tx, {
+      eventName: PROCUREMENT_EVENTS.poIssued,
+      payload: {
+        supplierPoId: row.id,
+        poNumber: payload.poNumber,
+        supplierId: payload.supplierId,
+        totalValue: fromMinor(totalValue),
+        currency: payload.currency,
+      },
+      aggregateTable: 'supplier_pos',
+      aggregateId: row.id,
+    })
+
+    return { supplierPoId: row.id, totalValue: fromMinor(totalValue), currency: payload.currency }
+  })
+}
+
+export async function setPoStatus(
+  ctx: RequestCtx,
+  input: { supplierPoId: string; status: SupplierPoStatus },
+): Promise<void> {
+  await withTenantTx(ctx, async (tx) => {
+    const [po] = await tx
+      .select()
+      .from(supplierPos)
+      .where(eq(supplierPos.id, input.supplierPoId))
+      .for('update')
+
+    if (!po) {
+      throw notFound('procurement.errors.po_not_found', { supplierPoId: input.supplierPoId })
+    }
+
+    supplierPoMachine.assert(po.status as SupplierPoStatus, input.status)
+
+    await tx
+      .update(supplierPos)
+      .set({ status: input.status, updatedAt: new Date() })
+      .where(eq(supplierPos.id, po.id))
+
+    await recordChange(ctx, tx, {
+      action: 'update',
+      targetTable: 'supplier_pos',
+      targetId: po.id,
+      before: { status: po.status },
+      after: { status: input.status },
+    })
+  })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PO ↔ GRN matching
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface ReceiptResult {
+  supplierPoLineId: string
+  receivedQty: string
+  outstandingQty: string
+  overReceiptQty: string
+  withinTolerance: boolean
+  closed: boolean
+  poStatus: SupplierPoStatus
+}
+
+/**
+ * Apply a receipt to a PO line (brief: "PO↔GRN line matching closes lines").
+ *
+ * The PO's own status follows its lines rather than being set by hand: a PO is `received`
+ * when every line is, `received_partial` when some are. A status somebody types drifts from
+ * the lines within a week, and it is the status the overdue alert reads.
+ */
+export async function applyReceipt(
+  ctx: RequestCtx,
+  input: { supplierPoLineId: string; qty: string; grnId?: string },
+  policy: ProcurementPolicy,
+): Promise<ReceiptResult> {
+  return withTenantTx(ctx, async (tx) => {
+    const [line] = await tx
+      .select()
+      .from(supplierPoLines)
+      .where(eq(supplierPoLines.id, input.supplierPoLineId))
+      .for('update')
+
+    if (!line) {
+      throw notFound('procurement.errors.po_line_not_found', {
+        supplierPoLineId: input.supplierPoLineId,
+      })
+    }
+
+    const match = wrapProcurementError(() =>
+      matchReceipt(
+        {
+          orderedQty: line.qty,
+          receivedQty: line.receivedQty,
+          closed: line.status === 'received' || line.status === 'short_closed',
+        },
+        { qty: input.qty },
+        { overReceiptTolerancePct: policy.overReceiptTolerancePct },
+      ),
+    )
+
+    await tx
+      .update(supplierPoLines)
+      .set({
+        receivedQty: match.receivedQty,
+        status: match.closed ? 'received' : 'received_partial',
+        closedAt: match.closed ? new Date() : null,
+        updatedAt: new Date(),
+      })
+      .where(eq(supplierPoLines.id, line.id))
+
+    // The PO's status is derived from its lines, in this transaction, from the rows as
+    // they now are.
+    const siblings = await tx
+      .select({ status: supplierPoLines.status })
+      .from(supplierPoLines)
+      .where(eq(supplierPoLines.supplierPoId, line.supplierPoId))
+
+    const allClosed = siblings.every((s) => s.status === 'received' || s.status === 'short_closed')
+    const anyReceived = siblings.some((s) => s.status !== 'open')
+    const nextStatus: SupplierPoStatus = allClosed
+      ? 'received'
+      : anyReceived
+        ? 'received_partial'
+        : 'issued'
+
+    const [po] = await tx
+      .select()
+      .from(supplierPos)
+      .where(eq(supplierPos.id, line.supplierPoId))
+      .for('update')
+
+    if (po && po.status !== nextStatus && po.status !== 'cancelled') {
+      await tx
+        .update(supplierPos)
+        .set({ status: nextStatus, updatedAt: new Date() })
+        .where(eq(supplierPos.id, po.id))
+    }
+
+    await recordChange(ctx, tx, {
+      action: 'update',
+      targetTable: 'supplier_po_lines',
+      targetId: line.id,
+      before: { receivedQty: line.receivedQty, status: line.status },
+      after: {
+        receivedQty: match.receivedQty,
+        status: match.closed ? 'received' : 'received_partial',
+        grnId: input.grnId ?? null,
+      },
+    })
+
+    if (match.closed) {
+      await emit(ctx, tx, {
+        eventName: PROCUREMENT_EVENTS.poLineClosed,
+        payload: { supplierPoLineId: line.id, supplierPoId: line.supplierPoId },
+        aggregateTable: 'supplier_po_lines',
+        aggregateId: line.id,
+      })
+    }
+
+    if (!match.withinTolerance) {
+      // Past the allowance somebody is paying for material nobody ordered.
+      await emit(ctx, tx, {
+        eventName: PROCUREMENT_EVENTS.overReceipt,
+        payload: {
+          supplierPoLineId: line.id,
+          supplierPoId: line.supplierPoId,
+          orderedQty: line.qty,
+          receivedQty: match.receivedQty,
+          overReceiptQty: match.overReceiptQty,
+          tolerancePct: policy.overReceiptTolerancePct,
+        },
+        aggregateTable: 'supplier_po_lines',
+        aggregateId: line.id,
+      })
+    }
+
+    return {
+      supplierPoLineId: line.id,
+      receivedQty: match.receivedQty,
+      outstandingQty: match.outstandingQty,
+      overReceiptQty: match.overReceiptQty,
+      withinTolerance: match.withinTolerance,
+      closed: match.closed,
+      poStatus: nextStatus,
+    }
+  })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Scores and alerts
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Compute one month's supplier scores from the record (brief job: "never manual vibes").
+ *
+ * On-time is measured against the PO's expected delivery date; rejects come from the GRN
+ * inspection status recorded by 3.1. Nothing in this function accepts a number from a
+ * caller, which is the whole point.
+ */
+export async function computeSupplierScores(
+  ctx: RequestCtx,
+  input: { period: string },
+): Promise<{ scored: number }> {
+  const periodStart = input.period
+  const periodEnd = addMonth(periodStart)
+
+  return withTenantTx(ctx, async (tx) => {
+    const supplierRows = await tx
+      .select({ id: suppliers.id })
+      .from(suppliers)
+      .where(eq(suppliers.isActive, true))
+
+    if (supplierRows.length === 0) return { scored: 0 }
+
+    const pos = await tx
+      .select({
+        id: supplierPos.id,
+        supplierId: supplierPos.supplierId,
+        expectedDeliveryDate: supplierPos.expectedDeliveryDate,
+      })
+      .from(supplierPos)
+      .where(
+        and(
+          gte(supplierPos.createdAt, new Date(`${periodStart}T00:00:00Z`)),
+          lt(supplierPos.createdAt, new Date(`${periodEnd}T00:00:00Z`)),
+          inArray(
+            supplierPos.supplierId,
+            supplierRows.map((s) => s.id),
+          ),
+        ),
+      )
+
+    const linesByPo = new Map<string, { receivedQty: string; closedAt: Date | null }[]>()
+    if (pos.length > 0) {
+      const lineRows = await tx
+        .select({
+          supplierPoId: supplierPoLines.supplierPoId,
+          receivedQty: supplierPoLines.receivedQty,
+          closedAt: supplierPoLines.closedAt,
+        })
+        .from(supplierPoLines)
+        .where(
+          inArray(
+            supplierPoLines.supplierPoId,
+            pos.map((p) => p.id),
+          ),
+        )
+
+      for (const row of lineRows) {
+        linesByPo.set(row.supplierPoId, [...(linesByPo.get(row.supplierPoId) ?? []), row])
+      }
+    }
+
+    const quotesBySupplier = await tx
+      .select({ supplierId: supplierQuotes.supplierId, id: supplierQuotes.id })
+      .from(supplierQuotes)
+      .where(
+        and(
+          gte(supplierQuotes.quotedOn, periodStart),
+          lt(supplierQuotes.quotedOn, periodEnd),
+        ),
+      )
+
+    let scored = 0
+    for (const supplier of supplierRows) {
+      const theirPos = pos.filter((p) => p.supplierId === supplier.id)
+      const receipts = theirPos.flatMap((po) =>
+        (linesByPo.get(po.id) ?? [])
+          .filter((line) => line.closedAt !== null)
+          .map((line) => ({
+            onTime:
+              po.expectedDeliveryDate === null ||
+              line.closedAt!.toISOString().slice(0, 10) <= po.expectedDeliveryDate,
+            // Reject quantities come from GRN inspections, which 3.1 records per GRN
+            // rather than per PO line — see docs/STUBS.md.
+            rejectedQty: '0',
+            receivedQty: line.receivedQty,
+          })),
+      )
+
+      const quotesReturned = quotesBySupplier.filter((q) => q.supplierId === supplier.id).length
+
+      const score = wrapProcurementError(() =>
+        supplierScore({
+          receipts,
+          quotesRequested: quotesReturned,
+          quotesReturned,
+          avgUnitPrice: null,
+          basketAvgUnitPrice: null,
+        }),
+      )
+
+      await tx
+        .insert(supplierScores)
+        .values({
+          companyId: ctx.companyId,
+          supplierId: supplier.id,
+          period: periodStart,
+          onTimePct: score.onTimePct,
+          qualityRejectPct: score.qualityRejectPct,
+          priceIndex: score.priceIndex,
+          responsivenessPct: score.responsivenessPct,
+          observations: score.observations,
+        })
+        .onConflictDoUpdate({
+          target: [supplierScores.supplierId, supplierScores.period],
+          set: {
+            onTimePct: score.onTimePct,
+            qualityRejectPct: score.qualityRejectPct,
+            priceIndex: score.priceIndex,
+            responsivenessPct: score.responsivenessPct,
+            observations: score.observations,
+            computedAt: new Date(),
+          },
+        })
+
+      scored += 1
+    }
+
+    await emit(ctx, tx, {
+      eventName: PROCUREMENT_EVENTS.scoresComputed,
+      payload: { period: periodStart, scored },
+      aggregateTable: 'supplier_scores',
+      aggregateId: periodStart,
+    })
+
+    return { scored }
+  })
+}
+
+/** POs past their expected delivery date with anything still outstanding. */
+export async function overduePos(
+  ctx: AnyCtx,
+  input: { asOf: string },
+): Promise<{ supplierPoId: string; poNumber: string; expectedDeliveryDate: string }[]> {
+  return withTenantRead(ctx, async (tx) => {
+    const rows = await tx
+      .select({
+        supplierPoId: supplierPos.id,
+        poNumber: supplierPos.poNumber,
+        expectedDeliveryDate: supplierPos.expectedDeliveryDate,
+      })
+      .from(supplierPos)
+      .where(
+        and(
+          lte(supplierPos.expectedDeliveryDate, input.asOf),
+          sql`${supplierPos.status} not in ('received', 'cancelled')`,
+        ),
+      )
+      .orderBy(supplierPos.expectedDeliveryDate)
+
+    return rows.map((row) => ({
+      supplierPoId: row.supplierPoId,
+      poNumber: row.poNumber,
+      expectedDeliveryDate: row.expectedDeliveryDate!,
+    }))
+  })
+}
+
+/** The latest score on record for each supplier — the comparison screen's left column. */
+export async function latestScores(
+  ctx: AnyCtx,
+): Promise<(typeof supplierScores.$inferSelect)[]> {
+  return withTenantRead(ctx, async (tx) =>
+    tx.select().from(supplierScores).orderBy(desc(supplierScores.period)),
+  )
+}
+
+// Exact decimal helpers — money and quantity are numeric and never floats.
+function toMinor(value: string): bigint {
+  const [whole = '0', fraction = ''] = value.split('.')
+  return BigInt(whole + fraction.padEnd(4, '0').slice(0, 4))
+}
+
+/** Two 4-minor-digit values → one 2-minor-digit money amount, rounded once. */
+function mulMinor(a: bigint, b: bigint): bigint {
+  return (a * b) / 10_000n
+}
+
+function fromMinor(minor: bigint): string {
+  const rounded = (minor + 50n) / 100n
+  const digits = rounded.toString().padStart(3, '0')
+  return `${digits.slice(0, -2)}.${digits.slice(-2)}`
+}
+
+function addMonth(date: string): string {
+  const parsed = new Date(`${date}T00:00:00Z`)
+  parsed.setUTCMonth(parsed.getUTCMonth() + 1)
+  return parsed.toISOString().slice(0, 10)
+}
+
+export { conflict, type TenantDb }

@@ -18,6 +18,9 @@ export * from '@/modules/workforce/schema'
 // Phase 4 — 3.1 Fabric & Trims Store (floor-facing; draws bonded stock via 2.2).
 export * from '@/modules/store/schema'
 
+// Phase 6 — 3.2 Procurement & Suppliers. Owns `suppliers`, which 2.1's btb_lcs points at.
+export * from '@/modules/procurement/schema'
+
 // Phase 6 — 5.1 Cutting Floor. The point of no return; offline-capable.
 export * from '@/modules/cutting/schema'
 
