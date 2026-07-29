@@ -49,11 +49,16 @@ export type SyncRowResult =
  * A module's handler for one offline operation. Receives the caller's already-scoped
  * transaction so its write, the `offline_keys` row, and any outbox event all commit
  * together — that atomicity is what makes the idempotency claim true.
+ *
+ * It gets the whole ROW, not just the payload: the `offlineKey` and the device's own
+ * timestamp belong on the business record too. A storekeeper reconciling a tablet against
+ * the system looks at the issue, not at an internal ledger table, so the key has to be
+ * visible where they are looking.
  */
 export type SyncHandler = (
   ctx: AnyCtx,
   tx: Parameters<Parameters<typeof withTenantTx>[1]>[0],
-  payload: Record<string, unknown>,
+  row: SyncRow,
 ) => Promise<{ rowId: string }>
 
 const handlers = new Map<string, SyncHandler>()
@@ -154,7 +159,7 @@ async function applyRow(ctx: AnyCtx, row: SyncRow): Promise<SyncRowResult> {
         }
       }
 
-      const { rowId } = await handler(ctx, tx, row.payload)
+      const { rowId } = await handler(ctx, tx, row)
 
       await tx
         .update(offlineKeys)

@@ -178,10 +178,10 @@ describe('offline sync · replay is a no-op', () => {
     __resetSyncHandlers()
     let handlerCalls = 0
 
-    registerSyncHandler('__demo__', 'record_note', async (c, tx, payload) => {
+    registerSyncHandler('__demo__', 'record_note', async (c, tx, row) => {
       handlerCalls += 1
       const result = await tx.execute<{ id: string }>(
-        sql`insert into demo_sync_rows (company_id, note) values (${c.companyId}, ${String(payload.note)}) returning id`,
+        sql`insert into demo_sync_rows (company_id, note) values (${c.companyId}, ${String(row.payload.note)}) returning id`,
       )
       const rows = Array.isArray(result) ? result : ((result as { rows?: unknown[] }).rows ?? [])
       return { rowId: (rows[0] as { id: string }).id }
