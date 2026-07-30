@@ -303,6 +303,27 @@ const onRfqWon: Handler = async (ctx, payload) => {
   })
 }
 
+
+/**
+ * An order closed → compile its outcome (1.6).
+ *
+ * The only moment the factory's own record of an order can be assembled: production has
+ * stopped, the cartons have shipped, and finance has settled — but the tables it is built
+ * from are still live and will keep moving. Compiling now is what freezes it.
+ *
+ * Idempotent by construction: `compileOutcome` upserts on `order_id`, so a redelivery
+ * recompiles the same row rather than filing a second, competing account of one order. It
+ * deliberately leaves the merchandiser's note alone.
+ */
+async function onOrderStatusChanged(ctx: SystemCtx, payload: Record<string, unknown>) {
+  // Every other transition is somebody else's business.
+  if (payload.to !== 'closed') return
+
+  const orderId = String(payload.orderId)
+  const { compileOutcome } = await import('@/modules/memory/service')
+  await compileOutcome(ctx, { orderId })
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // The routing table
 // ─────────────────────────────────────────────────────────────────────────────
@@ -319,6 +340,7 @@ export const EVENT_HANDLERS: Readonly<Record<string, Handler>> = {
   'cutting.order.complete': onCuttingComplete,
   'shipment.ex_factory.confirmed': onExFactoryConfirmed,
   'rfq.won': onRfqWon,
+  'orders.order.status_changed': onOrderStatusChanged,
 }
 
 /**

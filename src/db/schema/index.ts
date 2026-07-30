@@ -55,3 +55,7 @@ export * from '@/modules/production/schema'
 
 // Phase 5 — 1.5 Costing Studio. Feeds quotes (1.2), requisitions (3.1) and finance (11.1).
 export * from '@/modules/costing/schema'
+
+// Phase 2 — 1.6 Order Memory. Holds the only pgvector column in the system; feeds 1.2's
+// similar-orders panel and 1.5's seeding.
+export * from '@/modules/memory/schema'

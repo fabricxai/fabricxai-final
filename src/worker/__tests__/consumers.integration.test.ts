@@ -134,6 +134,7 @@ describe('the routing table', () => {
     expect(Object.keys(EVENT_HANDLERS).sort()).toEqual([
       'cutting.order.complete',
       'finance.realized',
+      'orders.order.status_changed',
       'rfq.won',
       'shipment.docs.ready_for_bank',
       'shipment.ex_factory.confirmed',
@@ -641,3 +642,51 @@ describe('→ 1.3 · milestones actualise', () => {
     ).resolves.toBeUndefined()
   })
 })
+
+describe('1.3 → 1.6 · closing an order compiles its outcome', () => {
+  it('compiles on close, and only on close', async () => {
+    await reset()
+    const { orderOutcomes } = await import('@/modules/memory/schema')
+    await db.delete(orderOutcomes).where(eq(orderOutcomes.orderId, orderId))
+
+    // Every other transition belongs to somebody else. An order entering production has no
+    // outcome to compile, and compiling one then would freeze a record of nothing.
+    await deliver('orders.order.status_changed', {
+      orderId,
+      from: 'confirmed',
+      to: 'in_production',
+    })
+    expect(
+      await db.select().from(orderOutcomes).where(eq(orderOutcomes.orderId, orderId)),
+    ).toHaveLength(0)
+
+    await deliver('orders.order.status_changed', { orderId, from: 'shipped_full', to: 'closed' })
+
+    const compiled = await db
+      .select()
+      .from(orderOutcomes)
+      .where(eq(orderOutcomes.orderId, orderId))
+    expect(compiled).toHaveLength(1)
+    // This fixture order has none of the four inputs. The flags say so rather than letting
+    // the empty arrays read as a clean, defect-free, on-time run.
+    expect(compiled[0]!.compiledSources).toMatchObject({ defects: false, margins: false })
+  })
+
+  it('a redelivered close does not file a second account of the same order', async () => {
+    await reset()
+    const { orderOutcomes } = await import('@/modules/memory/schema')
+
+    const eventId = randomUUID()
+    await deliver('orders.order.status_changed', { orderId, from: 'shipped_full', to: 'closed' })
+    await deliver(
+      'orders.order.status_changed',
+      { orderId, from: 'shipped_full', to: 'closed' },
+      eventId,
+    )
+
+    expect(
+      await db.select().from(orderOutcomes).where(eq(orderOutcomes.orderId, orderId)),
+    ).toHaveLength(1)
+  })
+})
+
