@@ -67,3 +67,7 @@ export * from '@/modules/maintenance/schema'
 // Phase 8 — 10.2 Compliance & Audit ⚖. `findings` is a pending target: an audit report is
 // exactly the document MARBIM should transcribe.
 export * from '@/modules/compliance/schema'
+
+// Phase 8 — 11.2 Owner Dashboard & Analytics. Read-only module (rule 9); the exceptions
+// feed is refreshed by a worker processor, not from here.
+export * from '@/modules/analytics/schema'

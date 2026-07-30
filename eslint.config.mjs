@@ -70,8 +70,14 @@ export default tseslint.config(
   },
 
   // ── CLAUDE.md rule 9 · analytics is read-only ─────────────────────────────
+  //
+  // Scoped to what the module SHIPS. Its integration tests have to seed the rows the
+  // dashboard then reads — an analytics test that could not write could not test anything —
+  // and the guarantee rule 9 makes is about the code that runs in production, not about the
+  // fixtures that prove it works.
   {
     files: ['src/modules/analytics/**/*.ts'],
+    ignores: ['src/modules/analytics/__tests__/**'],
     rules: { 'fabricxai/analytics-no-writes': 'error' },
   },
 
