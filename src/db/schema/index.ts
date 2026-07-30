@@ -18,6 +18,9 @@ export * from '@/modules/workforce/schema'
 // Phase 4 — 3.1 Fabric & Trims Store (floor-facing; draws bonded stock via 2.2).
 export * from '@/modules/store/schema'
 
+// Phase 9 — X.2 MARBIM Platform. Extraction jobs and chat turns.
+export * from '@/modules/marbim/schema'
+
 // Phase 9 — X.3 Settings & Admin. The one authoritative home for company policy.
 export * from '@/modules/settings/schema'
 
