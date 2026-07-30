@@ -8,6 +8,7 @@
  */
 import { registerModule } from '../core/registry'
 
+import { commitRfq } from './service'
 import { RFQ_ZOD_MAP } from './zod'
 
 export const rfqModule = registerModule({
@@ -17,6 +18,14 @@ export const rfqModule = registerModule({
   zodMap: RFQ_ZOD_MAP,
 
   approvalDefaults: { requiredRoles: ['owner', 'admin', 'merchandiser'] },
+
+  // Without this, an approved enquiry draft would take core's generic write: a raw insert
+  // with camelCase payload keys, no buyer existence check, and — the part that actually
+  // costs something — no `rfq.created` event, so nothing downstream would know the enquiry
+  // existed.
+  commitHandlers: {
+    rfqs: async (ctx, tx, input) => commitRfq(ctx, tx, { payload: input.payload }),
+  },
 
   domainPrimer: {
     version: '1.2.0',

@@ -19,7 +19,7 @@ import { recordChange, registerAuditedTables } from '../core/audit'
 import type { AnyCtx, RequestCtx } from '../core/ctx'
 import { AppError, conflict, notFound } from '../core/errors'
 import { emit } from '../core/outbox'
-import { withTenantRead, withTenantTx } from '../core/tenancy'
+import { withTenantRead, withTenantTx, type TenantDb } from '../core/tenancy'
 
 import { RFQ_EVENTS } from './events'
 import {
@@ -32,7 +32,7 @@ import {
   type RfqStatus,
 } from './rfq'
 import { lossReasons, quotes, rfqClarifications, rfqs } from './schema'
-import { clarificationPayload, rfqPayload } from './zod'
+import { clarificationPayload, rfqPayload, type RfqPayload } from './zod'
 
 /** ⚖ — a quote is the price a year of work gets booked at. */
 registerAuditedTables('quotes')
@@ -60,49 +60,69 @@ function wrapRfqError<T>(run: () => T): T {
 
 export async function createRfq(ctx: RequestCtx, input: unknown): Promise<{ rfqId: string }> {
   const payload = rfqPayload.parse(input)
+  return withTenantTx(ctx, async (tx) => ({ rfqId: (await commitRfq(ctx, tx, { payload })).rowId }))
+}
 
-  return withTenantTx(ctx, async (tx) => {
-    const { buyers } = await import('@/modules/buyers/schema')
-    const [buyer] = await tx
-      .select({ id: buyers.id })
-      .from(buyers)
-      .where(eq(buyers.id, payload.buyerId))
-    if (!buyer) throw notFound('rfq.errors.buyer_not_found', { buyerId: payload.buyerId })
+/**
+ * Create an RFQ inside a caller's transaction.
+ *
+ * Registered as the commit handler for `rfqs`, which is what an approved MARBIM draft of a
+ * buyer enquiry lands through. Without it, core's generic single-row write would insert
+ * straight into the table — skipping the buyer's tenant-scoped existence check and, more
+ * importantly, the `rfq.created` outbox event, so a won enquiry would never have started a
+ * quote. `createRfq` routes through here too, so the two paths cannot drift.
+ */
+export async function commitRfq(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  input: { payload: Record<string, unknown> | RfqPayload },
+): Promise<{ rowId: string; after: Record<string, unknown> }> {
+  // Re-parsed rather than trusted: a draft written weeks ago is validated against the schema
+  // as it stands today (PLAYBOOK §3), and `createRfq` has already parsed the same shape.
+  const payload = rfqPayload.parse(input.payload)
 
-    const [row] = await tx
-      .insert(rfqs)
-      .values({
-        companyId: ctx.companyId,
-        buyerId: payload.buyerId,
-        title: payload.title,
-        productType: payload.productType,
-        description: payload.description ?? null,
-        styleCode: payload.styleCode ?? null,
-        quantity: payload.quantity,
-        unit: payload.unit,
-        sizeRatio: payload.sizeRatio,
-        targetPrice: payload.targetPrice ?? null,
-        targetCurrency: payload.targetCurrency ?? null,
-        currency: payload.currency,
-        deadline: payload.deadline ?? null,
-        requestedShipDate: payload.requestedShipDate ?? null,
-        source: payload.source,
-        ownerUserId: payload.ownerUserId ?? ctx.userId,
-        createdBy: ctx.userId,
-      })
-      .returning({ id: rfqs.id })
+  const { buyers } = await import('@/modules/buyers/schema')
+  const [buyer] = await tx
+    .select({ id: buyers.id })
+    .from(buyers)
+    .where(eq(buyers.id, payload.buyerId))
+  // Read under tenant scope BEFORE the insert. Postgres runs FK checks with RLS bypassed,
+  // so the foreign key alone would happily accept another factory's buyer id.
+  if (!buyer) throw notFound('rfq.errors.buyer_not_found', { buyerId: payload.buyerId })
 
-    if (!row) throw new Error('rfqs insert returned nothing')
-
-    await emit(ctx, tx, {
-      eventName: RFQ_EVENTS.created,
-      payload: { rfqId: row.id, buyerId: payload.buyerId, deadline: payload.deadline ?? null },
-      aggregateTable: 'rfqs',
-      aggregateId: row.id,
+  const [row] = await tx
+    .insert(rfqs)
+    .values({
+      companyId: ctx.companyId,
+      buyerId: payload.buyerId,
+      title: payload.title,
+      productType: payload.productType,
+      description: payload.description ?? null,
+      styleCode: payload.styleCode ?? null,
+      quantity: payload.quantity,
+      unit: payload.unit,
+      sizeRatio: payload.sizeRatio,
+      targetPrice: payload.targetPrice ?? null,
+      targetCurrency: payload.targetCurrency ?? null,
+      currency: payload.currency,
+      deadline: payload.deadline ?? null,
+      requestedShipDate: payload.requestedShipDate ?? null,
+      source: payload.source,
+      ownerUserId: payload.ownerUserId ?? ctx.userId,
+      createdBy: ctx.userId,
     })
+    .returning({ id: rfqs.id })
 
-    return { rfqId: row.id }
+  if (!row) throw new Error('rfqs insert returned nothing')
+
+  await emit(ctx, tx, {
+    eventName: RFQ_EVENTS.created,
+    payload: { rfqId: row.id, buyerId: payload.buyerId, deadline: payload.deadline ?? null },
+    aggregateTable: 'rfqs',
+    aggregateId: row.id,
   })
+
+  return { rowId: row.id, after: { rfqId: row.id, buyerId: payload.buyerId, title: payload.title } }
 }
 
 export async function askClarification(
