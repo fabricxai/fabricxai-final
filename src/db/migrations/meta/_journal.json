@@ -337,6 +337,20 @@
       "when": 1785401967251,
       "tag": "0047_buyer_desk_policies",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1785402452361,
+      "tag": "0048_rfq",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1785402453361,
+      "tag": "0049_rfq_policies",
+      "breakpoints": true
     }
   ]
 }
