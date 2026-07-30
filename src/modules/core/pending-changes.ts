@@ -20,7 +20,7 @@
 import { and, eq, sql } from 'drizzle-orm'
 import type { ZodType } from 'zod'
 
-import { approvalRules, pendingChanges } from '@/db/schema/core'
+import { approvalRules, pendingChangeApprovals, pendingChanges } from '@/db/schema/core'
 
 import { recordChange } from './audit'
 import type { AnyCtx, RequestCtx, Role } from './ctx'
@@ -107,7 +107,12 @@ async function resolveRule(
   tx: TenantDb,
   ctx: AnyCtx,
   draft: { moduleId: string; targetTable: string; operation: Operation },
-): Promise<{ requiredRoles: readonly Role[]; autoApprove: boolean; minConfidence: string | null }> {
+): Promise<{
+  requiredRoles: readonly Role[]
+  autoApprove: boolean
+  minConfidence: string | null
+  approvalsRequired: number
+}> {
   const rules = await tx
     .select()
     .from(approvalRules)
@@ -126,6 +131,7 @@ async function resolveRule(
       requiredRoles: match.requiredRoles,
       autoApprove: match.autoApprove,
       minConfidence: match.minConfidence,
+      approvalsRequired: match.approvalsRequired,
     }
   }
 
@@ -134,6 +140,8 @@ async function resolveRule(
     requiredRoles: definition?.approvalDefaults.requiredRoles ?? ['owner'],
     autoApprove: false,
     minConfidence: null,
+    // A module may declare its own default; absent both, one approver.
+    approvalsRequired: definition?.approvalDefaults.approvalsRequired ?? 1,
   }
 }
 
@@ -217,13 +225,25 @@ export async function propose(
  * row, emit the outbox event, close the draft. A crash anywhere rolls the whole thing
  * back and the draft stays reviewable.
  */
-export async function approve(
-  ctx: RequestCtx,
-  input: ApproveInput,
-): Promise<{ committedRowId: string }> {
-  type Failure = { schemaError: AppError }
+export interface ApproveResult {
+  /**
+   * Null while the draft is still short of `approvals_required`. A caller that treats a
+   * null as success would report a two-approver change as done on the first click.
+   */
+  committedRowId: string | null
+  status: 'committed' | 'awaiting_approvals'
+  approvals: number
+  approvalsRequired: number
+}
 
-  const outcome = await withTenantTx(ctx, async (tx): Promise<{ rowId: string } | Failure> => {
+export async function approve(ctx: RequestCtx, input: ApproveInput): Promise<ApproveResult> {
+  type Failure = { schemaError: AppError }
+  type Awaiting = { awaiting: { approvals: number; required: number } }
+  type Committed = { rowId: string; approvals: number; required: number }
+
+  const outcome = await withTenantTx(
+    ctx,
+    async (tx): Promise<Committed | Failure | Awaiting> => {
     // FOR UPDATE: a concurrent second approve blocks here, then finds the status already
     // moved on and gets a 409. Exactly one commit ever happens.
     const [draft] = await tx
@@ -247,6 +267,51 @@ export async function approve(
 
     if (!rule.requiredRoles.some((role) => ctx.roles.includes(role))) {
       throw new AppError('forbidden', 'errors.not_an_approver', { required: rule.requiredRoles })
+    }
+
+    // ── Multi-approver ──
+    //
+    // `approvals_required` was stored and ignored until now. A rule demanding two approvers
+    // is a rule about two DIFFERENT people, so this records the approval per (draft,
+    // approver) and only commits once the threshold is met. The unique index means the same
+    // person clicking twice is one approval — otherwise a two-approver control is a
+    // one-approver control with extra steps.
+    const approvedAsRole = rule.requiredRoles.find((role) => ctx.roles.includes(role))!
+
+    const [existingApproval] = await tx
+      .select({ id: pendingChangeApprovals.id })
+      .from(pendingChangeApprovals)
+      .where(
+        and(
+          eq(pendingChangeApprovals.pendingChangeId, draft.id),
+          eq(pendingChangeApprovals.approverUserId, ctx.userId),
+        ),
+      )
+
+    if (!existingApproval) {
+      await tx.insert(pendingChangeApprovals).values({
+        companyId: ctx.companyId,
+        pendingChangeId: draft.id,
+        approverUserId: ctx.userId,
+        approvedAsRole,
+        corrections: input.corrections ?? {},
+        note: input.note ?? null,
+      })
+    }
+
+    const approvals = await tx
+      .select({ approverUserId: pendingChangeApprovals.approverUserId })
+      .from(pendingChangeApprovals)
+      .where(eq(pendingChangeApprovals.pendingChangeId, draft.id))
+
+    const required = rule.approvalsRequired
+
+    if (approvals.length < required) {
+      // Recorded, not committed. The draft stays `pending` so it remains in every other
+      // approver's inbox, and this reviewer's corrections are kept against their name.
+      return {
+        awaiting: { approvals: approvals.length, required },
+      }
     }
 
     // The reviewer's edits join the payload BEFORE re-validation — a correction must not
@@ -354,11 +419,27 @@ export async function approve(
       })
       .where(eq(pendingChanges.id, draft.id))
 
-    return { rowId }
-  })
+    return { rowId, approvals: approvals.length, required }
+  },
+  )
 
   if ('schemaError' in outcome) throw outcome.schemaError
-  return { committedRowId: outcome.rowId }
+
+  if ('awaiting' in outcome) {
+    return {
+      committedRowId: null,
+      status: 'awaiting_approvals',
+      approvals: outcome.awaiting.approvals,
+      approvalsRequired: outcome.awaiting.required,
+    }
+  }
+
+  return {
+    committedRowId: outcome.rowId,
+    status: 'committed',
+    approvals: outcome.approvals,
+    approvalsRequired: outcome.required,
+  }
 }
 
 /** Reject a draft. No target row is touched; the decision is still audited. */

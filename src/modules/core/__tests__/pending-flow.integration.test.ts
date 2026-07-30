@@ -300,6 +300,68 @@ describe('gate B · propose → approve → commit → audit', () => {
     }
   })
 
+  it('9b · a two-approver rule does not commit on the first approval', async () => {
+    // `approvals_required` was stored and ignored until now. A rule demanding two approvers
+    // is a rule about two DIFFERENT people.
+    await db.insert(approvalRules).values({
+      companyId: COMPANY_A,
+      moduleId: '__demo__',
+      targetTable: 'demo_widgets',
+      requiredRoles: ['owner', 'admin'],
+      approvalsRequired: 2,
+      priority: 600,
+    })
+
+    const secondApprover = `gate-b-second-${randomUUID().slice(0, 8)}`
+    await db.insert(users).values({
+      id: secondApprover,
+      email: `${secondApprover}@fabricxai.test`,
+      name: 'Second Approver',
+    })
+
+    let draftId: string | null = null
+    try {
+      const before = await countWidgets(COMPANY_A)
+      const { id } = await propose(ctxA, draft())
+      draftId = id
+
+      const first = await approve(ctxA, { pendingChangeId: id })
+      expect(first.status).toBe('awaiting_approvals')
+      expect(first.committedRowId).toBeNull()
+      expect(first.approvals).toBe(1)
+      expect(await countWidgets(COMPANY_A)).toBe(before)
+
+      // The same person clicking again is still one approval — otherwise a two-approver
+      // control is a one-approver control with extra steps.
+      const again = await approve(ctxA, { pendingChangeId: id })
+      expect(again.status).toBe('awaiting_approvals')
+      expect(again.approvals).toBe(1)
+      expect(await countWidgets(COMPANY_A)).toBe(before)
+
+      // The draft stays pending, so it is still in the other approver's inbox.
+      const [stillPending] = await db
+        .select()
+        .from(pendingChanges)
+        .where(eq(pendingChanges.id, id))
+      expect(stillPending?.status).toBe('pending')
+
+      const second = await approve(
+        { ...ctxA, userId: secondApprover, roles: ['admin'] },
+        { pendingChangeId: id },
+      )
+      expect(second.status).toBe('committed')
+      expect(second.committedRowId).not.toBeNull()
+      expect(await countWidgets(COMPANY_A)).toBe(before + 1)
+    } finally {
+      await db.delete(approvalRules).where(eq(approvalRules.companyId, COMPANY_A))
+      // The approval rows must go before the approver: `approver_user_id` is ON DELETE
+      // RESTRICT on purpose — "who signed off on this" must survive somebody being
+      // removed. Deleting the draft cascades them.
+      if (draftId) await db.delete(pendingChanges).where(eq(pendingChanges.id, draftId))
+      await db.delete(users).where(eq(users.id, secondApprover))
+    }
+  })
+
   it('10 · a non-approver role is refused', async () => {
     const { id } = await propose(ctxA, draft())
     const viewer: RequestCtx = { ...ctxA, roles: ['viewer'] }

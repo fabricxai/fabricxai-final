@@ -404,6 +404,46 @@ export const pendingChanges = pgTable(
  * `auto_approve` still requires `min_confidence` to be met by EVERY field in the draft,
  * which is why confidence is stored per field rather than as one number.
  */
+/**
+ * One reviewer's approval of one draft.
+ *
+ * Exists so `approval_rules.approvals_required` can mean something. A rule demanding two
+ * approvers is a rule about two DIFFERENT people, so the unique index is on
+ * (pending_change, approver) — the same person clicking twice is one approval, and letting
+ * it count twice would turn a two-approver control into a one-approver control with extra
+ * steps.
+ *
+ * Append-only. A withdrawn approval is not deleted; the draft is rejected and re-raised,
+ * because "who signed off on this and when" must survive somebody changing their mind.
+ */
+export const pendingChangeApprovals = pgTable(
+  'pending_change_approvals',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    companyId: uuid('company_id')
+      .notNull()
+      .references(() => companies.id, { onDelete: 'cascade' }),
+    pendingChangeId: uuid('pending_change_id')
+      .notNull()
+      .references(() => pendingChanges.id, { onDelete: 'cascade' }),
+
+    approverUserId: text('approver_user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'restrict' }),
+    /** The role that qualified them, recorded because roles change. */
+    approvedAsRole: roleNameEnum('approved_as_role').notNull(),
+    /** What this reviewer edited. The correction telemetry, per approver. */
+    corrections: jsonb('corrections').$type<Record<string, unknown>>().notNull().default({}),
+    note: text('note'),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('pending_change_approvals_unique').on(t.pendingChangeId, t.approverUserId),
+    index('pending_change_approvals_company_idx').on(t.companyId, t.pendingChangeId),
+  ],
+).enableRLS()
+
 export const approvalRules = pgTable(
   'approval_rules',
   {

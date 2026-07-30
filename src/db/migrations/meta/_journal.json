@@ -309,6 +309,20 @@
       "when": 1785387037315,
       "tag": "0043_finance_policies",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1785395002967,
+      "tag": "0044_pending_change_approvals",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1785395003967,
+      "tag": "0045_pending_change_approvals_policies",
+      "breakpoints": true
     }
   ]
 }
