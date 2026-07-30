@@ -358,6 +358,20 @@
       "when": 1785403533349,
       "tag": "0050_order_source_rfq",
       "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1785411073896,
+      "tag": "0051_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1785411074896,
+      "tag": "0052_settings_policies",
+      "breakpoints": true
     }
   ]
 }
