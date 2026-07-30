@@ -1,9 +1,9 @@
 /**
  * 8.1 Finishing, Cartons & Shipment ⚖
  *
- * The last module before goods leave the country. It carries two of the five named gates
- * (CLAUDE.md rule 8): the EXP number before bank documents, and the LC latest-shipment
- * conflict. Three schema decisions follow from that:
+ * The last module before goods leave the country. It carries three of the six named gates
+ * (CLAUDE.md rule 8): the EXP number before bank documents, the LC latest-shipment
+ * conflict, and final-inspection pass before departure. Three schema decisions follow:
  *
  *  1. **`shipments.exp_number` is nullable, and the gate is in the service.** An EXP number
  *     is issued by the bank against a specific shipment and often arrives after the goods
@@ -174,6 +174,12 @@ export const shipments = pgTable(
     portStatus: portStatusEnum('port_status').notNull().default('planned'),
     /** Set when a tolerance breach was knowingly accepted, with the approval that did it. */
     toleranceOverride: jsonb('tolerance_override').$type<Record<string, unknown> | null>(),
+    /**
+     * Set when a FAILED final inspection was knowingly waived. A buyer does sometimes accept
+     * a failed lot at a discount; the waiver records who decided that and why, because the
+     * alternative is a shipment that departed against its own QC verdict with no trace.
+     */
+    qcWaiver: jsonb('qc_waiver').$type<Record<string, unknown> | null>(),
 
     createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

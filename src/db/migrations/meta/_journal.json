@@ -274,6 +274,13 @@
       "when": 1785377026798,
       "tag": "0038_shipment_policies",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1785379681949,
+      "tag": "0039_shipment_qc_waiver",
+      "breakpoints": true
     }
   ]
 }

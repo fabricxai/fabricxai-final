@@ -26,6 +26,9 @@ import { syncBatch } from '@/modules/core/offline-sync'
 import { approve } from '@/modules/core/pending-changes'
 import { withTenantRead } from '@/modules/core/tenancy'
 import { orderBreakdowns, orders, orderStyles } from '@/modules/orders/schema'
+import '@/modules/quality/register'
+import { finalInspections } from '@/modules/quality/schema'
+import { runFinalInspection, upsertDefectCode } from '@/modules/quality/service'
 import '@/modules/shipment/register'
 import {
   cartons,
@@ -50,6 +53,7 @@ import {
   remainingToPackFor,
   setDocStatus,
   setExpNumber,
+  waiveFinalInspection,
 } from '@/modules/shipment/service'
 
 const client = createDirectClient()
@@ -138,6 +142,16 @@ beforeAll(async () => {
     })
     .returning({ id: lcs.id })
   lateLcId = late!.id
+
+  await upsertDefectCode(
+    { companyId: COMPANY, userId: USER, roles: ['quality'] },
+    {
+      category: 'stitching',
+      code: 'BROKEN_STITCH',
+      label: 'Broken stitch',
+      severity: 'major',
+    },
+  )
 })
 
 afterAll(async () => {
@@ -148,7 +162,32 @@ afterAll(async () => {
   await client.end()
 })
 
+const QC_POLICY = {
+  aqlStandard: 'ansi-z1.4',
+  fabricMaxPointsPer100SqYd: '40',
+  repeatDefectDays: 3,
+}
+
+/** A final inspection with the given verdict, so the departure gate has something to read. */
+const inspect = async (verdict: 'pass' | 'fail') =>
+  runFinalInspection(
+    { companyId: COMPANY, userId: USER, roles: ['quality'] },
+    {
+      orderId,
+      orderStyleId,
+      inspectionNo: `FI-${randomUUID().slice(0, 8)}`,
+      lotQty: 400,
+      inspectionLevel: 'II',
+      majorAql: '2.5',
+      minorAql: '4.0',
+      // 400 pieces → sample 50, majors accept 3. Six majors fails it.
+      defects: verdict === 'fail' ? [{ code: 'BROKEN_STITCH', count: 6 }] : [],
+    },
+    QC_POLICY,
+  )
+
 const reset = async () => {
+  await db.delete(finalInspections).where(eq(finalInspections.companyId, COMPANY))
   await db.delete(cartons).where(eq(cartons.companyId, COMPANY))
   await db.delete(packingLists).where(eq(packingLists.companyId, COMPANY))
   await db.delete(shipments).where(eq(shipments.companyId, COMPANY))
@@ -488,6 +527,9 @@ describe('8.1 · ex-factory', () => {
     })
     const shipment = await newShipment(over)
     await loadCartons(ctx, { shipmentId: shipment.shipmentId, cartonIds: [carton.cartonId] })
+    // The departure gate reads the latest final inspection; give it a passing one unless a
+    // test is specifically exercising the gate.
+    await inspect('pass')
     return shipment.shipmentId
   }
 
@@ -561,6 +603,7 @@ describe('8.1 · ex-factory', () => {
     await reset()
     await finishAll()
     const shipment = await newShipment()
+    await inspect('pass')
 
     await expect(
       confirmExFactory(ctx, { shipmentId: shipment.shipmentId, actualExFactory: '2026-08-10' }),
@@ -594,6 +637,149 @@ describe('8.1 · ex-factory', () => {
 
     const [row] = await db.select().from(shipments).where(eq(shipments.id, shipmentId))
     expect(row!.blAwb).toBe('BL-123')
+  })
+})
+
+describe('8.1 · the final-inspection gate (7.1 → 8.1)', () => {
+  /** Loaded and ready to leave, with NO inspection on record yet. */
+  const readyToDepart = async () => {
+    await reset()
+    await finishAll()
+    const carton = await packCarton(ctx, {
+      orderId,
+      cartonNo: `CTN-${randomUUID().slice(0, 6)}`,
+      contents: ORDERED,
+    })
+    const shipment = await newShipment()
+    await loadCartons(ctx, { shipmentId: shipment.shipmentId, cartonIds: [carton.cartonId] })
+    return shipment.shipmentId
+  }
+
+  it('blocks departure when no final inspection exists at all', async () => {
+    const shipmentId = await readyToDepart()
+
+    // Unlike the LC checks, this one blocks: the goods have not left yet, so refusing is
+    // still actionable.
+    await expect(
+      confirmExFactory(ctx, { shipmentId, actualExFactory: '2026-08-10' }),
+    ).rejects.toThrow(/final_inspection/)
+
+    const [row] = await db.select().from(shipments).where(eq(shipments.id, shipmentId))
+    expect(row!.portStatus).toBe('planned')
+    expect(row!.actualExFactory).toBeNull()
+  })
+
+  it('blocks departure on a FAILED inspection, and records the attempt', async () => {
+    const shipmentId = await readyToDepart()
+    await inspect('fail')
+    await db.execute(sql`delete from outbox where company_id = ${COMPANY}`)
+
+    await expect(
+      confirmExFactory(ctx, { shipmentId, actualExFactory: '2026-08-10' }),
+    ).rejects.toThrow(/final_inspection/)
+
+    // The trail survives the rolled-back transaction.
+    const rows = await db.execute<{ n: string }>(
+      sql`select count(*)::text as n from outbox
+          where company_id = ${COMPANY} and event_name = 'shipment.final_inspection.blocked'`,
+    )
+    const list = Array.isArray(rows) ? rows : ((rows as { rows?: unknown[] }).rows ?? [])
+    expect(Number((list[0] as { n: string }).n)).toBe(1)
+  })
+
+  it('lets the goods go once the inspection passes', async () => {
+    const shipmentId = await readyToDepart()
+    await inspect('pass')
+
+    const result = await confirmExFactory(ctx, { shipmentId, actualExFactory: '2026-08-10' })
+    expect(result.shippedQty).toBe(400)
+  })
+
+  it('blocks again when a re-inspection fails after a pass', async () => {
+    const shipmentId = await readyToDepart()
+    await inspect('pass')
+    await inspect('fail')
+
+    // The LATEST verdict decides. "Has ever passed" would ship this.
+    await expect(
+      confirmExFactory(ctx, { shipmentId, actualExFactory: '2026-08-10' }),
+    ).rejects.toThrow(/final_inspection/)
+  })
+
+  it('a waiver from commercial clears it, and says who and why', async () => {
+    const shipmentId = await readyToDepart()
+    await inspect('fail')
+
+    const commercialCtx: RequestCtx = {
+      companyId: COMPANY,
+      userId: USER,
+      roles: ['commercial'],
+    }
+    await waiveFinalInspection(commercialCtx, {
+      shipmentId,
+      reason: 'Buyer accepted the lot at a 3% discount; confirmed by email 2026-08-09.',
+    })
+
+    const result = await confirmExFactory(ctx, { shipmentId, actualExFactory: '2026-08-10' })
+    expect(result.shippedQty).toBe(400)
+
+    const [row] = await db.select().from(shipments).where(eq(shipments.id, shipmentId))
+    const waiver = row!.qcWaiver as Record<string, unknown>
+    expect(waiver.waivedBy).toBe(USER)
+    expect(waiver.reasonKey).toBe('gates.final_inspection.failed')
+  })
+
+  it('a shipment clerk cannot waive it', async () => {
+    const shipmentId = await readyToDepart()
+    await inspect('fail')
+
+    // The control is in code, not in approval config — a control that lives only in
+    // `approval_rules` is one somebody can edit their way past.
+    await expect(
+      waiveFinalInspection(ctx, {
+        shipmentId,
+        reason: 'we need to ship today, buyer is waiting',
+      }),
+    ).rejects.toThrow(/waiver_needs_commercial/)
+  })
+
+  it('refuses a waiver with no real reason', async () => {
+    const shipmentId = await readyToDepart()
+    await inspect('fail')
+
+    const ownerish: RequestCtx = { companyId: COMPANY, userId: USER, roles: ['owner'] }
+    await expect(
+      waiveFinalInspection(ownerish, { shipmentId, reason: 'ok' }),
+    ).rejects.toThrow(/waiver_needs_reason/)
+  })
+
+  it('refuses a waiver when the inspection actually passed', async () => {
+    const shipmentId = await readyToDepart()
+    await inspect('pass')
+
+    // A waiver on a clean lot would sit on the row implying a problem that never existed.
+    const ownerish: RequestCtx = { companyId: COMPANY, userId: USER, roles: ['owner'] }
+    await expect(
+      waiveFinalInspection(ownerish, {
+        shipmentId,
+        reason: 'belt and braces, nothing actually wrong here',
+      }),
+    ).rejects.toThrow(/nothing_to_waive/)
+  })
+
+  it('refuses a waiver after the goods have left', async () => {
+    const shipmentId = await readyToDepart()
+    await inspect('pass')
+    await confirmExFactory(ctx, { shipmentId, actualExFactory: '2026-08-10' })
+    await inspect('fail')
+
+    const ownerish: RequestCtx = { companyId: COMPANY, userId: USER, roles: ['owner'] }
+    await expect(
+      waiveFinalInspection(ownerish, {
+        shipmentId,
+        reason: 'retroactively accepting the failed re-inspection',
+      }),
+    ).rejects.toThrow(/already_departed/)
   })
 })
 

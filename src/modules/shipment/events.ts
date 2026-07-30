@@ -17,6 +17,10 @@ export const SHIPMENT_EVENTS = {
   expMissing: 'shipment.exp.missing',
   /** LC latest-shipment deadline approaching or passed with a balance outstanding. */
   latestShipmentCountdown: 'shipment.lc_latest_shipment.countdown',
+  /** Departure refused because final inspection had not passed. Somebody tried. */
+  finalInspectionBlocked: 'shipment.final_inspection.blocked',
+  /** A failed final inspection was knowingly waived, by whom and why. */
+  finalInspectionWaived: 'shipment.final_inspection.waived',
 } as const
 
 export type ShipmentEventName = (typeof SHIPMENT_EVENTS)[keyof typeof SHIPMENT_EVENTS]

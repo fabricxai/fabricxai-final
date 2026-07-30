@@ -1,7 +1,7 @@
 /**
  * 8.1 Finishing, Cartons & Shipment — service layer ⚖
  *
- * Two of the five named gates live here (rule 8):
+ * Three of the six named gates live here (rule 8):
  *
  *  1. **EXP number before bank documents.** An export permit number is mandatory per
  *     export shipment before the documents go to the bank. `handoffDocsToBank` refuses
@@ -9,6 +9,11 @@
  *  2. **LC latest-shipment.** Confirming ex-factory after the LC's latest-shipment date is
  *     a discrepancy the bank can refuse the whole presentation on, so it is checked at the
  *     moment goods leave, against 2.1's own conflict detector.
+ *  3. **Final inspection passed before departure** (7.1 → 8.1). This one BLOCKS, unlike the
+ *     LC checks: the goods have not left yet — that is what `confirmExFactory` records — so
+ *     refusing is still actionable, and shipping a lot the factory's own inspection failed
+ *     is the one thing final inspection exists to prevent. Waivable by owner or commercial,
+ *     never silently.
  *
  * Plus the LC tolerance band, which is a WARNING that escalates rather than a hard block:
  * a factory that has already made 1,060 pieces against a 1,050 ceiling cannot un-make
@@ -20,7 +25,7 @@ import { and, asc, desc, eq, inArray, isNotNull, isNull, lte } from 'drizzle-orm
 import { recordChange, registerAuditedTables } from '../core/audit'
 import type { AnyCtx, RequestCtx } from '../core/ctx'
 import { AppError, conflict, notFound } from '../core/errors'
-import { GATES } from '../core/gates'
+import { assertGate, GATES } from '../core/gates'
 import { emit } from '../core/outbox'
 import { defineStateMachine } from '../core/state-machine'
 import { withTenantRead, withTenantTx, type TenantDb } from '../core/tenancy'
@@ -776,6 +781,39 @@ export async function confirmExFactory(
 
     const shippedQty = sumPieces(loaded)
 
+    // ── The final-inspection gate ──
+    //
+    // Unlike the LC checks below, this one BLOCKS. The goods have not left yet — that is
+    // exactly what this call is recording — so refusing is still actionable, and shipping a
+    // lot the factory's own inspection failed is the one thing final inspection exists to
+    // prevent. A waiver on the shipment clears it, because a buyer does sometimes accept a
+    // failed lot at a discount; nothing else does.
+    if (!shipment.qcWaiver) {
+      const { resolveFinalInspectionGate } = await import('../quality/service')
+      const qc = await resolveFinalInspectionGate(ctx, tx, { orderId: shipment.orderId })
+
+      if (!qc.passed) {
+        // Recorded in its own transaction, for the same reason the EXP refusal is: emitting
+        // inside this one would roll the trail back with the throw.
+        await withTenantTx(ctx, async (trail) => {
+          await emit(ctx, trail, {
+            eventName: SHIPMENT_EVENTS.finalInspectionBlocked,
+            payload: {
+              shipmentId: shipment.id,
+              orderId: shipment.orderId,
+              reasonKey: qc.reasonKey ?? 'gates.final_inspection.blocked',
+              attemptedBy: ctx.userId,
+              ...qc.facts,
+            },
+            aggregateTable: 'shipments',
+            aggregateId: shipment.id,
+          })
+        })
+
+        assertGate(GATES.finalInspection, qc)
+      }
+    }
+
     // ── The LC checks ──
     let tolerance: ToleranceResult | null = null
     let lcConflicts: unknown[] = []
@@ -1439,6 +1477,91 @@ export async function emitLatestShipmentCountdown(
       })
     }
     return { raised: alerts.length }
+  })
+}
+
+/**
+ * Waive a FAILED final inspection so a shipment may depart ⚖.
+ *
+ * Restricted to owner and commercial in code, not in approval config — the same shape as
+ * costing's below-the-floor rule, and for the same reason: a control that lives only in
+ * `approval_rules` is a control somebody can edit their way past.
+ *
+ * Refused when the inspection actually passed. A waiver on a clean lot is a waiver nobody
+ * needs, and it would sit on the row implying a problem that never existed.
+ */
+export async function waiveFinalInspection(
+  ctx: RequestCtx,
+  input: { shipmentId: string; reason: string },
+): Promise<{ shipmentId: string; waivedBy: string }> {
+  if (!ctx.roles.some((role) => role === 'owner' || role === 'commercial')) {
+    throw new AppError('forbidden', 'shipment.errors.waiver_needs_commercial', {
+      gate: GATES.finalInspection,
+      roles: ctx.roles,
+    })
+  }
+
+  if (input.reason.trim().length < 10) {
+    // "ok" is not a reason. This field is the entire justification a later auditor has.
+    throw new AppError('validation_failed', 'shipment.errors.waiver_needs_reason', {})
+  }
+
+  return withTenantTx(ctx, async (tx) => {
+    const [shipment] = await tx
+      .select()
+      .from(shipments)
+      .where(eq(shipments.id, input.shipmentId))
+      .for('update')
+
+    if (!shipment) {
+      throw notFound('shipment.errors.shipment_not_found', { shipmentId: input.shipmentId })
+    }
+    if (shipment.portStatus !== 'planned') {
+      // The goods have already left. Waiving after the fact would backdate a decision.
+      throw conflict('shipment.errors.shipment_already_departed', {
+        shipmentId: shipment.id,
+        portStatus: shipment.portStatus,
+      })
+    }
+
+    const { resolveFinalInspectionGate } = await import('../quality/service')
+    const qc = await resolveFinalInspectionGate(ctx, tx, { orderId: shipment.orderId })
+
+    if (qc.passed) {
+      throw new AppError('validation_failed', 'shipment.errors.nothing_to_waive', {
+        shipmentId: shipment.id,
+      })
+    }
+
+    const waiver = {
+      reasonKey: qc.reasonKey ?? 'gates.final_inspection.blocked',
+      facts: qc.facts ?? {},
+      reason: input.reason,
+      waivedBy: ctx.userId,
+      waivedAt: new Date().toISOString(),
+    }
+
+    await tx
+      .update(shipments)
+      .set({ qcWaiver: waiver, updatedAt: new Date() })
+      .where(eq(shipments.id, shipment.id))
+
+    await recordChange(ctx, tx, {
+      action: 'update',
+      targetTable: 'shipments',
+      targetId: shipment.id,
+      before: { qcWaiver: shipment.qcWaiver },
+      after: { qcWaiver: waiver },
+    })
+
+    await emit(ctx, tx, {
+      eventName: SHIPMENT_EVENTS.finalInspectionWaived,
+      payload: { shipmentId: shipment.id, orderId: shipment.orderId, ...waiver },
+      aggregateTable: 'shipments',
+      aggregateId: shipment.id,
+    })
+
+    return { shipmentId: shipment.id, waivedBy: ctx.userId }
   })
 }
 

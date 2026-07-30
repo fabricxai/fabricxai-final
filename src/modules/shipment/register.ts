@@ -52,6 +52,11 @@ THE TWO GATES — never talk around either
   made. If it is missing, say so and say that the bank issues it. Never suggest proceeding.
 - LC LATEST SHIPMENT: goods shipped after the LC's latest-shipment date are a discrepancy
   the bank can refuse the whole presentation on. Flag it the moment it is close.
+- FINAL INSPECTION: goods may not leave the factory until the final AQL inspection has
+  PASSED, and the latest verdict is the one that counts — a lot that passed, was reworked
+  and failed a re-inspection has not passed. Only an owner or commercial can waive it, and
+  only with a written reason; a buyer does sometimes accept a failed lot at a discount, but
+  that is their decision to make and it gets recorded. Never suggest departing without it.
 
 LC TOLERANCE IS A BAND, NOT A CEILING
 A 5% tolerance on 1,000 pieces permits 950 to 1,050. Shipping 900 is a discrepancy exactly
