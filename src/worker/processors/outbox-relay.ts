@@ -42,8 +42,39 @@ interface OutboxRow extends Record<string, unknown> {
  * Which queue an event lands on. Events are named `<module>.<aggregate>.<verb>`; for now
  * everything fans out to `notify`, and modules refine this as their job families land.
  */
-function queueFor(_eventName: string): QueueName {
-  return QUEUE.notify
+/**
+ * Which queue an event belongs on.
+ *
+ * Was a single-branch stub returning `notify` for everything, which meant a burst of one
+ * kind of work could starve every other kind — the exact thing separate queues exist to
+ * prevent (architecture §8.4).
+ *
+ * Matched by PREFIX on the event name rather than by an exhaustive map: a module adding an
+ * event should not have to edit the relay, and an unrecognised event going to `notify` is a
+ * safe default — somebody gets told about it either way.
+ */
+const QUEUE_ROUTES: readonly { prefix: string; queue: QueueName }[] = [
+  // Cross-module consequences: one module's committed fact becoming another's write. These
+  // are the jobs that must not queue behind a digest.
+  { prefix: 'shipment.docs.ready_for_bank', queue: QUEUE.derive },
+  { prefix: 'shipment.ex_factory.confirmed', queue: QUEUE.derive },
+  { prefix: 'finance.realized', queue: QUEUE.derive },
+  { prefix: 'cutting.order.complete', queue: QUEUE.derive },
+  { prefix: 'quality.final.', queue: QUEUE.derive },
+  { prefix: 'quality.dhu.day_closed', queue: QUEUE.derive },
+  { prefix: 'planning.sewing_window.changed', queue: QUEUE.derive },
+  { prefix: 'sampling.pp_approved', queue: QUEUE.derive },
+  { prefix: 'production.day.closed', queue: QUEUE.derive },
+
+  // Document rendering.
+  { prefix: 'procurement.po.issued', queue: QUEUE.renderPdf },
+  { prefix: 'shipment.packing_list.approved', queue: QUEUE.renderPdf },
+
+  // Everything else is somebody being told something.
+]
+
+function queueFor(eventName: string): QueueName {
+  return QUEUE_ROUTES.find((route) => eventName.startsWith(route.prefix))?.queue ?? QUEUE.notify
 }
 
 export async function relayOnce(batchSize = BATCH_SIZE): Promise<{ relayed: number }> {

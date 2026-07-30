@@ -12,11 +12,12 @@
 // In production the container supplies the environment and this is a no-op.
 import 'dotenv/config'
 
-import { Worker } from 'bullmq'
+import { Worker, type Job } from 'bullmq'
 
 import { env } from '@/lib/env'
 import { createQueueConnection, getRedis } from '@/lib/redis'
 
+import { EVENT_HANDLERS, runEventConsumer, type EventJobData } from './processors/consumers'
 import { startOutboxRelay } from './processors/outbox-relay'
 import {
   fanOutScheduledTask,
@@ -49,10 +50,25 @@ async function main() {
     }),
     // The real work, one job per company. Concurrency here is what decides how fast a
     // fleet of tenants gets through its nightly derivations.
-    new Worker<DeriveJobData>(QUEUE.derive, runDeriveTask, {
-      connection: createQueueConnection(),
-      concurrency: env.WORKER_CONCURRENCY,
-    }),
+    //
+    // Two kinds of job share this queue: the scheduler's per-company fan-out, and the
+    // relay's cross-module event consumers. They are told apart by job NAME — the
+    // scheduler names its jobs after the task, the relay names them after the event — and
+    // they share a queue deliberately, because both are "derived work that must not block
+    // a request" and splitting them would double the worker count for no isolation gain.
+    new Worker<DeriveJobData | EventJobData>(
+      QUEUE.derive,
+      async (job) => {
+        if (job.name in EVENT_HANDLERS) {
+          return runEventConsumer(job as Job<EventJobData>)
+        }
+        return runDeriveTask(job as Job<DeriveJobData>)
+      },
+      {
+        connection: createQueueConnection(),
+        concurrency: env.WORKER_CONCURRENCY,
+      },
+    ),
   ]
 
   for (const worker of workers) {

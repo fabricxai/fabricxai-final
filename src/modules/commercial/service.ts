@@ -771,7 +771,8 @@ export async function openBtb(
 
 /** Open a presentation for a shipment, from the checklist 8.1 handed off. */
 export async function openSubmission(
-  ctx: RequestCtx,
+  // AnyCtx: the 8.1 → 2.1 consumer opens presentations as a system actor.
+  ctx: AnyCtx,
   input: {
     lcId: string
     shipmentId?: string

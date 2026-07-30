@@ -203,7 +203,8 @@ async function resolveBuyerLag(
  * actual cost, and a receivable marked fully realized at the invoice value would lose it.
  */
 export async function postRealizationToReceivable(
-  ctx: RequestCtx,
+  // AnyCtx: the 2.1 → 11.1 consumer closes receivables as a system actor.
+  ctx: AnyCtx,
   input: {
     invoiceId: string
     submissionId?: string
