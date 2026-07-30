@@ -665,3 +665,46 @@ function dayGap(from: string, to: string): number {
 }
 
 export { conflict }
+
+/**
+ * The loss taxonomy a fresh factory needs (brief: "seeded taxonomy: price, capacity,
+ * compliance, sample, other").
+ *
+ * `markLost` refuses a code that is not in this table, so without it a new factory cannot
+ * lose an RFQ at all. Idempotent and non-destructive: a code the factory has renamed or
+ * added to is left alone.
+ */
+export async function seedDefaultLossReasons(
+  ctx: AnyCtx,
+): Promise<{ created: string[]; existing: string[] }> {
+  const defaults: readonly [string, string][] = [
+    ['price', 'Price too high'],
+    ['capacity', 'No capacity in the requested window'],
+    ['compliance', 'Failed a compliance or audit requirement'],
+    ['sample', 'Sample rejected'],
+    ['leadtime', 'Lead time too long'],
+    ['other', 'Other'],
+  ]
+
+  return withTenantTx(ctx, async (tx) => {
+    const created: string[] = []
+    const existing: string[] = []
+
+    for (const [code, label] of defaults) {
+      const [already] = await tx
+        .select({ code: lossReasons.code })
+        .from(lossReasons)
+        .where(eq(lossReasons.code, code))
+
+      if (already) {
+        existing.push(code)
+        continue
+      }
+
+      await tx.insert(lossReasons).values({ companyId: ctx.companyId, code, label })
+      created.push(code)
+    }
+
+    return { created, existing }
+  })
+}

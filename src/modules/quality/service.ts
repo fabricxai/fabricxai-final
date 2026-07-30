@@ -1082,3 +1082,74 @@ function dayGap(from: string, to: string): number {
 export const offlineCaptureInlineCheck = captureInlineCheckIn
 
 export { conflict }
+
+/**
+ * The defect taxonomy a fresh factory needs (brief: "seeded standard taxonomy,
+ * company-extendable").
+ *
+ * Without it `captureInlineCheck` and `runFinalInspection` refuse every code, so a new
+ * factory cannot record a defect at all.
+ *
+ * **The severities are the load-bearing part**, and they are judgement: `severity` is what
+ * an AQL verdict is computed against, so classifying a broken needle as major rather than
+ * critical would let a lot pass that should fail on sight. The set below is deliberately
+ * conservative — anything that can injure the wearer is critical, anything a buyer would
+ * reject the garment for is major, and cosmetic issues are minor. A factory's own QA manager
+ * should review it against their buyers' manuals before relying on it.
+ *
+ * Idempotent: a code the factory has re-classified is left exactly as it is.
+ */
+export async function seedDefaultDefectCodes(
+  ctx: AnyCtx,
+): Promise<{ created: string[]; existing: string[] }> {
+  const defaults: readonly {
+    category: string
+    code: string
+    label: string
+    severity: 'critical' | 'major' | 'minor'
+  }[] = [
+    // Critical: can injure the person wearing it. No acceptance number applies.
+    { category: 'safety', code: 'BROKEN_NEEDLE', label: 'Broken needle in garment', severity: 'critical' },
+    { category: 'safety', code: 'SHARP_OBJECT', label: 'Sharp object or metal contamination', severity: 'critical' },
+    { category: 'safety', code: 'CHOKING_HAZARD', label: 'Detachable small part (choking hazard)', severity: 'critical' },
+
+    // Major: a buyer would reject the garment.
+    { category: 'stitching', code: 'BROKEN_STITCH', label: 'Broken stitch', severity: 'major' },
+    { category: 'stitching', code: 'OPEN_SEAM', label: 'Open or unsecured seam', severity: 'major' },
+    { category: 'stitching', code: 'PUCKERING', label: 'Seam puckering', severity: 'major' },
+    { category: 'measurement', code: 'OUT_OF_SPEC', label: 'Measurement out of tolerance', severity: 'major' },
+    { category: 'fabric', code: 'FABRIC_HOLE', label: 'Hole or tear in fabric', severity: 'major' },
+    { category: 'fabric', code: 'SHADE_VARIATION', label: 'Shade variation within garment', severity: 'major' },
+    { category: 'labelling', code: 'WRONG_LABEL', label: 'Wrong or missing care/size label', severity: 'major' },
+    { category: 'trims', code: 'ZIPPER_FAULT', label: 'Zipper does not run', severity: 'major' },
+
+    // Minor: cosmetic, and a buyer allows a few per lot.
+    { category: 'stitching', code: 'SKIP_STITCH', label: 'Skipped stitch', severity: 'minor' },
+    { category: 'stitching', code: 'UNEVEN_TOPSTITCH', label: 'Uneven topstitching', severity: 'minor' },
+    { category: 'finishing', code: 'OIL_STAIN', label: 'Oil stain', severity: 'minor' },
+    { category: 'finishing', code: 'LOOSE_THREAD', label: 'Untrimmed thread', severity: 'minor' },
+    { category: 'finishing', code: 'POOR_PRESSING', label: 'Poor pressing', severity: 'minor' },
+  ]
+
+  return withTenantTx(ctx, async (tx) => {
+    const created: string[] = []
+    const existing: string[] = []
+
+    for (const entry of defaults) {
+      const [already] = await tx
+        .select({ code: defectCodes.code })
+        .from(defectCodes)
+        .where(eq(defectCodes.code, entry.code))
+
+      if (already) {
+        existing.push(entry.code)
+        continue
+      }
+
+      await tx.insert(defectCodes).values({ companyId: ctx.companyId, ...entry })
+      created.push(entry.code)
+    }
+
+    return { created, existing }
+  })
+}
