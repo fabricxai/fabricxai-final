@@ -30,6 +30,15 @@ export const GATES = {
   expNumber: 'exp_number',
   /** Shipment date vs the LC's latest-shipment clause — red alert everywhere. */
   lcLatestShipment: 'lc_latest_shipment',
+  /**
+   * Final AQL inspection passed before goods may leave the factory — 7.1 → 8.1.
+   *
+   * Not in the original five. Added once both modules existed and the hole was visible:
+   * a shipment could depart carrying a lot its own final inspection had failed. Waivable
+   * by an owner or commercial, because a buyer does sometimes accept a failed lot at a
+   * discount — but never silently.
+   */
+  finalInspection: 'final_inspection',
 } as const
 
 export type GateId = (typeof GATES)[keyof typeof GATES]
