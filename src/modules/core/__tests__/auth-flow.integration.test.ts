@@ -214,6 +214,34 @@ describe('gate A · signup → verify → login', () => {
     expect(session?.activeOrganizationId).toBe(company?.id)
   })
 
+  it('6b · signup provisioned the new factory with its reference data', async () => {
+    const [user] = await db.select({ id: users.id }).from(users).where(eq(users.email, EMAIL))
+    const [membership] = await db
+      .select({ companyId: roles.companyId })
+      .from(roles)
+      .where(eq(roles.userId, user!.id))
+
+    const companyId = membership!.companyId
+
+    const { tnaTemplates } = await import('@/modules/orders/schema')
+    const { lossReasons } = await import('@/modules/rfq/schema')
+    const { defectCodes } = await import('@/modules/quality/schema')
+
+    const [templates, reasons, codes] = await Promise.all([
+      db.select().from(tnaTemplates).where(eq(tnaTemplates.companyId, companyId)),
+      db.select().from(lossReasons).where(eq(lossReasons.companyId, companyId)),
+      db.select().from(defectCodes).where(eq(defectCodes.companyId, companyId)),
+    ])
+
+    // Without these a fresh factory cannot give an order a calendar, record why it lost an
+    // enquiry, or log a defect — three absences that are confusing rather than obviously
+    // missing.
+    expect(templates.length).toBeGreaterThan(0)
+    expect(templates.map((row) => row.productType)).toContain('knit')
+    expect(reasons.map((row) => row.code)).toContain('price')
+    expect(codes.map((row) => row.code)).toContain('BROKEN_NEEDLE')
+  })
+
   it('7 · resolves the session all the way to ctx {companyId, userId, roles}', async () => {
     // This is the part every later module depends on, and the part a manual
     // click-through never actually checks.

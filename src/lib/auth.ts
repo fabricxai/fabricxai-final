@@ -29,6 +29,7 @@ import { membershipsForUser, withTenantTx } from '@/modules/core/tenancy'
 
 import { env } from './env'
 import { sendVerificationEmail } from './mailer'
+import { provisionCompany } from './provisioning'
 
 export const auth = betterAuth({
   appName: 'FabricXAI',
@@ -147,6 +148,30 @@ export const auth = betterAuth({
                   .values({ userId: user.id, fullName: user.name, defaultCompanyId: companyId })
                   .onConflictDoNothing()
               })
+
+              // Starting reference data: TNA calendars, the loss taxonomy, the defect
+              // taxonomy. AFTER the company commits and deliberately outside its
+              // transaction — these are convenience defaults, and failing signup because a
+              // default calendar could not be written would leave somebody unable to get in
+              // AND unable to retry, since their email and slug are now taken.
+              //
+              // `provisionCompany` swallows its own step failures and reports them, so this
+              // await cannot throw for a seeding problem. It is still guarded, because a
+              // signup that dies here would be the worst possible place to discover an
+              // unexpected error.
+              try {
+                const provisioned = await provisionCompany(ctx)
+                if (!provisioned.complete) {
+                  const failed = provisioned.steps.filter((step) => !step.ok)
+                  console.error(
+                    `[auth] company ${companyId} provisioned with gaps:`,
+                    failed.map((step) => `${step.step}: ${step.error}`).join('; '),
+                  )
+                }
+              } catch (error) {
+                console.error(`[auth] company ${companyId} provisioning failed:`, error)
+              }
+
               return
             } catch (error) {
               if (attempt < 5 && isSlugConflict(error)) continue
