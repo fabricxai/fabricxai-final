@@ -52,6 +52,17 @@ export interface ApproveInput {
   /** Field-level edits the reviewer made — this is the correction telemetry. */
   corrections?: Record<string, unknown>
   note?: string
+  /**
+   * Set only by the auto-approve rule below. It leaves `reviewed_by` NULL, so
+   * `status = 'committed' and reviewed_by is null` means exactly one thing: this row went in
+   * on a rule and no person ever looked at it.
+   *
+   * The alternative — recording the proposer as the reviewer, which is what happened before —
+   * makes every auto-approved AI draft count as a clean human review in X.2's correction
+   * telemetry. An extractor's score would then improve precisely as fewer people checked it,
+   * which is backwards from what that number is for.
+   */
+  autoApproved?: boolean
 }
 
 const IDENTIFIER_RE = /^[a-z_][a-z0-9_]*$/
@@ -211,7 +222,7 @@ export async function propose(
     Number(confidenceMin) >= Number(rule.minConfidence)
 
   if (clearsFloor) {
-    await approve(ctx as RequestCtx, { pendingChangeId: id })
+    await approve(ctx as RequestCtx, { pendingChangeId: id, autoApproved: true })
     return { id, status: 'committed' }
   }
 
@@ -332,7 +343,7 @@ export async function approve(ctx: RequestCtx, input: ApproveInput): Promise<App
         .set({
           status: 'failed',
           error: error.toJSON(),
-          reviewedBy: ctx.userId,
+          reviewedBy: input.autoApproved ? null : ctx.userId,
           reviewedAt: new Date(),
           corrections: input.corrections ?? {},
           updatedAt: new Date(),
@@ -409,7 +420,7 @@ export async function approve(ctx: RequestCtx, input: ApproveInput): Promise<App
       .update(pendingChanges)
       .set({
         status: 'committed',
-        reviewedBy: ctx.userId,
+        reviewedBy: input.autoApproved ? null : ctx.userId,
         reviewedAt: new Date(),
         reviewNote: input.note ?? null,
         corrections: input.corrections ?? {},
