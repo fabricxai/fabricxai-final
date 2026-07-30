@@ -82,6 +82,8 @@ export const createOrderPayload = z.object({
 export const orderStylePayload = z.object({
   styleCode: z.string().min(1),
   description: z.string().optional(),
+  /** Pieces the buyer contracted. What the breakdown must eventually add up to. */
+  contractedQty: z.number().int().positive().optional(),
   unitPrice: moneyAmount.optional(),
   currency: currencyCode.default('USD'),
 })

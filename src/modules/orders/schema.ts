@@ -105,6 +105,17 @@ export const orders = pgTable(
     /** The merchandiser who owns this order — roles gate on it (brief §Roles). */
     ownerUserId: text('owner_user_id').references(() => users.id, { onDelete: 'set null' }),
 
+    /**
+     * The RFQ this order was won from. No FK: `rfqs` is 1.2's and 1.2 already imports this
+     * module for nothing — but more to the point, an order outlives the enquiry that
+     * produced it and must not be deleted with it.
+     *
+     * Unique, and that is the point: it is what makes the `rfq.won` consumer idempotent.
+     * Two orders for one win would double the factory's committed capacity against a single
+     * buyer commitment.
+     */
+    sourceRfqId: uuid('source_rfq_id'),
+
     createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -112,6 +123,7 @@ export const orders = pgTable(
   (t) => [
     // The order book: a company's live orders by ship date.
     index('orders_company_exfactory_idx').on(t.companyId, t.plannedExFactoryDate),
+    uniqueIndex('orders_source_rfq_key').on(t.sourceRfqId).where(sql`source_rfq_id IS NOT NULL`),
     index('orders_company_status_idx').on(t.companyId, t.status, t.plannedExFactoryDate),
     index('orders_company_buyer_idx').on(t.companyId, t.buyerId),
     index('orders_company_owner_idx').on(t.companyId, t.ownerUserId),
