@@ -140,6 +140,7 @@ const fakeProvider = (
   id: 'test/fake',
   extract: extract as MarbimProvider['extract'],
   generate: mockProvider.generate,
+  embed: mockProvider.embed,
 })
 
 describe('X.2 · the extraction pipeline', () => {

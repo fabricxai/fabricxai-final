@@ -55,6 +55,23 @@ export interface ExtractResult<T> {
   model: string
 }
 
+export interface EmbedRequest {
+  role: ModelRole
+  /** The texts to embed, in order. The result vectors come back in the same order. */
+  inputs: readonly string[]
+  /**
+   * The width the CALLER's column is. Checked by the caller against what comes back, because
+   * a model that quietly returns 768 dims for a vector(1536) column fails per row inside a
+   * background job nobody is watching.
+   */
+  dimensions: number
+}
+
+export interface EmbedResult {
+  vectors: number[][]
+  model: string
+}
+
 export interface TextRequest {
   role: ModelRole
   system: string
@@ -74,6 +91,8 @@ export interface MarbimProvider {
   readonly id: string
   extract<T>(request: ExtractRequest<T>): Promise<ExtractResult<T>>
   generate(request: TextRequest): Promise<TextResult>
+  /** Required, not optional: 1.6 Order Memory cannot fingerprint a style without it. */
+  embed(request: EmbedRequest): Promise<EmbedResult>
 }
 
 let provider: MarbimProvider | null = null

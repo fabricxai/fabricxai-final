@@ -19,6 +19,8 @@ import type { ZodType } from 'zod'
 
 import {
   ProviderError,
+  type EmbedRequest,
+  type EmbedResult,
   type ExtractRequest,
   type ExtractResult,
   type MarbimProvider,
@@ -122,6 +124,16 @@ function coerceToSchema(raw: string, fieldSchema: ZodType | undefined): unknown 
   return undefined
 }
 
+/** FNV-1a. Small, fast, and stable across runs — which is the only property that matters. */
+function fnv1a(token: string): number {
+  let hash = 0x811c9dc5
+  for (let i = 0; i < token.length; i += 1) {
+    hash ^= token.charCodeAt(i)
+    hash = Math.imul(hash, 0x01000193) >>> 0
+  }
+  return hash
+}
+
 export const mockProvider: MarbimProvider = {
   id: 'mock/deterministic-v1',
 
@@ -163,6 +175,50 @@ export const mockProvider: MarbimProvider = {
       method: 'mock/labelled-line-match',
       model: mockProvider.id,
     }
+  },
+
+  /**
+   * A deterministic LEXICAL embedding: tokens hashed into buckets, then normalised.
+   *
+   * It is not semantic and does not pretend to be — it does not know that "tee" and
+   * "t-shirt" are the same garment. What it does give is a real, explainable similarity:
+   * two styles that share `producttype=tshirt`, `gsm=180` and `construction=single jersey`
+   * come out genuinely close, and two that share nothing come out at zero. That is enough
+   * for `findSimilar` to behave correctly in tests and in a demo, and — unlike a random
+   * vector — it never produces a confident match between unrelated styles.
+   *
+   * Deterministic across processes: no randomness, no clock, no map iteration order in the
+   * arithmetic. The same text embeds to the same vector forever, which is what makes
+   * `sourceHash` a valid "does this need re-embedding" test.
+   */
+  async embed(request: EmbedRequest): Promise<EmbedResult> {
+    if (request.dimensions <= 0) {
+      throw new ProviderError(`cannot embed into ${request.dimensions} dimensions`, {
+        retryable: false,
+      })
+    }
+
+    const vectors = request.inputs.map((input) => {
+      const weights = new Array<number>(request.dimensions).fill(0)
+
+      for (const token of input.toLowerCase().split(/[^a-z0-9.]+/)) {
+        if (!token) continue
+        const bucket = fnv1a(token) % request.dimensions
+        weights[bucket] = (weights[bucket] ?? 0) + 1
+      }
+
+      // L2 normalise so cosine distance is comparable between a short attribute list and a
+      // long tech pack. Without it, the longer document is "closer" to everything.
+      const magnitude = Math.sqrt(weights.reduce((squares, w) => squares + w * w, 0))
+      if (magnitude === 0) {
+        // Nothing tokenised. A zero vector has no direction, so cosine distance against it
+        // is undefined and pgvector would return NaN — refuse rather than store one.
+        throw new ProviderError('nothing in this text could be embedded', { retryable: false })
+      }
+      return weights.map((w) => w / magnitude)
+    })
+
+    return { vectors, model: `${mockProvider.id}/embed` }
   },
 
   async generate(request: TextRequest): Promise<TextResult> {
