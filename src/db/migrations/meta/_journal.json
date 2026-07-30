@@ -260,6 +260,20 @@
       "when": 1785372272620,
       "tag": "0036_quality_line_cascade",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1785377025798,
+      "tag": "0037_shipment",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1785377026798,
+      "tag": "0038_shipment_policies",
+      "breakpoints": true
     }
   ]
 }

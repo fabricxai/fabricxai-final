@@ -18,6 +18,10 @@ export * from '@/modules/workforce/schema'
 // Phase 4 — 3.1 Fabric & Trims Store (floor-facing; draws bonded stock via 2.2).
 export * from '@/modules/store/schema'
 
+// Phase 7 — 8.1 Finishing, Cartons & Shipment. Carries the EXP-number and LC
+// latest-shipment gates.
+export * from '@/modules/shipment/schema'
+
 // Phase 6 — 7.1 Inline, Endline & Final Inspection. `aql_tables` is global reference
 // data with no company_id — see its comment and migration 0034.
 export * from '@/modules/quality/schema'
