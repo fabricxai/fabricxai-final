@@ -28,7 +28,8 @@ import type { RequestCtx } from '@/modules/core/ctx'
 import '@/modules/finance/register'
 import { invoices, receivables } from '@/modules/finance/schema'
 import { draftInvoice } from '@/modules/finance/service'
-import { orders, tnaMilestones } from '@/modules/orders/schema'
+import { orders, orderStyles, tnaMilestones } from '@/modules/orders/schema'
+import { rfqs } from '@/modules/rfq/schema'
 import '@/modules/shipment/register'
 import { shipments } from '@/modules/shipment/schema'
 import { EVENT_HANDLERS, runEventConsumer, type EventJobData } from '@/worker/processors/consumers'
@@ -103,6 +104,9 @@ const reset = async () => {
   await db.delete(docSubmissions).where(eq(docSubmissions.companyId, COMPANY))
   await db.delete(shipments).where(eq(shipments.companyId, COMPANY))
   await db.delete(tnaMilestones).where(eq(tnaMilestones.companyId, COMPANY))
+  await db.delete(rfqs).where(eq(rfqs.companyId, COMPANY))
+  // Everything except the fixture order the milestone tests hang off.
+  await db.delete(orders).where(sql`company_id = ${COMPANY} and source_rfq_id is not null`)
 }
 
 const newShipment = async () => {
@@ -126,6 +130,7 @@ describe('the routing table', () => {
     expect(Object.keys(EVENT_HANDLERS).sort()).toEqual([
       'cutting.order.complete',
       'finance.realized',
+      'rfq.won',
       'shipment.docs.ready_for_bank',
       'shipment.ex_factory.confirmed',
     ])
@@ -333,6 +338,106 @@ describe('2.1 → 11.1 · a realization closes the receivable', () => {
   })
 })
 
+describe('1.2 → 1.3 · a won RFQ becomes an order', () => {
+  const wonEvent = (rfqId: string, over: Record<string, unknown> = {}) => ({
+    rfqId,
+    buyerId,
+    styleCode: 'ST-100',
+    quantity: 12000,
+    unit: 'pcs',
+    sizeRatio: { S: 1, M: 2, L: 2, XL: 1 },
+    sizeBreakdown: { S: 2000, M: 4000, L: 4000, XL: 2000 },
+    fobPrice: '4.98',
+    currency: 'USD',
+    requestedShipDate: '2026-11-15',
+    ...over,
+  })
+
+  const newRfq = async () => {
+    const [row] = await db
+      .insert(rfqs)
+      .values({
+        companyId: COMPANY,
+        buyerId,
+        title: 'Basic tee 12k',
+        productType: 'tshirt',
+        quantity: 12000,
+        currency: 'USD',
+        status: 'quoted',
+        createdBy: USER,
+      })
+      .returning({ id: rfqs.id })
+    return row!.id
+  }
+
+  it('creates the order and its style, carrying price and ship date', async () => {
+    await reset()
+    const rfqId = await newRfq()
+
+    await deliver('rfq.won', wonEvent(rfqId))
+
+    const [order] = await db.select().from(orders).where(eq(orders.sourceRfqId, rfqId))
+    expect(order).toBeDefined()
+    expect(order!.buyerId).toBe(buyerId)
+    // The whole plan is generated backwards from this date.
+    expect(order!.plannedExFactoryDate).toBe('2026-11-15')
+
+    const styles = await db.select().from(orderStyles).where(eq(orderStyles.orderId, order!.id))
+    expect(styles).toHaveLength(1)
+    expect(styles[0]!.styleCode).toBe('ST-100')
+    expect(styles[0]!.contractedQty).toBe(12000)
+  })
+
+  it('creates NO breakdown — the colours come with the buyer’s PO', async () => {
+    await reset()
+    const rfqId = await newRfq()
+    await deliver('rfq.won', wonEvent(rfqId))
+
+    const [order] = await db.select().from(orders).where(eq(orders.sourceRfqId, rfqId))
+    const [style] = await db.select().from(orderStyles).where(eq(orderStyles.orderId, order!.id))
+
+    const { orderBreakdowns } = await import('@/modules/orders/schema')
+    const cells = await db
+      .select()
+      .from(orderBreakdowns)
+      .where(eq(orderBreakdowns.orderStyleId, style!.id))
+
+    // An RFQ carries a size RATIO, not a colour × size grid. Inventing a placeholder
+    // colour would put a number on the cutting floor no buyer ever asked for — and 5.1
+    // already refuses to spread a lay against a style with no breakdown, so the gap is
+    // caught by a gate that exists.
+    expect(cells).toHaveLength(0)
+  })
+
+  it('a redelivery does not create a second order', async () => {
+    await reset()
+    const rfqId = await newRfq()
+
+    await deliver('rfq.won', wonEvent(rfqId))
+    // A different event id, so processed_events does not catch it — the unique index on
+    // `source_rfq_id` and the handler's own check are what must hold.
+    await deliver('rfq.won', wonEvent(rfqId))
+
+    const rows = await db.select().from(orders).where(eq(orders.sourceRfqId, rfqId))
+    // Two orders for one win would double the factory's committed capacity against a
+    // single buyer commitment.
+    expect(rows).toHaveLength(1)
+  })
+
+  it('skips a win for an RFQ nobody can see', async () => {
+    await reset()
+    await expect(deliver('rfq.won', wonEvent(randomUUID()))).resolves.toBeUndefined()
+  })
+
+  it('skips a win carrying no usable quantity', async () => {
+    await reset()
+    const rfqId = await newRfq()
+
+    await expect(deliver('rfq.won', wonEvent(rfqId, { quantity: 0 }))).resolves.toBeUndefined()
+    expect(await db.select().from(orders).where(eq(orders.sourceRfqId, rfqId))).toHaveLength(0)
+  })
+})
+
 describe('→ 1.3 · milestones actualise', () => {
   const milestone = (name: string, plannedDate: string) =>
     db.insert(tnaMilestones).values({ companyId: COMPANY, orderId, name, plannedDate })
@@ -385,6 +490,51 @@ describe('→ 1.3 · milestones actualise', () => {
       .from(tnaMilestones)
       .where(and(eq(tnaMilestones.orderId, orderId), eq(tnaMilestones.name, 'cutting')))
     expect(row!.actualDate).toBe('2026-08-03')
+  })
+
+  it('applies the RIPPLE, moving every milestone downstream of the slip', async () => {
+    await reset()
+    // A real dependency chain: sewing waits on cutting, shipping waits on sewing.
+    await db.insert(tnaMilestones).values([
+      {
+        companyId: COMPANY,
+        orderId,
+        name: 'cutting',
+        plannedDate: '2026-08-01',
+        dependsOn: [],
+        critical: true,
+      },
+      {
+        companyId: COMPANY,
+        orderId,
+        name: 'sewing',
+        plannedDate: '2026-08-10',
+        dependsOn: [{ name: 'cutting', gapDays: 9 }],
+        critical: true,
+      },
+      {
+        companyId: COMPANY,
+        orderId,
+        name: 'ex_factory',
+        plannedDate: '2026-09-01',
+        dependsOn: [{ name: 'sewing', gapDays: 22 }],
+        critical: true,
+      },
+    ])
+
+    // Cutting finished six days late.
+    await deliver('cutting.order.complete', { orderId, completedOn: '2026-08-07' })
+
+    const rows = await db.select().from(tnaMilestones).where(eq(tnaMilestones.orderId, orderId))
+    const sewing = rows.find((r) => r.name === 'sewing')!
+    const exFactory = rows.find((r) => r.name === 'ex_factory')!
+
+    // The whole point of going through 1.3's `actualizeMilestone` rather than writing the
+    // table: a direct write would record the actual date and leave the rest of the calendar
+    // still claiming the order was on time.
+    expect(sewing.plannedDate).not.toBe('2026-08-10')
+    expect(exFactory.plannedDate).not.toBe('2026-09-01')
+    expect(sewing.plannedDate > '2026-08-10').toBe(true)
   })
 
   it('is a no-op when the order has no such milestone', async () => {

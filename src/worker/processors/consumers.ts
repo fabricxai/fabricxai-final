@@ -187,38 +187,92 @@ const onExFactoryConfirmed: Handler = async (ctx, payload) => {
 }
 
 /**
- * Mark a TNA milestone actual.
+ * Mark a TNA milestone actual, through 1.3's own operation.
  *
- * Reads and writes through orders' own tables, which orders owns — this is the one place the
- * rule bends, and it bends because 1.3 has no `actualiseMilestone` service operation yet.
- * Recorded in docs/STUBS.md rather than left as a quiet exception.
+ * This used to write `tna_milestones` directly, which was wrong twice over: it broke rule
+ * 11, and — much worse — it skipped the RIPPLE. `actualizeMilestone` reschedules everything
+ * downstream of a slip in the same transaction, so a cut that finished six days late moved
+ * the sewing and shipping dates with it. The direct write recorded the actual date and left
+ * the rest of the calendar claiming the order was still on time.
  */
 async function actualiseMilestone(
   ctx: SystemCtx,
   input: { orderId: string; name: string; on: string },
 ): Promise<void> {
-  const { tnaMilestones } = await import('@/modules/orders/schema')
-  const { withTenantTx } = await import('@/modules/core/tenancy')
+  const { actualizeMilestone, findMilestone } = await import('@/modules/orders/service')
 
-  await withTenantTx(ctx, async (tx) => {
-    // Filtered on BOTH columns. Selecting by order alone and then checking the name would
-    // only ever work for an order with exactly one milestone, and silently do nothing for
-    // every real order.
-    const [milestone] = await tx
-      .select()
-      .from(tnaMilestones)
-      .where(and(eq(tnaMilestones.orderId, input.orderId), eq(tnaMilestones.name, input.name)))
-      .for('update')
+  const milestone = await findMilestone(ctx, { orderId: input.orderId, name: input.name })
+  // No such milestone on this order. Some orders have no TNA, and that is not this
+  // consumer's problem to solve.
+  if (!milestone) return
+  // Already actual. A redelivery must not move a date somebody has since corrected —
+  // `actualizeMilestone` would throw, so the check is here rather than as a caught error.
+  if (milestone.actualDate) return
 
-    if (!milestone) return
+  await actualizeMilestone(ctx, { milestoneId: milestone.id, actualDate: input.on })
+}
 
-    // Already actual. A redelivery must not move a date somebody has since corrected.
-    if (milestone.actualDate) return
+/**
+ * 1.2 won an RFQ → 1.3 creates the order.
+ *
+ * The last wire in the chain, and the one that closes the loop from enquiry to production.
+ * `wonPayload` already refused anything an order cannot be created from — no size ratio, no
+ * requested ship date — so by the time this event exists the payload is complete.
+ *
+ * Idempotent on the RFQ: a redelivery finds the order already carrying this `rfqId` and
+ * returns. Creating a second order for one win would double the factory's committed
+ * capacity against a single buyer commitment.
+ */
+const onRfqWon: Handler = async (ctx, payload) => {
+  const rfqId = String(payload.rfqId ?? '')
+  if (!rfqId) notReady('win carries no rfqId')
 
-    await tx
-      .update(tnaMilestones)
-      .set({ actualDate: input.on, status: 'done', updatedAt: new Date() })
-      .where(eq(tnaMilestones.id, milestone.id))
+  const { createOrder } = await import('@/modules/orders/service')
+  const { orders } = await import('@/modules/orders/schema')
+  const { rfqs } = await import('@/modules/rfq/schema')
+
+  const existing = await withTenantRead(ctx, async (tx) => {
+    const [row] = await tx
+      .select({ id: orders.id })
+      .from(orders)
+      .where(eq(orders.sourceRfqId, rfqId))
+    return row
+  })
+
+  // Already created. Two orders for one win would double the committed capacity.
+  if (existing) return
+
+  const rfq = await withTenantRead(ctx, async (tx) => {
+    const [row] = await tx.select().from(rfqs).where(eq(rfqs.id, rfqId))
+    return row
+  })
+  if (!rfq) notReady(`RFQ ${rfqId} not visible`)
+
+  const quantity = Number(payload.quantity)
+  if (!Number.isInteger(quantity) || quantity <= 0) {
+    notReady(`win for RFQ ${rfqId} carries no usable quantity`)
+  }
+
+  await createOrder(ctx, {
+    sourceRfqId: rfqId,
+    order: {
+      buyerId: String(payload.buyerId),
+      // The PO number arrives with the buyer's actual purchase order. Until then the RFQ
+      // is what the order is known by — a placeholder here would look like a real PO
+      // number on a document.
+      poNumbers: [`RFQ-${rfq!.title}`.slice(0, 60)],
+      currency: String(payload.currency ?? 'USD'),
+      plannedExFactoryDate: String(payload.requestedShipDate),
+      ownerUserId: rfq!.ownerUserId ?? undefined,
+    },
+    styles: [
+      {
+        styleCode: String(payload.styleCode),
+        contractedQty: quantity,
+        unitPrice: String(payload.fobPrice),
+        currency: String(payload.currency ?? 'USD'),
+      },
+    ],
   })
 }
 
@@ -237,6 +291,7 @@ export const EVENT_HANDLERS: Readonly<Record<string, Handler>> = {
   'finance.realized': onFinanceRealized,
   'cutting.order.complete': onCuttingComplete,
   'shipment.ex_factory.confirmed': onExFactoryConfirmed,
+  'rfq.won': onRfqWon,
 }
 
 /**

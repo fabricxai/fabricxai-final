@@ -64,6 +64,7 @@ const QUEUE_ROUTES: readonly { prefix: string; queue: QueueName }[] = [
   { prefix: 'quality.dhu.day_closed', queue: QUEUE.derive },
   { prefix: 'planning.sewing_window.changed', queue: QUEUE.derive },
   { prefix: 'sampling.pp_approved', queue: QUEUE.derive },
+  { prefix: 'rfq.won', queue: QUEUE.derive },
   { prefix: 'production.day.closed', queue: QUEUE.derive },
 
   // Document rendering.
