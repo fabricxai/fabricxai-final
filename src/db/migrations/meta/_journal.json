@@ -421,6 +421,20 @@
       "when": 1785431501611,
       "tag": "0059_maintenance_policies",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1785432607601,
+      "tag": "0060_compliance",
+      "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1785432607602,
+      "tag": "0061_compliance_policies",
+      "breakpoints": true
     }
   ]
 }

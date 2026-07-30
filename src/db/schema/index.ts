@@ -63,3 +63,7 @@ export * from '@/modules/memory/schema'
 // Phase 8 — 9.1 Machines & Tickets. Consumes 6.1's machine-downtime event; `downtimes`
 // stays 6.1's table (rule 11) and is linked back by id.
 export * from '@/modules/maintenance/schema'
+
+// Phase 8 — 10.2 Compliance & Audit ⚖. `findings` is a pending target: an audit report is
+// exactly the document MARBIM should transcribe.
+export * from '@/modules/compliance/schema'
