@@ -18,6 +18,7 @@ import { and, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm'
 import { recordChange, registerAuditedTables } from '../core/audit'
 import type { AnyCtx, RequestCtx } from '../core/ctx'
 import { AppError, conflict, notFound } from '../core/errors'
+import type { GateResult } from '../core/gates'
 import { emit } from '../core/outbox'
 import { defineStateMachine } from '../core/state-machine'
 import { withTenantRead, withTenantTx, type TenantDb } from '../core/tenancy'
@@ -758,54 +759,67 @@ export async function setFinalInspectionStatus(
 }
 
 /**
- * Has this order passed final inspection? — the read 8.1 Shipment will gate on.
+ * Has this order passed final inspection? — the gate 8.1 Shipment blocks departure on.
  *
  * The LATEST inspection decides. An order that passed, was reworked and failed a
  * re-inspection has not passed; reading "has ever passed" would ship it.
+ *
+ * Takes the caller's transaction, so 8.1 can check it inside the same transaction that
+ * confirms ex-factory — the verdict and the departure decision must see the same snapshot,
+ * or an inspection landing between the two would be missed. `checkFinalInspectionPassed`
+ * below is the read-only wrapper for a screen that just wants to display it.
  */
-export async function checkFinalInspectionPassed(
+export async function resolveFinalInspectionGate(
   ctx: AnyCtx,
+  tx: TenantDb,
   input: { orderId: string },
-): Promise<{ passed: boolean; reasonKey?: string; facts?: Record<string, unknown> }> {
-  return withTenantRead(ctx, async (tx) => {
-    const [latest] = await tx
-      .select()
-      .from(finalInspections)
-      .where(eq(finalInspections.orderId, input.orderId))
-      .orderBy(desc(finalInspections.inspectedAt))
-      .limit(1)
+): Promise<GateResult> {
+  void ctx
+  const [latest] = await tx
+    .select()
+    .from(finalInspections)
+    .where(eq(finalInspections.orderId, input.orderId))
+    .orderBy(desc(finalInspections.inspectedAt))
+    .limit(1)
 
-    if (!latest) {
-      return {
-        passed: false,
-        reasonKey: 'gates.final_inspection.none',
-        facts: { orderId: input.orderId },
-      }
-    }
-
-    if (latest.verdict !== 'pass') {
-      return {
-        passed: false,
-        reasonKey: 'gates.final_inspection.failed',
-        facts: {
-          finalInspectionId: latest.id,
-          inspectionNo: latest.inspectionNo,
-          reasons: latest.failReasons,
-        },
-      }
-    }
-
+  if (!latest) {
     return {
-      passed: true,
+      passed: false,
+      reasonKey: 'gates.final_inspection.none',
+      facts: { orderId: input.orderId },
+    }
+  }
+
+  if (latest.verdict !== 'pass') {
+    return {
+      passed: false,
+      reasonKey: 'gates.final_inspection.failed',
       facts: {
         finalInspectionId: latest.id,
         inspectionNo: latest.inspectionNo,
-        lotQty: latest.lotQty,
-        sampleSize: latest.sampleSize,
-        inspectedAt: latest.inspectedAt.toISOString(),
+        reasons: latest.failReasons,
       },
     }
-  })
+  }
+
+  return {
+    passed: true,
+    facts: {
+      finalInspectionId: latest.id,
+      inspectionNo: latest.inspectionNo,
+      lotQty: latest.lotQty,
+      sampleSize: latest.sampleSize,
+      inspectedAt: latest.inspectedAt.toISOString(),
+    },
+  }
+}
+
+/** Read-only wrapper for a screen. The gate itself uses the tx variant above. */
+export async function checkFinalInspectionPassed(
+  ctx: AnyCtx,
+  input: { orderId: string },
+): Promise<GateResult> {
+  return withTenantRead(ctx, async (tx) => resolveFinalInspectionGate(ctx, tx, input))
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
