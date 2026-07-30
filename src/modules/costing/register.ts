@@ -12,6 +12,7 @@
  */
 import { registerModule } from '../core/registry'
 
+import { commitBom } from './service'
 import { COSTING_ZOD_MAP } from './zod'
 
 export const costingModule = registerModule({
@@ -23,6 +24,13 @@ export const costingModule = registerModule({
   // Merchandiser drafts, manager approves (brief §Roles). Below the margin floor the
   // service itself requires the owner — that gate is in code, not in this config.
   approvalDefaults: { requiredRoles: ['owner', 'admin', 'merchandiser'] },
+
+  // A BOM is a parent and its lines. Core's generic single-row write cannot express that,
+  // so without this an approved draft wrote a `boms` row with no `bom_lines` under it — or,
+  // more often, failed outright on the camelCase payload keys.
+  commitHandlers: {
+    boms: async (ctx, tx, input) => commitBom(ctx, tx, { payload: input.payload }),
+  },
 
   domainPrimer: {
     version: '1.5.0',

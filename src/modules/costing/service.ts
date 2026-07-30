@@ -17,7 +17,7 @@ import type { AnyCtx, RequestCtx } from '../core/ctx'
 import { AppError, conflict, notFound } from '../core/errors'
 import { emit } from '../core/outbox'
 import { defineStateMachine } from '../core/state-machine'
-import { withTenantRead, withTenantTx } from '../core/tenancy'
+import { withTenantRead, withTenantTx, type TenantDb } from '../core/tenancy'
 
 import {
   computeCostSheet,
@@ -29,7 +29,13 @@ import {
 } from './cost-sheet'
 import { COSTING_EVENTS } from './events'
 import { bomLines, boms, consumptionTemplates, costSheets } from './schema'
-import { costSheetSections, createCostSheetPayload, scenarioOverrides } from './zod'
+import {
+  bomFromTechPackDraft,
+  bomSeededFromOrderDraft,
+  costSheetSections,
+  createCostSheetPayload,
+  scenarioOverrides,
+} from './zod'
 
 /** ⚖ — a cost sheet is the number a year of work is priced against. */
 registerAuditedTables('cost_sheets')
@@ -349,3 +355,63 @@ export async function touchTemplate(ctx: RequestCtx, productType: string): Promi
 }
 
 export { conflict }
+
+/**
+ * Commit an approved BOM draft — the module's own write for its one pending target.
+ *
+ * `boms` was registered as a pending target with no handler, which meant an approved draft
+ * took core's generic single-row write: an insert of camelCase payload keys into a table
+ * whose columns are snake_case, and no `bom_lines` at all. A BOM is a parent and its lines;
+ * there is no version of "generic single-row write" that can express one.
+ *
+ * Two payload shapes land here. They are told apart by `fromOrderId`, which only a seeded
+ * draft carries and which is the one thing a reviewer will want to know about those numbers.
+ */
+export async function commitBom(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  input: { payload: Record<string, unknown> },
+): Promise<{ rowId: string; after: Record<string, unknown> }> {
+  const seeded = 'fromOrderId' in input.payload
+
+  // Re-validated at approve time against the schema as it stands today (PLAYBOOK §3), not
+  // trusted from whenever the draft was written.
+  const payload = seeded
+    ? bomSeededFromOrderDraft.parse(input.payload)
+    : bomFromTechPackDraft.parse(input.payload)
+
+  const [bom] = await tx
+    .insert(boms)
+    .values({
+      companyId: ctx.companyId,
+      styleCode: payload.styleCode,
+      source: seeded ? 'seeded' : 'tech_pack_extract',
+      sourceDocumentId: 'sourceDocumentId' in payload ? (payload.sourceDocumentId ?? null) : null,
+      createdBy: ctx.userId,
+    })
+    .returning({ id: boms.id })
+
+  if (!bom) throw new Error('boms insert returned nothing')
+
+  for (const line of payload.lines) {
+    await tx.insert(bomLines).values({
+      companyId: ctx.companyId,
+      bomId: bom.id,
+      lineGroup: line.lineGroup,
+      itemRef: line.itemRef ?? null,
+      spec: line.spec ?? null,
+      consumption: line.consumption,
+      // A tech-pack line is an estimate by definition; a seeded line says for itself.
+      consumptionBasis: 'consumptionBasis' in line ? line.consumptionBasis : 'planned',
+      uom: line.uom,
+      wastagePct: line.wastagePct,
+      sourcePage: 'sourcePage' in line ? (line.sourcePage ?? null) : null,
+    })
+  }
+
+  return {
+    rowId: bom.id,
+    after: { bomId: bom.id, styleCode: payload.styleCode, lineCount: payload.lines.length },
+  }
+}
+

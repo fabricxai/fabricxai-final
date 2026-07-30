@@ -91,8 +91,41 @@ export const bomFromTechPackDraft = z.object({
     .min(1),
 })
 
+/**
+ * What 1.6 Order Memory seeds from a past order: the same shape of bill of materials, with
+ * every line saying whether its consumption was MEASURED on that order or copied from its
+ * estimate.
+ *
+ * `fromOrderId` is required and is what distinguishes this payload from the tech-pack one at
+ * commit time. It is also the answer to the only question a reviewer will have about these
+ * numbers — which order they came off.
+ */
+export const bomSeededFromOrderDraft = z.object({
+  styleCode: z.string().min(1),
+  fromOrderId: z.uuid(),
+  lines: z
+    .array(
+      z.object({
+        lineGroup: z.enum(['fabric', 'trims', 'packing', 'embellishment']),
+        itemRef: z.string().optional(),
+        spec: z.string().optional(),
+        consumption: decimal(),
+        uom: z.string().min(1),
+        wastagePct: pct.default('0'),
+        /**
+         * Never defaulted. A seeded line that fell back to the old estimate because nothing
+         * was issued against it is not a measurement, and defaulting this to 'actual' would
+         * be the single most misleading thing this module could do.
+         */
+        consumptionBasis: z.enum(['planned', 'actual']),
+      }),
+    )
+    .min(1),
+})
+
 export const COSTING_ZOD_MAP = {
   bom_from_tech_pack_v1: bomFromTechPackDraft,
+  bom_seeded_from_order_v1: bomSeededFromOrderDraft,
 } as const
 
 export type CreateCostSheetPayload = z.infer<typeof createCostSheetPayload>

@@ -29,6 +29,16 @@ import { companies, documents, users } from '@/db/schema/core'
 
 export const bomSourceEnum = pgEnum('bom_source', ['tech_pack_extract', 'manual', 'seeded'])
 export const bomGroupEnum = pgEnum('bom_group', ['fabric', 'trims', 'packing', 'embellishment'])
+/**
+ * Where a line's consumption figure came from.
+ *
+ * `planned` is an estimate — a tech pack's figure, or what somebody typed. `actual` was
+ * MEASURED: total issued for the item divided by the pieces the order produced (1.6). A
+ * sheet built on measured consumption is a different kind of number from one built on an
+ * estimate, and without this column a BOM seeded from a past order would present both as
+ * the same thing.
+ */
+export const bomBasisEnum = pgEnum('bom_basis', ['planned', 'actual'])
 export const costSheetStatusEnum = pgEnum('cost_sheet_status', ['draft', 'approved', 'superseded'])
 
 export const boms = pgTable(
@@ -72,6 +82,8 @@ export const bomLines = pgTable(
     spec: text('spec'),
 
     consumption: numeric('consumption', { precision: 12, scale: 4 }).notNull(),
+    /** Existing rows are all estimates, which is what the default records. */
+    consumptionBasis: bomBasisEnum('consumption_basis').notNull().default('planned'),
     uom: text('uom').notNull(),
     wastagePct: numeric('wastage_pct', { precision: 5, scale: 2 }).notNull().default('0'),
 
