@@ -89,6 +89,10 @@ beforeAll(async () => {
     })
     .returning({ id: lcs.id })
   lcId = lc!.id
+
+  // The calendars a won RFQ resolves against.
+  const { seedDefaultTnaTemplates } = await import('@/modules/orders/service')
+  await seedDefaultTnaTemplates(ctx)
 })
 
 afterAll(async () => {
@@ -360,6 +364,7 @@ describe('1.2 → 1.3 · a won RFQ becomes an order', () => {
         companyId: COMPANY,
         buyerId,
         title: 'Basic tee 12k',
+        // What a merchandiser actually types. Resolved through the alias map.
         productType: 'tshirt',
         quantity: 12000,
         currency: 'USD',
@@ -422,6 +427,98 @@ describe('1.2 → 1.3 · a won RFQ becomes an order', () => {
     // Two orders for one win would double the factory's committed capacity against a
     // single buyer commitment.
     expect(rows).toHaveLength(1)
+  })
+
+  it('generates the schedule from the template matching the product type', async () => {
+    await reset()
+    const rfqId = await newRfq()
+
+    await deliver('rfq.won', wonEvent(rfqId))
+
+    const [order] = await db.select().from(orders).where(eq(orders.sourceRfqId, rfqId))
+    const milestones = await db
+      .select()
+      .from(tnaMilestones)
+      .where(eq(tnaMilestones.orderId, order!.id))
+
+    expect(milestones.length).toBeGreaterThan(5)
+
+    // The three names other modules query BY NAME. Without them the PP escalation, the
+    // pre-final readiness check and the ripple are all blind to this order.
+    const names = milestones.map((m) => m.name)
+    expect(names).toContain('cutting')
+    expect(names).toContain('final_inspection')
+    expect(names).toContain('ex_factory')
+
+    // Anchored on the requested ship date, which is what the whole calendar is built
+    // backwards from.
+    const exFactory = milestones.find((m) => m.name === 'ex_factory')!
+    expect(exFactory.plannedDate).toBe('2026-11-15')
+
+    // And it is a real chain: cutting sits well before shipping.
+    const cutting = milestones.find((m) => m.name === 'cutting')!
+    expect(cutting.plannedDate < exFactory.plannedDate).toBe(true)
+  })
+
+  it('picks the WOVEN calendar for a shirt, not the knit one', async () => {
+    await reset()
+    const [row] = await db
+      .insert(rfqs)
+      .values({
+        companyId: COMPANY,
+        buyerId,
+        title: 'Oxford shirt 8k',
+        productType: 'shirt',
+        quantity: 8000,
+        currency: 'USD',
+        status: 'quoted',
+        createdBy: USER,
+      })
+      .returning({ id: rfqs.id })
+
+    await deliver('rfq.won', wonEvent(row!.id, { quantity: 8000 }))
+
+    const [order] = await db.select().from(orders).where(eq(orders.sourceRfqId, row!.id))
+    const milestones = await db
+      .select()
+      .from(tnaMilestones)
+      .where(eq(tnaMilestones.orderId, order!.id))
+
+    // A woven shirt needs cloth woven to order: fabric lands two months out, not six weeks.
+    // Giving it the knit calendar would put the ship date a month early from day one.
+    const fabric = milestones.find((m) => m.name === 'fabric_in_house')!
+    expect(fabric.plannedDate < '2026-09-20').toBe(true)
+  })
+
+  it('creates the order but NO schedule for an unknown product type', async () => {
+    await reset()
+    const [row] = await db
+      .insert(rfqs)
+      .values({
+        companyId: COMPANY,
+        buyerId,
+        title: 'Swim shorts 3k',
+        productType: 'swimwear',
+        quantity: 3000,
+        currency: 'USD',
+        status: 'quoted',
+        createdBy: USER,
+      })
+      .returning({ id: rfqs.id })
+
+    await deliver('rfq.won', wonEvent(row!.id, { quantity: 3000 }))
+
+    const [order] = await db.select().from(orders).where(eq(orders.sourceRfqId, row!.id))
+
+    // The order exists and is usable. Only the calendar is missing — a visible gap rather
+    // than a silently wrong one, because falling back to the shortest template would give
+    // swimwear a 90-day schedule nobody chose.
+    expect(order).toBeDefined()
+    const milestones = await db
+      .select()
+      .from(tnaMilestones)
+      .where(eq(tnaMilestones.orderId, order!.id))
+    expect(milestones).toHaveLength(0)
   })
 
   it('skips a win for an RFQ nobody can see', async () => {

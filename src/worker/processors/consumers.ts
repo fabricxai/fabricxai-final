@@ -253,7 +253,7 @@ const onRfqWon: Handler = async (ctx, payload) => {
     notReady(`win for RFQ ${rfqId} carries no usable quantity`)
   }
 
-  await createOrder(ctx, {
+  const created = await createOrder(ctx, {
     sourceRfqId: rfqId,
     order: {
       buyerId: String(payload.buyerId),
@@ -273,6 +273,33 @@ const onRfqWon: Handler = async (ctx, payload) => {
         currency: String(payload.currency ?? 'USD'),
       },
     ],
+  })
+
+  // ── The calendar ──
+  //
+  // Generated here rather than left to a merchandiser, because an order with no schedule is
+  // an order nothing downstream has a date to be late against: 1.4's PP escalation, 7.1's
+  // pre-final readiness and 8.1's LC countdown all read milestones by name.
+  //
+  // A product type with no template does NOT get one invented. Falling back to the shortest
+  // calendar would give a jacket a 90-day schedule and a ship date that was wrong from the
+  // day it was created. The order still exists and is usable; only the schedule is missing,
+  // and that is a visible gap rather than a silently wrong one.
+  const { findTemplateForProductType, generateTna } = await import('@/modules/orders/service')
+  const template = await findTemplateForProductType(ctx, { productType: rfq!.productType })
+
+  if (!template) {
+    console.warn(
+      `[consumer] rfq.won: order ${created.orderId} created without a TNA — ` +
+        `no template for product type "${rfq!.productType}"`,
+    )
+    return
+  }
+
+  await generateTna(ctx, {
+    orderId: created.orderId,
+    templateId: template.id,
+    exFactoryDate: String(payload.requestedShipDate),
   })
 }
 
