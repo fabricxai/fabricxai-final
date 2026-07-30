@@ -18,6 +18,9 @@ export * from '@/modules/workforce/schema'
 // Phase 4 — 3.1 Fabric & Trims Store (floor-facing; draws bonded stock via 2.2).
 export * from '@/modules/store/schema'
 
+// Phase 7 — 11.1 Commercial Finance. Explicitly NOT a general ledger.
+export * from '@/modules/finance/schema'
+
 // Phase 7 — 8.1 Finishing, Cartons & Shipment. Carries the EXP-number and LC
 // latest-shipment gates.
 export * from '@/modules/shipment/schema'

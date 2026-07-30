@@ -281,6 +281,34 @@
       "when": 1785379681949,
       "tag": "0039_shipment_qc_waiver",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1785386700313,
+      "tag": "0040_lc_bank_docs",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1785386701313,
+      "tag": "0041_lc_bank_docs_policies",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1785387036315,
+      "tag": "0042_finance",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1785387037315,
+      "tag": "0043_finance_policies",
+      "breakpoints": true
     }
   ]
 }

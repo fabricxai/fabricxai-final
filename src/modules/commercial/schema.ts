@@ -12,9 +12,11 @@
  */
 import { sql } from 'drizzle-orm'
 import {
+  boolean,
   check,
   date,
   index,
+  integer,
   jsonb,
   numeric,
   pgEnum,
@@ -138,6 +140,24 @@ export const btbLcs = pgTable(
 // Bonded warehouse — Utilization Declarations ⚖ (brief 2.2)
 // ─────────────────────────────────────────────────────────────────────────────
 
+export const bankStatusEnum = pgEnum('bank_status', [
+  'preparing',
+  'submitted',
+  'accepted',
+  'discrepant',
+  'realized',
+])
+export const bankChargeKindEnum = pgEnum('bank_charge_kind', [
+  'lc_opening',
+  'amendment',
+  'negotiation',
+  'discrepancy',
+  'courier',
+  'swift',
+  'acceptance',
+  'other',
+])
+
 export const udStatusEnum = pgEnum('ud_status', ['active', 'exhausted', 'expired', 'closed'])
 
 /**
@@ -247,5 +267,164 @@ export const udReconciliations = pgTable(
   (t) => [
     uniqueIndex('ud_reconciliations_ud_period_key').on(t.udId, t.period),
     index('ud_reconciliations_company_period_idx').on(t.companyId, t.period),
+  ],
+).enableRLS()
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LC amendments and bank submissions ⚖ (brief 2.1)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Every amendment the bank issued, as a versioned DIFF rather than a new set of terms.
+ *
+ * The diff is what makes the register defensible: "the shipping date was 30 September until
+ * amendment 2 moved it to 31 October" is a sentence somebody can check against a SWIFT
+ * message. A table of successive full snapshots cannot answer which field the bank actually
+ * changed, and that is the question asked when a shipment is refused.
+ */
+export const lcAmendments = pgTable(
+  'lc_amendments',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    companyId: uuid('company_id')
+      .notNull()
+      .references(() => companies.id, { onDelete: 'cascade' }),
+    lcId: uuid('lc_id')
+      .notNull()
+      .references(() => lcs.id, { onDelete: 'cascade' }),
+
+    /** The bank's own amendment number, 1, 2, 3 … unique per LC. */
+    number: integer('number').notNull(),
+    /** `[{ field, from, to }]` — only what moved. */
+    diff: jsonb('diff').$type<unknown[]>().notNull().default([]),
+    /** True when the amendment makes the credit harder to draw on. */
+    tightened: boolean('tightened').notNull().default(false),
+    /** Conflicts the detector found against the AMENDED terms, at the moment it applied. */
+    conflictsAfter: jsonb('conflicts_after').$type<unknown[]>().notNull().default([]),
+
+    receivedAt: date('received_at').notNull(),
+    documentId: uuid('document_id').references(() => documents.id, { onDelete: 'set null' }),
+
+    createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('lc_amendments_lc_number_key').on(t.lcId, t.number),
+    index('lc_amendments_company_lc_idx').on(t.companyId, t.lcId, t.number),
+    check('lc_amendments_number_positive', sql`${t.number} >= 1`),
+  ],
+).enableRLS()
+
+/**
+ * A presentation to the bank ⚖. This is the row the factory's cash flow hangs off.
+ *
+ * `realizedAmount` is stored separately from the invoice value because the bank almost never
+ * credits the full amount — charges and any discrepancy fee come off first. Deriving the
+ * receivable from the invoice alone would leave every settled account short by the
+ * deduction, forever.
+ */
+export const docSubmissions = pgTable(
+  'doc_submissions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    companyId: uuid('company_id')
+      .notNull()
+      .references(() => companies.id, { onDelete: 'cascade' }),
+    lcId: uuid('lc_id')
+      .notNull()
+      .references(() => lcs.id, { onDelete: 'restrict' }),
+    /** No FK: `shipments` belongs to 8.1 and imports this module — see docs/STUBS.md. */
+    shipmentId: uuid('shipment_id'),
+
+    /** `[{ kind, documentId, status }]` — copied from the shipment's checklist at handoff. */
+    docs: jsonb('docs').$type<unknown[]>().notNull().default([]),
+    invoicedAmount: numeric('invoiced_amount', { precision: 14, scale: 2 }),
+    currency: text('currency').notNull(),
+
+    bankStatus: bankStatusEnum('bank_status').notNull().default('preparing'),
+    submittedAt: date('submitted_at'),
+
+    /** What the bank objected to. Required by the service when status is `discrepant`. */
+    discrepancyNotes: text('discrepancy_notes'),
+    discrepantSince: date('discrepant_since'),
+
+    realizedAmount: numeric('realized_amount', { precision: 14, scale: 2 }),
+    realizedAt: date('realized_at'),
+    /** Why the credit fell short by more than bank charges would explain. */
+    shortfallReason: text('shortfall_reason'),
+
+    createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // One live submission per shipment. A re-presentation reuses the row — its history is
+    // the audit log, because the bank treats it as the same presentation.
+    uniqueIndex('doc_submissions_shipment_key')
+      .on(t.shipmentId)
+      .where(sql`shipment_id IS NOT NULL`),
+    index('doc_submissions_company_lc_idx').on(t.companyId, t.lcId),
+    index('doc_submissions_company_status_idx').on(t.companyId, t.bankStatus),
+    // The discrepancy-aging scan.
+    index('doc_submissions_discrepant_idx').on(t.companyId, t.discrepantSince),
+    // The realization-lag model reads submitted → realized pairs.
+    index('doc_submissions_company_realized_idx').on(t.companyId, t.realizedAt),
+    check('doc_submissions_currency_iso', sql`char_length(${t.currency}) = 3`),
+    // A submitted presentation has a date; the aging clock depends on it.
+    check(
+      'doc_submissions_submitted_has_date',
+      sql`${t.bankStatus} IN ('preparing') OR ${t.submittedAt} IS NOT NULL`,
+    ),
+    check(
+      'doc_submissions_discrepant_has_notes',
+      sql`${t.bankStatus} <> 'discrepant'
+        OR (${t.discrepancyNotes} IS NOT NULL AND ${t.discrepantSince} IS NOT NULL)`,
+    ),
+    check(
+      'doc_submissions_realized_has_amount',
+      sql`${t.bankStatus} <> 'realized'
+        OR (${t.realizedAmount} IS NOT NULL AND ${t.realizedAt} IS NOT NULL)`,
+    ),
+  ],
+).enableRLS()
+
+/**
+ * What the bank charged ⚖. Attached to an LC or to a specific submission — opening
+ * commission belongs to the credit, negotiation and discrepancy fees to the presentation.
+ * Both feed 11.1's commercial cost component, so neither can be a note in a comment field.
+ */
+export const bankCharges = pgTable(
+  'bank_charges',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    companyId: uuid('company_id')
+      .notNull()
+      .references(() => companies.id, { onDelete: 'cascade' }),
+    lcId: uuid('lc_id').references(() => lcs.id, { onDelete: 'cascade' }),
+    submissionId: uuid('submission_id').references(() => docSubmissions.id, {
+      onDelete: 'cascade',
+    }),
+
+    kind: bankChargeKindEnum('kind').notNull(),
+    amount: numeric('amount', { precision: 14, scale: 2 }).notNull(),
+    currency: text('currency').notNull(),
+    chargedOn: date('charged_on').notNull(),
+    note: text('note'),
+
+    createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('bank_charges_company_lc_idx').on(t.companyId, t.lcId),
+    index('bank_charges_submission_idx').on(t.submissionId),
+    index('bank_charges_company_charged_idx').on(t.companyId, t.chargedOn),
+    check('bank_charges_currency_iso', sql`char_length(${t.currency}) = 3`),
+    check('bank_charges_amount_positive', sql`${t.amount} > 0`),
+    // A charge belongs to a credit or to a presentation. One with neither cannot be
+    // attributed to an order, which is the only reason it is recorded.
+    check(
+      'bank_charges_has_parent',
+      sql`${t.lcId} IS NOT NULL OR ${t.submissionId} IS NOT NULL`,
+    ),
   ],
 ).enableRLS()

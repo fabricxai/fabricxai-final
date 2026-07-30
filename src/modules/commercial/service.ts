@@ -10,17 +10,36 @@
  * the gate." Two storekeepers issuing the last of a bonded roll at the same moment must
  * not both succeed, and a check that reads the balance outside a lock would let them.
  */
-import { and, eq, sql } from 'drizzle-orm'
+import { and, desc, eq, sql } from 'drizzle-orm'
 
 import { recordChange, registerAuditedTables } from '../core/audit'
 import type { AnyCtx, RequestCtx } from '../core/ctx'
 import { AppError, notFound } from '../core/errors'
+import { assertGate, GATES } from '../core/gates'
 import { emit } from '../core/outbox'
+import { defineStateMachine } from '../core/state-machine'
 import { type TenantDb, withTenantRead, withTenantTx } from '../core/tenancy'
 
+import {
+  applyAmendment,
+  BankDocsError,
+  discrepancyAge,
+  realizationLag,
+  realizationShortfall,
+  type LcAmendmentDiff,
+} from './bank-docs'
 import { COMMERCIAL_EVENTS } from './events'
-import { btbHeadroom } from './lc-conflicts'
-import { btbLcs, lcs, udConsumptions, udReconciliations, uds } from './schema'
+import { btbHeadroom, detectLcConflicts } from './lc-conflicts'
+import {
+  bankCharges,
+  btbLcs,
+  docSubmissions,
+  lcAmendments,
+  lcs,
+  udConsumptions,
+  udReconciliations,
+  uds,
+} from './schema'
 import {
   checkUdDraw,
   computeUdBalance,
@@ -421,5 +440,690 @@ export async function checkBtbHeadroom(
           passed: true,
           facts: { limit: headroom.limit, used: headroom.used, free: headroom.free },
         }
+  })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 2.1 LC Register & Bank Docs ⚖
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * preparing → submitted → accepted | discrepant → realized.
+ *
+ * `discrepant → submitted` is the loop that matters: a refused presentation is corrected and
+ * re-presented, which is routine. `realized` is terminal — the money has arrived, and a
+ * status that could move afterwards would let a settled receivable reopen.
+ */
+export const submissionMachine = defineStateMachine({
+  field: 'bankStatus',
+  initial: 'preparing',
+  transitions: {
+    preparing: ['submitted'],
+    submitted: ['accepted', 'discrepant'],
+    accepted: ['realized', 'discrepant'],
+    discrepant: ['submitted', 'realized'],
+    realized: [],
+  },
+})
+
+export type BankStatus = (typeof submissionMachine.states)[number]
+
+/** Company policy. Owned by Settings (X.3); passed in until that module exists. */
+export interface BankDocsPolicy {
+  /** Days a discrepancy may sit before it escalates. Brief says 5. */
+  discrepancyEscalateAfterDays: number
+  /** A realization short by more than this needs a written reason. */
+  explainShortfallAbovePct: string
+  /** Master-LC percentage a BTB may not exceed. */
+  btbLimitPct?: number
+}
+
+function wrapBankDocsError<T>(run: () => T): T {
+  try {
+    return run()
+  } catch (error) {
+    if (error instanceof BankDocsError) {
+      throw new AppError('validation_failed', 'commercial.errors.bank_docs_invalid', {
+        reason: error.message,
+      })
+    }
+    throw error
+  }
+}
+
+/**
+ * Amend an LC ⚖ (brief: "amend LC (versioned diff, re-runs conflict detector)").
+ *
+ * The detector runs against the AMENDED terms and its findings are stored on the amendment
+ * row. An amendment that tightens the credit can put orders in conflict that were fine an
+ * hour ago, and the whole point of recording the conflicts here is that somebody can see
+ * which amendment caused them rather than discovering it when a shipment is refused.
+ */
+export async function amendLc(
+  ctx: RequestCtx,
+  input: {
+    lcId: string
+    diff: LcAmendmentDiff
+    receivedAt: string
+    documentId?: string
+    presentationDays?: number
+  },
+): Promise<{ amendmentId: string; number: number; tightened: boolean; conflicts: unknown[] }> {
+  return withTenantTx(ctx, async (tx) => {
+    const [lc] = await tx.select().from(lcs).where(eq(lcs.id, input.lcId)).for('update')
+    if (!lc) throw notFound('commercial.errors.lc_not_found', { lcId: input.lcId })
+
+    if (lc.status === 'closed' || lc.status === 'expired') {
+      // A bank does not amend a credit that is no longer live.
+      throw new AppError('conflict', 'commercial.errors.lc_not_amendable', {
+        lcId: lc.id,
+        status: lc.status,
+      })
+    }
+
+    const result = wrapBankDocsError(() =>
+      applyAmendment(
+        {
+          value: lc.value,
+          currency: lc.currency,
+          tolerancePct: lc.tolerancePct,
+          latestShipmentDate: lc.latestShipmentDate,
+          expiryDate: lc.expiryDate,
+        },
+        input.diff,
+      ),
+    )
+
+    const [latest] = await tx
+      .select({ number: lcAmendments.number })
+      .from(lcAmendments)
+      .where(eq(lcAmendments.lcId, lc.id))
+      .orderBy(desc(lcAmendments.number))
+      .limit(1)
+
+    const number = (latest?.number ?? 0) + 1
+
+    // Re-run the detector against the amended terms, over every order on this credit.
+    const { orderLcs, orders } = await import('@/modules/orders/schema')
+    const linked = await tx
+      .select({
+        id: orders.id,
+        poNumbers: orders.poNumbers,
+        status: orders.status,
+        plannedExFactory: orders.plannedExFactoryDate,
+      })
+      .from(orders)
+      .innerJoin(orderLcs, eq(orderLcs.orderId, orders.id))
+      .where(eq(orderLcs.lcId, lc.id))
+
+    const conflicts = detectLcConflicts({
+      lc: {
+        id: lc.id,
+        number: lc.number,
+        latestShipmentDate: result.terms.latestShipmentDate,
+        expiryDate: result.terms.expiryDate,
+        status: lc.status,
+      },
+      orders: linked.map((order) => ({
+        id: order.id,
+        poNumbers: order.poNumbers,
+        plannedExFactoryDate: order.plannedExFactory,
+        status: order.status,
+      })),
+      presentationDays: input.presentationDays,
+    })
+
+    await tx
+      .update(lcs)
+      .set({
+        value: result.terms.value,
+        tolerancePct: result.terms.tolerancePct,
+        latestShipmentDate: result.terms.latestShipmentDate,
+        expiryDate: result.terms.expiryDate,
+        updatedAt: new Date(),
+      })
+      .where(eq(lcs.id, lc.id))
+
+    const [row] = await tx
+      .insert(lcAmendments)
+      .values({
+        companyId: ctx.companyId,
+        lcId: lc.id,
+        number,
+        diff: result.changed,
+        tightened: result.tightened,
+        conflictsAfter: conflicts,
+        receivedAt: input.receivedAt,
+        documentId: input.documentId ?? null,
+        createdBy: ctx.userId,
+      })
+      .returning({ id: lcAmendments.id })
+
+    if (!row) throw new Error('lc_amendments insert returned nothing')
+
+    await recordChange(ctx, tx, {
+      action: 'update',
+      targetTable: 'lcs',
+      targetId: lc.id,
+      before: {
+        value: lc.value,
+        tolerancePct: lc.tolerancePct,
+        latestShipmentDate: lc.latestShipmentDate,
+        expiryDate: lc.expiryDate,
+      },
+      after: {
+        amendmentNumber: number,
+        diff: result.changed,
+        tightened: result.tightened,
+        conflictCount: conflicts.length,
+      },
+    })
+
+    await emit(ctx, tx, {
+      eventName: COMMERCIAL_EVENTS.lcAmended,
+      payload: {
+        lcId: lc.id,
+        lcNumber: lc.number,
+        amendmentId: row.id,
+        number,
+        diff: result.changed,
+        tightened: result.tightened,
+      },
+      aggregateTable: 'lcs',
+      aggregateId: lc.id,
+    })
+
+    if (conflicts.length > 0) {
+      // Somebody has to act on these today, not when a shipment is refused.
+      await emit(ctx, tx, {
+        eventName: COMMERCIAL_EVENTS.lcConflictDetected,
+        payload: { lcId: lc.id, causedByAmendment: number, conflicts },
+        aggregateTable: 'lcs',
+        aggregateId: lc.id,
+      })
+    }
+
+    return { amendmentId: row.id, number, tightened: result.tightened, conflicts }
+  })
+}
+
+/**
+ * Open a back-to-back LC (brief: "open BTB (headroom validation)").
+ *
+ * The headroom gate runs here — `checkBtbHeadroom` above computes it, and this is the write
+ * that must not happen when it fails. Over-opening BTBs against a master is how a factory
+ * ends up owing its suppliers more than the buyer will ever pay it.
+ */
+export async function openBtb(
+  ctx: RequestCtx,
+  input: {
+    masterLcId: string
+    number: string
+    supplierId?: string
+    value: string
+    currency: string
+    openedAt?: string
+    expiryDate?: string
+  },
+  policy: BankDocsPolicy,
+): Promise<{ btbLcId: string; headroom: Record<string, unknown> }> {
+  if (policy.btbLimitPct === undefined) {
+    // A headroom check against an unstated ceiling is a pass that means nothing.
+    throw new AppError('validation_failed', 'commercial.errors.no_btb_limit', {})
+  }
+
+  return withTenantTx(ctx, async (tx) => {
+    const [master] = await tx
+      .select()
+      .from(lcs)
+      .where(eq(lcs.id, input.masterLcId))
+      // Locked so two BTBs opened at the same instant cannot both see the same headroom.
+      .for('update')
+
+    if (!master) {
+      throw notFound('commercial.errors.lc_not_found', { lcId: input.masterLcId })
+    }
+    if (master.currency !== input.currency) {
+      throw new AppError('validation_failed', 'commercial.errors.btb_currency_mismatch', {
+        masterCurrency: master.currency,
+        btbCurrency: input.currency,
+      })
+    }
+
+    const siblings = await tx
+      .select({ value: btbLcs.value })
+      .from(btbLcs)
+      .where(and(eq(btbLcs.masterLcId, master.id), sql`${btbLcs.status} <> 'closed'`))
+
+    const headroom = btbHeadroom({
+      masterValue: master.value,
+      // The proposed BTB counts against the ceiling — checking without it would approve
+      // every BTB right up to the limit and then one more.
+      existingBtbValues: [...siblings.map((s) => s.value), input.value],
+      limitPct: policy.btbLimitPct!,
+    })
+
+    assertGate(GATES.btbHeadroom, {
+      passed: !headroom.exceeded,
+      reasonKey: 'gates.btb_headroom.exceeded',
+      facts: {
+        masterLcId: master.id,
+        limit: headroom.limit,
+        used: headroom.used,
+        free: headroom.free,
+        currency: master.currency,
+        limitPct: policy.btbLimitPct!,
+      },
+    })
+
+    const [row] = await tx
+      .insert(btbLcs)
+      .values({
+        companyId: ctx.companyId,
+        masterLcId: master.id,
+        number: input.number,
+        supplierId: input.supplierId ?? null,
+        value: input.value,
+        currency: input.currency,
+        openedAt: input.openedAt ?? null,
+        expiryDate: input.expiryDate ?? null,
+        status: 'active',
+        createdBy: ctx.userId,
+      })
+      .returning({ id: btbLcs.id })
+
+    if (!row) throw new Error('btb_lcs insert returned nothing')
+
+    await recordChange(ctx, tx, {
+      action: 'insert',
+      targetTable: 'btb_lcs',
+      targetId: row.id,
+      after: {
+        masterLcId: master.id,
+        number: input.number,
+        value: input.value,
+        currency: input.currency,
+        headroomAfter: headroom.free,
+      },
+    })
+
+    await emit(ctx, tx, {
+      eventName: COMMERCIAL_EVENTS.btbOpened,
+      payload: {
+        btbLcId: row.id,
+        masterLcId: master.id,
+        number: input.number,
+        value: input.value,
+        currency: input.currency,
+        freeAfter: headroom.free,
+      },
+      aggregateTable: 'btb_lcs',
+      aggregateId: row.id,
+    })
+
+    return { btbLcId: row.id, headroom: headroom as unknown as Record<string, unknown> }
+  })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// The submission lifecycle
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Open a presentation for a shipment, from the checklist 8.1 handed off. */
+export async function openSubmission(
+  ctx: RequestCtx,
+  input: {
+    lcId: string
+    shipmentId?: string
+    docs: unknown[]
+    invoicedAmount?: string
+    currency: string
+  },
+): Promise<{ submissionId: string }> {
+  return withTenantTx(ctx, async (tx) => {
+    const [lc] = await tx.select({ id: lcs.id }).from(lcs).where(eq(lcs.id, input.lcId))
+    if (!lc) throw notFound('commercial.errors.lc_not_found', { lcId: input.lcId })
+
+    const [row] = await tx
+      .insert(docSubmissions)
+      .values({
+        companyId: ctx.companyId,
+        lcId: input.lcId,
+        shipmentId: input.shipmentId ?? null,
+        docs: input.docs,
+        invoicedAmount: input.invoicedAmount ?? null,
+        currency: input.currency,
+        createdBy: ctx.userId,
+      })
+      .returning({ id: docSubmissions.id })
+
+    if (!row) throw new Error('doc_submissions insert returned nothing')
+    return { submissionId: row.id }
+  })
+}
+
+/**
+ * Move a presentation through the bank's lifecycle ⚖.
+ *
+ * `realized` goes through `postRealization` instead, because it moves money and has to write
+ * the receivable in the same transaction.
+ */
+export async function setSubmissionStatus(
+  ctx: RequestCtx,
+  input: {
+    submissionId: string
+    bankStatus: Exclude<BankStatus, 'realized'>
+    submittedAt?: string
+    discrepancyNotes?: string
+    discrepantSince?: string
+  },
+): Promise<void> {
+  await withTenantTx(ctx, async (tx) => {
+    const [row] = await tx
+      .select()
+      .from(docSubmissions)
+      .where(eq(docSubmissions.id, input.submissionId))
+      .for('update')
+
+    if (!row) {
+      throw notFound('commercial.errors.submission_not_found', {
+        submissionId: input.submissionId,
+      })
+    }
+
+    submissionMachine.assert(row.bankStatus as BankStatus, input.bankStatus)
+
+    if (input.bankStatus === 'submitted' && !input.submittedAt && !row.submittedAt) {
+      // The aging clock and the whole realization-lag model hang off this date.
+      throw new AppError('validation_failed', 'commercial.errors.submitted_needs_date', {})
+    }
+
+    if (input.bankStatus === 'discrepant' && !input.discrepancyNotes) {
+      // "Discrepant" with no note is a refused presentation nobody can correct.
+      throw new AppError('validation_failed', 'commercial.errors.discrepancy_needs_notes', {})
+    }
+
+    await tx
+      .update(docSubmissions)
+      .set({
+        bankStatus: input.bankStatus,
+        submittedAt: input.submittedAt ?? row.submittedAt,
+        discrepancyNotes:
+          input.bankStatus === 'discrepant' ? input.discrepancyNotes! : row.discrepancyNotes,
+        discrepantSince:
+          input.bankStatus === 'discrepant'
+            ? (input.discrepantSince ?? todayInFactoryTz())
+            : row.discrepantSince,
+        updatedAt: new Date(),
+      })
+      .where(eq(docSubmissions.id, row.id))
+
+    await recordChange(ctx, tx, {
+      action: 'update',
+      targetTable: 'doc_submissions',
+      targetId: row.id,
+      before: { bankStatus: row.bankStatus },
+      after: { bankStatus: input.bankStatus, discrepancyNotes: input.discrepancyNotes ?? null },
+    })
+
+    if (input.bankStatus === 'submitted') {
+      await emit(ctx, tx, {
+        eventName: COMMERCIAL_EVENTS.docsSubmitted,
+        payload: {
+          submissionId: row.id,
+          lcId: row.lcId,
+          shipmentId: row.shipmentId,
+          submittedAt: input.submittedAt ?? row.submittedAt,
+        },
+        aggregateTable: 'doc_submissions',
+        aggregateId: row.id,
+      })
+    }
+
+    if (input.bankStatus === 'discrepant') {
+      await emit(ctx, tx, {
+        eventName: COMMERCIAL_EVENTS.docsDiscrepant,
+        payload: {
+          submissionId: row.id,
+          lcId: row.lcId,
+          shipmentId: row.shipmentId,
+          notes: input.discrepancyNotes,
+        },
+        aggregateTable: 'doc_submissions',
+        aggregateId: row.id,
+      })
+    }
+  })
+}
+
+export interface RealizationResult {
+  submissionId: string
+  realizedAmount: string
+  shortfall: string
+  shortfallPct: string
+  needsExplanation: boolean
+}
+
+/**
+ * Post a realization ⚖ (brief: "`postRealization` → Finance receivable + emits
+ * `finance.realized`").
+ *
+ * The money has landed. Two things matter here:
+ *
+ *  1. **The shortfall is computed and stored, not inferred.** The bank deducts its charges
+ *     before crediting, so realized < invoiced is normal — and a receivable derived from the
+ *     invoice alone would stay open by the deduction forever.
+ *  2. **A large shortfall needs a written reason.** A 12% deduction is not bank charges;
+ *     something was disputed or discounted, and closing the account without saying what
+ *     loses the only chance to find out.
+ */
+export async function postRealization(
+  ctx: RequestCtx,
+  input: {
+    submissionId: string
+    realizedAmount: string
+    realizedAt: string
+    shortfallReason?: string
+  },
+  policy: BankDocsPolicy,
+): Promise<RealizationResult> {
+  return withTenantTx(ctx, async (tx) => {
+    const [row] = await tx
+      .select()
+      .from(docSubmissions)
+      .where(eq(docSubmissions.id, input.submissionId))
+      .for('update')
+
+    if (!row) {
+      throw notFound('commercial.errors.submission_not_found', {
+        submissionId: input.submissionId,
+      })
+    }
+
+    submissionMachine.assert(row.bankStatus as BankStatus, 'realized')
+
+    if (!row.invoicedAmount) {
+      throw new AppError('validation_failed', 'commercial.errors.no_invoiced_amount', {
+        submissionId: row.id,
+      })
+    }
+
+    const shortfall = wrapBankDocsError(() =>
+      realizationShortfall({
+        invoiced: row.invoicedAmount!,
+        realized: input.realizedAmount,
+        explainAbovePct: policy.explainShortfallAbovePct,
+      }),
+    )
+
+    if (shortfall.needsExplanation && !input.shortfallReason) {
+      throw new AppError('validation_failed', 'commercial.errors.shortfall_needs_reason', {
+        submissionId: row.id,
+        shortfall: shortfall.shortfall,
+        shortfallPct: shortfall.shortfallPct,
+        thresholdPct: policy.explainShortfallAbovePct,
+      })
+    }
+
+    await tx
+      .update(docSubmissions)
+      .set({
+        bankStatus: 'realized',
+        realizedAmount: input.realizedAmount,
+        realizedAt: input.realizedAt,
+        shortfallReason: input.shortfallReason ?? null,
+        updatedAt: new Date(),
+      })
+      .where(eq(docSubmissions.id, row.id))
+
+    await recordChange(ctx, tx, {
+      action: 'update',
+      targetTable: 'doc_submissions',
+      targetId: row.id,
+      before: { bankStatus: row.bankStatus },
+      after: {
+        bankStatus: 'realized',
+        realizedAmount: input.realizedAmount,
+        realizedAt: input.realizedAt,
+        shortfall: shortfall.shortfall,
+      },
+    })
+
+    // 11.1 closes the receivable off this.
+    await emit(ctx, tx, {
+      eventName: COMMERCIAL_EVENTS.financeRealized,
+      payload: {
+        submissionId: row.id,
+        lcId: row.lcId,
+        shipmentId: row.shipmentId,
+        invoicedAmount: row.invoicedAmount,
+        realizedAmount: input.realizedAmount,
+        currency: row.currency,
+        realizedAt: input.realizedAt,
+        shortfall: shortfall.shortfall,
+        shortfallReason: input.shortfallReason ?? null,
+      },
+      aggregateTable: 'doc_submissions',
+      aggregateId: row.id,
+    })
+
+    return {
+      submissionId: row.id,
+      realizedAmount: input.realizedAmount,
+      shortfall: shortfall.shortfall,
+      shortfallPct: shortfall.shortfallPct,
+      needsExplanation: shortfall.needsExplanation,
+    }
+  })
+}
+
+export async function recordBankCharge(
+  ctx: RequestCtx,
+  input: {
+    lcId?: string
+    submissionId?: string
+    kind:
+      | 'lc_opening'
+      | 'amendment'
+      | 'negotiation'
+      | 'discrepancy'
+      | 'courier'
+      | 'swift'
+      | 'acceptance'
+      | 'other'
+    amount: string
+    currency: string
+    chargedOn: string
+    note?: string
+  },
+): Promise<{ chargeId: string }> {
+  if (!input.lcId && !input.submissionId) {
+    // A charge attributable to neither a credit nor a presentation cannot reach an order,
+    // which is the only reason to record it.
+    throw new AppError('validation_failed', 'commercial.errors.charge_needs_parent', {})
+  }
+
+  return withTenantTx(ctx, async (tx) => {
+    const [row] = await tx
+      .insert(bankCharges)
+      .values({
+        companyId: ctx.companyId,
+        lcId: input.lcId ?? null,
+        submissionId: input.submissionId ?? null,
+        kind: input.kind,
+        amount: input.amount,
+        currency: input.currency,
+        chargedOn: input.chargedOn,
+        note: input.note ?? null,
+        createdBy: ctx.userId,
+      })
+      .returning({ id: bankCharges.id })
+
+    if (!row) throw new Error('bank_charges insert returned nothing')
+    return { chargeId: row.id }
+  })
+}
+
+/** Discrepancies past the escalation window (brief §Jobs: "discrepancy aging (>5d)"). */
+export async function agingDiscrepancies(
+  ctx: AnyCtx,
+  input: { today: string },
+  policy: BankDocsPolicy,
+): Promise<
+  { submissionId: string; lcId: string; days: number; notes: string | null }[]
+> {
+  return withTenantRead(ctx, async (tx) => {
+    const rows = await tx
+      .select()
+      .from(docSubmissions)
+      .where(eq(docSubmissions.bankStatus, 'discrepant'))
+
+    const out: { submissionId: string; lcId: string; days: number; notes: string | null }[] = []
+
+    for (const row of rows) {
+      if (!row.discrepantSince) continue
+      const age = wrapBankDocsError(() =>
+        discrepancyAge({
+          discrepantSince: row.discrepantSince!,
+          today: input.today,
+          escalateAfterDays: policy.discrepancyEscalateAfterDays,
+        }),
+      )
+      if (!age.escalate) continue
+      out.push({
+        submissionId: row.id,
+        lcId: row.lcId,
+        days: age.days,
+        notes: row.discrepancyNotes,
+      })
+    }
+
+    // Oldest first — the one rotting longest is the one to chase.
+    return out.sort((a, b) => b.days - a.days)
+  })
+}
+
+/**
+ * How long this buyer's bank actually takes to pay (brief §Jobs: "realization-lag stats per
+ * buyer", feeding 11.1's receivable forecast).
+ */
+export async function buyerRealizationLag(
+  ctx: AnyCtx,
+  input: { buyerId: string },
+): Promise<{ medianDays: number | null; observations: number }> {
+  return withTenantRead(ctx, async (tx) => {
+    const rows = await tx
+      .select({ submittedAt: docSubmissions.submittedAt, realizedAt: docSubmissions.realizedAt })
+      .from(docSubmissions)
+      .innerJoin(lcs, eq(docSubmissions.lcId, lcs.id))
+      .where(eq(lcs.buyerId, input.buyerId))
+
+    return wrapBankDocsError(() =>
+      realizationLag(
+        rows
+          .filter((row) => row.submittedAt !== null)
+          .map((row) => ({ submittedAt: row.submittedAt!, realizedAt: row.realizedAt })),
+      ),
+    )
   })
 }
