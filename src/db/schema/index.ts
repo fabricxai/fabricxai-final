@@ -59,3 +59,7 @@ export * from '@/modules/costing/schema'
 // Phase 2 — 1.6 Order Memory. Holds the only pgvector column in the system; feeds 1.2's
 // similar-orders panel and 1.5's seeding.
 export * from '@/modules/memory/schema'
+
+// Phase 8 — 9.1 Machines & Tickets. Consumes 6.1's machine-downtime event; `downtimes`
+// stays 6.1's table (rule 11) and is linked back by id.
+export * from '@/modules/maintenance/schema'

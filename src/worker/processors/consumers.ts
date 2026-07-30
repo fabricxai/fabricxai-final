@@ -324,6 +324,31 @@ async function onOrderStatusChanged(ctx: SystemCtx, payload: Record<string, unkn
   await compileOutcome(ctx, { orderId })
 }
 
+
+/**
+ * A machine stopped a line → raise a maintenance ticket (9.1).
+ *
+ * The brief calls for this link to be automatic, and the reason is simply what a floor looks
+ * like: a supervisor with a dead line does not walk to a terminal and file paperwork. A
+ * maintenance system that only knows about the breakdowns somebody remembered to report has
+ * no idea which machines actually break.
+ *
+ * Idempotent on the downtime id — one stoppage is one ticket, however many times the outbox
+ * redelivers. Three tickets from one stoppage would read as three breakdowns in the outlier
+ * report and send a mechanic to strip a machine that failed once.
+ */
+async function onMachineDowntime(ctx: SystemCtx, payload: Record<string, unknown>) {
+  const { openTicketFromDowntime } = await import('@/modules/maintenance/service')
+
+  await openTicketFromDowntime(ctx, {
+    downtimeId: String(payload.downtimeId),
+    lineId: String(payload.lineId),
+    machineId: payload.machineId ? String(payload.machineId) : null,
+    startedAt: String(payload.startedAt),
+    note: payload.note ? String(payload.note) : null,
+  })
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // The routing table
 // ─────────────────────────────────────────────────────────────────────────────
@@ -341,6 +366,7 @@ export const EVENT_HANDLERS: Readonly<Record<string, Handler>> = {
   'shipment.ex_factory.confirmed': onExFactoryConfirmed,
   'rfq.won': onRfqWon,
   'orders.order.status_changed': onOrderStatusChanged,
+  'production.downtime.machine': onMachineDowntime,
 }
 
 /**

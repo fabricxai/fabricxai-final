@@ -135,6 +135,7 @@ describe('the routing table', () => {
       'cutting.order.complete',
       'finance.realized',
       'orders.order.status_changed',
+      'production.downtime.machine',
       'rfq.won',
       'shipment.docs.ready_for_bank',
       'shipment.ex_factory.confirmed',
@@ -687,6 +688,47 @@ describe('1.3 → 1.6 · closing an order compiles its outcome', () => {
     expect(
       await db.select().from(orderOutcomes).where(eq(orderOutcomes.orderId, orderId)),
     ).toHaveLength(1)
+  })
+})
+
+describe('6.1 → 9.1 · a machine stoppage raises a maintenance ticket', () => {
+  it('opens one at line_down priority, once per stoppage', async () => {
+    await reset()
+    const { lines } = await import('@/modules/planning/schema')
+    const { machines, tickets } = await import('@/modules/maintenance/schema')
+
+    const [line] = await db
+      .insert(lines)
+      .values({ companyId: COMPANY, code: `L-${randomUUID().slice(0, 6)}`, name: 'Line' })
+      .returning({ id: lines.id })
+
+    const [machine] = await db
+      .insert(machines)
+      .values({ companyId: COMPANY, machineType: 'overlock', lineId: line!.id })
+      .returning({ id: machines.id })
+
+    const downtimeId = randomUUID()
+    const event = {
+      downtimeId,
+      lineId: line!.id,
+      machineId: machine!.id,
+      reason: 'machine',
+      startedAt: '2026-03-01T04:00:00Z',
+    }
+
+    await deliver('production.downtime.machine', event)
+    // Redelivered with a different event id, which is what the outbox actually does.
+    await deliver('production.downtime.machine', event)
+
+    const raised = await db.select().from(tickets).where(eq(tickets.downtimeId, downtimeId))
+    // One stoppage, one ticket. Three would read as three breakdowns in the outlier report.
+    expect(raised).toHaveLength(1)
+    expect(raised[0]!.priority).toBe('line_down')
+    expect(raised[0]!.source).toBe('downtime_auto')
+
+    await db.delete(tickets).where(eq(tickets.downtimeId, downtimeId))
+    await db.delete(machines).where(eq(machines.id, machine!.id))
+    await db.delete(lines).where(eq(lines.id, line!.id))
   })
 })
 
