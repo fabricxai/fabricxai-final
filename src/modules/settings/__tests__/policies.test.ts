@@ -24,16 +24,20 @@ import {
 } from '../policies'
 
 describe('the registry covers every module that takes a policy', () => {
-  it('1 · lists all twelve', () => {
+  it('1 · lists every module with configurable policy', () => {
     // If a module gains a Policy interface and is not registered here, its numbers go back
     // to being whatever the call site says.
     expect(POLICY_MODULE_IDS).toEqual([
+      'analytics',
       'approvals',
       'buyers',
       'commercial',
+      'compliance',
       'costing',
       'cutting',
       'finance',
+      'maintenance',
+      'marbim',
       'planning',
       'procurement',
       'quality',
@@ -218,3 +222,43 @@ describe('the defaults are the numbers this industry actually uses', () => {
     expect(finance.defaultRealizationLagDays).toBeGreaterThan(0)
   })
 })
+
+describe('the defaults the scheduled jobs run on', () => {
+  it('compliance CAP deadlines are ordered by severity', () => {
+    // `capDeadline` REFUSES a policy in which a critical finding gets longer than a major
+    // one. A shipped default that tripped that check would break the corrective-action
+    // flow for every company at once, and only on the day somebody opened a CAP.
+    const { capDeadlineDays } = resolvePolicyValue<{
+      capDeadlineDays: { critical: number; major: number; minor: number; observation: number }
+    }>('compliance', null)
+
+    expect(capDeadlineDays.critical).toBeLessThanOrEqual(capDeadlineDays.major)
+    expect(capDeadlineDays.major).toBeLessThanOrEqual(capDeadlineDays.minor)
+    expect(capDeadlineDays.minor).toBeLessThanOrEqual(capDeadlineDays.observation)
+  })
+
+  it('maintenance ships NO default line-minute rate', () => {
+    // Deliberately absent. 9.1 refuses to price a stoppage without one and the monthly job
+    // reports that it could not — a plausible default would put an invented taka figure in
+    // an owner's report for every factory that never configured it.
+    const policy = resolvePolicyValue<{ lineValuePerMinute?: unknown }>('maintenance', null)
+    expect(policy.lineValuePerMinute).toBeUndefined()
+  })
+
+  it('analytics scorecard weights sum to one', () => {
+    // `buyerScorecard` throws otherwise, and weights summing to 0.9 would scale every score
+    // down by a tenth while leaving the ranking intact — which is why nobody would find it.
+    const { scorecard } = resolvePolicyValue<{
+      scorecard: { weights: { otd: number; dhu: number; margin: number } }
+    }>('analytics', null)
+
+    const total = scorecard.weights.otd + scorecard.weights.dhu + scorecard.weights.margin
+    expect(total).toBeCloseTo(1, 9)
+  })
+
+  it('the compliance certificate ladder is the 90/60/30 the brief names', () => {
+    const { expiryRungs } = resolvePolicyValue<{ expiryRungs: number[] }>('compliance', null)
+    expect(expiryRungs).toEqual([90, 60, 30])
+  })
+})
+

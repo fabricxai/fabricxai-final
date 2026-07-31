@@ -23,12 +23,16 @@
  */
 import { z } from 'zod'
 
+import type { AnalyticsPolicy } from '../analytics/queries'
 import type { ApprovalsPolicy } from '../approvals/service'
 import type { BuyerDeskPolicy } from '../buyers/service'
 import type { BankDocsPolicy } from '../commercial/service'
 import type { CostingPolicy } from '../costing/service'
+import type { CompliancePolicy } from '../compliance/service'
 import type { CuttingPolicy } from '../cutting/service'
 import type { FinancePolicy } from '../finance/service'
+import type { MaintenancePolicy } from '../maintenance/service'
+import type { MarbimPolicy } from '../marbim/service'
 import type { PlanningPolicy } from '../planning/service'
 import type { ProcurementPolicy } from '../procurement/service'
 import type { QualityPolicy } from '../quality/service'
@@ -303,13 +307,129 @@ const approvals = {
  * caller's expected type. A union here would make every read need a discriminator for no
  * additional safety.
  */
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 9.1 Maintenance
+// ─────────────────────────────────────────────────────────────────────────────
+
+const maintenanceSchema = z.object({
+  /**
+   * What one minute of a stopped line is worth. There is no default and there cannot be
+   * one: it depends on this factory's wages and on what its lines are running, and 9.1
+   * REFUSES to price a stoppage rather than report a loss of zero. A company that has not
+   * set it gets no downtime cost figure at all, which is the honest outcome.
+   */
+  lineValuePerMinute: z.object({ amount: decimal, currency: z.string().length(3) }).optional(),
+  minFleetTickets: z.number().int().min(1),
+  outlierMultiple: z.number().min(1),
+  outlierMinTickets: z.number().int().min(1),
+})
+
+const maintenance = {
+  moduleId: 'maintenance',
+  label: 'Machines & Tickets',
+  schema: maintenanceSchema,
+  // Ten tickets across the fleet before the outlier comparison says anything, and a machine
+  // must reach three times the median AND five tickets absolute. Both floors exist because
+  // this report sends a mechanic to strip a machine.
+  defaults: { minFleetTickets: 10, outlierMultiple: 3, outlierMinTickets: 5 },
+} satisfies PolicyDefinition<Omit<MaintenancePolicy, 'lineValuePerMinute'> & {
+  lineValuePerMinute?: { amount: string; currency: string }
+}>
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 10.2 Compliance
+// ─────────────────────────────────────────────────────────────────────────────
+
+const complianceSchema = z.object({
+  capDeadlineDays: z.object({
+    critical: wholeDays,
+    major: wholeDays,
+    minor: wholeDays,
+    observation: wholeDays,
+  }),
+  expiryRungs: z.array(z.number().int().min(1)).min(1),
+  requiredCertificates: z.record(z.string(), z.array(z.string())),
+  closerRoles: z.array(z.string()).min(1),
+})
+
+const compliance = {
+  moduleId: 'compliance',
+  label: 'Compliance & Audit',
+  schema: complianceSchema,
+  // Seven days for a critical finding is what RSC expects for a life-safety issue; the rest
+  // follow the usual social-audit windows. 90/60/30 is the certificate ladder the brief
+  // names. The required-certificate lists are a compliance officer's knowledge and start
+  // deliberately short — the audit pack NAMES what is missing, so a short list under-reports
+  // gaps rather than inventing them.
+  defaults: {
+    capDeadlineDays: { critical: 7, major: 30, minor: 60, observation: 90 },
+    expiryRungs: [90, 60, 30],
+    requiredCertificates: { rsc: ['fire', 'factory'], bsci: [], sedex: [], buyer: [], government: [] },
+    // Evidence is accepted by somebody other than whoever produced it, so this list must
+    // never be widened to include every role that can submit.
+    closerRoles: ['owner', 'admin'],
+  },
+} satisfies PolicyDefinition<CompliancePolicy>
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 11.2 Analytics
+// ─────────────────────────────────────────────────────────────────────────────
+
+const analyticsSchema = z.object({
+  ttlSeconds: z.number().int().min(30),
+  minShipmentsForOtd: z.number().int().min(1),
+  scorecard: z.object({
+    minOrders: z.number().int().min(1),
+    weights: z.object({ otd: z.number(), dhu: z.number(), margin: z.number() }),
+  }),
+  trend: z.object({ minPoints: z.number().int().min(2), thresholdPct: decimal }),
+})
+
+const analytics = {
+  moduleId: 'analytics',
+  label: 'Owner Dashboard',
+  schema: analyticsSchema,
+  // Five minutes is the brief's cache TTL. Five shipments is the fewest that can carry an
+  // on-time percentage; below it the counts are reported instead. Four points before a trend
+  // is called, and two points of movement before it is called anything but flat.
+  defaults: {
+    ttlSeconds: 300,
+    minShipmentsForOtd: 5,
+    scorecard: { minOrders: 5, weights: { otd: 0.5, dhu: 0.3, margin: 0.2 } },
+    trend: { minPoints: 4, thresholdPct: '2' },
+  },
+} satisfies PolicyDefinition<AnalyticsPolicy>
+
+// ─────────────────────────────────────────────────────────────────────────────
+// X.2 MARBIM
+// ─────────────────────────────────────────────────────────────────────────────
+
+const marbimSchema = z.object({
+  extractionsPerHour: z.number().int().min(1),
+  maxAttempts: z.number().int().min(1),
+})
+
+const marbim = {
+  moduleId: 'marbim',
+  label: 'MARBIM',
+  schema: marbimSchema,
+  // A model bill is a real cost and a runaway loop is a real way to incur one. Three
+  // attempts is enough to ride out a provider timeout without retrying a PDF forever.
+  defaults: { extractionsPerHour: 60, maxAttempts: 3 },
+} satisfies PolicyDefinition<MarbimPolicy>
+
 export const POLICY_REGISTRY: Readonly<Record<string, PolicyDefinition<never>>> = {
+  analytics,
   approvals,
   buyers,
   commercial,
+  compliance,
   costing,
   cutting,
   finance,
+  maintenance,
+  marbim,
   planning,
   procurement,
   quality,

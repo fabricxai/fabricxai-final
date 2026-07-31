@@ -226,7 +226,7 @@ export interface ExtractionOutcome {
  * nobody will ever parse.
  */
 export async function runExtraction(
-  ctx: RequestCtx,
+  ctx: AnyCtx,
   input: { jobId: string },
   policy: MarbimPolicy,
 ): Promise<ExtractionOutcome> {

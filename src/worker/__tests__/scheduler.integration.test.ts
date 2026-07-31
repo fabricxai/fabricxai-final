@@ -62,7 +62,13 @@ afterAll(async () => {
   await client.end()
 })
 
-const fakeJob = (task: ScheduledTask) => ({ data: { task } }) as Job<{ task: ScheduledTask }>
+/**
+ * `timestamp` is what identifies one FIRE of a cron. Two calls with the same timestamp are
+ * the same fire retried; two with different ones are two fires, and the distinction is the
+ * whole basis of the fan-out's deduplication.
+ */
+const fakeJob = (task: ScheduledTask, timestamp = Date.now()) =>
+  ({ data: { task }, timestamp }) as Job<{ task: ScheduledTask }>
 
 describe('scheduler', () => {
   it('registers repeatable jobs idempotently', async () => {
@@ -95,18 +101,51 @@ describe('scheduler', () => {
     expect(companyIds).not.toContain(COMPANY_INACTIVE)
   })
 
-  it('a double fire enqueues nothing extra — the job id is deterministic', async () => {
+  it('the SAME fire enqueues nothing extra — the job id is deterministic', async () => {
     const derive = getQueue(QUEUE.derive)
     await derive.drain()
 
-    await fanOutScheduledTask(fakeJob('commercial.lc_countdown'))
+    const firedAt = Date.parse('2026-03-10T02:00:00Z')
+
+    await fanOutScheduledTask(fakeJob('commercial.lc_countdown', firedAt))
     const after1 = (await derive.getJobs(['waiting', 'delayed', 'prioritized'])).length
 
-    // Clock adjustment, or two workers racing a restart.
-    await fanOutScheduledTask(fakeJob('commercial.lc_countdown'))
+    // The same scheduled job, retried after a worker died mid-fan-out.
+    await fanOutScheduledTask(fakeJob('commercial.lc_countdown', firedAt))
     const after2 = (await derive.getJobs(['waiting', 'delayed', 'prioritized'])).length
 
+    expect(after1).toBeGreaterThan(0)
     expect(after2).toBe(after1)
+  })
+
+  it('a SUB-DAILY task enqueues every fire, not just the first of the day', async () => {
+    const derive = getQueue(QUEUE.derive)
+    await derive.drain()
+
+    // Two fires of the five-minute extraction runner, twenty minutes apart on one day.
+    await fanOutScheduledTask(
+      fakeJob('marbim.run_extractions', Date.parse('2026-03-10T08:00:00Z')),
+    )
+    const afterFirst = (await derive.getJobs(['waiting', 'delayed', 'prioritized'])).length
+
+    await fanOutScheduledTask(
+      fakeJob('marbim.run_extractions', Date.parse('2026-03-10T08:20:00Z')),
+    )
+    const afterSecond = (await derive.getJobs(['waiting', 'delayed', 'prioritized'])).length
+
+    // Keyed on the calendar date, the second fire and the 286 after it would have been
+    // dropped as duplicates — the task would have run once a day and looked fine.
+    expect(afterSecond).toBe(afterFirst * 2)
+  })
+
+  it('every registered task has a cron pattern and a handler', async () => {
+    // The compiler already enforces the handler side. This catches the other direction: a
+    // task added to the array with a pattern that does not parse would register a schedule
+    // that never fires, and nothing else would notice.
+    for (const task of SCHEDULED_TASKS) {
+      expect(task.pattern).toMatch(/^[\d*/,\- ]+$/)
+      expect(task.pattern.trim().split(/\s+/)).toHaveLength(5)
+    }
   })
 
   it('the derive handler runs the real per-tenant job', async () => {

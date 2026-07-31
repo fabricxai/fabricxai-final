@@ -21,9 +21,24 @@ import { sql } from 'drizzle-orm'
 
 import { db } from '@/db/client'
 import { runUdAlerts } from '@/modules/commercial/jobs'
-import { ensureOutputPartitions, runDayClose } from '@/modules/production/jobs'
-import { runLcCountdown, runTnaScan } from '@/modules/orders/jobs'
+import { runCapEscalations, runCertificateAlerts } from '@/modules/compliance/jobs'
+import type { CompliancePolicy } from '@/modules/compliance/service'
 import type { SystemCtx } from '@/modules/core/ctx'
+import {
+  runBreakdownReport,
+  runDowntimeCosts,
+  runLowStockAlerts,
+  runPmDueAlerts,
+  type StoredMaintenancePolicy,
+} from '@/modules/maintenance/jobs'
+import { runQueuedExtractions } from '@/modules/marbim/jobs'
+import type { MarbimPolicy } from '@/modules/marbim/service'
+import { runStyleEmbedSweep } from '@/modules/memory/jobs'
+import { runLcCountdown, runTnaScan } from '@/modules/orders/jobs'
+import { ensureOutputPartitions, runDayClose } from '@/modules/production/jobs'
+import { getPolicy } from '@/modules/settings/service'
+
+import { refreshExceptionsFeed } from './exceptions-feed'
 
 import { getQueue, QUEUE } from '../queues'
 
@@ -67,6 +82,78 @@ export const SCHEDULED_TASKS = [
     // know at the start of the shift rather than halfway through it.
     pattern: '15 2 * * *',
   },
+
+  // ── 10.2 Compliance ──
+  {
+    id: 'certificate-alerts-nightly',
+    task: 'compliance.certificate_alerts',
+    // 02:30 Dhaka. A lapsed fire licence is a factory operating without one, and the
+    // compliance officer should find it at the start of the day rather than at an audit.
+    pattern: '30 2 * * *',
+  },
+  {
+    id: 'cap-escalations-nightly',
+    task: 'compliance.cap_escalations',
+    // 02:45 Dhaka, after the certificate scan — both land in the same morning review.
+    pattern: '45 2 * * *',
+  },
+
+  // ── 9.1 Maintenance ──
+  {
+    id: 'pm-due-nightly',
+    task: 'maintenance.pm_due',
+    // 03:00 Dhaka: the due-list is what the maintenance team works from when the shift
+    // starts, so it has to exist before they arrive.
+    pattern: '0 3 * * *',
+  },
+  {
+    id: 'low-stock-nightly',
+    task: 'maintenance.low_stock',
+    // 03:15 Dhaka, with the PM list — a service due tomorrow and no looper on the shelf
+    // are the same conversation.
+    pattern: '15 3 * * *',
+  },
+  {
+    id: 'downtime-costs-monthly',
+    task: 'maintenance.downtime_costs',
+    // 04:00 Dhaka on the 1st, for the month just ended. Waiting until the 2nd would be
+    // safer against late entries, but the figure is an estimate for a management report,
+    // and it is recomputed idempotently if it is run again.
+    pattern: '0 4 1 * *',
+  },
+  {
+    id: 'breakdown-outliers-monthly',
+    task: 'maintenance.breakdown_report',
+    // 04:30 Dhaka on the 1st, after the costs are in.
+    pattern: '30 4 1 * *',
+  },
+
+  // ── 1.6 Order Memory ──
+  {
+    id: 'style-embed-sweep-nightly',
+    task: 'memory.embed_styles',
+    // 03:30 Dhaka. A sweep rather than an event consumer, so a style created while the
+    // model provider was down is picked up on the next run instead of never.
+    pattern: '30 3 * * *',
+  },
+
+  // ── X.2 MARBIM ──
+  {
+    id: 'extractions-every-5-min',
+    task: 'marbim.run_extractions',
+    // Every five minutes, all day. An extraction is somebody waiting for a tech pack to
+    // become a draft; nightly would make the feature useless.
+    pattern: '*/5 * * * *',
+  },
+
+  // ── 11.2 Analytics ──
+  {
+    id: 'exceptions-feed-quarter-hourly',
+    task: 'analytics.exceptions_refresh',
+    // Every fifteen minutes. This drives "what is wrong right now"; the feed carries its
+    // own as-of stamp, so a stale one is visible rather than misleading.
+    pattern: '*/15 * * * *',
+  },
 ] as const
 
 export type ScheduledTask = (typeof SCHEDULED_TASKS)[number]['task']
@@ -95,6 +182,22 @@ export async function registerSchedules(): Promise<void> {
   console.log(`[scheduler] ${SCHEDULED_TASKS.length} schedule(s) registered (${FACTORY_TZ})`)
 }
 
+/**
+ * The factory's today.
+ *
+ * Deriving "today" from the server clock would put a 03:00 Dhaka job on the previous
+ * calendar date in UTC, so a certificate expiring today would be reported as expiring
+ * tomorrow — for one day, every day.
+ */
+function factoryToday(): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: FACTORY_TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date())
+}
+
 /** Live company ids, via the narrow SECURITY DEFINER function from migration 0011. */
 async function activeCompanyIds(): Promise<string[]> {
   const result = await db.execute<{ company_id: string }>(
@@ -114,13 +217,29 @@ async function activeCompanyIds(): Promise<string[]> {
 export async function fanOutScheduledTask(job: Job<{ task: ScheduledTask }>): Promise<number> {
   const companies = await activeCompanyIds()
   const derive = getQueue(QUEUE.derive)
-  const runDate = new Date().toISOString().slice(0, 10)
+
+  // Keyed on the FIRE, not on the date.
+  //
+  // `job.timestamp` is when this particular scheduled job was created, so every fire of a
+  // cron gets its own slot and any retry of that same fire reuses it — which is what makes
+  // the dedupe work without swallowing legitimate repeats.
+  //
+  // The previous key was the calendar date. That was correct while every task was nightly
+  // and silently wrong the moment one was not: a task on `*/5 * * * *` would have run once
+  // and had its remaining 287 fires that day dropped as duplicates.
+  // A real BullMQ job always carries a timestamp; the fallback only affects hand-built
+  // jobs, and a retry of one of those is not a thing that happens in production.
+  //
+  // The colon is stripped from the time deliberately: BullMQ accepts a custom job id
+  // containing colons ONLY when it splits into exactly three parts, so `08:00` inside the
+  // third segment makes it four and the queue rejects the whole fan-out at runtime.
+  const slot = new Date(job.timestamp ?? Date.now()).toISOString().slice(0, 16).replace(':', '-')
 
   for (const companyId of companies) {
     await derive.add(
       job.data.task,
       { companyId, task: job.data.task } satisfies DeriveJobData,
-      { jobId: `${job.data.task}:${companyId}:${runDate}` },
+      { jobId: `${job.data.task}:${companyId}:${slot}` },
     )
   }
 
@@ -144,6 +263,11 @@ export async function runDeriveTask(job: Job<DeriveJobData>): Promise<unknown> {
     jobId: job.id ?? undefined,
   }
 
+  // Policy comes from Settings HERE, in the worker, and is passed down as an argument.
+  // A module never imports Settings — that is what keeps services testable without a
+  // database and keeps the dependency pointing one way (X.3's own note on the registry).
+  const today = factoryToday()
+
   switch (job.data.task) {
     case 'orders.tna_scan':
       return runTnaScan(ctx)
@@ -155,6 +279,37 @@ export async function runDeriveTask(job: Job<DeriveJobData>): Promise<unknown> {
       return ensureOutputPartitions(ctx)
     case 'production.day_close':
       return runDayClose(ctx)
+
+    case 'compliance.certificate_alerts':
+      return runCertificateAlerts(ctx, { today }, await getPolicy<CompliancePolicy>(ctx, 'compliance'))
+    case 'compliance.cap_escalations':
+      return runCapEscalations(ctx, { today })
+
+    case 'maintenance.pm_due':
+      return runPmDueAlerts(ctx, { today })
+    case 'maintenance.low_stock':
+      return runLowStockAlerts(ctx)
+    case 'maintenance.downtime_costs':
+      return runDowntimeCosts(
+        ctx,
+        { today },
+        await getPolicy<StoredMaintenancePolicy>(ctx, 'maintenance'),
+      )
+    case 'maintenance.breakdown_report':
+      return runBreakdownReport(
+        ctx,
+        { today },
+        await getPolicy<StoredMaintenancePolicy>(ctx, 'maintenance'),
+      )
+
+    case 'memory.embed_styles':
+      return runStyleEmbedSweep(ctx)
+
+    case 'marbim.run_extractions':
+      return runQueuedExtractions(ctx, await getPolicy<MarbimPolicy>(ctx, 'marbim'))
+
+    case 'analytics.exceptions_refresh':
+      return refreshExceptionsFeed(ctx, today)
     default: {
       // Exhaustiveness: a task added to SCHEDULED_TASKS without a branch here fails to
       // compile rather than silently doing nothing every night.

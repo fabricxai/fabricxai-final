@@ -24,6 +24,7 @@ import { buyers } from '@/modules/buyers/schema'
 import { approveCostSheet, createCostSheet } from '@/modules/costing/service'
 import type { RequestCtx } from '@/modules/core/ctx'
 import { withTenantRead } from '@/modules/core/tenancy'
+import { POLICY_MODULE_IDS } from '@/modules/settings/policies'
 import '@/modules/rfq/register'
 import { rfqs } from '@/modules/rfq/schema'
 import { createRfq, draftQuote, sendQuote } from '@/modules/rfq/service'
@@ -184,7 +185,9 @@ describe('X.3 · policy storage', () => {
     await setPolicy(ownerCtx, { moduleId: 'costing', patch: { marginFloorPct: '15' } })
 
     const views = await listPolicies(ownerCtx)
-    expect(views).toHaveLength(12)
+    // Against the registry rather than a literal: the exact list is pinned by the pure
+    // vectors, and what matters here is that every registered module reaches the screen.
+    expect(views).toHaveLength(POLICY_MODULE_IDS.length)
 
     const costing = views.find((v) => v.moduleId === 'costing')!
     // A screen showing only the effective value could not tell a deliberate 15 from a
