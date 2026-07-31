@@ -22,6 +22,8 @@ import { sql } from 'drizzle-orm'
 import { db } from '@/db/client'
 import { runUdAlerts } from '@/modules/commercial/jobs'
 import { deliverCritical, deliverDigest, type DeliveryPolicy } from '@/modules/core/delivery'
+import { runJobHealthCheck, type JobHealthPolicy } from '@/modules/core/job-health-job'
+import { pruneJobRuns, recordRun } from '@/modules/core/job-runs'
 import { runCapEscalations, runCertificateAlerts } from '@/modules/compliance/jobs'
 import type { CompliancePolicy } from '@/modules/compliance/service'
 import type { SystemCtx } from '@/modules/core/ctx'
@@ -164,6 +166,22 @@ export const SCHEDULED_TASKS = [
     pattern: '0 8 * * *',
   },
 
+  // ── Core · watching the schedule itself ──
+  {
+    id: 'job-health-hourly',
+    task: 'core.job_health',
+    // Hourly. Frequent enough to catch a five-minute task within the hour, rare enough
+    // that a scheduler which has been down all night sends one alert and not twelve.
+    pattern: '0 * * * *',
+  },
+  {
+    id: 'prune-job-runs-nightly',
+    task: 'core.prune_job_runs',
+    // 05:00 Dhaka, after the monthly reports. The five-minute tasks alone are 288 rows a
+    // day per company, and the query that watches everything else reads this table.
+    pattern: '0 5 * * *',
+  },
+
   // ── 11.2 Analytics ──
   {
     id: 'exceptions-feed-quarter-hourly',
@@ -214,6 +232,23 @@ function factoryToday(): string {
     month: '2-digit',
     day: '2-digit',
   }).format(new Date())
+}
+
+/**
+ * When this company was created — the anchor a never-run task is measured from.
+ *
+ * Read through the same scoped path as everything else, so it is the caller's own company
+ * or nothing.
+ */
+async function companyCreatedAt(companyId: string): Promise<Date> {
+  const result = await db.execute<{ created_at: string }>(
+    sql`select created_at from companies where id = ${companyId}`,
+  )
+  const rows = Array.isArray(result) ? result : ((result as { rows?: unknown[] }).rows ?? [])
+  const row = (rows as { created_at: string }[])[0]
+  // A company that does not exist cannot have stale jobs; the epoch would report every
+  // task as silent since 1970, so treat it as brand new instead.
+  return row ? new Date(row.created_at) : new Date()
 }
 
 /** Live company ids, via the narrow SECURITY DEFINER function from migration 0011. */
@@ -281,12 +316,22 @@ export async function runDeriveTask(job: Job<DeriveJobData>): Promise<unknown> {
     jobId: job.id ?? undefined,
   }
 
+  // Every task, without exception. A task that ran but left no row is indistinguishable
+  // from one that never ran, which is the whole failure `core.job_health` exists to catch —
+  // so the recording wraps the switch rather than being called inside each branch.
+  return recordRun(ctx, { task: job.data.task, jobId: job.id ?? undefined }, () =>
+    dispatchTask(ctx, job.data.task),
+  )
+}
+
+async function dispatchTask(ctx: SystemCtx, task: ScheduledTask): Promise<unknown> {
+
   // Policy comes from Settings HERE, in the worker, and is passed down as an argument.
   // A module never imports Settings — that is what keeps services testable without a
   // database and keeps the dependency pointing one way (X.3's own note on the registry).
   const today = factoryToday()
 
-  switch (job.data.task) {
+  switch (task) {
     case 'orders.tna_scan':
       return runTnaScan(ctx)
     case 'commercial.lc_countdown':
@@ -341,10 +386,28 @@ export async function runDeriveTask(job: Job<DeriveJobData>): Promise<unknown> {
         await getPolicy<DeliveryPolicy>(ctx, 'delivery'),
         sendNotificationEmail,
       )
+
+    case 'core.job_health':
+      return runJobHealthCheck(
+        ctx,
+        {
+          // The LIVE schedule, not a copy of it. A task is monitored by the act of being
+          // scheduled, and stops being reported by the act of being removed.
+          expectations: SCHEDULED_TASKS.map((scheduled) => ({
+            task: scheduled.task,
+            pattern: scheduled.pattern,
+          })),
+          companyCreatedAt: await companyCreatedAt(ctx.companyId),
+        },
+        await getPolicy<JobHealthPolicy>(ctx, 'job_health'),
+      )
+
+    case 'core.prune_job_runs':
+      return pruneJobRuns(ctx, (await getPolicy<{ retentionDays: number }>(ctx, 'job_health')).retentionDays)
     default: {
       // Exhaustiveness: a task added to SCHEDULED_TASKS without a branch here fails to
       // compile rather than silently doing nothing every night.
-      const unhandled: never = job.data.task
+      const unhandled: never = task
       throw new Error(`no handler for scheduled task "${String(unhandled)}"`)
     }
   }

@@ -673,6 +673,59 @@ export const notifications = pgTable(
   ],
 ).enableRLS()
 
+
+/**
+ * One row per scheduled task execution — the record that makes a silent scheduler visible.
+ *
+ * Without it, a cron that stops firing produces nothing at all: no error, no failed job, no
+ * trace. The TNA scan simply never runs again and every milestone stays "on track". This
+ * table is what `core.job_health` reads to notice, and what `/api/health` reads to notice
+ * the case the in-worker check cannot — the whole worker being dead.
+ *
+ * A row is written when the task STARTS and updated when it ends, so a run that was killed
+ * mid-flight stays `running` rather than vanishing. That is a signal too: a job stuck for
+ * hours looks different from one that never began.
+ *
+ * Append-only and pruned; `core.prune_job_runs` keeps the recent window. The five-minute
+ * tasks alone are 288 rows a day per company, and unbounded history would make the very
+ * query that watches them slow.
+ */
+export const jobRunStatusEnum = pgEnum('job_run_status', ['running', 'succeeded', 'failed'])
+
+export const jobRuns = pgTable(
+  'job_runs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    companyId: uuid('company_id')
+      .notNull()
+      .references(() => companies.id, { onDelete: 'cascade' }),
+
+    /** The scheduled task id, e.g. `orders.tna_scan`. */
+    task: text('task').notNull(),
+    status: jobRunStatusEnum('status').notNull().default('running'),
+
+    startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp('finished_at', { withTimezone: true }),
+    durationMs: integer('duration_ms'),
+
+    /** Whatever the task returned — counts, skips, reasons. Read when diagnosing. */
+    result: jsonb('result').$type<Record<string, unknown> | null>(),
+    error: text('error'),
+    /** BullMQ job id, for tying a row back to a queue entry. */
+    jobId: text('job_id'),
+  },
+  (t) => [
+    // The staleness query: last success per (company, task).
+    index('job_runs_company_task_idx').on(t.companyId, t.task, t.startedAt.desc()),
+    // The prune scan.
+    index('job_runs_started_idx').on(t.startedAt),
+    check(
+      'job_runs_finished_has_status',
+      sql`${t.finishedAt} IS NULL OR ${t.status} <> 'running'`,
+    ),
+  ],
+).enableRLS()
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Offline sync
 // ─────────────────────────────────────────────────────────────────────────────

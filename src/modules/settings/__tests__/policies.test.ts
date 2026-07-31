@@ -37,6 +37,7 @@ describe('the registry covers every module that takes a policy', () => {
       'cutting',
       'delivery',
       'finance',
+      'job_health',
       'maintenance',
       'marbim',
       'planning',

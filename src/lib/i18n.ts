@@ -42,6 +42,8 @@ export const MESSAGES: Catalogue = {
     'notifications.system.test.title': 'Test notification',
     'notifications.approve.waiting.title': '{count} change(s) waiting for your approval',
     'notifications.lc.expiry_near.title': 'LC {lcNumber} expires on {date}',
+    'core.notifications.jobs_silent.title':
+      'Scheduled jobs have stopped: {staleCount} silent, {stuckCount} stuck',
 
     // ── 1.3 Order Desk & TNA ──
     'orders.notifications.milestone_at_risk.title': '{milestone} is at risk',
@@ -101,6 +103,8 @@ export const MESSAGES: Catalogue = {
     'notifications.system.test.title': 'পরীক্ষামূলক নোটিফিকেশন',
     'notifications.approve.waiting.title': '{count}টি পরিবর্তন আপনার অনুমোদনের অপেক্ষায়',
     'notifications.lc.expiry_near.title': 'LC {lcNumber} শেষ হবে {date} তারিখে',
+    'core.notifications.jobs_silent.title':
+      'নির্ধারিত জব বন্ধ হয়ে গেছে: {staleCount}টি নীরব, {stuckCount}টি আটকে আছে',
 
     // ── 1.3 ──
     'orders.notifications.milestone_at_risk.title': '{milestone} ঝুঁকিতে আছে',

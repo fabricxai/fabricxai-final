@@ -26,6 +26,7 @@ import { z } from 'zod'
 import type { AnalyticsPolicy } from '../analytics/queries'
 import type { ApprovalsPolicy } from '../approvals/service'
 import type { DeliveryPolicy } from '../core/delivery'
+import type { JobHealthPolicy } from '../core/job-health-job'
 import type { BuyerDeskPolicy } from '../buyers/service'
 import type { BankDocsPolicy } from '../commercial/service'
 import type { CostingPolicy } from '../costing/service'
@@ -335,6 +336,35 @@ const delivery = {
 } satisfies PolicyDefinition<DeliveryPolicy>
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Core · watching the schedule
+// ─────────────────────────────────────────────────────────────────────────────
+
+const jobHealthSchema = z.object({
+  toleranceFactor: z.number().min(1),
+  floorMinutes: z.number().int().min(1),
+  stuckAfterMinutes: z.number().int().min(1),
+  retentionDays: z.number().int().min(1),
+})
+
+const jobHealth = {
+  moduleId: 'job_health',
+  label: 'Scheduled job health',
+  schema: jobHealthSchema,
+  // 1.5× the schedule's own interval, with a fifteen-minute floor so a single slow run on
+  // a five-minute task does not page anybody — an alert that cries wolf gets muted, taking
+  // the real one with it. A run still going after an hour is stuck rather than slow; the
+  // longest task in the system is a monthly report over one company's stoppages.
+  // Fourteen days of history is enough to see a pattern and short enough that the query
+  // watching everything else stays fast.
+  defaults: {
+    toleranceFactor: 1.5,
+    floorMinutes: 15,
+    stuckAfterMinutes: 60,
+    retentionDays: 14,
+  },
+} satisfies PolicyDefinition<JobHealthPolicy & { retentionDays: number }>
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 9.1 Maintenance
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -455,6 +485,7 @@ export const POLICY_REGISTRY: Readonly<Record<string, PolicyDefinition<never>>> 
   costing,
   cutting,
   finance,
+  job_health: jobHealth,
   maintenance,
   marbim,
   planning,

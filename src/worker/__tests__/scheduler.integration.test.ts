@@ -138,6 +138,18 @@ describe('scheduler', () => {
     expect(afterSecond).toBe(afterFirst * 2)
   })
 
+  it('every registered task is one the health check can classify', async () => {
+    const { expectedIntervalMinutes } = await import('@/modules/core/job-health')
+
+    // The staleness check refuses a pattern shape it does not understand, which is right —
+    // but it refuses at RUNTIME, once an hour, inside a job. Asserting it here means a
+    // schedule added with an unclassifiable pattern fails the build instead of quietly
+    // leaving that task unmonitored.
+    for (const task of SCHEDULED_TASKS) {
+      expect(() => expectedIntervalMinutes(task.pattern), task.task).not.toThrow()
+    }
+  })
+
   it('every registered task has a cron pattern and a handler', async () => {
     // The compiler already enforces the handler side. This catches the other direction: a
     // task added to the array with a pattern that does not parse would register a schedule
