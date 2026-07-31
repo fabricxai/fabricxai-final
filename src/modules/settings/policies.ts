@@ -25,6 +25,7 @@ import { z } from 'zod'
 
 import type { AnalyticsPolicy } from '../analytics/queries'
 import type { ApprovalsPolicy } from '../approvals/service'
+import type { DeliveryPolicy } from '../core/delivery'
 import type { BuyerDeskPolicy } from '../buyers/service'
 import type { BankDocsPolicy } from '../commercial/service'
 import type { CostingPolicy } from '../costing/service'
@@ -309,6 +310,31 @@ const approvals = {
  */
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Core · notification delivery
+// ─────────────────────────────────────────────────────────────────────────────
+
+const deliverySchema = z.object({
+  emailSeverities: z.array(z.enum(['info', 'warning', 'critical'])),
+  digestLimit: z.number().int().min(1),
+  appUrl: z.string().min(1),
+})
+
+const delivery = {
+  moduleId: 'delivery',
+  label: 'Notifications & email',
+  schema: deliverySchema,
+  // Only CRITICAL interrupts. Everything else waits for the daily digest, because a factory
+  // that mutes a stream of warning emails has muted the criticals with them — they come
+  // from the same sender. Twenty lines is about as much as a digest can carry before the
+  // one that matters is buried.
+  defaults: {
+    emailSeverities: ['critical'],
+    digestLimit: 20,
+    appUrl: 'http://localhost:3000',
+  },
+} satisfies PolicyDefinition<DeliveryPolicy>
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 9.1 Maintenance
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -425,6 +451,7 @@ export const POLICY_REGISTRY: Readonly<Record<string, PolicyDefinition<never>>> 
   buyers,
   commercial,
   compliance,
+  delivery,
   costing,
   cutting,
   finance,

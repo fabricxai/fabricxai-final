@@ -21,6 +21,7 @@ import { sql } from 'drizzle-orm'
 
 import { db } from '@/db/client'
 import { runUdAlerts } from '@/modules/commercial/jobs'
+import { deliverCritical, deliverDigest, type DeliveryPolicy } from '@/modules/core/delivery'
 import { runCapEscalations, runCertificateAlerts } from '@/modules/compliance/jobs'
 import type { CompliancePolicy } from '@/modules/compliance/service'
 import type { SystemCtx } from '@/modules/core/ctx'
@@ -37,6 +38,7 @@ import { runStyleEmbedSweep } from '@/modules/memory/jobs'
 import { runLcCountdown, runTnaScan } from '@/modules/orders/jobs'
 import { ensureOutputPartitions, runDayClose } from '@/modules/production/jobs'
 import { getPolicy } from '@/modules/settings/service'
+import { sendNotificationEmail } from '@/lib/mailer'
 
 import { refreshExceptionsFeed } from './exceptions-feed'
 
@@ -144,6 +146,22 @@ export const SCHEDULED_TASKS = [
     // Every five minutes, all day. An extraction is somebody waiting for a tech pack to
     // become a draft; nightly would make the feature useless.
     pattern: '*/5 * * * *',
+  },
+
+  // ── Core · notification delivery ──
+  {
+    id: 'notify-critical-every-5-min',
+    task: 'core.deliver_critical',
+    // Every five minutes. A lapsed fire licence or a corrective action that reached the
+    // owner is worth an interruption; waiting for a nightly digest is not.
+    pattern: '*/5 * * * *',
+  },
+  {
+    id: 'notify-digest-daily',
+    task: 'core.deliver_digest',
+    // 08:00 Dhaka, so it is waiting when people arrive rather than landing at 3am. One
+    // email per person covering everything they were not interrupted for.
+    pattern: '0 8 * * *',
   },
 
   // ── 11.2 Analytics ──
@@ -310,6 +328,19 @@ export async function runDeriveTask(job: Job<DeriveJobData>): Promise<unknown> {
 
     case 'analytics.exceptions_refresh':
       return refreshExceptionsFeed(ctx, today)
+
+    case 'core.deliver_critical':
+      return deliverCritical(
+        ctx,
+        await getPolicy<DeliveryPolicy>(ctx, 'delivery'),
+        sendNotificationEmail,
+      )
+    case 'core.deliver_digest':
+      return deliverDigest(
+        ctx,
+        await getPolicy<DeliveryPolicy>(ctx, 'delivery'),
+        sendNotificationEmail,
+      )
     default: {
       // Exhaustiveness: a task added to SCHEDULED_TASKS without a branch here fails to
       // compile rather than silently doing nothing every night.

@@ -61,6 +61,23 @@ async function send(mail: Mail): Promise<void> {
   await getTransport().sendMail({ from: env.EMAIL_FROM, ...mail })
 }
 
+/**
+ * Send an already-rendered notification.
+ *
+ * Deliberately dumb: subject and body arrive resolved and localised from
+ * `modules/core/delivery`, because deciding what a message says is that module's job and
+ * knowing how to reach an SMTP server is this one's. It is passed in as the `send` seam, so
+ * the delivery logic is testable without a mail server.
+ */
+export async function sendNotificationEmail(input: {
+  to: string
+  subject: string
+  text: string
+  html: string
+}): Promise<void> {
+  await send(input)
+}
+
 export async function sendVerificationEmail(input: {
   to: string
   name?: string | null
