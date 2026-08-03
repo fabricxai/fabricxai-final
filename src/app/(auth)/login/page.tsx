@@ -78,8 +78,21 @@ export default function LoginPage() {
           {busy ? <MarbimMark state="thinking" size={20} label="Signing in" /> : 'Sign in'}
         </Button>
 
-        <div style={{ font: "400 14px/1.5 var(--fx-font-sans)", color: 'var(--fx-text-secondary)' }}>
-          New factory? <Link href="/signup">Create an account</Link>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 6,
+            font: "400 14px/1.5 var(--fx-font-sans)",
+            color: 'var(--fx-text-secondary)',
+          }}
+        >
+          {/* First, not last: somebody reading this form twice is here because they cannot
+              get in, not because they want to create a second factory. */}
+          <Link href="/forgot-password">Forgotten your password?</Link>
+          <span>
+            New factory? <Link href="/signup">Create an account</Link>
+          </span>
         </div>
       </form>
     </Card>

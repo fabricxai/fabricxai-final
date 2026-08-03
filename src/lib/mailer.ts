@@ -78,6 +78,36 @@ export async function sendNotificationEmail(input: {
   await send(input)
 }
 
+/**
+ * The "I cannot get in" email.
+ *
+ * Until this existed there was no self-service recovery at all: `requireEmailVerification`
+ * is on, so a factory owner who forgot their password — or whose 24-hour verification link
+ * expired — had no path that did not involve somebody with database access. For a pilot
+ * that is a support call per user, and for the owner it is a support call to the vendor.
+ *
+ * Says plainly that an unrequested one can be ignored, because the message somebody did
+ * not ask for is the one that worries them.
+ */
+export async function sendPasswordResetEmail(input: {
+  to: string
+  name?: string | null
+  url: string
+}): Promise<void> {
+  const greeting = input.name?.trim() ? `Hi ${input.name.trim()},` : 'Hi,'
+
+  await send({
+    to: input.to,
+    subject: 'Reset your FabricXAI password',
+    text: `${greeting}\n\nUse this link to set a new password for your FabricXAI account:\n\n${input.url}\n\nThe link expires in one hour and can be used once. If you did not ask to reset your password, ignore this message — nothing has changed and your current password still works.\n`,
+    html: `<p>${greeting}</p>
+<p>Use this link to set a new password for your FabricXAI account.</p>
+<p><a href="${input.url}">Set a new password</a></p>
+<p>The link expires in one hour and can be used once.</p>
+<p>If you did not ask to reset your password, ignore this message — nothing has changed and your current password still works.</p>`,
+  })
+}
+
 export async function sendVerificationEmail(input: {
   to: string
   name?: string | null

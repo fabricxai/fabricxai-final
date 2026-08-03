@@ -28,7 +28,7 @@ import * as schema from '@/db/schema'
 import { membershipsForUser, withTenantTx } from '@/modules/core/tenancy'
 
 import { env } from './env'
-import { sendVerificationEmail } from './mailer'
+import { sendPasswordResetEmail, sendVerificationEmail } from './mailer'
 import { provisionCompany } from './provisioning'
 import { LIMITS } from './rate-limit'
 import { getRedis } from './redis'
@@ -136,6 +136,19 @@ export const auth = betterAuth({
     requireEmailVerification: true,
     minPasswordLength: 10,
     autoSignIn: false,
+
+    /**
+     * Self-service recovery. Without it, `requireEmailVerification` meant a forgotten
+     * password had no path that did not involve database access — a support call per
+     * locked-out user, and for the factory owner a support call to the vendor.
+     *
+     * One hour, not the 24 the verification link gets: a reset link is a live credential
+     * for whoever holds it, and the person using one is at their keyboard right now.
+     */
+    resetPasswordTokenExpiresIn: 60 * 60,
+    sendResetPassword: async ({ user, url }) => {
+      await sendPasswordResetEmail({ to: user.email, name: user.name, url })
+    },
   },
 
   emailVerification: {

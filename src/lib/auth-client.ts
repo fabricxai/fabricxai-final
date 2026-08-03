@@ -12,3 +12,14 @@ export const authClient = createAuthClient({
 })
 
 export const { signIn, signUp, signOut, useSession } = authClient
+
+/**
+ * Password recovery, reached through the client object rather than destructured.
+ *
+ * Better Auth builds these lazily on a Proxy, so they exist at runtime but are not on the
+ * destructurable inferred type — destructuring them fails to typecheck while
+ * `authClient.requestPasswordReset(...)` does not. `requestPasswordReset` is the current
+ * name; `forgetPassword` is its older alias and still routes.
+ */
+export const requestPasswordReset = authClient.requestPasswordReset
+export const resetPassword = authClient.resetPassword
