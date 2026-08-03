@@ -23,6 +23,7 @@ import 'dotenv/config'
 import { randomUUID } from 'node:crypto'
 
 import { eq, sql } from 'drizzle-orm'
+import postgres from 'postgres'
 
 import { createDirectClient, createDirectDb } from '@/db/direct'
 import * as schema from '@/db/schema'
@@ -184,7 +185,8 @@ async function main() {
       console.log(`[seed]   ✓ ${slice.id}`)
     }
 
-    await assertTenantIsolation(db)
+    await assertSeedWroteSomething(db)
+    await assertTenantIsolation()
 
     console.log('[seed] rows:')
     for (const [table, n] of Object.entries(counts).sort()) {
@@ -197,11 +199,12 @@ async function main() {
 }
 
 /**
- * Cheap smoke test of wall 2 on every seed run: seeded rows must be invisible without
- * the matching scope. Three lines, and it catches a missing policy on a new table the
- * moment its slice is added rather than in a later security review.
+ * Did the slices actually write? Runs on the OWNER connection, which sees everything —
+ * so all this can prove is that rows exist. It says nothing about tenancy.
+ * (Its predecessor claimed to be the wall-2 check while running as the owner: a check
+ * that could never fail, labelled "verified". Audit DB-H4.)
  */
-async function assertTenantIsolation(db: ReturnType<typeof createDirectDb>): Promise<void> {
+async function assertSeedWroteSomething(db: ReturnType<typeof createDirectDb>): Promise<void> {
   const result = await db.execute<{ visible: string }>(sql`
     select count(*)::text as visible
     from (
@@ -214,6 +217,54 @@ async function assertTenantIsolation(db: ReturnType<typeof createDirectDb>): Pro
   const visible = Number((rows[0] as { visible: string }).visible)
   if (visible === 0) {
     throw new Error('seed wrote nothing visible — the slices did not run')
+  }
+}
+
+/**
+ * The REAL wall-2 smoke test: connect as the app role (DATABASE_URL), set no tenant
+ * scope, and demand zero rows from every RLS-enabled table the seed touched. Run on
+ * every seed, it catches a missing policy the moment a slice gains a table — not in a
+ * later security review.
+ *
+ * Sweeps every RLS-enabled base table rather than a hand-kept list, so a new tenant
+ * table cannot dodge it by being forgotten here.
+ */
+async function assertTenantIsolation(): Promise<void> {
+  const appUrl = process.env.DATABASE_URL
+  if (!appUrl) throw new Error('DATABASE_URL must be set for the isolation check')
+
+  const appClient = postgres(appUrl, { max: 1, prepare: false, onnotice: () => {} })
+  try {
+    const tables = await appClient<{ relname: string }[]>`
+      select c.relname
+      from pg_class c
+      join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'public' and c.relkind in ('r', 'p') and c.relrowsecurity
+        and exists (
+          select 1 from information_schema.columns col
+          where col.table_schema = 'public'
+            and col.table_name = c.relname
+            and col.column_name = 'company_id'
+        )`
+
+    const leaks: string[] = []
+    for (const { relname } of tables) {
+      // No SET LOCAL app.company_id: an unscoped app-role connection must see nothing.
+      const [row] = await appClient.unsafe(
+        `select count(*)::text as n from "${relname.replace(/"/g, '""')}"`,
+      )
+      if (Number((row as unknown as { n: string }).n) > 0) leaks.push(relname)
+    }
+
+    if (leaks.length > 0) {
+      throw new Error(
+        `wall 2 breached: the unscoped app role can read rows from: ${leaks.join(', ')} — ` +
+          'a policy is missing or not FORCEd on these tables',
+      )
+    }
+    console.log(`[seed] isolation verified: app role sees 0 rows across ${tables.length} RLS tables`)
+  } finally {
+    await appClient.end()
   }
 }
 
