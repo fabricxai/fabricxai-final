@@ -9,6 +9,13 @@ export async function register() {
   const { env } = await import('./lib/env')
   console.log(`[fabricxai] env ok · NODE_ENV=${env.NODE_ENV} · app=${env.APP_URL}`)
 
+  // Tenancy wall check: the pooled role must be the RLS-bound app role. A superuser
+  // here means every policy in the schema is decoration. Skipped during `next build`
+  // (no database there); enforced in every running server process.
+  const { assertAppRoleConnection } = await import('./db/assert-app-role')
+  await assertAppRoleConnection()
+  console.log('[fabricxai] db role ok — RLS applies to this connection')
+
   // Populate the module registry before the first request. Nothing discovers
   // modules at runtime — importing `register.ts` IS the registration — so
   // without this the pending-change whitelist, the offline sync handlers and

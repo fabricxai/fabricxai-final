@@ -42,6 +42,12 @@ async function main() {
   await getRedis().ping()
   console.log('[worker] redis ok')
 
+  // Same wall as the app: the worker writes through withTenantTx too, and a worker
+  // connected as the owner would run every scheduled derivation with RLS off.
+  const { assertAppRoleConnection } = await import('@/db/assert-app-role')
+  await assertAppRoleConnection()
+  console.log('[worker] db role ok — RLS applies to this connection')
+
   // Same principle for the module registry: a worker with zero registered modules would
   // run every schedule and understand none of the work.
   const registered = registeredSummary()

@@ -147,7 +147,7 @@ services:
       redis:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://fabricxai:fabricxai@pgbouncer:6432/fabricxai
+      DATABASE_URL: postgres://fabricxai_app_rw:fabricxai-app-dev-secret@pgbouncer:6432/fabricxai
       DIRECT_DATABASE_URL: postgres://fabricxai:fabricxai@postgres:5432/fabricxai
       REDIS_URL: redis://redis:6379
       S3_ENDPOINT: http://minio:9000
@@ -171,7 +171,7 @@ services:
       redis:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://fabricxai:fabricxai@pgbouncer:6432/fabricxai
+      DATABASE_URL: postgres://fabricxai_app_rw:fabricxai-app-dev-secret@pgbouncer:6432/fabricxai
       DIRECT_DATABASE_URL: postgres://fabricxai:fabricxai@postgres:5432/fabricxai
       REDIS_URL: redis://redis:6379
       S3_ENDPOINT: http://minio:9000
