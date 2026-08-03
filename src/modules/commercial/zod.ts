@@ -59,6 +59,34 @@ export const udOverrideDraft = z.object({
   reason: z.string().min(10, 'an overdraw needs a stated reason'),
 })
 
+export const createLcPayload = z.object({
+  /** Required. A letter of credit is opened by a specific buyer's bank in the factory's
+   *  favour — an LC belonging to nobody cannot be reconciled against a shipment. */
+  buyerId: z.uuid(),
+  number: z.string().min(1).max(60),
+  value: quantity,
+  currency: z.string().length(3),
+  /** The shipping band the LC allows. 8.1 reads it; it is not a display preference. */
+  tolerancePct: quantity.default('0'),
+  issueDate: calendarDate.optional(),
+  /**
+   * The two dates that cause every LC crisis. Latest shipment is when goods must be ON the
+   * vessel; expiry is when documents must be AT the bank. A shipment that meets one and
+   * misses the other is still unpaid.
+   */
+  latestShipmentDate: calendarDate.optional(),
+  expiryDate: calendarDate.optional(),
+  /**
+   * `{ commercial_invoice: true, packing_list: true, bl: true }` — a MAP, not a list,
+   * because 8.1 looks documents up by kind when it assembles a presentation. A list would
+   * make every lookup a scan and every typo silently absent.
+   */
+  docsRequired: z.record(z.string().min(1), z.boolean()).default({}),
+  documentId: z.uuid().optional(),
+})
+
+export type CreateLcPayload = z.infer<typeof createLcPayload>
+
 export const COMMERCIAL_ZOD_MAP = {
   ud_from_scan_v1: udFromScanDraft,
   ud_override_v1: udOverrideDraft,

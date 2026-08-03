@@ -95,9 +95,52 @@ export async function uploadGazette(
   input: unknown,
 ): Promise<{ gazetteId: string; grades: number }> {
   assertPayrollAccess(ctx)
+  return withTenantTx(ctx, (tx) => uploadGazetteIn(ctx, tx, input))
+}
+
+/**
+ * Commit a gazette transcribed from the government notification — MARBIM's intake path.
+ *
+ * Core's generic write would have refused `effectiveFrom` as an invalid identifier, but
+ * the deeper reason for a handler is `wage_grades`: a gazette is a header AND its grade
+ * table, and a row write would have inserted the header alone. A gazette with no grades
+ * activates cleanly and then pays everybody nothing.
+ *
+ * **No `assertPayrollAccess` here.** The approve inbox already gates this: `wage_gazettes`
+ * is approvable only by hr and the owner (`approvalDefaults` in this module's register), so
+ * by the time a draft reaches this function the check has been made against the person who
+ * signed it. Re-checking `ctx` would fail the job runner, which has no user.
+ */
+export async function commitGazetteFromScan(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  input: { operation: 'insert' | 'update' | 'delete'; targetId: string | null; payload: Record<string, unknown> },
+): Promise<{ rowId: string; before: null; after: Record<string, unknown> }> {
+  if (input.operation !== 'insert') {
+    // A gazette is superseded, never edited: rewriting the rates a past run was computed
+    // against would silently change what people were told they were paid.
+    throw new AppError('validation_failed', 'workforce.errors.gazette_draft_insert_only', {
+      operation: input.operation,
+    })
+  }
+
+  const result = await uploadGazetteIn(ctx, tx, input.payload)
+  return {
+    rowId: result.gazetteId,
+    before: null,
+    after: { gazetteId: result.gazetteId, grades: result.grades },
+  }
+}
+
+/** The insert itself, inside a transaction the caller owns. */
+async function uploadGazetteIn(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  input: unknown,
+): Promise<{ gazetteId: string; grades: number }> {
   const payload = gazetteUpload.parse(input)
 
-  return withTenantTx(ctx, async (tx) => {
+  return (async () => {
     const [gazette] = await tx
       .insert(wageGazettes)
       .values({
@@ -133,7 +176,7 @@ export async function uploadGazette(
     })
 
     return { gazetteId: gazette.id, grades: payload.grades.length }
-  })
+  })()
 }
 
 /**

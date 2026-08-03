@@ -31,7 +31,13 @@ import {
 } from './marbim'
 import { getProvider, ProviderError } from './provider'
 import { chatTurns, extractionJobs } from './schema'
-import { collectTools, validateToolPack, type ModuleTool, type ToolPack } from './tools'
+import {
+  collectTools,
+  validateToolPack,
+  type DraftTool,
+  type ModuleTool,
+  type ToolPack,
+} from './tools'
 import { extractionRequest } from './zod'
 
 /** Company policy. Read from X.3 Settings by the caller, like every other module's. */
@@ -129,6 +135,70 @@ export function toolsInScope(packs: readonly ToolPack[]): ModuleTool[] {
   return collectTools(packs)
 }
 
+/**
+ * Run a draft tool, and turn what it proposes into a pending change.
+ *
+ * `tools.ts` has described this function since the day the contract was written — twice, in
+ * the comments explaining why a draft tool is safe — and it did not exist. So a draft tool
+ * could be registered, validated and executed, and its proposal had nowhere to go: the two
+ * halves of the safety argument were a type that forbade writing and a door that was never
+ * built. Every draft tool was decoration.
+ *
+ * This is the only path from a tool to `pending_changes`, and it is deliberately narrow:
+ *
+ *  - the tool's own zod validates the arguments before its executor sees them;
+ *  - `assertExtractionConfidence` refuses a proposal whose confidence is a constant, which
+ *    is the check the whole module exists for (rule 3);
+ *  - `propose` re-validates the payload against the module's registered schema and refuses
+ *    a target the module never whitelisted.
+ *
+ * Nothing is committed. The draft lands in the approve inbox with its per-field confidence,
+ * where a person reads the fields and signs — or does not.
+ */
+export async function runDraftTool(
+  ctx: RequestCtx,
+  tool: DraftTool,
+  args: unknown,
+  input: { moduleId: string; sourceDocumentId?: string } ,
+): Promise<{ pendingChangeId: string }> {
+  const proposal = await tool.execute(ctx, tool.input.parse(args))
+
+  if (proposal.targetTable !== tool.targetTable) {
+    // The tool declared one target and proposed against another. `validateToolPack` checked
+    // the DECLARED one against the module's whitelist, so letting the proposal name its own
+    // would route around that check entirely.
+    throw new AppError('validation_failed', 'marbim.errors.target_not_registered', {
+      declared: tool.targetTable,
+      proposed: proposal.targetTable,
+    })
+  }
+
+  wrapMarbimError(() =>
+    assertExtractionConfidence({
+      payload: proposal.payload,
+      fieldConfidence: proposal.fieldConfidence,
+      method: proposal.method,
+      uniformConfidenceJustification: proposal.uniformConfidenceJustification,
+    }),
+  )
+
+  const proposed = await propose(ctx, {
+    moduleId: input.moduleId,
+    targetTable: proposal.targetTable,
+    ...(proposal.targetId === undefined ? {} : { targetId: proposal.targetId }),
+    operation: proposal.operation,
+    payload: proposal.payload,
+    zodSchemaKey: proposal.zodSchemaKey,
+    fieldConfidence: proposal.fieldConfidence,
+    // `ai_chat`, not `ai_extraction`: nothing was read off a document here, somebody asked
+    // MARBIM a question. The inbox reads the two differently and should.
+    source: 'ai_chat',
+    ...(proposal.sourceDocumentId ? { sourceDocumentId: proposal.sourceDocumentId } : {}),
+  })
+
+  return { pendingChangeId: proposed.id }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Extraction
 // ─────────────────────────────────────────────────────────────────────────────
@@ -195,6 +265,7 @@ export async function queueExtraction(
         // Redacted at the door, not at the model call: whatever is stored here is read by
         // people too.
         sourceText: payload.sourceText ? redactForPrompt(payload.sourceText) : null,
+        contextValues: payload.contextValues ?? null,
         createdBy: ctx.userId,
       })
       .returning({ id: extractionJobs.id })
@@ -272,12 +343,30 @@ export async function runExtraction(
       instruction: `Extract a ${job.targetTable} record for the ${job.moduleId} module.`,
     })
 
+    /**
+     * The person's fields, folded in over the extractor's.
+     *
+     * Context wins on a collision, and deliberately: if somebody picked the buyer from a
+     * list of their own buyers and the model also read a name off the page, the person is
+     * the one who knows which record it maps to.
+     *
+     * Scored 1.0 — not as flattery of the extraction, but because a chosen value carries no
+     * reading risk. A reviewer looking at the draft sees the buyer at 1.0 and the quantity
+     * at 0.62 and knows exactly where to look, which is the entire point of per-field
+     * confidence. `assertExtractionConfidence` still refuses a payload that is uniform, so
+     * a context-only draft cannot slip through wearing certainty it did not earn.
+     */
+    const context = job.contextValues ?? {}
+    const payload = { ...(result.value as Record<string, unknown>), ...context }
+    const fieldConfidence = { ...result.fieldConfidence }
+    for (const field of Object.keys(context)) fieldConfidence[field] = 1
+
     // The check the whole module exists for. A constant is refused before it becomes a
     // draft that looks reviewed.
     wrapMarbimError(() =>
       assertExtractionConfidence({
-        payload: result.value as Record<string, unknown>,
-        fieldConfidence: result.fieldConfidence,
+        payload,
+        fieldConfidence,
         method: result.method,
         uniformConfidenceJustification: result.uniformConfidenceJustification,
       }),
@@ -287,9 +376,9 @@ export async function runExtraction(
       moduleId: job.moduleId,
       targetTable: job.targetTable,
       operation: 'insert',
-      payload: result.value as Record<string, unknown>,
+      payload,
       zodSchemaKey: job.zodSchemaKey,
-      fieldConfidence: result.fieldConfidence,
+      fieldConfidence,
       source: 'ai_extraction',
       sourceDocumentId: job.sourceDocumentId ?? undefined,
       extractorVersion: job.extractorVersion,
@@ -445,6 +534,9 @@ export interface ChatResult {
   answer: string
   toolCalls: { name: string; args: Record<string, unknown> }[]
   primerVersions: Record<string, string>
+  /** Which provider answered, and how long it took — the surface prints both. */
+  model: string
+  durationMs: number
 }
 
 /**
@@ -469,12 +561,17 @@ export async function chat(
   const prompt = buildPrompt({ moduleIds: input.moduleIds, scope: input.scope ?? {} })
   const tools = input.packs ? toolsInScope(input.packs) : []
 
+  // Measured around the provider call alone, not the transaction that records it: the
+  // number under the tool strip answers "how long did MARBIM take", and a slow disk on the
+  // insert is not MARBIM taking a long time to think.
+  const startedAt = Date.now()
   const result = await getProvider().generate({
     role: 'reason',
     system: prompt.text,
     messages: [{ role: 'user', content: question }],
     tools: tools.map((tool) => ({ name: tool.name, description: tool.description })),
   })
+  const durationMs = Date.now() - startedAt
 
   return withTenantTx(ctx, async (tx) => {
     const [row] = await tx
@@ -500,6 +597,8 @@ export async function chat(
       answer: result.text,
       toolCalls: result.toolCalls,
       primerVersions: prompt.primerVersions,
+      model: result.model,
+      durationMs,
     }
   })
 }

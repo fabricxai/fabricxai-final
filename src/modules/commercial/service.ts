@@ -49,7 +49,7 @@ import {
   type UdStatus,
   UdError,
 } from './ud'
-import { udAuthorizedItems } from './zod'
+import { createLcPayload, createUdPayload, udAuthorizedItems, udOverrideDraft } from './zod'
 
 /** ⚖ — compliance-bearing; a customs inspector may ask who drew what, and when. */
 registerAuditedTables('uds', 'ud_consumptions')
@@ -1126,5 +1126,255 @@ export async function buyerRealizationLag(
           .map((row) => ({ submittedAt: row.submittedAt!, realizedAt: row.realizedAt })),
       ),
     )
+  })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// The UD overdraw override — through pending_changes
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Ask an owner to authorise drawing more bonded material than the UD covers.
+ *
+ * The gate that blocked the issue is a hard block for a reason: bonded fabric came in
+ * duty-free against a customs undertaking, and drawing past it is duty owed plus a penalty.
+ * So there is no "proceed anyway" on the storekeeper's screen — there is a request, and an
+ * owner signs it or does not.
+ *
+ * The numbers travel on the draft. An approver is accepting a specific quantity of legal
+ * exposure on a specific item, and "approve the overdraw" without the shortfall in front of
+ * them is a signature nobody can defend to a customs officer.
+ *
+ * Refuses when the balance actually covers the draw — an approval nobody needs to make
+ * still costs a reviewer their attention, and an inbox full of those is an inbox that stops
+ * being read.
+ */
+export async function proposeUdOverride(
+  ctx: RequestCtx,
+  input: { udId: string; itemRef: string; qty: string; unit: string; storeIssueId?: string; reason: string },
+): Promise<{ pendingChangeId: string; decision: UdDrawDecision }> {
+  const { propose } = await import('../core/pending-changes')
+
+  const decision = await checkUdBalance(ctx, {
+    udId: input.udId,
+    itemRef: input.itemRef,
+    qty: input.qty,
+    unit: input.unit,
+  })
+
+  if (decision.allowed) {
+    throw new AppError('validation_failed', 'commercial.errors.ud_not_short', {
+      udId: input.udId,
+      itemRef: input.itemRef,
+    })
+  }
+
+  const payload = udOverrideDraft.parse({
+    udId: input.udId,
+    itemRef: input.itemRef,
+    qty: input.qty,
+    unit: input.unit,
+    ...(input.storeIssueId ? { storeIssueId: input.storeIssueId } : {}),
+    reason: input.reason,
+  })
+
+  const { id } = await propose(ctx, {
+    moduleId: 'commercial',
+    targetTable: 'ud_consumptions',
+    // No `targetId`: an insert has no existing row to aim at, and `propose` enforces that.
+    // The UD the draw lands against travels in the payload, where the approver can see it.
+    operation: 'insert',
+    zodSchemaKey: 'ud_override_v1',
+    // A person typed this reason and a person chose the quantity. No extractor, so no field
+    // confidence — a constant would sail straight past the check the pending flow exists for.
+    source: 'user_draft',
+    payload: payload as unknown as Record<string, unknown>,
+  })
+
+  return { pendingChangeId: id, decision }
+}
+
+/**
+ * Commit an approved overdraw.
+ *
+ * `approvedOverride` is set HERE and nowhere else — it is the one flag that lets a draw past
+ * the balance check, and `UdDrawInput` documents it as unsettable from a request. Routing it
+ * through the commit handler means the only way to overdraw a UD is an owner's approval that
+ * left an `audit_log` row behind it.
+ */
+export async function commitUdOverride(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  input: { payload: Record<string, unknown> },
+): Promise<{ rowId: string; after: Record<string, unknown> }> {
+  const payload = udOverrideDraft.parse(input.payload)
+
+  const { consumptionId, decision } = await drawUd(ctx, tx, {
+    udId: payload.udId,
+    itemRef: payload.itemRef,
+    qty: payload.qty,
+    unit: payload.unit,
+    ...(payload.storeIssueId ? { storeIssueId: payload.storeIssueId } : {}),
+    approvedOverride: true,
+  })
+
+  return {
+    rowId: consumptionId,
+    after: {
+      udId: payload.udId,
+      itemRef: payload.itemRef,
+      qty: payload.qty,
+      unit: payload.unit,
+      reason: payload.reason,
+      overdrawnBy: decision.shortfall ?? null,
+    },
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Recording the instruments themselves
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Record a Utilization Declaration (canvas P1: "Record a UD").
+ *
+ * The authorised items ARE the declaration — a UD with no items authorises nothing, which
+ * is why the zod refuses an empty list rather than storing a shell somebody fills in later.
+ * Every bonded issue in the factory is checked against these quantities, so a UD recorded
+ * wrong is a gate calibrated wrong.
+ *
+ * `number` is unique per company: two rows for one declaration means two independent
+ * balances for one legal undertaking, and both of them will look fine.
+ */
+export async function createUd(
+  ctx: RequestCtx,
+  input: unknown,
+): Promise<{ udId: string; number: string }> {
+  return withTenantTx(ctx, (tx) => createUdIn(ctx, tx, input))
+}
+
+/**
+ * Commit a UD drafted from a scan — the far end of MARBIM's intake for this module.
+ *
+ * A commit handler rather than core's generic write, and not a stylistic choice: core
+ * treats payload keys as literal column names, so `authorizedItems` and `validUntil` were
+ * refused as invalid identifiers the moment somebody approved. It also gets the duplicate
+ * number check and `ud.created`, which a raw row insert would skip — and a second UD row
+ * carrying the same customs number is a bonded-material balance that double-counts.
+ */
+export async function commitUdFromScan(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  input: { operation: 'insert' | 'update' | 'delete'; targetId: string | null; payload: Record<string, unknown> },
+): Promise<{ rowId: string; before: null; after: Record<string, unknown> }> {
+  if (input.operation !== 'insert') {
+    throw new AppError('validation_failed', 'commercial.errors.ud_draft_insert_only', {
+      operation: input.operation,
+    })
+  }
+
+  const result = await createUdIn(ctx, tx, input.payload)
+  return { rowId: result.udId, before: null, after: { udId: result.udId, number: result.number } }
+}
+
+/** The creation itself, inside a transaction the caller owns. */
+async function createUdIn(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  input: unknown,
+): Promise<{ udId: string; number: string }> {
+  const payload = createUdPayload.parse(input)
+
+  return (async () => {
+    const [existing] = await tx.select({ id: uds.id }).from(uds).where(eq(uds.number, payload.number))
+    if (existing) {
+      throw new AppError('conflict', 'commercial.errors.ud_number_exists', {
+        number: payload.number,
+      })
+    }
+
+    const [row] = await tx
+      .insert(uds)
+      .values({
+        companyId: ctx.companyId,
+        number: payload.number,
+        issueDate: payload.issueDate ?? null,
+        validUntil: payload.validUntil ?? null,
+        authorizedItems: payload.authorizedItems,
+        documentId: payload.documentId ?? null,
+        status: 'active',
+        createdBy: ctx.userId,
+      })
+      .returning({ id: uds.id })
+
+    if (!row) throw new Error('uds insert returned nothing')
+
+    await emit(ctx, tx, {
+      eventName: COMMERCIAL_EVENTS.udCreated,
+      payload: { udId: row.id, number: payload.number, items: payload.authorizedItems.length },
+      aggregateTable: 'uds',
+      aggregateId: row.id,
+    })
+
+    return { udId: row.id, number: payload.number }
+  })()
+}
+
+/**
+ * Record a letter of credit (canvas P1: "Record an LC").
+ *
+ * Opened as `active`, because an LC that has been advised to the factory is already
+ * governing what it may ship. `draft` exists for one recorded but not yet advised, and
+ * nothing here can set it — a status the recorder chooses is a status that gets chosen
+ * wrongly under time pressure.
+ *
+ * Conflicts are NOT scanned here. `detectLcConflicts` is a pure function over an LC and the
+ * orders against it, and at the moment an LC is recorded there are usually none linked yet —
+ * a scan would report "no conflicts" on an LC nobody has attached an order to, which is a
+ * clean bill of health that means nothing. The register and the nightly countdown do it once
+ * the relationship exists.
+ */
+export async function createLc(
+  ctx: RequestCtx,
+  input: unknown,
+): Promise<{ lcId: string; number: string }> {
+  const payload = createLcPayload.parse(input)
+
+  return withTenantTx(ctx, async (tx) => {
+    const [existing] = await tx.select({ id: lcs.id }).from(lcs).where(eq(lcs.number, payload.number))
+    if (existing) {
+      throw new AppError('conflict', 'commercial.errors.lc_number_exists', {
+        number: payload.number,
+      })
+    }
+
+    const [row] = await tx
+      .insert(lcs)
+      .values({
+        companyId: ctx.companyId,
+        buyerId: payload.buyerId,
+        number: payload.number,
+        value: payload.value,
+        currency: payload.currency,
+        tolerancePct: payload.tolerancePct,
+        issueDate: payload.issueDate ?? null,
+        latestShipmentDate: payload.latestShipmentDate ?? null,
+        expiryDate: payload.expiryDate ?? null,
+        docsRequired: payload.docsRequired,
+        status: 'active',
+        createdBy: ctx.userId,
+      })
+      .returning({ id: lcs.id })
+
+    if (!row) throw new Error('lcs insert returned nothing')
+
+    await emit(ctx, tx, {
+      eventName: COMMERCIAL_EVENTS.lcCreated,
+      payload: { lcId: row.id, number: payload.number, value: payload.value },
+      aggregateTable: 'lcs',
+      aggregateId: row.id,
+    })
+
+    return { lcId: row.id, number: payload.number }
   })
 }

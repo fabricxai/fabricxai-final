@@ -52,6 +52,19 @@ export const resolveTicketInput = z.object({
   notes: z.string().optional(),
 })
 
+/**
+ * A preventive-maintenance schedule: what to check on a type of machine, and how often.
+ *
+ * `checklist` cannot be empty. A schedule with no steps produces due dates nobody can sign
+ * off — `completePm` refuses a visit with no checks — so an empty one is a machine that
+ * looks scheduled and can never be serviced on the record.
+ */
+export const pmScheduleInput = z.object({
+  machineType: z.string().min(1),
+  cadence: z.enum(['daily', 'weekly', 'monthly']),
+  checklist: z.array(z.string().min(1)).min(1),
+})
+
 export const completePmInput = z.object({
   scheduleId: z.uuid(),
   machineId: z.uuid(),

@@ -1,0 +1,82 @@
+'use server'
+
+import { revalidatePath } from 'next/cache'
+import { headers } from 'next/headers'
+
+import { requireCtx } from '@/modules/core/session'
+
+import {
+  activateGazette,
+  approvePayrollRun,
+  computePayrollRun,
+  uploadGazette,
+} from './service'
+
+/**
+ * Compute a payroll period.
+ *
+ * Recomputable until it is approved, deliberately: attendance corrections arrive late, and
+ * a run that had to be deleted and rebuilt would lose the record of what was computed
+ * before. The state machine allows `computed → computed` for exactly that.
+ *
+ * Access is checked in the service, not here, and it throws with an EMPTY body — telling a
+ * `member` "you need hr or owner" confirms the endpoint exists and names the role worth
+ * phishing for.
+ */
+export async function runPayroll(input: {
+  period: string
+  festival?: string | null
+}): Promise<{ runId: string; lines: number; totalNet: string; flagged: number }> {
+  const ctx = await requireCtx(await headers())
+
+  const result = await computePayrollRun(ctx, {
+    period: input.period,
+    ...(input.festival ? { festival: input.festival } : {}),
+  })
+
+  revalidatePath('/workforce')
+  return result
+}
+
+/**
+ * Approve a run — the owner's signature.
+ *
+ * Computing is HR's job; signing off what two thousand people are paid is the owner's, and
+ * the service enforces that separately from payroll access. After approval the figures are
+ * fixed: a change means a fresh period adjustment, not an edit, because a payslip already
+ * handed to somebody cannot be quietly rewritten.
+ */
+export async function approveRun(input: {
+  runId: string
+}): Promise<{ from: string; to: string }> {
+  const ctx = await requireCtx(await headers())
+  const result = await approvePayrollRun(ctx, input.runId)
+
+  revalidatePath('/workforce')
+  return { from: String(result.from), to: String(result.to) }
+}
+
+/**
+ * Record a new wage gazette.
+ *
+ * Versioned and dated, never edited. The gazette is law: a payroll run computed under the
+ * 2023 grades was correct under the 2023 grades, and rewriting the table in place would
+ * retroactively make every historic payslip wrong.
+ */
+export async function recordGazette(input: {
+  version: string
+  effectiveFrom: string
+  grades: { grade: string; basic: string; houseRent: string; medical: string; transport: string; food: string }[]
+}): Promise<{ gazetteId: string }> {
+  const ctx = await requireCtx(await headers())
+  const result = await uploadGazette(ctx, input)
+  revalidatePath('/workforce')
+  return result
+}
+
+/** Make a recorded gazette the one payroll computes against. */
+export async function makeGazetteActive(input: { gazetteId: string }): Promise<void> {
+  const ctx = await requireCtx(await headers())
+  await activateGazette(ctx, input.gazetteId)
+  revalidatePath('/workforce')
+}

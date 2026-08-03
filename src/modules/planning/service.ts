@@ -39,10 +39,10 @@ import {
   scenarios,
   smvRecords,
 } from './schema'
-import { allocationPayload, type AllocationPayload } from './zod'
+import { allocationPayload, smvRecordPayload, type AllocationPayload } from './zod'
 
 /** ⚖ — an allocation is what the factory has promised its capacity to. */
-registerAuditedTables('allocations')
+registerAuditedTables('allocations', 'smv_records')
 
 /**
  * planned → active → done. There is no `cancelled`: an allocation that is not happening
@@ -98,6 +98,85 @@ function wrapPlanningError<T>(run: () => T): T {
 // ─────────────────────────────────────────────────────────────────────────────
 // Reading the state the arithmetic needs
 // ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Record an SMV for a style ⚖.
+ *
+ * Append-only, and that is the design: `requireSmv` takes the newest by `measured_at`, and
+ * the older rows are the variance history an IE reads to see whether a study moved. Editing
+ * one in place would erase the comparison that makes the newest number mean anything.
+ *
+ * Nothing created these rows before this — the table was read by the capacity arithmetic and
+ * written only by the seed, so a factory with a new style had no way to enter its SMV except
+ * a draft, and the draft could not commit.
+ */
+export async function recordSmv(
+  ctx: RequestCtx,
+  input: unknown,
+): Promise<{ smvRecordId: string }> {
+  return withTenantTx(ctx, (tx) => recordSmvIn(ctx, tx, input))
+}
+
+/**
+ * Commit an SMV drafted through the approve inbox — a study transcribed from an IE sheet.
+ *
+ * `smv_records` was a pending target with no handler, so core's generic write took it and
+ * refused `styleCode` and `measuredAt` as invalid column identifiers. An SMV is what every
+ * capacity promise is computed from, so a draft that could not commit meant the number had
+ * no way in at all.
+ */
+export async function commitSmvRecord(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  input: { operation: 'insert' | 'update' | 'delete'; targetId: string | null; payload: Record<string, unknown> },
+): Promise<{ rowId: string; before: null; after: Record<string, unknown> }> {
+  if (input.operation !== 'insert') {
+    // A restudy is a new record, not an edit — see `recordSmv`.
+    throw new AppError('validation_failed', 'planning.errors.smv_draft_insert_only', {
+      operation: input.operation,
+    })
+  }
+
+  const result = await recordSmvIn(ctx, tx, input.payload)
+  return { rowId: result.smvRecordId, before: null, after: { smvRecordId: result.smvRecordId } }
+}
+
+/** The insert itself, inside a transaction the caller owns. */
+async function recordSmvIn(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  input: unknown,
+): Promise<{ smvRecordId: string }> {
+  const payload = smvRecordPayload.parse(input)
+
+  const [row] = await tx
+    .insert(smvRecords)
+    .values({
+      companyId: ctx.companyId,
+      styleCode: payload.styleCode,
+      smv: payload.smv,
+      source: payload.source,
+      measuredAt: payload.measuredAt ?? null,
+      createdBy: ctx.userId,
+    })
+    .returning({ id: smvRecords.id })
+
+  if (!row) throw new Error('smv_records insert returned nothing')
+
+  await recordChange(ctx, tx, {
+    action: 'insert',
+    targetTable: 'smv_records',
+    targetId: row.id,
+    after: {
+      styleCode: payload.styleCode,
+      smv: payload.smv,
+      source: payload.source,
+      measuredAt: payload.measuredAt ?? null,
+    },
+  })
+
+  return { smvRecordId: row.id }
+}
 
 /** The newest SMV on record for a style. Refuses rather than guessing one. */
 async function requireSmv(tx: TenantDb, styleCode: string): Promise<string> {

@@ -12,6 +12,8 @@
  */
 import { registerModule } from '../core/registry'
 
+import { complianceToolPack } from './tools'
+
 import { commitFindingsBatch } from './service'
 import { COMPLIANCE_ZOD_MAP } from './zod'
 
@@ -20,6 +22,10 @@ export const complianceModule = registerModule({
 
   pendingTargets: ['findings'],
   zodMap: COMPLIANCE_ZOD_MAP,
+
+  /** Reads for the two calendar problems, plus the findings draft. Opening, accepting and
+   * closing a CAP stay judgements with a role behind them. */
+  toolPack: complianceToolPack,
 
   // Compliance findings are approved by the people who answer for them.
   approvalDefaults: { requiredRoles: ['owner', 'admin', 'compliance'] },

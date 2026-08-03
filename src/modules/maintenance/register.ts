@@ -9,10 +9,15 @@
  */
 import { registerModule } from '../core/registry'
 
+import { maintenanceToolPack } from './tools'
+
 export const maintenanceModule = registerModule({
   id: 'maintenance',
 
   pendingTargets: [],
+
+  /** Read-only — everything this module writes is somebody standing at a machine. */
+  toolPack: maintenanceToolPack,
   zodMap: {},
 
   approvalDefaults: { requiredRoles: ['owner', 'admin', 'maintenance'] },

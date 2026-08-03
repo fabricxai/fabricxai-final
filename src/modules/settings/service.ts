@@ -17,7 +17,7 @@
  */
 import { and, asc, desc, eq, gte, inArray, isNull, lte, sql } from 'drizzle-orm'
 
-import { auditLog, roles, users } from '@/db/schema/core'
+import { auditLog, companies, roles, users } from '@/db/schema/core'
 
 import { recordChange, registerAuditedTables } from '../core/audit'
 import type { AnyCtx, RequestCtx, Role } from '../core/ctx'
@@ -89,13 +89,21 @@ export async function getPolicy<T>(ctx: AnyCtx, moduleId: string): Promise<T> {
 export interface PolicyView {
   moduleId: string
   label: string
-  /** What is in force: defaults with overrides applied. */
+  /** What is in force: defaults with overrides applied. Empty when it will not resolve. */
   effective: Record<string, unknown>
   /** Only what somebody set. Empty means "entirely defaults". */
   overrides: Record<string, unknown>
   defaults: Record<string, unknown>
   updatedAt: Date | null
   updatedByName: string | null
+  /**
+   * Why this module's policy could not be resolved, if it could not.
+   *
+   * Degraded per row on purpose. Throwing for the whole list would take down the
+   * settings screen — the one place the bad override can be corrected — over a
+   * single stored value in one unrelated module.
+   */
+  unresolvable: string | null
 }
 
 /**
@@ -124,16 +132,26 @@ export async function listPolicies(ctx: AnyCtx): Promise<PolicyView[]> {
       const definition = POLICY_REGISTRY[moduleId]!
       const row = stored.get(moduleId)
 
+      let effective: Record<string, unknown> = {}
+      let unresolvable: string | null = null
+      try {
+        effective = resolvePolicyValue<Record<string, unknown>>(moduleId, row?.overrides ?? null)
+      } catch (error) {
+        // `getPolicy` still throws for the module that would actually USE this —
+        // a bad tolerance must not reach the cutting checker. Here it only means
+        // one card renders its reason instead of its values.
+        unresolvable = error instanceof SettingsError ? error.message : 'policy could not be read'
+      }
+
       return {
         moduleId,
         label: definition.label,
-        effective: wrapSettingsError(() =>
-          resolvePolicyValue<Record<string, unknown>>(moduleId, row?.overrides ?? null),
-        ),
+        effective,
         overrides: row?.overrides ?? {},
         defaults: definition.defaults as unknown as Record<string, unknown>,
         updatedAt: row?.updatedAt ?? null,
         updatedByName: row?.updatedByName ?? null,
+        unresolvable,
       }
     })
   })
@@ -253,6 +271,7 @@ export async function upsertCompanyProfile(
       binNumber: payload.binNumber ?? null,
       tinNumber: payload.tinNumber ?? null,
       bondLicenceNo: payload.bondLicenceNo ?? null,
+      factoryType: payload.factoryType,
       timezone: payload.timezone,
       locale: payload.locale,
       baseCurrency: payload.baseCurrency,
@@ -275,8 +294,20 @@ export async function upsertCompanyProfile(
       action: existing ? 'update' : 'insert',
       targetTable: 'company_profiles',
       targetId: ctx.companyId,
-      before: existing ? { legalName: existing.legalName, binNumber: existing.binNumber } : null,
-      after: { legalName: payload.legalName, binNumber: payload.binNumber ?? null },
+      // factoryType is audited because changing it adds or removes whole modules
+      // from the factory's nav — that is a control change, not a display preference.
+      before: existing
+        ? {
+            legalName: existing.legalName,
+            binNumber: existing.binNumber,
+            factoryType: existing.factoryType,
+          }
+        : null,
+      after: {
+        legalName: payload.legalName,
+        binNumber: payload.binNumber ?? null,
+        factoryType: payload.factoryType,
+      },
     })
 
     return { companyId: ctx.companyId }
@@ -292,6 +323,33 @@ export async function companyProfile(
       .from(companyProfiles)
       .where(eq(companyProfiles.companyId, ctx.companyId))
     return row ?? null
+  })
+}
+
+/**
+ * What to call this factory on screen.
+ *
+ * The legal name is what belongs on a document, but it is only set once somebody opens the
+ * settings screen — and until then the shell was falling back to the literal string
+ * "FabricXAI", printing the product's own name beside the product's own logo as though the
+ * factory were called that. `companies.name` is captured at signup and is always there, so
+ * it sits between the two.
+ */
+export async function companyDisplayName(ctx: AnyCtx): Promise<string | null> {
+  return withTenantRead(ctx, async (tx) => {
+    const [profile] = await tx
+      .select({ legalName: companyProfiles.legalName })
+      .from(companyProfiles)
+      .where(eq(companyProfiles.companyId, ctx.companyId))
+
+    if (profile?.legalName) return profile.legalName
+
+    const [company] = await tx
+      .select({ name: companies.name })
+      .from(companies)
+      .where(eq(companies.id, ctx.companyId))
+
+    return company?.name ?? null
   })
 }
 

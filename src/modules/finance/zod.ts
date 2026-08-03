@@ -46,6 +46,8 @@ export const payPayablePayload = z.object({
 export const FINANCE_ZOD_MAP = {
   invoice: invoicePayload,
   payable: payablePayload,
+  /** Recording a payment against an existing payable — an update, not an insert. */
+  pay_payable: payPayablePayload,
 } as const
 
 export type InvoicePayload = z.infer<typeof invoicePayload>

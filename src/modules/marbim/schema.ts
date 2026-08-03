@@ -69,6 +69,19 @@ export const extractionJobs = pgTable(
     /** Free text input when there is no document — an email body, a pasted message. */
     sourceText: text('source_text'),
 
+    /**
+     * Fields the PERSON supplied, merged into the payload before validation.
+     *
+     * Some target schemas require an id no document carries. A buyer's PO names the buyer;
+     * `orderFromPoDraft.buyerId` wants the uuid this system uses for them, and the paper
+     * has never heard of it. Without this the extraction can only ever fail validation.
+     *
+     * Kept separate from the extracted values on purpose, and scored 1.0 rather than
+     * guessed at: a reviewer must be able to see which fields a model read and which a
+     * person chose, because those warrant completely different amounts of suspicion.
+     */
+    contextValues: jsonb('context_values').$type<Record<string, string>>(),
+
     status: extractionStatusEnum('status').notNull().default('queued'),
     attempts: integer('attempts').notNull().default(0),
     /** Set when the extraction produced a draft. The link from a job to what it made. */

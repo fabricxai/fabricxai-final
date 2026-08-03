@@ -20,6 +20,7 @@ import {
   check,
   index,
   jsonb,
+  pgEnum,
   pgTable,
   text,
   timestamp,
@@ -28,6 +29,13 @@ import {
 } from 'drizzle-orm/pg-core'
 
 import { companies, users } from '@/db/schema/core'
+
+/**
+ * Woven units buy or import their shell fabric; knit units buy knit fabric;
+ * knit-composite units knit their own from yarn and dye it in-house. The three
+ * have genuinely different material chains, so this drives module visibility.
+ */
+export const factoryTypeEnum = pgEnum('factory_type', ['woven', 'knit', 'knit-composite'])
 
 /**
  * A company's policy overrides ⚖.
@@ -74,6 +82,16 @@ export const companyProfiles = pgTable(
     tinNumber: text('tin_number'),
     /** Bonded warehouse licence — 2.2's UDs are drawn against it. */
     bondLicenceNo: text('bond_licence_no'),
+
+    /**
+     * What this unit actually makes. It decides which modules EXIST for the
+     * factory, not merely how they render: a knit unit has no bonded shell
+     * fabric and therefore no UD workbench, and only a composite unit dyes its
+     * own greige. Defaulting to woven matches the majority of export units and
+     * keeps an unconfigured factory seeing the fuller set rather than a
+     * silently narrowed one.
+     */
+    factoryType: factoryTypeEnum('factory_type').notNull().default('woven'),
 
     /** Everything in this system is a calendar fact in the factory's own timezone. */
     timezone: text('timezone').notNull().default('Asia/Dhaka'),

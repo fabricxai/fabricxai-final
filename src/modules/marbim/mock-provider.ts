@@ -54,6 +54,11 @@ const LABEL_PATTERNS: readonly { field: RegExp; capture: RegExp }[] = [
   { field: /style|art(?:icle)?\s*no/i, capture: /([A-Z][A-Z0-9-]{2,})/ },
   { field: /price|fob|unit\s*price/i, capture: /([\d]+\.?\d*)/ },
   { field: /ship|delivery|ex[- ]?factory/i, capture: /(\d{4}-\d{2}-\d{2})/ },
+  // Last, so it cannot shadow the patterns above. A buyer's PO writes "PO Number: X" while
+  // the schema calls the field `poNumbers`, and plain substring matching never bridges the
+  // two — which left the single most important intake kind unreadable by the mock, so
+  // nobody without an API key could see it work.
+  { field: /po[\s_-]*numbers?/i, capture: /([A-Za-z0-9][A-Za-z0-9/-]{2,})/ },
 ]
 
 /**
@@ -116,6 +121,21 @@ function findLabelled(
  */
 function coerceToSchema(raw: string, fieldSchema: ZodType | undefined): unknown {
   const candidates: unknown[] = /^\d+$/.test(raw) ? [Number.parseInt(raw, 10), raw] : [raw]
+
+  // A labelled line can legitimately answer a LIST field: `PO Numbers: A-1, A-2` is two,
+  // and `PO Number: A-1` is one. Both are appended rather than prepended, so `safeParse`
+  // still prefers the scalar forms wherever the schema takes one — an array is only ever
+  // chosen because the field genuinely wants a list.
+  if (/[,;]/.test(raw)) {
+    candidates.push(
+      raw
+        .split(/[,;]/)
+        .map((part) => part.trim())
+        .filter(Boolean),
+    )
+  }
+  candidates.push([raw])
+
   if (!fieldSchema) return candidates[0]
 
   for (const candidate of candidates) {
@@ -132,6 +152,60 @@ function fnv1a(token: string): number {
     hash = Math.imul(hash, 0x01000193) >>> 0
   }
   return hash
+}
+
+/**
+ * One list entry, assembled from the labelled lines.
+ *
+ * A buyer's PO for a single style writes `Style: SHRT-4410` / `Quantity: 12,000` /
+ * `Unit Price: 6.40` as headers, and the target schema wants those as one element of a
+ * `styles` array. Reading them as a flat header block and then failing because the array
+ * is empty is the difference between an order that drafts and one that never does.
+ *
+ * Deliberately ONE element, never a guess at several. Splitting a multi-style PO into rows
+ * needs table structure this reads nothing of, and inventing a second style — or worse,
+ * merging two into one — is the sort of confident error the approve inbox is least likely
+ * to catch. If the document has more, the reviewer adds them.
+ *
+ * The element's confidence is the WEAKEST of its fields. A `styles` entry is only as
+ * trustworthy as the least certain thing in it, and averaging would let a firmly-read style
+ * code carry a shakily-read quantity past a reviewer's attention.
+ */
+function singleElementList(
+  text: string,
+  fieldSchema: ZodType | undefined,
+): { value: unknown[]; confidence: number } | null {
+  if (!fieldSchema) return null
+
+  const element = (fieldSchema as unknown as { def?: { type?: string }; element?: ZodType })
+  if (element.def?.type !== 'array' || !element.element) return null
+
+  const elementShape = (element.element as unknown as { shape?: Record<string, ZodType> }).shape
+  if (!elementShape) return null
+
+  const entry: Record<string, unknown> = {}
+  let weakest = 1
+
+  for (const [field, subSchema] of Object.entries(elementShape)) {
+    const found = findLabelled(text, field)
+    if (!found) continue
+
+    const coerced = coerceToSchema(found.value, subSchema)
+    if (coerced === undefined) continue
+
+    entry[field] = coerced
+    weakest = Math.min(weakest, CONFIDENCE[found.how])
+  }
+
+  if (Object.keys(entry).length === 0) return null
+
+  // Checked against the element's own schema, not assumed. A partial entry that the schema
+  // refuses is not a list — emitting it would move the failure to approve time, where a
+  // person is waiting on a draft that was never going to validate.
+  const parsed = (element.element as ZodType).safeParse(entry)
+  if (!parsed.success) return null
+
+  return { value: [parsed.data], confidence: weakest }
 }
 
 export const mockProvider: MarbimProvider = {
@@ -156,13 +230,32 @@ export const mockProvider: MarbimProvider = {
 
     for (const [field, fieldSchema] of Object.entries(shape)) {
       const found = findLabelled(request.input, field)
-      if (!found) continue
+      const coerced = found
+        ? coerceToSchema(found.value, fieldSchema as ZodType | undefined)
+        : undefined
 
-      const coerced = coerceToSchema(found.value, fieldSchema as ZodType | undefined)
-      if (coerced === undefined) continue
+      if (found && coerced !== undefined) {
+        value[field] = coerced
+        fieldConfidence[field] = CONFIDENCE[found.how]
+        continue
+      }
 
-      value[field] = coerced
-      fieldConfidence[field] = CONFIDENCE[found.how]
+      /**
+       * A list of objects, built from the labelled lines using the ELEMENT's own field
+       * names. Most documents that carry a list carry exactly one — a PO for one style, a
+       * quote for one item — and the header lines are that entry's fields.
+       *
+       * Reached when the scalar read found nothing OR found something the field could not
+       * accept, and the second case is not hypothetical: `styles` matches the STYLE label
+       * pattern, so it "found" `SHRT-4410`, failed to coerce a string into an array of
+       * objects, and skipped the field entirely. Every PO draft was rejected for a missing
+       * `styles` while the answer sat two lines above.
+       */
+      const line = singleElementList(request.input, fieldSchema as ZodType | undefined)
+      if (line) {
+        value[field] = line.value
+        fieldConfidence[field] = line.confidence
+      }
     }
 
     if (Object.keys(value).length === 0) {

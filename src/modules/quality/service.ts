@@ -16,9 +16,9 @@
 import { and, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm'
 
 import { recordChange, registerAuditedTables } from '../core/audit'
-import type { AnyCtx, RequestCtx } from '../core/ctx'
+import { isSystemCtx, type AnyCtx, type RequestCtx } from '../core/ctx'
 import { AppError, conflict, notFound } from '../core/errors'
-import type { GateResult } from '../core/gates'
+import { GATES, type GateResult } from '../core/gates'
 import { emit } from '../core/outbox'
 import { defineStateMachine } from '../core/state-machine'
 import { withTenantRead, withTenantTx, type TenantDb } from '../core/tenancy'
@@ -33,6 +33,7 @@ import {
   repeatDefectRuns,
   resolveAqlPlan,
   type AqlOutcome,
+  type AqlPlan,
   type AqlTableRow,
   type DefectRun,
   type MeasurementPoint,
@@ -265,7 +266,10 @@ export interface DhuDayResult {
  * day close must produce the same answer, not double it.
  */
 export async function closeDhuDay(
-  ctx: RequestCtx,
+  // `AnyCtx`, not `RequestCtx`: this is a derive, and the nightly job runs it as a system
+  // actor. It reads nothing off the caller but the company — there is no `createdBy` on a
+  // recomputed row, because nobody authored it.
+  ctx: AnyCtx,
   input: { lineId: string; date: string },
   policy: QualityPolicy,
 ): Promise<DhuDayResult> {
@@ -429,6 +433,12 @@ export async function inspectFabric(
         result: outcome.result,
       },
     })
+
+    // Roll the consignment's summary up. `grns.inspection_status` is what the store's own
+    // GRN list reads, and leaving it on `pending` after an inspection passed would show a
+    // storekeeper "not inspected" for a delivery that was — so they chase the QC who
+    // already did the work, or worse, stop believing the column.
+    await rollUpGrnInspection(ctx, tx, payload.grnId)
 
     await emit(ctx, tx, {
       eventName:
@@ -616,6 +626,34 @@ export interface FinalInspectionResult {
  * "never client math" means, and it is why an inspector cannot make a lot pass by
  * relabelling a major defect on the way in.
  */
+/**
+ * The sampling plan for a lot, WITHOUT recording anything (canvas P4: "the rule, not just
+ * the numbers").
+ *
+ * The inspector sees how many pieces to pull and how many defects the plan accepts before
+ * they start counting, because an AQL plan revealed after the count looks like a verdict
+ * somebody chose. It is the same `resolveAqlPlan` the verdict uses, over the same versioned
+ * table, so the preview and the result cannot disagree.
+ *
+ * A read, but it lives here rather than in `queries.ts` because it needs `loadAqlRows` and
+ * the policy's standard — and duplicating either into the read layer is how the preview and
+ * the verdict start drifting.
+ */
+export async function aqlPlanFor(
+  ctx: AnyCtx,
+  input: { lotQty: number; inspectionLevel: string; majorAql: string; minorAql: string },
+  policy: QualityPolicy,
+): Promise<AqlPlan> {
+  return withTenantRead(ctx, async (tx) => {
+    const rows = await loadAqlRows(tx, {
+      standard: policy.aqlStandard,
+      inspectionLevel: input.inspectionLevel,
+      lotQty: input.lotQty,
+    })
+    return wrapQualityError(() => resolveAqlPlan(rows, input))
+  })
+}
+
 export async function runFinalInspection(
   ctx: RequestCtx,
   input: unknown,
@@ -715,6 +753,10 @@ export async function runFinalInspection(
         sampleSize: plan.sampleSize,
         verdict: outcome.verdict,
         reasons: outcome.reasons,
+        // Carried so 1.3 stamps the milestone with the day the lot was actually inspected
+        // rather than the day the queue happened to drain it. A worker that was down over
+        // a weekend must not record Monday as the inspection date.
+        inspectedOn: new Date().toISOString().slice(0, 10),
       },
       aggregateTable: 'final_inspections',
       aggregateId: row.id,
@@ -1152,4 +1194,236 @@ export async function seedDefaultDefectCodes(
 
     return { created, existing }
   })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// The fabric-inspection gate (7.1 → 3.1)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Answer the store's "may I issue these rolls" question.
+ *
+ * Registered against `store/gates.ts`, which fails closed without it.
+ *
+ * Two judgements live here rather than in the seam:
+ *
+ *  - **Whether the gate applies at all.** It is woven-only. A knit composite factory knits
+ *    its own greige and grades it on the machine, so blocking its store on a 4-point sheet
+ *    that nobody in the building produces would stop production for a document that does
+ *    not exist.
+ *  - **What "inspected" means.** A roll inherits its GRN's inspection when it has no
+ *    inspection of its own, because inspectors grade a sample of a consignment, not every
+ *    roll — that is what the 4-point system is for. A roll with its OWN failed inspection
+ *    is blocked regardless of how the consignment graded.
+ */
+export async function resolveFabricInspection(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  input: { rollIds: readonly string[] },
+): Promise<GateResult> {
+  if (input.rollIds.length === 0) return { passed: true }
+
+  const { companyProfile } = await import('@/modules/settings/service')
+  const profile = await companyProfile(ctx)
+  if ((profile?.factoryType ?? 'woven') !== 'woven') {
+    return { passed: true }
+  }
+
+  const { grnLines, items, rolls } = await import('@/modules/store/schema')
+
+  const rollRows = await tx
+    .select({ id: rolls.id, rollNo: rolls.rollNo, grnId: grnLines.grnId, kind: items.kind })
+    .from(rolls)
+    .innerJoin(grnLines, eq(grnLines.id, rolls.grnLineId))
+    .innerJoin(items, eq(items.id, rolls.itemId))
+    .where(inArray(rolls.id, [...input.rollIds]))
+
+  if (rollRows.length !== input.rollIds.length) {
+    // A roll the gate cannot resolve is a roll it cannot clear. Blocking is the safe
+    // direction, and the store's own not-found error will explain it better than this can.
+    return {
+      passed: false,
+      reasonKey: 'gates.fabric_inspection.roll_not_found',
+      facts: { gate: GATES.fabricInspection, expected: input.rollIds.length, found: rollRows.length },
+    }
+  }
+
+  // FABRIC only. The 4-point system grades cloth by area — faults per hundred square yards —
+  // and has nothing whatsoever to say about a carton of buttons or a cone of thread, both of
+  // which this store also tracks as rolls. Gating those would block a trim issue on an
+  // inspection no factory on earth performs, and the storekeeper's only escape would be to
+  // file a fictional one.
+  const fabricRolls = rollRows.filter((r) => r.kind === 'fabric')
+  if (fabricRolls.length === 0) return { passed: true }
+
+  const grnIds = [...new Set(fabricRolls.map((r) => r.grnId))]
+  const inspections = await tx
+    .select({
+      grnId: fabricInspections.grnId,
+      rollId: fabricInspections.rollId,
+      result: fabricInspections.result,
+      pointsPer100SqYd: fabricInspections.pointsPer100SqYd,
+    })
+    .from(fabricInspections)
+    .where(inArray(fabricInspections.grnId, grnIds))
+
+  const byRoll = new Map(inspections.filter((i) => i.rollId).map((i) => [i.rollId!, i]))
+  // Latest wins per GRN; a re-inspection after a claim is the answer that counts.
+  const byGrn = new Map(inspections.filter((i) => !i.rollId).map((i) => [i.grnId, i]))
+
+  const uninspected: string[] = []
+  const failed: { rollNo: string; points: string }[] = []
+
+  for (const roll of fabricRolls) {
+    const inspection = byRoll.get(roll.id) ?? byGrn.get(roll.grnId)
+    if (!inspection) {
+      uninspected.push(roll.rollNo)
+      continue
+    }
+    if (inspection.result === 'fail') {
+      failed.push({ rollNo: roll.rollNo, points: inspection.pointsPer100SqYd })
+    }
+  }
+
+  if (failed.length > 0) {
+    return {
+      passed: false,
+      reasonKey: 'gates.fabric_inspection.failed',
+      facts: {
+        gate: GATES.fabricInspection,
+        rolls: failed.map((f) => f.rollNo),
+        pointsPer100SqYd: failed[0]!.points,
+      },
+    }
+  }
+
+  if (uninspected.length > 0) {
+    return {
+      passed: false,
+      reasonKey: 'gates.fabric_inspection.not_inspected',
+      facts: { gate: GATES.fabricInspection, rolls: uninspected },
+    }
+  }
+
+  return { passed: true }
+}
+
+/**
+ * Recompute a GRN's `inspection_status` from the inspections filed against it.
+ *
+ * Derived, never incremented — the same rule as DHU day-close. A summary that is stepped
+ * forward on each write drifts the first time an inspection is corrected, and this one
+ * decides whether a storekeeper believes the fabric is checked.
+ *
+ * `failed_partial` is a real state and matters commercially: some rolls of a consignment
+ * failed and some passed, which is a partial claim against the mill rather than a rejected
+ * delivery, and the good rolls can still be cut.
+ */
+async function rollUpGrnInspection(ctx: AnyCtx, tx: TenantDb, grnId: string): Promise<void> {
+  const { grns } = await import('@/modules/store/schema')
+
+  const filed = await tx
+    .select({ result: fabricInspections.result })
+    .from(fabricInspections)
+    .where(eq(fabricInspections.grnId, grnId))
+
+  if (filed.length === 0) return
+
+  const failures = filed.filter((f) => f.result === 'fail').length
+  const status =
+    failures === 0 ? 'passed' : failures === filed.length ? 'failed' : 'failed_partial'
+
+  await tx.update(grns).set({ inspectionStatus: status }).where(eq(grns.id, grnId))
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Commit handlers for the pending targets registered in `register.ts`
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Commit an approved measurement chart.
+ *
+ * `measurement_specs` has been a registered pending target since the module landed, with
+ * nothing to commit it — so a chart drafted from a buyer's spec sheet could be reviewed and
+ * approved and then failed at the last step. The whole propose→approve→commit loop is only
+ * as real as its last link.
+ *
+ * Versioned, never edited in place, for the reason `createMeasurementSpec` gives: a check
+ * recorded against version 1 was judged against version 1's tolerances, and rewriting the
+ * chart would silently re-grade every historic check — including ones already in a buyer
+ * report.
+ */
+export async function commitMeasurementSpec(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  input: { payload: Record<string, unknown> },
+): Promise<{ rowId: string; after: Record<string, unknown> }> {
+  const payload = measurementSpecPayload.parse(input.payload)
+
+  const [latest] = await tx
+    .select({ version: measurementSpecs.version })
+    .from(measurementSpecs)
+    .where(eq(measurementSpecs.styleCode, payload.styleCode))
+    .orderBy(desc(measurementSpecs.version))
+    .limit(1)
+
+  const version = (latest?.version ?? 0) + 1
+
+  const [row] = await tx
+    .insert(measurementSpecs)
+    .values({
+      companyId: ctx.companyId,
+      styleCode: payload.styleCode,
+      version,
+      points: payload.points,
+      unit: payload.unit,
+      createdBy: isSystemCtx(ctx) ? null : ctx.userId,
+    })
+    .returning({ id: measurementSpecs.id })
+
+  if (!row) throw new Error('measurement_specs insert returned nothing')
+
+  return {
+    rowId: row.id,
+    after: { styleCode: payload.styleCode, version, unit: payload.unit, points: payload.points },
+  }
+}
+
+/**
+ * Commit an approved defect code.
+ *
+ * Upsert on the code, because a taxonomy drafted from a buyer's defect list overlaps the
+ * factory's own on almost every entry — and refusing the whole draft because three of
+ * twenty codes already exist is how a reviewer learns to reject drafts wholesale.
+ */
+export async function commitDefectCode(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  input: { payload: Record<string, unknown> },
+): Promise<{ rowId: string; after: Record<string, unknown> }> {
+  const payload = defectCodePayload.parse(input.payload)
+
+  const [row] = await tx
+    .insert(defectCodes)
+    .values({
+      companyId: ctx.companyId,
+      category: payload.category,
+      code: payload.code,
+      label: payload.label,
+      severity: payload.severity,
+    })
+    .onConflictDoUpdate({
+      target: [defectCodes.companyId, defectCodes.code],
+      set: {
+        category: payload.category,
+        label: payload.label,
+        severity: payload.severity,
+        isActive: true,
+      },
+    })
+    .returning({ id: defectCodes.id })
+
+  if (!row) throw new Error('defect_codes upsert returned nothing')
+
+  return { rowId: row.id, after: { ...payload } }
 }

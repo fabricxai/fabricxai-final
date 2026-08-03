@@ -2,23 +2,66 @@
  * Module registration for module 2 (commercial): LC register and bonded warehouse.
  *
  * `pendingTargets` is a security boundary, not configuration (CLAUDE.md rule 3).
- * `ud_consumptions` is deliberately absent: a draw is written by the store issue that
- * caused it, inside that issue's transaction, after passing the gate. Letting a draft
- * insert one directly would let an AI write a consumption with no issue behind it —
- * a reconciliation that cannot be traced to material actually leaving the warehouse.
+ * `ud_consumptions` accepts exactly ONE kind of draft: an owner-approved overdraw.
+ *
+ * It used to be absent altogether, on the grounds that a draw belongs to the store issue
+ * that caused it and an AI-written consumption would be a reconciliation nobody can trace
+ * to material leaving the warehouse. That reasoning still holds, and it is why the gate has
+ * no "proceed anyway": the ONLY route to an overdraw is `proposeUdOverride`, a human asking
+ * an owner to accept a stated quantity of legal exposure.
+ *
+ * **No draft tool may ever target this table.** `assertToolPack` checks a tool's
+ * `targetTable` against `pendingTargets` at load, so registering the table here is what
+ * makes the human path work — and registering a MARBIM draft tool against it is what would
+ * undo the whole argument. Commercial deliberately registers none.
  */
 import { registerModule } from '../core/registry'
 
+import { commercialToolPack } from './tools'
 import { COMMERCIAL_ZOD_MAP } from './zod'
 
 export const commercialModule = registerModule({
   id: 'commercial',
 
-  // `uds` only: transcribing a scanned declaration is exactly the kind of tedious,
-  // error-prone typing MARBIM should draft and a human should check.
-  pendingTargets: ['uds'],
+  // `uds`: transcribing a scanned declaration is exactly the kind of tedious, error-prone
+  // typing MARBIM should draft and a human should check.
+  // `ud_consumptions`: the owner-approved overdraw, and nothing else — see the file note.
+  pendingTargets: ['uds', 'ud_consumptions'],
+
+  commitHandlers: {
+    ud_consumptions: async (ctx, tx, input) => {
+      // Resolved lazily. A static `import … from './service'` here makes this file part of
+      // the service's evaluation graph, and commercial's service is reached from the store
+      // (the UD draw) as well as from the registry barrel — which evaluated this module
+      // twice and tripped `module "commercial" is already registered`.
+      const { commitUdOverride } = await import('./service')
+      const result = await commitUdOverride(ctx, tx, { payload: input.payload })
+      return { rowId: result.rowId, after: result.after }
+    },
+
+    /**
+     * A UD transcribed from the customs paper, via MARBIM's intake.
+     *
+     * Core's generic write cannot do it: `authorizedItems` and `validUntil` are not column
+     * names, so it refused them as invalid identifiers at approve time — the draft looked
+     * fine right until somebody signed it. The handler also gets the duplicate-number
+     * check, and two UD rows sharing a customs number is a bonded balance that
+     * double-counts the same authorisation.
+     */
+    uds: async (ctx, tx, input) => {
+      const { commitUdFromScan } = await import('./service')
+      return commitUdFromScan(ctx, tx, input)
+    },
+  },
 
   zodMap: COMMERCIAL_ZOD_MAP,
+
+  /**
+   * Read-only. Everything drafted into this module is a legal document transcription and
+   * goes through MARBIM's document intake, where the person holding the paper says what it
+   * is — a second route would be a way to propose a customs declaration from a chat.
+   */
+  toolPack: commercialToolPack,
 
   // A UD is a customs document and an overdraw is legal exposure. Only the owner or a
   // commercial lead signs one off — never the storekeeper who wants the fabric.

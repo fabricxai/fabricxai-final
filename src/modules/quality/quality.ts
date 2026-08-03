@@ -20,6 +20,29 @@ export class QualityError extends Error {
   override readonly name = 'QualityError'
 }
 
+/**
+ * The fallback operation list for inline capture, in sewing order.
+ *
+ * Only used on a line that has never been checked before — after that the screen offers what
+ * the line has actually been checked against. It is a starting point so the first QC of a new
+ * line is not staring at an empty list, not a definition of how anything is made: every
+ * factory sews a different bulletin, and the screen always allows typing an operation in.
+ */
+export const STANDARD_SEWING_OPERATIONS: readonly string[] = [
+  'Shoulder join',
+  'Collar attach',
+  'Sleeve attach',
+  'Side seam',
+  'Armhole topstitch',
+  'Cuff attach',
+  'Placket',
+  'Hem',
+  'Button attach',
+  'Buttonhole',
+  'Label attach',
+  'Final trim',
+]
+
 const DECIMAL = /^\d+(\.\d+)?$/
 
 function assertWholeNonNegative(value: number, what: string): number {

@@ -14,7 +14,14 @@ import { registerSyncHandler } from '../core/offline-sync'
 import { registerModule } from '../core/registry'
 import { registerPpApprovalProvider } from '../cutting/gates'
 
-import { offlineAdvanceStage, offlineRecordFeedback, resolvePpApproval } from './service'
+import { samplingToolPack } from './tools'
+import {
+  commitFeedbackRoundDraft,
+  commitSampleRequestDraft,
+  offlineAdvanceStage,
+  offlineRecordFeedback,
+  resolvePpApproval,
+} from './service'
 import { feedbackRoundPayload, SAMPLING_ZOD_MAP, stageAdvancePayload } from './zod'
 
 export const samplingModule = registerModule({
@@ -22,6 +29,23 @@ export const samplingModule = registerModule({
 
   pendingTargets: ['sample_requests', 'sample_feedback_rounds'],
   zodMap: SAMPLING_ZOD_MAP,
+
+  /**
+   * The library search chiefly — the question asked before a style is made again — plus a
+   * draft for the buyer's comment sheet, whose verdict is what the PP gate reads.
+   */
+  toolPack: samplingToolPack,
+
+  /**
+   * Both targets own their commit. Neither could before — core's generic write refuses
+   * camelCase payload keys as column identifiers — and for feedback rounds it would also
+   * have skipped the round numbering and the request's status move, leaving a verdict the
+   * PP gate never saw.
+   */
+  commitHandlers: {
+    sample_requests: commitSampleRequestDraft,
+    sample_feedback_rounds: commitFeedbackRoundDraft,
+  },
 
   // Merchandiser drafts, merchandising manager approves.
   approvalDefaults: { requiredRoles: ['owner', 'admin', 'merchandiser'] },

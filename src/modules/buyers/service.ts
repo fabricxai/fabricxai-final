@@ -381,9 +381,52 @@ export async function upsertTerms(
   ctx: RequestCtx,
   input: unknown,
 ): Promise<{ termsId: string; version: number }> {
+  return withTenantTx(ctx, (tx) => upsertTermsIn(ctx, tx, input))
+}
+
+/**
+ * Commit a terms version drafted through the approve inbox.
+ *
+ * `buyer_terms` has been a pending target with no handler, so core's generic row write took
+ * it — and that write treats payload keys as literal column names, refusing `buyerId`,
+ * `validFrom`, `tolerancePct` and `aqlLevel` as invalid identifiers. Every drafted terms
+ * version failed at the click.
+ *
+ * Routing through `upsertTermsIn` also keeps the two rules that make these rows trustworthy:
+ * the version number is computed from what already exists, and backdating before the newest
+ * version is refused. A generic insert would have accepted a caller-supplied `version` and
+ * let a draft restate which terms governed orders already shipped.
+ */
+export async function commitBuyerTerms(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  input: { operation: 'insert' | 'update' | 'delete'; targetId: string | null; payload: Record<string, unknown> },
+): Promise<{ rowId: string; before: null; after: Record<string, unknown> }> {
+  if (input.operation !== 'insert') {
+    // Terms are versioned, never edited: 7.1's AQL gate and 8.1's tolerance band read them
+    // by date, so changing a row in place re-governs orders already shipped under it.
+    throw new AppError('validation_failed', 'buyers.errors.terms_draft_insert_only', {
+      operation: input.operation,
+    })
+  }
+
+  const result = await upsertTermsIn(ctx, tx, input.payload)
+  return {
+    rowId: result.termsId,
+    before: null,
+    after: { termsId: result.termsId, version: result.version },
+  }
+}
+
+/** The versioning itself, inside a transaction the caller owns. */
+async function upsertTermsIn(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  input: unknown,
+): Promise<{ termsId: string; version: number }> {
   const payload = buyerTermsPayload.parse(input)
 
-  return withTenantTx(ctx, async (tx) => {
+  return (async () => {
     const [buyer] = await tx
       .select({ id: buyers.id })
       .from(buyers)
@@ -448,7 +491,7 @@ export async function upsertTerms(
     })
 
     return { termsId: row.id, version }
-  })
+  })()
 }
 
 /**

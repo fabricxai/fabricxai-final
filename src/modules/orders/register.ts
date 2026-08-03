@@ -8,7 +8,8 @@
  */
 import { registerModule } from '../core/registry'
 
-import { applyRevision } from './service'
+import { applyOrderFromPo, applyRevision } from './service'
+import { ordersToolPack } from './tools'
 import { ORDERS_ZOD_MAP } from './zod'
 
 export const ordersModule = registerModule({
@@ -22,11 +23,22 @@ export const ordersModule = registerModule({
   zodMap: ORDERS_ZOD_MAP,
 
   /**
+   * The ripple, chiefly. The primer already told MARBIM never to compute a date and to call
+   * previewRipple instead — against a tool that did not exist until now.
+   */
+  toolPack: ordersToolPack,
+
+  /**
    * Committing a breakdown revision is not an INSERT: it replaces the grid, bumps the
    * revision pointer and writes the evidence row. Core's generic write would produce one
    * orphan `order_breakdowns` row and leave the floor cutting to the old ratio.
+   *
+   * `orders` needs one for a blunter reason: core's generic write treats payload keys as
+   * literal column names, so a PO draft's `poNumbers` was refused as an invalid identifier
+   * and no order drafted from a document could ever be approved. It also has styles to
+   * insert and an `orders.created` event the TNA engine waits on.
    */
-  commitHandlers: { order_breakdowns: applyRevision },
+  commitHandlers: { order_breakdowns: applyRevision, orders: applyOrderFromPo },
 
   // Breakdown edits after production start route to a manager (brief §Roles). Merchandisers
   // own their buyers' orders but cannot approve a change that costs the factory money.

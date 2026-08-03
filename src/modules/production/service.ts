@@ -18,7 +18,7 @@
  * makes a supervisor's correction to the 14:00 count work by the same mechanism. The
  * `offline_keys` ledger still guards the batch as a whole; this guards each cell.
  */
-import { and, eq, gte, isNull, lte, sql } from 'drizzle-orm'
+import { and, eq, isNull, sql } from 'drizzle-orm'
 
 import type { AnyCtx, RequestCtx } from '../core/ctx'
 import { AppError, conflict, notFound } from '../core/errors'
@@ -34,6 +34,7 @@ import {
   ProductionError,
   type ForecastResult,
 } from './metrics'
+import { trailingOutput } from './queries'
 import {
   dailyLinePlans,
   downtimes,
@@ -60,6 +61,22 @@ export interface RecordOutputResult {
  * one; `created_at` does not, so "when was this hour first reported" survives a
  * correction.
  */
+/**
+ * Company policy for the floor. Read from X.3 Settings by the caller, like every other
+ * module's — a threshold hardcoded in a screen is a threshold no factory can change.
+ */
+export interface ProductionPolicy {
+  /**
+   * Achievement against the day's target below which a line counts as behind.
+   *
+   * Not "any shortfall". A sewing line finishes a few pieces under target most days, and a
+   * board that flags every one of them flags all six lines at once — at which point the
+   * word stops carrying information and a supervisor stops reading it. The number that
+   * matters is the line far enough behind that somebody has to do something.
+   */
+  behindTargetPct?: string
+}
+
 export async function recordHourlyOutputsIn(
   ctx: AnyCtx,
   tx: TenantDb,
@@ -159,9 +176,25 @@ export async function openLineDowntime(
   ctx: RequestCtx,
   input: unknown,
 ): Promise<{ downtimeId: string }> {
+  return withTenantTx(ctx, (tx) => openLineDowntimeIn(ctx, tx, input))
+}
+
+/**
+ * The body of `openLineDowntime`, callable from the offline sync handler's transaction.
+ *
+ * A stoppage is logged by a supervisor standing at a dead line, on a tablet, in the part of
+ * the building where the wifi is worst — so it has to survive the network being gone. Until
+ * this was extracted there was no handler at all: `openLineDowntime` was exported and
+ * reachable from nothing, so a stopped line could be seeded but never reported.
+ */
+export async function openLineDowntimeIn(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  input: unknown,
+): Promise<{ downtimeId: string }> {
   const payload = openDowntime.parse(input)
 
-  return withTenantTx(ctx, async (tx) => {
+  {
     // One open downtime per line: two would double-count lost minutes, and the second
     // close would silently do nothing.
     const [existing] = await tx
@@ -209,16 +242,27 @@ export async function openLineDowntime(
     })
 
     return { downtimeId: row.id }
-  })
+  }
 }
 
 export async function closeLineDowntime(
-  ctx: RequestCtx,
+  // `AnyCtx`, not `RequestCtx`: 9.1's ticket-resolved consumer closes the stoppage as a
+  // system actor. `closeLineDowntimeIn` already accepted one; only this wrapper was narrow.
+  ctx: AnyCtx,
+  input: unknown,
+): Promise<{ downtimeId: string; minutes: number }> {
+  return withTenantTx(ctx, (tx) => closeLineDowntimeIn(ctx, tx, input))
+}
+
+/** The body of `closeLineDowntime`, callable from the offline sync handler. */
+export async function closeLineDowntimeIn(
+  ctx: AnyCtx,
+  tx: TenantDb,
   input: unknown,
 ): Promise<{ downtimeId: string; minutes: number }> {
   const payload = closeDowntime.parse(input)
 
-  return withTenantTx(ctx, async (tx) => {
+  {
     const [row] = await tx
       .select()
       .from(downtimes)
@@ -253,7 +297,7 @@ export async function closeLineDowntime(
     })
 
     return { downtimeId: row.id, minutes }
-  })
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -268,6 +312,21 @@ export async function recordEndlineCount(
   ctx: RequestCtx,
   input: unknown,
 ): Promise<{ dhu: string; passRatePct: string }> {
+  return withTenantTx(ctx, (tx) => recordEndlineCountIn(ctx, tx, input))
+}
+
+/**
+ * The body of `recordEndlineCount`, callable from the offline sync handler.
+ *
+ * Endline QC is counted at the end of a sewing line by somebody with a clicker and a
+ * tablet — the same device, the same dead spots, the same need to replay. It had no
+ * handler either, so the DHU every quality screen reads could be seeded and never entered.
+ */
+export async function recordEndlineCountIn(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  input: unknown,
+): Promise<{ dhu: string; passRatePct: string }> {
   const payload = endlineCount.parse(input)
 
   if (payload.passed + payload.defective > payload.checked) {
@@ -278,7 +337,7 @@ export async function recordEndlineCount(
     })
   }
 
-  return withTenantTx(ctx, async (tx) => {
+  {
     await tx
       .insert(endlineCounts)
       .values({
@@ -310,7 +369,7 @@ export async function recordEndlineCount(
         : '0.00'
 
     return { dhu, passRatePct: passRate }
-  })
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -403,6 +462,11 @@ export async function closeDay(
 /**
  * Forecast an order's completion from its trailing sewing rate, and compare it against
  * the TNA sewing milestone (brief §Operations: `runRate`).
+ *
+ * Takes `remainingQty` from the caller because the risk job forecasts against a target that
+ * is not always the contracted quantity — a split shipment burns down its own tranche. The
+ * order screen wants the plain contracted burn-down and reads `orderRunRate` instead; both
+ * share `trailingOutput`, so there is one window and one rate, not two that drift.
  */
 export async function runRate(
   ctx: AnyCtx,
@@ -414,46 +478,20 @@ export async function runRate(
     milestoneDate?: string | null
   },
 ): Promise<ForecastResult> {
-  const days = input.trailingDays ?? 3
-  const from = new Date(Date.parse(`${input.asOf}T00:00:00Z`) - (days - 1) * 86_400_000)
-    .toISOString()
-    .slice(0, 10)
+  const trailing = await trailingOutput(ctx, {
+    orderId: input.orderId,
+    asOf: input.asOf,
+    days: input.trailingDays ?? 3,
+  })
 
-  return withTenantRead(ctx, async (tx) => {
-    const rows = await tx
-      .select({
-        date: hourlyOutputs.producedOn,
-        output: sql<string>`sum(${hourlyOutputs.actual})::text`,
-      })
-      .from(hourlyOutputs)
-      .where(
-        and(
-          eq(hourlyOutputs.orderId, input.orderId),
-          gte(hourlyOutputs.producedOn, from),
-          lte(hourlyOutputs.producedOn, input.asOf),
-        ),
-      )
-      .groupBy(hourlyOutputs.producedOn)
-      .orderBy(hourlyOutputs.producedOn)
-
-    if (rows.length === 0) {
-      // No output at all in the window. `forecastCompletion` refuses an empty window, so
-      // pass an explicit zero day rather than throwing at the caller — "we cannot forecast
-      // because nothing has been sewn" is a useful answer, an exception is not.
-      return forecastCompletion({
-        remainingQty: input.remainingQty,
-        trailing: [{ date: input.asOf, output: 0 }],
-        fromDate: input.asOf,
-        milestoneDate: input.milestoneDate ?? null,
-      })
-    }
-
-    return forecastCompletion({
-      remainingQty: input.remainingQty,
-      trailing: rows.map((row) => ({ date: row.date, output: Number(row.output) })),
-      fromDate: input.asOf,
-      milestoneDate: input.milestoneDate ?? null,
-    })
+  // Always a full window, zeros included, so an order nobody has sewn yields
+  // confidence `none` rather than throwing — "we cannot forecast because nothing has been
+  // sewn" is a useful answer to put on a screen; an exception is not.
+  return forecastCompletion({
+    remainingQty: input.remainingQty,
+    trailing,
+    fromDate: input.asOf,
+    milestoneDate: input.milestoneDate ?? null,
   })
 }
 
@@ -466,6 +504,27 @@ export function registerProductionSyncHandlers(): void {
     await recordHourlyOutputsIn(ctx, tx, row.payload, row.offlineKey)
     // The batch has no single row id; the offline key IS its identity, which is what the
     // device reconciles against anyway.
+    return { rowId: row.offlineKey }
+  })
+
+  // Everything below is floor-facing (rule 7) and had NO handler: the service functions
+  // were exported and unreachable from any client, so a stoppage could be seeded but never
+  // reported, and the DHU every quality screen reads could never be entered by the person
+  // holding the clicker. All three are logged on a tablet at a dead line or the end of a
+  // sewing line, which is exactly where the network is worst.
+  registerSyncHandler('production', 'open_downtime', async (ctx, tx, row) => {
+    const result = await openLineDowntimeIn(ctx, tx, row.payload)
+    return { rowId: result.downtimeId }
+  })
+
+  registerSyncHandler('production', 'close_downtime', async (ctx, tx, row) => {
+    const result = await closeLineDowntimeIn(ctx, tx, row.payload)
+    return { rowId: result.downtimeId }
+  })
+
+  registerSyncHandler('production', 'record_endline_count', async (ctx, tx, row) => {
+    await recordEndlineCountIn(ctx, tx, row.payload)
+    // One count per line per day — the row's identity is the pair, not a generated id.
     return { rowId: row.offlineKey }
   })
 }

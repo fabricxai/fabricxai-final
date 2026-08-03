@@ -6,6 +6,8 @@
  */
 
 export const COMMERCIAL_EVENTS = {
+  udCreated: 'commercial.ud.created',
+  lcCreated: 'commercial.lc.created',
   lcConflictDetected: 'commercial.lc.conflict_detected',
   lcCountdown: 'commercial.lc.countdown',
 

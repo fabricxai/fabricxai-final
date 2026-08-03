@@ -457,10 +457,15 @@ describe('5.1 · wastage', () => {
     await clearLays()
     await db.execute(sql`delete from outbox where company_id = ${COMPANY}`)
 
-    const lay = await createLay(ctx, layInput({ fabricDrawnMeters: '6.80' }))
+    // `fabric_drawn_meters` is the TOTAL off the rolls, not a per-ply figure: `createLay`
+    // defaults it to `layYield().plannedFabric`, which is "lay length × plies". This test
+    // used to pass 6.80 and describe it as per-ply, which only produced 6.25% because
+    // `recomputeWastage` multiplied it by the ply count a second time — and 6.80 m cannot
+    // spread a hundred plies of a 6.40 m marker, so the input could not happen on a floor.
+    // 680 m drawn against a 640 m plan is the same 6.25%, in the unit the column holds.
+    const lay = await createLay(ctx, layInput({ fabricDrawnMeters: '680.00' }))
     await recordCutReport(ctx, { layId: lay.layId, cells: { 'Black|S': 100 } }, POLICY)
 
-    // 6.80 drawn per ply against a 6.40 plan = 680 vs 640, 6.25% over.
     const result = await recomputeWastage(ctx, { orderId }, POLICY)
     expect(result.wastagePct).toBe('6.25')
 
@@ -474,7 +479,7 @@ describe('5.1 · wastage', () => {
 
   it('is recomputed, not accumulated — running it twice gives the same answer', async () => {
     await clearLays()
-    const lay = await createLay(ctx, layInput({ fabricDrawnMeters: '6.80' }))
+    const lay = await createLay(ctx, layInput({ fabricDrawnMeters: '680.00' }))
     await recordCutReport(ctx, { layId: lay.layId, cells: { 'Black|S': 100 } }, POLICY)
 
     const first = await recomputeWastage(ctx, { orderId }, POLICY)
@@ -499,5 +504,44 @@ describe('5.1 · tenancy', () => {
 
   it('another company cannot spread a lay on this factory’s marker', async () => {
     await expect(createLay(otherCtx, layInput())).rejects.toThrow()
+  })
+})
+
+/**
+ * The units of `fabric_drawn_meters`, pinned.
+ *
+ * It is a TOTAL for the lay. `createLay` defaults it to `layYield().plannedFabric`, which
+ * is "lay length × plies", so a supplied value must mean the same thing or the default and
+ * the explicit case disagree. `recomputeWastage` used to multiply it by the ply count
+ * again, inflating drawn fabric by that factor: a 60-ply lay drawing 397 m was counted as
+ * 23,823 m and the wastage percentage came out in the thousands.
+ *
+ * Nothing caught it because the only test described the column as per-ply and passed a
+ * figure — 6.80 m for a hundred plies — that could not spread the lay it belonged to.
+ */
+describe('5.1 · wastage units', () => {
+  it('treats fabric drawn as a lay TOTAL, not a per-ply figure', async () => {
+    await clearLays()
+
+    // Exactly the plan: 6.40 m × 100 plies = 640 m drawn, so nothing is wasted.
+    const lay = await createLay(ctx, layInput({ fabricDrawnMeters: '640.00' }))
+    await recordCutReport(ctx, { layId: lay.layId, cells: { 'Black|S': 100 } }, POLICY)
+
+    const result = await recomputeWastage(ctx, { orderId }, POLICY)
+    expect(result.fabricDrawn).toBe('640.00')
+    expect(result.markerConsumption).toBe('640.00')
+    expect(result.wastagePct).toBe('0.00')
+  })
+
+  it('falls back to the marker plan when no drawn figure was recorded', async () => {
+    await clearLays()
+
+    // No `fabricDrawnMeters`: `createLay` stores the plan itself, so drawn equals planned
+    // and the fallback must NOT be multiplied twice either.
+    const lay = await createLay(ctx, layInput())
+    await recordCutReport(ctx, { layId: lay.layId, cells: { 'Black|S': 100 } }, POLICY)
+
+    const result = await recomputeWastage(ctx, { orderId }, POLICY)
+    expect(result.wastagePct).toBe('0.00')
   })
 })

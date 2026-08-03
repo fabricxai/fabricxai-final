@@ -239,7 +239,9 @@ describe('11.2 · buyer scorecards keep the unrated', () => {
     // buyers are exactly the ones an owner is deciding about.
     expect(card.rated).toBe(false)
     expect(card.score).toBeNull()
-    expect(card.reason).toMatch(/orders/)
+    // `orders?` — the reason says "1 order" and "4 orders". The assertion is that it
+    // names what is missing, not that it is always plural.
+    expect(card.reason).toMatch(/orders?/)
   })
 })
 
@@ -346,6 +348,32 @@ describe('11.2 · the exceptions feed', () => {
     // A blanket "resolve everything not seen" would report it as fixed on the strength of
     // never having looked.
     expect(row!.resolvedAt).toBeNull()
+  })
+
+  it('keeps an exception whose detail will not parse', async () => {
+    const ref = randomUUID()
+    await db.insert(exceptionsFeed).values({
+      companyId: COMPANY,
+      kind: 'payroll_anomaly',
+      ref,
+      // Nested, where the feed stores scalars — what an older writer or a hand-run
+      // UPDATE leaves behind. The dashboard renders this line as prose.
+      detail: { worker: { id: 'w-1', name: 'Rima' } },
+      severity: 'high',
+    })
+
+    const feed = await exceptions(ctx, NOW, POLICY)
+    const row = feed.exceptions.find((e) => e.ref === ref)
+
+    // The exception is real whether or not its explanation survived. Dropping the
+    // row would hide a payroll anomaly because a JSON shape drifted.
+    expect(row, 'a malformed detail must not remove the exception').toBeDefined()
+    expect(row!.severity).toBe('high')
+    // Null, not `{}` — the screen must be able to tell "nothing to say" from
+    // "something I could not read", and never print [object Object].
+    expect(row!.detail).toBeNull()
+
+    await db.delete(exceptionsFeed).where(eq(exceptionsFeed.ref, ref))
   })
 
   it('another company sees none of it', async () => {

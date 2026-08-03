@@ -22,12 +22,22 @@ import { udConsumptions, uds } from '@/modules/commercial/schema'
 import type { RequestCtx } from '@/modules/core/ctx'
 import { AppError } from '@/modules/core/errors'
 import { syncBatch } from '@/modules/core/offline-sync'
-import { withTenantRead } from '@/modules/core/tenancy'
+import {
+  registerFabricInspectionProvider,
+  resetFabricInspectionProvider,
+} from '@/modules/store/gates'
+import { withTenantRead, withTenantTx } from '@/modules/core/tenancy'
 import { orders } from '@/modules/orders/schema'
 import { bomLines, boms } from '@/modules/costing/schema'
 import { issueLines, issues, items, locations, requisitionLines, rolls } from '@/modules/store/schema'
 import '@/modules/store/register' // registers the sync handlers
-import { createRequisition, getStock, issueStock, receiveGrn } from '@/modules/store/service'
+import {
+  commitStockAdjustment,
+  createRequisition,
+  getStock,
+  issueStock,
+  receiveGrn,
+} from '@/modules/store/service'
 
 const client = createDirectClient()
 const db = createDirectDb(client)
@@ -43,7 +53,17 @@ let bondedLocationId: string
 let orderId: string
 let udId: string
 
+/**
+ * The 4-point gate is answered by 7.1 Quality and FAILS CLOSED with no provider (rule 8),
+ * so every issue in this file would be blocked on an inspection none of these tests are
+ * about. Registered permissively here for the same reason the cutting suite registers a
+ * permissive PP provider — and the gate's own blocking behaviour is asserted below, where
+ * it is the subject rather than a side effect.
+ */
+const allowFabric = () => registerFabricInspectionProvider(async () => ({ passed: true }))
+
 beforeAll(async () => {
+  allowFabric()
   await db.insert(companies).values([
     { id: COMPANY, name: 'Store Co', slug: `store-${COMPANY.slice(0, 8)}` },
     { id: OTHER, name: 'Other Co', slug: `other-${OTHER.slice(0, 8)}` },
@@ -87,6 +107,7 @@ beforeAll(async () => {
 })
 
 afterAll(async () => {
+  resetFabricInspectionProvider()
   await db.execute(sql`delete from audit_log where company_id in (${COMPANY}, ${OTHER})`)
   await db.delete(companies).where(eq(companies.id, COMPANY))
   await db.delete(companies).where(eq(companies.id, OTHER))
@@ -226,6 +247,50 @@ describe('3.1 · goods out draws the UD in the same transaction', () => {
   })
 })
 
+describe('3.1 · the 4-point gate refuses uninspected fabric', () => {
+  // Restores the permissive provider afterwards, so a failure here cannot cascade into
+  // every issue in the file — which is exactly what happened when the gate first landed.
+  afterAll(() => allowFabric())
+
+  it('blocks the issue when quality has not graded the roll', async () => {
+    registerFabricInspectionProvider(async (_ctx, _tx, input) => ({
+      passed: false,
+      reasonKey: 'gates.fabric_inspection.not_inspected',
+      facts: { gate: 'fabric_inspection', rolls: input.rollIds.length },
+    }))
+
+    const [roll] = await db.select().from(rolls).where(eq(rolls.rollNo, 'R-002'))
+
+    const thrown = await issueStock(ctx, {
+      orderId,
+      lines: [{ itemId: fabricId, rollId: roll!.id, qty: '10.00', unit: 'M' }],
+    }).catch((e: unknown) => e)
+
+    expect(thrown).toBeInstanceOf(AppError)
+    expect((thrown as AppError).code).toBe('gate_blocked')
+    expect((thrown as AppError).details).toMatchObject({ gate: 'fabric_inspection' })
+
+    // Nothing partial survived — the roll is still on the shelf.
+    const [untouched] = await db.select().from(rolls).where(eq(rolls.id, roll!.id))
+    expect(untouched?.status).toBe('in_stock')
+  })
+
+  it('fails CLOSED when no provider is registered at all', async () => {
+    // The whole point of the seam. A quality gate that silently passes when its module is
+    // missing is not a disabled feature, it is fabric reaching the cutting table ungraded.
+    resetFabricInspectionProvider()
+
+    const [roll] = await db.select().from(rolls).where(eq(rolls.rollNo, 'R-002'))
+
+    await expect(
+      issueStock(ctx, {
+        orderId,
+        lines: [{ itemId: fabricId, rollId: roll!.id, qty: '10.00', unit: 'M' }],
+      }),
+    ).rejects.toMatchObject({ code: 'gate_blocked' })
+  })
+})
+
 describe('3.1 · offline replay is a no-op', () => {
   it('a tablet resending its batch does not issue twice', async () => {
     const [roll] = await db.select().from(rolls).where(eq(rolls.rollNo, 'R-002'))
@@ -351,5 +416,104 @@ describe('3.1 · requisitions size from what the order was PRICED on', () => {
     })
 
     expect(result.source).toBe('explicit')
+  })
+})
+
+/**
+ * An approved adjustment has to MOVE STOCK.
+ *
+ * `stock_adjustments` was a registered pending target with no commit handler, so approving
+ * one fell through to core's generic writer and threw on the first camelCase key. Worse, a
+ * handler that only inserted the adjustment row would leave on-hand unchanged — stock here
+ * is derived from rolls — and the screen would quietly disagree with the correction a
+ * manager had just signed. Both failures are silent from the reviewer's side, which is why
+ * they are pinned here.
+ */
+describe('stock adjustment · approving one changes the count', () => {
+  async function aRoll(qty: string): Promise<{ rollId: string; unit: string }> {
+    const rollNo = `ADJ-${randomUUID().slice(0, 8)}`
+    await receiveGrn(ctx, {
+      challanNo: `ADJ-${randomUUID().slice(0, 8)}`,
+      receivedAt: '2026-03-10',
+      bonded: false,
+      lines: [
+        {
+          itemId: fabricId,
+          qty,
+          unit: 'M',
+          rolls: [{ rollNo, qty, locationId: bondedLocationId }],
+        },
+      ],
+    })
+    const [roll] = await withTenantRead(ctx, (tx) =>
+      tx.select({ id: rolls.id, unit: rolls.unit }).from(rolls).where(eq(rolls.rollNo, rollNo)),
+    )
+    return { rollId: roll!.id, unit: roll!.unit }
+  }
+
+  it('writes the shortage off the roll, not just into a ledger', async () => {
+    const { rollId, unit } = await aRoll('100.00')
+
+    await withTenantTx(ctx, (tx) =>
+      commitStockAdjustment(ctx, tx, {
+        payload: {
+          itemId: fabricId,
+          rollId,
+          qtyDelta: '-12.50',
+          unit,
+          reasonCode: 'damaged',
+          note: 'water damage on the outer wraps, cut back to sound cloth',
+        },
+      }),
+    )
+
+    const [roll] = await withTenantRead(ctx, (tx) =>
+      tx.select({ qty: rolls.qty, status: rolls.status }).from(rolls).where(eq(rolls.id, rollId)),
+    )
+    expect(roll!.qty).toBe('87.50')
+    expect(roll!.status).toBe('in_stock')
+  })
+
+  it('a write-off to zero retires the roll rather than storing a zero quantity', async () => {
+    const { rollId, unit } = await aRoll('40.00')
+
+    await withTenantTx(ctx, (tx) =>
+      commitStockAdjustment(ctx, tx, {
+        payload: {
+          itemId: fabricId,
+          rollId,
+          qtyDelta: '-40.00',
+          unit,
+          reasonCode: 'written_off',
+          note: 'roll destroyed by forklift, nothing recoverable from it',
+        },
+      }),
+    )
+
+    const [roll] = await withTenantRead(ctx, (tx) =>
+      tx.select({ status: rolls.status }).from(rolls).where(eq(rolls.id, rollId)),
+    )
+    // `rolls_qty_positive` forbids a zero, and a roll with no cloth on it is not a thing
+    // a storekeeper can be shown.
+    expect(roll!.status).toBe('adjusted_out')
+  })
+
+  it('REFUSES to take more off a roll than is on it', async () => {
+    const { rollId, unit } = await aRoll('30.00')
+
+    await expect(
+      withTenantTx(ctx, (tx) =>
+        commitStockAdjustment(ctx, tx, {
+          payload: {
+            itemId: fabricId,
+            rollId,
+            qtyDelta: '-45.00',
+            unit,
+            reasonCode: 'miscount',
+            note: 'recount after the shelf was restacked by the night shift',
+          },
+        }),
+      ),
+    ).rejects.toBeInstanceOf(AppError)
   })
 })

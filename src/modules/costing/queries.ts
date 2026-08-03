@@ -8,7 +8,7 @@
  * Screen-shaped reads get added when HANDOFF-1.5 lands; what is here is the contract other
  * modules already depend on.
  */
-import { desc, eq, and } from 'drizzle-orm'
+import { desc, eq, and, sql } from 'drizzle-orm'
 
 import type { AnyCtx } from '../core/ctx'
 import { notFound } from '../core/errors'
@@ -71,5 +71,128 @@ export async function getBomForStyle(
     if (!bom) throw notFound('costing.errors.bom_not_found', { bomId: sheet.bomId })
 
     return { bomId: bom.id, sheetVersion: sheet.version }
+  })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// The BOM library
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface BomSummary {
+  id: string
+  styleCode: string
+  source: string
+  lineCount: number
+  /** True when any line's consumption was measured on a real order, not estimated. */
+  hasMeasured: boolean
+  createdAt: Date
+  /** Set when an approved cost sheet is costed against this BOM. */
+  usedByApprovedSheet: boolean
+}
+
+/**
+ * Every BOM in the factory, newest first.
+ *
+ * `hasMeasured` and `usedByApprovedSheet` are carried because they are the two questions a
+ * merchandiser opening this list is actually asking: is this a guess or a record, and is it
+ * the one a live quote rests on. Neither is derivable from the style code, and both change
+ * what somebody does next.
+ */
+export async function bomLibrary(ctx: AnyCtx, limit = 100): Promise<BomSummary[]> {
+  return withTenantRead(ctx, async (tx) => {
+    const rows = await tx
+      .select({
+        id: boms.id,
+        styleCode: boms.styleCode,
+        source: boms.source,
+        createdAt: boms.createdAt,
+        lineCount: sql<number>`count(distinct ${bomLines.id})`.mapWith(Number),
+        measured: sql<number>`count(distinct ${bomLines.id}) filter (
+          where ${bomLines.consumptionBasis} = 'actual'
+        )`.mapWith(Number),
+        approvedSheets: sql<number>`count(distinct ${costSheets.id}) filter (
+          where ${costSheets.status} = 'approved'
+        )`.mapWith(Number),
+      })
+      .from(boms)
+      .leftJoin(bomLines, eq(bomLines.bomId, boms.id))
+      .leftJoin(costSheets, eq(costSheets.bomId, boms.id))
+      .groupBy(boms.id)
+      .orderBy(desc(boms.createdAt))
+      .limit(limit)
+
+    return rows.map((row) => ({
+      id: row.id,
+      styleCode: row.styleCode,
+      source: row.source,
+      lineCount: row.lineCount,
+      hasMeasured: row.measured > 0,
+      createdAt: row.createdAt,
+      usedByApprovedSheet: row.approvedSheets > 0,
+    }))
+  })
+}
+
+export interface BomDetailLine {
+  id: string
+  lineGroup: string
+  itemRef: string | null
+  spec: string | null
+  consumption: string
+  consumptionBasis: string
+  uom: string
+  wastagePct: string
+  sourcePage: number | null
+}
+
+/** One BOM and its lines, in the order a person reads them: fabric, then everything else. */
+export async function bomDetail(
+  ctx: AnyCtx,
+  bomId: string,
+): Promise<{ bom: BomSummary; lines: BomDetailLine[] } | null> {
+  return withTenantRead(ctx, async (tx) => {
+    const [bom] = await tx.select().from(boms).where(eq(boms.id, bomId))
+    if (!bom) return null
+
+    const lines = await tx
+      .select()
+      .from(bomLines)
+      .where(eq(bomLines.bomId, bomId))
+      // Fabric first: it is most of the cost and the first thing anybody checks.
+      .orderBy(
+        sql`case ${bomLines.lineGroup}
+              when 'fabric' then 0 when 'trims' then 1
+              when 'embellishment' then 2 else 3 end`,
+        bomLines.itemRef,
+      )
+
+    const [usage] = await tx
+      .select({ id: costSheets.id })
+      .from(costSheets)
+      .where(and(eq(costSheets.bomId, bomId), eq(costSheets.status, 'approved')))
+      .limit(1)
+
+    return {
+      bom: {
+        id: bom.id,
+        styleCode: bom.styleCode,
+        source: bom.source,
+        lineCount: lines.length,
+        hasMeasured: lines.some((l) => l.consumptionBasis === 'actual'),
+        createdAt: bom.createdAt,
+        usedByApprovedSheet: usage !== undefined,
+      },
+      lines: lines.map((l) => ({
+        id: l.id,
+        lineGroup: l.lineGroup,
+        itemRef: l.itemRef,
+        spec: l.spec,
+        consumption: l.consumption,
+        consumptionBasis: l.consumptionBasis,
+        uom: l.uom,
+        wastagePct: l.wastagePct,
+        sourcePage: l.sourcePage,
+      })),
+    }
   })
 }

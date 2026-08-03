@@ -17,10 +17,12 @@
  * with two orders — the shape returned says so rather than carrying a zero.
  */
 import { and, count, eq, gte, inArray, isNull, lte, sql } from 'drizzle-orm'
+import { z } from 'zod'
 
 import { money, type Money } from '@/lib/money'
 
 import type { AnyCtx } from '../core/ctx'
+import { readJsonbObject } from '../core/jsonb'
 import { withTenantRead } from '../core/tenancy'
 
 import {
@@ -97,11 +99,22 @@ const figure = <T>(run: () => T): Figure<T> => {
 // The exceptions feed
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * What the feed carries alongside an exception — an LC number, a milestone name,
+ * a deadline. Scalars only: this is rendered as a single line of prose on the
+ * dashboard, and a nested value would arrive there as `[object Object]`.
+ */
+const exceptionDetail = z.record(
+  z.string(),
+  z.union([z.string(), z.number(), z.boolean(), z.null()]),
+)
+
 export interface ExceptionRow {
   id: string
   kind: ExceptionKind
   ref: string
-  detail: Record<string, unknown>
+  /** Null when the stored detail would not parse — the row still shows, unexplained. */
+  detail: Record<string, string | number | boolean | null> | null
   since: Date
   severity: 'low' | 'medium' | 'high'
   ageDays: number
@@ -131,7 +144,9 @@ export async function exceptions(
       id: row.id,
       kind: row.kind as ExceptionKind,
       ref: row.ref,
-      detail: row.detail,
+      // An exception whose detail will not parse is still an exception — losing
+      // the row because its explanation is malformed hides the problem itself.
+      detail: readJsonbObject(exceptionDetail, row.detail, 'exceptions_feed.detail'),
       since: row.since,
       severity: row.severity as 'low' | 'medium' | 'high',
       ageDays: Math.floor((now.getTime() - row.since.getTime()) / 86_400_000),

@@ -177,7 +177,7 @@ describe('X.3 · policy storage', () => {
     expect(after.overrides).toEqual({ dhuAlertThreshold: '3' })
     // An auditor a year later needs what the system was USING, not two of six fields.
     expect(after.effective.repeatDefectDays).toBe(3)
-    expect(after.effective.fabricMaxPointsPer100SqYd).toBe('40')
+    expect(after.effective.fabricMaxPointsPer100SqYd).toBe('20')
   })
 
   it('lists every module with effective, overrides and defaults kept apart', async () => {
@@ -200,6 +200,40 @@ describe('X.3 · policy storage', () => {
     const untouched = views.find((v) => v.moduleId === 'sampling')!
     expect(untouched.overrides).toEqual({})
     expect(untouched.updatedAt).toBeNull()
+    expect(costing.unresolvable).toBeNull()
+  })
+
+  it('one unreadable override degrades its own row, not the whole screen', async () => {
+    await clearPolicies()
+    await setPolicy(ownerCtx, { moduleId: 'costing', patch: { marginFloorPct: '15' } })
+
+    // `setPolicy` validates, so this can only arrive by a migration, a seed or a
+    // hand-run UPDATE — which is exactly when somebody opens Settings to fix it.
+    await db.insert(policySettings).values({
+      companyId: COMPANY,
+      moduleId: 'cutting',
+      overrides: { tolerancePct: 'abc' },
+      updatedBy: OWNER,
+    })
+
+    const views = await listPolicies(ownerCtx)
+
+    const cutting = views.find((v) => v.moduleId === 'cutting')!
+    expect(cutting.unresolvable).toBeTruthy()
+    // The stored value is still shown — it is what has to be corrected.
+    expect(cutting.overrides).toEqual({ tolerancePct: 'abc' })
+
+    // Every other module renders normally. Throwing here would take down the one
+    // screen able to repair the bad row.
+    expect(views).toHaveLength(POLICY_MODULE_IDS.length)
+    expect(views.find((v) => v.moduleId === 'costing')!.effective.marginFloorPct).toBe('15')
+    expect(views.filter((v) => v.unresolvable !== null)).toHaveLength(1)
+
+    // The module that would USE it still refuses: a tolerance of "abc" must never
+    // reach the cutting checker just because a screen tolerated it.
+    await expect(getPolicy(ownerCtx, 'cutting')).rejects.toThrow()
+
+    await clearPolicies()
   })
 })
 

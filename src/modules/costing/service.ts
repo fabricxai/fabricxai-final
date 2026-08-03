@@ -34,6 +34,7 @@ import {
   bomSeededFromOrderDraft,
   costSheetSections,
   createCostSheetPayload,
+  manualBomPayload,
   scenarioOverrides,
 } from './zod'
 
@@ -380,20 +381,97 @@ export async function commitBom(
     ? bomSeededFromOrderDraft.parse(input.payload)
     : bomFromTechPackDraft.parse(input.payload)
 
+  const bomId = await insertBomIn(ctx, tx, {
+    styleCode: payload.styleCode,
+    source: seeded ? 'seeded' : 'tech_pack_extract',
+    sourceDocumentId: 'sourceDocumentId' in payload ? (payload.sourceDocumentId ?? null) : null,
+    lines: payload.lines.map((line) => ({
+      ...line,
+      // A tech-pack line is an estimate by definition; a seeded line says for itself.
+      consumptionBasis: 'consumptionBasis' in line ? line.consumptionBasis : 'planned',
+      sourcePage: 'sourcePage' in line ? (line.sourcePage ?? null) : null,
+    })),
+  })
+
+  return {
+    rowId: bomId,
+    after: { bomId, styleCode: payload.styleCode, lineCount: payload.lines.length },
+  }
+}
+
+/**
+ * Build a bill of materials by hand.
+ *
+ * The third way a BOM arrives, alongside a tech-pack extraction and a seed from a past
+ * order — and the one every factory falls back on, because the tech pack is a PDF of a
+ * scan and the style has never been made before.
+ *
+ * Every line is written as `planned`. A consumption somebody typed is an estimate however
+ * confident they are, and `actual` means "measured against what was issued on a real
+ * order" — which 1.6 reads as evidence when it seeds the next quote.
+ */
+export async function createBom(
+  ctx: RequestCtx,
+  input: unknown,
+): Promise<{ bomId: string; lineCount: number }> {
+  const payload = manualBomPayload.parse(input)
+
+  return withTenantTx(ctx, async (tx) => {
+    const bomId = await insertBomIn(ctx, tx, {
+      styleCode: payload.styleCode,
+      source: 'manual',
+      sourceDocumentId: null,
+      lines: payload.lines.map((line) => ({
+        ...line,
+        consumptionBasis: 'planned' as const,
+        sourcePage: null,
+      })),
+    })
+
+    return { bomId, lineCount: payload.lines.length }
+  })
+}
+
+/**
+ * The one place a BOM and its lines are written.
+ *
+ * Shared by the manual builder and the approve-inbox commit rather than duplicated. A BOM
+ * is a parent AND its lines; two copies of that insert is two places for the line write to
+ * be forgotten, and a BOM with no lines reads as a style that needs no materials.
+ */
+async function insertBomIn(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  input: {
+    styleCode: string
+    source: 'manual' | 'seeded' | 'tech_pack_extract'
+    sourceDocumentId: string | null
+    lines: readonly {
+      lineGroup: 'fabric' | 'trims' | 'packing' | 'embellishment'
+      itemRef?: string | undefined
+      spec?: string | undefined
+      consumption: string
+      uom: string
+      wastagePct: string
+      consumptionBasis: 'planned' | 'actual'
+      sourcePage: number | null
+    }[]
+  },
+): Promise<string> {
   const [bom] = await tx
     .insert(boms)
     .values({
       companyId: ctx.companyId,
-      styleCode: payload.styleCode,
-      source: seeded ? 'seeded' : 'tech_pack_extract',
-      sourceDocumentId: 'sourceDocumentId' in payload ? (payload.sourceDocumentId ?? null) : null,
+      styleCode: input.styleCode,
+      source: input.source,
+      sourceDocumentId: input.sourceDocumentId,
       createdBy: ctx.userId,
     })
     .returning({ id: boms.id })
 
   if (!bom) throw new Error('boms insert returned nothing')
 
-  for (const line of payload.lines) {
+  for (const line of input.lines) {
     await tx.insert(bomLines).values({
       companyId: ctx.companyId,
       bomId: bom.id,
@@ -401,17 +479,13 @@ export async function commitBom(
       itemRef: line.itemRef ?? null,
       spec: line.spec ?? null,
       consumption: line.consumption,
-      // A tech-pack line is an estimate by definition; a seeded line says for itself.
-      consumptionBasis: 'consumptionBasis' in line ? line.consumptionBasis : 'planned',
+      consumptionBasis: line.consumptionBasis,
       uom: line.uom,
       wastagePct: line.wastagePct,
-      sourcePage: 'sourcePage' in line ? (line.sourcePage ?? null) : null,
+      sourcePage: line.sourcePage,
     })
   }
 
-  return {
-    rowId: bom.id,
-    after: { bomId: bom.id, styleCode: payload.styleCode, lineCount: payload.lines.length },
-  }
+  return bom.id
 }
 

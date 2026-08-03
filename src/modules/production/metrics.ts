@@ -175,9 +175,18 @@ export function forecastCompletion(input: {
   }
 
   const total = input.trailing.reduce((sum, day) => sum + day.output, 0)
+  // Divided by the WINDOW, not by the days that happened to run. Callers pass a day the
+  // floor was idle as an explicit zero, and it has to stay in the denominator: a line that
+  // made 1,200 on two of the last three days runs at 800 a day, not 1,200. Averaging only
+  // the good days forecasts a date the floor has already demonstrated it cannot hit.
   const rateMinor = divideRoundHalfUp(BigInt(total) * 100n, BigInt(input.trailing.length))
+
+  // Confidence, though, is about how much evidence there is — so it counts the days that
+  // actually reported. A three-day window with one day of output is still one day of
+  // evidence, however wide the window was.
+  const daysWithOutput = input.trailing.filter((day) => day.output > 0).length
   const confidence: ForecastResult['confidence'] =
-    total === 0 ? 'none' : input.trailing.length < 2 ? 'low' : 'normal'
+    total === 0 ? 'none' : daysWithOutput < 2 ? 'low' : 'normal'
 
   if (total === 0) {
     // Rate zero. "Completes today" is the dangerous answer and Infinity is not an answer,

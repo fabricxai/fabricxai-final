@@ -123,6 +123,37 @@ describe('forecastCompletion · run rate', () => {
     expect(result.confidence).toBe('none')
   })
 
+  it('12a · an idle day stays in the denominator and slows the forecast', () => {
+    // The floor made 1,200 on two of the last three days and nothing on the third. Its rate
+    // is 800/day, not 1,200 — averaging only the days it ran promises a date it has already
+    // shown it cannot hit. Callers pass the idle day as an explicit zero for exactly this.
+    const patchy = [
+      { date: '2026-06-10', output: 1200 },
+      { date: '2026-06-11', output: 0 },
+      { date: '2026-06-12', output: 1200 },
+    ]
+
+    const result = forecastCompletion({ remainingQty: 2400, trailing: patchy, fromDate: '2026-06-12' })
+
+    expect(result.ratePerDay).toBe('800.00')
+    expect(result.daysNeeded).toBe(3)
+  })
+
+  it('12b · confidence counts the days that reported, not the width of the window', () => {
+    // A three-day window with one day of output is still one day of evidence. The rate is
+    // averaged over three, but nobody should read the date as firm.
+    const oneDay = [
+      { date: '2026-06-10', output: 0 },
+      { date: '2026-06-11', output: 0 },
+      { date: '2026-06-12', output: 900 },
+    ]
+
+    const result = forecastCompletion({ remainingQty: 600, trailing: oneDay, fromDate: '2026-06-12' })
+
+    expect(result.ratePerDay).toBe('300.00')
+    expect(result.confidence).toBe('low')
+  })
+
   it('13 · flags a forecast that lands after the sewing milestone', () => {
     const result = forecastCompletion({
       remainingQty: 5000,

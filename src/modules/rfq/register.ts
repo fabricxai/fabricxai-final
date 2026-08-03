@@ -8,6 +8,8 @@
  */
 import { registerModule } from '../core/registry'
 
+import { rfqToolPack } from './tools'
+
 import { commitRfq } from './service'
 import { RFQ_ZOD_MAP } from './zod'
 
@@ -16,6 +18,10 @@ export const rfqModule = registerModule({
 
   pendingTargets: ['rfqs'],
   zodMap: RFQ_ZOD_MAP,
+
+  /** Read-only. A quotation is a price the factory commits to, with its own margin-floor
+   * gate — a drafted one would be a price nobody decided, one approval from a buyer. */
+  toolPack: rfqToolPack,
 
   approvalDefaults: { requiredRoles: ['owner', 'admin', 'merchandiser'] },
 

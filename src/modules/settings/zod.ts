@@ -19,6 +19,9 @@ export const companyProfilePayload = z.object({
   /** Bonded warehouse licence — 2.2's UDs are drawn against it. */
   bondLicenceNo: z.string().max(60).optional(),
 
+  /** Decides which modules exist for this unit — see the schema note. */
+  factoryType: z.enum(['woven', 'knit', 'knit-composite']).default('woven'),
+
   timezone: z.string().min(1).max(60).default('Asia/Dhaka'),
   locale: z.string().min(2).max(10).default('en'),
   baseCurrency: z.string().length(3).default('USD'),

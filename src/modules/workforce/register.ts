@@ -13,6 +13,8 @@
  */
 import { registerModule } from '../core/registry'
 
+import { workforceToolPack } from './tools'
+
 import { WORKFORCE_ZOD_MAP } from './zod'
 
 export const workforceModule = registerModule({
@@ -20,6 +22,29 @@ export const workforceModule = registerModule({
 
   pendingTargets: ['wage_gazettes'],
   zodMap: WORKFORCE_ZOD_MAP,
+
+  /**
+   * 🔒 Deliberately smaller than the module: headcount and roster carry no money, and the
+   * gazette and run list are rates and totals behind `assertPayrollAccess`. No per-worker
+   * pay — a chat answer is persisted in `chat_turns`, which would copy a wage out from
+   * under the protection `payroll_lines` gives it.
+   */
+  toolPack: workforceToolPack,
+
+  /**
+   * A gazette is a header AND its grade table. Core's generic write would insert the
+   * header alone — and a gazette with no grades activates cleanly, then pays nothing —
+   * quite apart from refusing `effectiveFrom` as an invalid column identifier.
+   *
+   * Lazily imported: a static import of the service here puts this file in the service's
+   * evaluation graph, which is how commercial ended up registered twice.
+   */
+  commitHandlers: {
+    wage_gazettes: async (ctx, tx, input) => {
+      const { commitGazetteFromScan } = await import('./service')
+      return commitGazetteFromScan(ctx, tx, input)
+    },
+  },
 
   // 🔒 Nobody but hr and the owner approves anything in this module.
   approvalDefaults: { requiredRoles: ['owner', 'hr'] },

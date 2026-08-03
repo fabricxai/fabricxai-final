@@ -57,20 +57,25 @@ export const dispatchPayload = z.object({
   dispatchedAt: z.string().optional(),
 })
 
+/**
+ * One itemised buyer note on a sample.
+ *
+ * Exported because the READ side parses the stored jsonb with the same schema
+ * the write side validated it against — two definitions of the same shape drift,
+ * and the one that drifts is always the one nobody is looking at.
+ */
+export const buyerComment = z.object({
+  area: z.string().min(1),
+  comment: z.string().min(1),
+  /** Page of the buyer's comment sheet, so a reviewer can check the extraction. */
+  page: z.number().int().min(1).optional(),
+})
+
 export const feedbackRoundPayload = z.object({
   sampleRequestId: z.string().uuid(),
   /** No default. A verdict that could arrive by omission could clear a gate by omission. */
   verdict: z.enum(['approved', 'approved_with_comments', 'rejected']),
-  comments: z
-    .array(
-      z.object({
-        area: z.string().min(1),
-        comment: z.string().min(1),
-        /** Page of the buyer's comment sheet, so a reviewer can check the extraction. */
-        page: z.number().int().min(1).optional(),
-      }),
-    )
-    .default([]),
+  comments: z.array(buyerComment).default([]),
   recordedOn: isoDate,
   documentId: z.string().uuid().optional(),
 })

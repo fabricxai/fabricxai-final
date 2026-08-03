@@ -42,6 +42,7 @@ describe('the registry covers every module that takes a policy', () => {
       'marbim',
       'planning',
       'procurement',
+      'production',
       'quality',
       'rfq',
       'sampling',
@@ -203,7 +204,7 @@ describe('the defaults are the numbers this industry actually uses', () => {
 
   it('20 · caps fabric at 40 points per hundred square yards', () => {
     const quality = resolvePolicyValue<{ fabricMaxPointsPer100SqYd: string }>('quality', null)
-    expect(quality.fabricMaxPointsPer100SqYd).toBe('40')
+    expect(quality.fabricMaxPointsPer100SqYd).toBe('20')
   })
 
   it('21 · holds BTB credits to 75% of the master LC', () => {

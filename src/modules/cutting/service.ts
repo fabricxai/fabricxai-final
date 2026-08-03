@@ -19,7 +19,7 @@ import { and, eq, inArray } from 'drizzle-orm'
 import { recordChange, registerAuditedTables } from '../core/audit'
 import type { AnyCtx, RequestCtx } from '../core/ctx'
 import { AppError, conflict, notFound } from '../core/errors'
-import { assertGate, GATES } from '../core/gates'
+import { assertGate, GATES, type GateResult } from '../core/gates'
 import { emit } from '../core/outbox'
 import { defineStateMachine } from '../core/state-machine'
 import { withTenantRead, withTenantTx, type TenantDb } from '../core/tenancy'
@@ -113,26 +113,82 @@ export async function createMarker(
   ctx: RequestCtx,
   input: unknown,
 ): Promise<{ markerId: string }> {
+  return withTenantTx(ctx, (tx) => createMarkerIn(ctx, tx, input))
+}
+
+/**
+ * Commit a marker drafted through the approve inbox — the far end of `pendingTargets`.
+ *
+ * `markers` has been a pending target since 5.1 with nothing to commit it, so core fell
+ * back to its generic row write. That write treats payload keys as literal column names
+ * and refuses anything that is not a bare lowercase identifier, so `styleCode`,
+ * `sizeRatio` and `layLengthMeters` were all rejected as invalid identifiers — every
+ * marker draft ever approved failed, at the click, after the review.
+ *
+ * Going through `createMarkerIn` also gets the duplicate-code check. A generic insert
+ * would have hit the `markers_company_code_key` unique index and surfaced a raw Postgres
+ * violation to somebody who only ever typed a marker code twice.
+ */
+export async function commitMarkerDraft(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  input: { operation: 'insert' | 'update' | 'delete'; targetId: string | null; payload: Record<string, unknown> },
+): Promise<{ rowId: string; before: null; after: Record<string, unknown> }> {
+  if (input.operation !== 'insert') {
+    /*
+     * Markers are added, never edited through a draft.
+     *
+     * A lay records `markerId`, and its piece yield is computed from that marker's ratio
+     * and lay length. Editing a marker in place would silently restate what every lay
+     * already spread against it — including ones the floor finished cutting last week —
+     * and nothing in the cut reports would show that the arithmetic underneath them moved.
+     * A changed marker is a new marker with a new code.
+     */
+    throw new AppError('validation_failed', 'cutting.errors.marker_draft_insert_only', {
+      operation: input.operation,
+    })
+  }
+
+  const result = await createMarkerIn(ctx, tx, input.payload)
+  return { rowId: result.markerId, before: null, after: { markerId: result.markerId } }
+}
+
+/** The insert itself, inside a transaction the caller owns. */
+async function createMarkerIn(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  input: unknown,
+): Promise<{ markerId: string }> {
   const payload = markerPayload.parse(input)
 
-  return withTenantTx(ctx, async (tx) => {
-    const [row] = await tx
-      .insert(markers)
-      .values({
-        companyId: ctx.companyId,
-        code: payload.code,
-        styleCode: payload.styleCode,
-        sizeRatio: payload.sizeRatio,
-        layLengthMeters: payload.layLengthMeters,
-        efficiencyPct: payload.efficiencyPct ?? null,
-        fabricWidthInches: payload.fabricWidthInches ?? null,
-        createdBy: ctx.userId,
-      })
-      .returning({ id: markers.id })
+  const [existing] = await tx
+    .select({ id: markers.id })
+    .from(markers)
+    .where(eq(markers.code, payload.code))
 
-    if (!row) throw new Error('markers insert returned nothing')
-    return { markerId: row.id }
-  })
+  if (existing) {
+    // A typed conflict rather than a unique-index violation. The code is how the floor
+    // names a marker on paper, so colliding on one is an ordinary mistake, and the
+    // person who made it should be told which code — not shown a constraint name.
+    throw conflict('cutting.errors.marker_code_exists', { code: payload.code })
+  }
+
+  const [row] = await tx
+    .insert(markers)
+    .values({
+      companyId: ctx.companyId,
+      code: payload.code,
+      styleCode: payload.styleCode,
+      sizeRatio: payload.sizeRatio,
+      layLengthMeters: payload.layLengthMeters,
+      efficiencyPct: payload.efficiencyPct ?? null,
+      fabricWidthInches: payload.fabricWidthInches ?? null,
+      createdBy: ctx.userId,
+    })
+    .returning({ id: markers.id })
+
+  if (!row) throw new Error('markers insert returned nothing')
+  return { markerId: row.id }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -193,6 +249,20 @@ export interface CreateLayResult {
  * tablet can show WHICH precondition failed and what to do about it. A disabled button is
  * not a gate.
  */
+/**
+ * Whether the PP gate would let this style be spread, and why not.
+ *
+ * A read of the same gate `createLay` enforces, so the answer a person is given is the
+ * answer they will get when they try. Exposed because the question "why can I not cut
+ * this" had no way to be answered without attempting the write and reading the refusal.
+ */
+export async function ppApprovalStatus(
+  ctx: AnyCtx,
+  input: { orderId: string; orderStyleId: string },
+): Promise<GateResult> {
+  return withTenantRead(ctx, (tx) => checkPpApproval(ctx, tx, input))
+}
+
 export async function createLay(ctx: RequestCtx, input: unknown): Promise<CreateLayResult> {
   const payload = createLayPayload.parse(input)
 
@@ -343,6 +413,8 @@ export interface CutReportResult {
   validation: CutReportValidation
   completion: { complete: boolean; pct: string }
   breakdownRevision: number
+  /** Tickets generated from this report. Zero when no bundle size is configured. */
+  bundleCount: number
 }
 
 /**
@@ -443,6 +515,23 @@ async function recordCutReportIn(
     })
   }
 
+  // Wastage moves the moment a lay becomes `cut`, and this is that moment. Recomputed
+  // from every cut lay rather than adjusted, so it cannot drift — the module's own rule
+  // for a number a factory argues about with its owner.
+  await recomputeWastageIn(ctx, tx, { orderId: lay.orderId }, policy)
+
+  // Bundles, in the same transaction as the report they come from.
+  //
+  // A cut report with no bundles is cut cloth with no tickets, and a sewing line scans a
+  // ticket to say a bundle arrived — so the pieces would simply never reach sewing. The
+  // tie size is policy: a bundle is what a bundle boy can carry, and it differs by factory.
+  // With none configured the bundles are NOT invented at some default size; the report
+  // still files, and the count says zero rather than pretending.
+  const bundleSize = policy.defaultBundleSize
+  const bundling = bundleSize
+    ? await generateBundlesIn(ctx, tx, { cutReportId: row.id, bundleSize })
+    : { bundleCount: 0 }
+
   // Completion is judged across EVERY lay for the style, not this report alone — an
   // order is cut when the whole grid is met, not when one lay came off the table.
   const cutAcrossLays = await cutSoFar(tx, lay.orderStyleId)
@@ -467,6 +556,7 @@ async function recordCutReportIn(
     validation,
     completion: { complete: completion.complete, pct: completion.pct },
     breakdownRevision: breakdown.revision,
+    bundleCount: bundling.bundleCount,
   }
 }
 
@@ -478,7 +568,23 @@ export async function generateBundles(
   ctx: RequestCtx,
   input: { cutReportId: string; bundleSize: number },
 ): Promise<{ bundleCount: number }> {
-  return withTenantTx(ctx, async (tx) => {
+  return withTenantTx(ctx, (tx) => generateBundlesIn(ctx, tx, input))
+}
+
+/**
+ * The body of `generateBundles`, callable inside an existing transaction.
+ *
+ * Extracted so filing a cut report can produce its tickets in the SAME transaction. Until
+ * this existed `generateBundles` was exported and called by nothing at all: every report
+ * closed its lay and produced no bundles, so the cut pieces had no tickets and the sewing
+ * line had nothing to scan. The chain stopped dead between cutting and sewing.
+ */
+async function generateBundlesIn(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  input: { cutReportId: string; bundleSize: number },
+): Promise<{ bundleCount: number }> {
+  {
     const [report] = await tx
       .select()
       .from(cutReports)
@@ -527,7 +633,7 @@ export async function generateBundles(
     })
 
     return { bundleCount: rows.length }
-  })
+  }
 }
 
 /** A scanner sends the token from the ticket, never a row id. */
@@ -571,7 +677,24 @@ export async function recomputeWastage(
   input: { orderId: string },
   policy: CuttingPolicy,
 ): Promise<{ fabricDrawn: string; markerConsumption: string; wastagePct: string }> {
-  return withTenantTx(ctx, async (tx) => {
+  return withTenantTx(ctx, (tx) => recomputeWastageIn(ctx, tx, input, policy))
+}
+
+/**
+ * The body of `recomputeWastage`, callable inside an existing transaction.
+ *
+ * Extracted so filing a cut report updates the figure in the SAME transaction. Like
+ * `generateBundles`, this was exported and called by nothing: `cut_wastage` was written
+ * once by whatever seeded it and never again, so the wastage screen showed a number that
+ * stopped tracking the floor the moment the second lay was cut.
+ */
+async function recomputeWastageIn(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  input: { orderId: string },
+  policy: CuttingPolicy,
+): Promise<{ fabricDrawn: string; markerConsumption: string; wastagePct: string }> {
+  {
     const rows = await tx
       .select({
         plies: lays.plies,
@@ -588,8 +711,21 @@ export async function recomputeWastage(
     let drawn = 0n
     let planned = 0n
     for (const row of rows) {
+      // `lay_length_meters` is PER PLY — the marker's length — so the lay's planned
+      // consumption is that times the ply count.
       planned += toMinor(row.layLengthMeters) * BigInt(row.plies)
-      drawn += toMinor(row.fabricDrawnMeters ?? row.layLengthMeters) * BigInt(row.plies)
+
+      // `fabric_drawn_meters` is already a TOTAL for the lay: `createLay` stores either
+      // what the cutter drew off the rolls, or `layYield().plannedFabric`, which is itself
+      // "lay length × plies". Multiplying it by plies a second time inflated drawn fabric
+      // by the ply count — a 60-ply lay drawing 397 m was counted as 23,823 m, and the
+      // wastage percentage this whole table exists for read in the thousands.
+      //
+      // The two branches are not interchangeable, which is what hid the bug: the fallback
+      // IS per-ply and does need multiplying.
+      drawn += row.fabricDrawnMeters
+        ? toMinor(row.fabricDrawnMeters)
+        : toMinor(row.layLengthMeters) * BigInt(row.plies)
     }
 
     const fabricDrawn = fromMinor(drawn)
@@ -629,7 +765,20 @@ export async function recomputeWastage(
       after: { fabricDrawn, markerConsumption, wastagePct: result.wastagePct },
     })
 
+    // Only on the CROSSING, not on every recompute.
+    //
+    // Wastage is now recomputed whenever a lay is reported cut, so an order that is over
+    // the threshold would raise the same alert on every subsequent lay — and an alert that
+    // repeats on work that has not changed is one people filter into a folder. Firing when
+    // the stored figure was under (or absent) and the new one is over makes the event mean
+    // "this order just went over", which is the thing somebody acts on.
+    const wasOver =
+      existing !== undefined &&
+      policy.wastageAlertPct !== undefined &&
+      toMinor(existing.wastagePct) > toMinor(policy.wastageAlertPct)
+
     if (
+      !wasOver &&
       policy.wastageAlertPct &&
       toMinor(result.wastagePct) > toMinor(policy.wastageAlertPct)
     ) {
@@ -648,7 +797,7 @@ export async function recomputeWastage(
     }
 
     return { fabricDrawn, markerConsumption, wastagePct: result.wastagePct }
-  })
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

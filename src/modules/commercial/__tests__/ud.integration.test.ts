@@ -21,11 +21,13 @@ import {
   drawUdStandalone,
   expireLapsedUds,
   getUdBalance,
+  proposeUdOverride,
   snapshotReconciliation,
 } from '@/modules/commercial/service'
+import '@/modules/commercial/register'
 import type { RequestCtx } from '@/modules/core/ctx'
 import { AppError } from '@/modules/core/errors'
-import { withTenantRead } from '@/modules/core/tenancy'
+import { withTenantRead, withTenantTx } from '@/modules/core/tenancy'
 
 const client = createDirectClient()
 const db = createDirectDb(client)
@@ -225,5 +227,96 @@ describe('2.2 · lifecycle', () => {
     await expect(
       snapshotReconciliation(ownerA, { udId: UD_A, period: '2026-06' }),
     ).rejects.toMatchObject({ code: 'conflict' })
+  })
+})
+
+/**
+ * The overdraw override — the ONLY route past the balance gate.
+ *
+ * `approvedOverride` is documented on `UdDrawInput` as unsettable from a request, which is
+ * only true if nothing but the commit handler sets it. This suite is what keeps that true:
+ * if somebody later wires a second caller, the propose→approve shape stops being the single
+ * door and this file should be the thing that notices.
+ */
+describe('2.2 · the overdraw override', () => {
+  const OVER_ITEM = 'FAB-RIB-2X1'
+
+  it('refuses to raise a request when the balance actually covers the draw', async () => {
+    // An approval nobody needs to make still costs a reviewer their attention. An inbox
+    // full of those is an inbox that stops being read.
+    const thrown = await proposeUdOverride(ownerA, {
+      udId: UD_TIGHT,
+      itemRef: OVER_ITEM,
+      qty: '10.00',
+      unit: 'M',
+      reason: 'testing that a covered draw is refused',
+    }).catch((e: unknown) => e)
+
+    expect(thrown).toBeInstanceOf(AppError)
+    expect((thrown as AppError).messageKey).toBe('commercial.errors.ud_not_short')
+  })
+
+  it('raises a draft carrying the numbers the approver is signing for', async () => {
+    // Relative, not absolute: earlier tests in this file draw against the same UD, and an
+    // assertion that hard-codes a starting balance breaks whenever one is added above.
+    const before = await getUdBalance(ownerA, UD_TIGHT)
+    const consumedBefore = Number(before.items[0]!.consumed)
+
+    const { pendingChangeId, decision } = await proposeUdOverride(ownerA, {
+      udId: UD_TIGHT,
+      itemRef: OVER_ITEM,
+      qty: '900.00',
+      unit: 'M',
+      reason: 'lay already spread; balance went on the previous issue',
+    })
+
+    expect(pendingChangeId).toBeTruthy()
+    // The shortfall travels on the decision so the card — and the approver — see the gap.
+    expect(decision.allowed).toBe(false)
+    expect(Number(decision.shortfall)).toBeGreaterThan(0)
+
+    // Nothing is drawn by asking.
+    const after = await getUdBalance(ownerA, UD_TIGHT)
+    expect(Number(after.items[0]!.consumed)).toBe(consumedBefore)
+  })
+
+  it('commits as a real draw, marked as an override, and takes the balance negative', async () => {
+    const { commitUdOverride } = await import('@/modules/commercial/service')
+
+    const before = await getUdBalance(ownerA, UD_TIGHT)
+    const authorized = Number(before.items[0]!.authorized)
+    const consumedBefore = Number(before.items[0]!.consumed)
+    // Enough to push past whatever is left, however much earlier tests took.
+    const overdraw = authorized - consumedBefore + 50
+
+    await withTenantTx(ownerA, (tx) =>
+      commitUdOverride(ownerA, tx, {
+        payload: {
+          udId: UD_TIGHT,
+          itemRef: OVER_ITEM,
+          qty: overdraw.toFixed(2),
+          unit: 'M',
+          reason: 'owner accepted the duty exposure in writing',
+        },
+      }),
+    )
+
+    const after = await getUdBalance(ownerA, UD_TIGHT)
+    const item = after.items.find((i) => i.itemRef === OVER_ITEM)!
+
+    // The balance goes NEGATIVE and stays that way — an overdrawn UD is a live duty
+    // exposure, not a number to clamp at zero so the screen looks tidy.
+    expect(Number(item.consumed)).toBe(consumedBefore + overdraw)
+    expect(Number(item.free)).toBe(-50)
+
+    // Earlier tests draw against this UD too, so pick the override rather than the first
+    // row: `override_of` is what separates an authorised overdraw from an ordinary draw in
+    // a customs reconciliation, and asserting it on an arbitrary row proves nothing.
+    const rows = await withTenantRead(ownerA, (tx) =>
+      tx.select().from(udConsumptions).where(eq(udConsumptions.udId, UD_TIGHT)),
+    )
+    const overrides = rows.filter((r) => r.overrideOf !== null)
+    expect(overrides).toHaveLength(1)
+    expect(Number(overrides[0]!.qty)).toBe(overdraw)
   })
 })

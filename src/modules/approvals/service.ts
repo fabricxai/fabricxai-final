@@ -278,7 +278,9 @@ export async function agingDrafts(
 
 /** Raise the aging escalations. Idempotent per run by the outbox's own dedupe. */
 export async function emitAgingEscalations(
-  ctx: RequestCtx,
+  // `AnyCtx`, not `RequestCtx`: this is a nightly job and the scheduler runs it as a system
+  // actor. It reads nothing off the caller but the company — nobody authored these alerts.
+  ctx: AnyCtx,
   input: { now: Date },
   policy: ApprovalsPolicy,
 ): Promise<{ raised: number }> {

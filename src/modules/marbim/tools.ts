@@ -156,3 +156,49 @@ export function collectTools(packs: readonly ToolPack[]): ModuleTool[] {
     // identical questions produce different prompts and therefore different answers.
     .sort((a, b) => a.name.localeCompare(b.name))
 }
+
+/**
+ * Validate every registered pack at boot.
+ *
+ * `toolsInScope` already validates, but at CHAT time — so a namespace typo or a draft tool
+ * aimed at an unregistered table failed for one person, mid-question, long after the pack
+ * was merged. Every failure `validateToolPack` catches is a wiring mistake, and a wiring
+ * mistake should stop the process rather than one conversation.
+ *
+ * Called from `modules/registry.ts` beside `assertIntakeKinds`, which exists for the same
+ * reason. Skips modules with no pack: nineteen of them have a primer and no tools, which is
+ * a gap in coverage rather than a fault.
+ */
+export function assertToolPacks(
+  modules: readonly { id: string; pendingTargets: readonly string[]; toolPack?: unknown }[],
+): number {
+  let checked = 0
+
+  for (const definition of modules) {
+    const pack = definition.toolPack
+    if (!pack) continue
+
+    if (
+      typeof pack !== 'object' ||
+      pack === null ||
+      typeof (pack as ToolPack).moduleId !== 'string' ||
+      !Array.isArray((pack as ToolPack).tools)
+    ) {
+      throw new ToolPackError(`module "${definition.id}" registered a tool pack of the wrong shape`)
+    }
+
+    const typed = pack as ToolPack
+    if (typed.moduleId !== definition.id) {
+      // A pack copied from another module and half-renamed: its tools would be namespaced
+      // for a module that did not register them.
+      throw new ToolPackError(
+        `module "${definition.id}" registered a pack declaring moduleId "${typed.moduleId}"`,
+      )
+    }
+
+    validateToolPack(typed, { pendingTargets: definition.pendingTargets })
+    checked += 1
+  }
+
+  return checked
+}

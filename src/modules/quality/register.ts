@@ -15,9 +15,16 @@
  * a whole shipment.
  */
 import { registerSyncHandler } from '../core/offline-sync'
+import { registerFabricInspectionProvider } from '../store/gates'
 import { registerModule } from '../core/registry'
 
-import { offlineCaptureInlineCheck } from './service'
+import {
+  commitDefectCode,
+  commitMeasurementSpec,
+  offlineCaptureInlineCheck,
+  resolveFabricInspection,
+} from './service'
+import { qualityToolPack } from './tools'
 import { inlineCheckPayload, QUALITY_ZOD_MAP } from './zod'
 
 export const qualityModule = registerModule({
@@ -26,8 +33,25 @@ export const qualityModule = registerModule({
   pendingTargets: ['defect_codes', 'measurement_specs'],
   zodMap: QUALITY_ZOD_MAP,
 
+  /** Reads for the floor's own numbers, and one draft: the buyer's measurement chart. */
+  toolPack: qualityToolPack,
+
   // QC manager approves; the owner and admin can too.
   approvalDefaults: { requiredRoles: ['owner', 'admin', 'quality'] },
+
+  // Both targets were registered from the start with nothing to commit them, so an approved
+  // draft failed at the last step. A pending target without a commit handler is a review
+  // queue that cannot be emptied.
+  commitHandlers: {
+    measurement_specs: async (ctx, tx, input) => {
+      const result = await commitMeasurementSpec(ctx, tx, { payload: input.payload })
+      return { rowId: result.rowId, after: result.after }
+    },
+    defect_codes: async (ctx, tx, input) => {
+      const result = await commitDefectCode(ctx, tx, { payload: input.payload })
+      return { rowId: result.rowId, after: result.after }
+    },
+  },
 
   domainPrimer: {
     version: '7.1.0',
@@ -81,3 +105,14 @@ registerSyncHandler('quality', 'inline_check', async (ctx, tx, row) => {
   const result = await offlineCaptureInlineCheck(ctx, tx, payload)
   return { rowId: result.inlineCheckId }
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Gates this module answers for other modules
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * The store's 4-point gate fails closed with no provider (rule 8), so importing this module
+ * is what turns "no woven roll may be issued" into a real inspection check — the same
+ * deliberate coupling, in the same safe direction, as sampling's PP-approval provider.
+ */
+registerFabricInspectionProvider(resolveFabricInspection)

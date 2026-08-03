@@ -11,7 +11,9 @@
  */
 import { registerModule } from '../core/registry'
 
-import { registerStoreSyncHandlers } from './service'
+import { storeToolPack } from './tools'
+
+import { commitStockAdjustment, registerStoreSyncHandlers } from './service'
 import { STORE_ZOD_MAP } from './zod'
 
 registerStoreSyncHandlers()
@@ -22,8 +24,23 @@ export const storeModule = registerModule({
   pendingTargets: ['stock_adjustments'],
   zodMap: STORE_ZOD_MAP,
 
+  /** Reads for the issue window, and one draft: the adjustment, which asserts rather than
+   * records and is the only store write that should need a second person. */
+  toolPack: storeToolPack,
+
   // Writing off stock is writing off money; the store manager does not sign their own.
   approvalDefaults: { requiredRoles: ['owner', 'admin'] },
+
+  // Without this the target fell through to core's generic single-row write, which uses
+  // payload keys as column names and rejected `itemId` — so an approved adjustment threw
+  // instead of applying. The handler also moves the ROLL, which is what makes on-hand
+  // change at all: stock here is derived from rolls, not from an adjustments ledger.
+  commitHandlers: {
+    stock_adjustments: async (ctx, tx, input) => {
+      const result = await commitStockAdjustment(ctx, tx, { payload: input.payload })
+      return { rowId: result.rowId, before: result.before, after: result.after }
+    },
+  },
 
   domainPrimer: {
     version: '3.1.0',

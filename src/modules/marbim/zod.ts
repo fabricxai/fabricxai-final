@@ -19,6 +19,14 @@ export const extractionRequest = z
 
     sourceDocumentId: z.string().uuid().optional(),
     sourceText: z.string().max(200_000).optional(),
+
+    /**
+     * Fields the caller supplies rather than the extractor finding them — the buyer a PO
+     * came from, the audit a findings list belongs to. Strings only, and few: this is a
+     * channel for identity the document cannot carry, not a way to hand-write a payload
+     * and have it wear an extraction's confidence.
+     */
+    contextValues: z.record(z.string().min(1), z.string().min(1)).optional(),
   })
   .refine((r) => r.sourceDocumentId !== undefined || r.sourceText !== undefined, {
     message: 'an extraction needs a document or some text to read',

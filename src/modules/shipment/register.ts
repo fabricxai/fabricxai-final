@@ -13,7 +13,14 @@
 import { registerSyncHandler } from '../core/offline-sync'
 import { registerModule } from '../core/registry'
 
-import { commitToleranceOverride, offlinePackCarton, offlineRecordFinishingOutput } from './service'
+import { shipmentToolPack } from './tools'
+
+import {
+  commitCartonDraft,
+  commitToleranceOverride,
+  offlinePackCarton,
+  offlineRecordFinishingOutput,
+} from './service'
 import { cartonPayload, finishingOutputPayload, SHIPMENT_ZOD_MAP } from './zod'
 
 export const shipmentModule = registerModule({
@@ -22,10 +29,23 @@ export const shipmentModule = registerModule({
   pendingTargets: ['shipments', 'cartons'],
   zodMap: SHIPMENT_ZOD_MAP,
 
+  /**
+   * Reads for the three gates that decide whether a shipment can go, and one draft: the
+   * tolerance override, which is a commercial decision with a consequence at a bank counter.
+   * `cartons` is a pending target and gets no draft tool — a carton is packed by somebody
+   * holding it, and a proposed carton is a box nobody saw.
+   */
+  toolPack: shipmentToolPack,
+
   // Accepting an LC discrepancy is a commercial decision, not a packing-floor one.
   approvalDefaults: { requiredRoles: ['owner', 'admin', 'commercial'] },
 
   commitHandlers: {
+    // The back-entry path for a carton packed while the tablet was down. Core's generic
+    // write refused its camelCase keys, and would have skipped the over-pack guard —
+    // which is the one check a carton nobody watched being packed most needs.
+    cartons: commitCartonDraft,
+
     shipments: async (ctx, tx, input) => {
       const result = await commitToleranceOverride(ctx, tx, { payload: input.payload })
       return { rowId: result.rowId, before: result.before, after: result.after }

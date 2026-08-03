@@ -21,7 +21,7 @@ import { money, type Money } from '@/lib/money'
 
 import { recordChange, registerAuditedTables } from '../core/audit'
 import type { AnyCtx, RequestCtx } from '../core/ctx'
-import { AppError, notFound } from '../core/errors'
+import { AppError, conflict, notFound } from '../core/errors'
 import { emit } from '../core/outbox'
 import { defineStateMachine } from '../core/state-machine'
 import { withTenantRead, withTenantTx, type TenantDb } from '../core/tenancy'
@@ -50,6 +50,7 @@ import {
   autoTicketInput,
   claimTicketInput,
   completePmInput,
+  pmScheduleInput,
   machineInput,
   manualTicketInput,
   monthlyCostInput,
@@ -116,6 +117,21 @@ export async function registerMachine(
 
   return withTenantTx(ctx, async (tx) => {
     if (payload.lineId) await assertLine(tx, payload.lineId)
+
+    if (payload.serial) {
+      const [existing] = await tx
+        .select({ id: machines.id })
+        .from(machines)
+        .where(eq(machines.serial, payload.serial))
+
+      // A typed conflict rather than the `machines_company_serial_key` violation. Serials
+      // are copied off a plate by hand and collide for ordinary reasons — and the second
+      // row would split a machine's service history in two, so the newer one looks
+      // overdue and the older one looks maintained.
+      if (existing) {
+        throw conflict('maintenance.errors.serial_exists', { serial: payload.serial })
+      }
+    }
 
     const [row] = await tx
       .insert(machines)
@@ -511,6 +527,90 @@ export async function pmDue(ctx: AnyCtx, today: string): Promise<(PmDue & { mach
     const typeById = new Map(fleet.map((machine) => [machine.id, machine.machineType]))
 
     return due.map((entry) => ({ ...entry, machineType: typeById.get(entry.machineId) ?? '' }))
+  })
+}
+
+/**
+ * Define what gets checked on a type of machine, and how often.
+ *
+ * Nothing created these rows before this. `pmDue` returns an empty list when no schedule
+ * exists, so a factory with forty-eight machines and no schedules saw "nothing is due" every
+ * day, correctly and uselessly — the whole preventive-maintenance feature was inert because
+ * there was no way to say what preventive maintenance meant.
+ *
+ * One schedule per (type, cadence): the unique index says so, and re-saving replaces the
+ * checklist rather than creating a second. Two weekly schedules for overlocks would put
+ * every overlock on the list twice with different steps, and a mechanic would sign one.
+ *
+ * **Past completions are untouched.** A checklist that changes does not invalidate services
+ * already recorded against the old one — `pm_completions` stores the steps that were
+ * actually checked, so a visit stays readable as what was done that day.
+ */
+export async function upsertPmSchedule(
+  ctx: RequestCtx,
+  input: unknown,
+): Promise<{ scheduleId: string; replaced: boolean }> {
+  const payload = pmScheduleInput.parse(input)
+
+  return withTenantTx(ctx, async (tx) => {
+    const [existing] = await tx
+      .select({ id: pmSchedules.id })
+      .from(pmSchedules)
+      .where(
+        and(
+          eq(pmSchedules.machineType, payload.machineType),
+          eq(pmSchedules.cadence, payload.cadence),
+        ),
+      )
+
+    if (existing) {
+      await tx
+        .update(pmSchedules)
+        .set({ checklist: payload.checklist, updatedAt: new Date() })
+        .where(eq(pmSchedules.id, existing.id))
+
+      return { scheduleId: existing.id, replaced: true }
+    }
+
+    const [row] = await tx
+      .insert(pmSchedules)
+      .values({
+        companyId: ctx.companyId,
+        machineType: payload.machineType,
+        cadence: payload.cadence,
+        checklist: payload.checklist,
+        createdBy: ctx.userId,
+      })
+      .returning({ id: pmSchedules.id })
+
+    if (!row) throw new Error('pm_schedules insert returned nothing')
+    return { scheduleId: row.id, replaced: false }
+  })
+}
+
+/** Every schedule, and how many machines each one covers. */
+export async function pmSchedulesWithReach(
+  ctx: AnyCtx,
+): Promise<{ id: string; machineType: string; cadence: string; checklist: string[]; machines: number }[]> {
+  return withTenantRead(ctx, async (tx) => {
+    const schedules = await tx.select().from(pmSchedules).orderBy(pmSchedules.machineType)
+
+    const counts = await tx
+      .select({ machineType: machines.machineType, n: sql<number>`count(*)`.mapWith(Number) })
+      .from(machines)
+      .groupBy(machines.machineType)
+
+    const byType = new Map(counts.map((c) => [c.machineType, c.n]))
+
+    return schedules.map((schedule) => ({
+      id: schedule.id,
+      machineType: schedule.machineType,
+      cadence: schedule.cadence,
+      checklist: (schedule.checklist ?? []).filter((s): s is string => typeof s === 'string'),
+      // Zero is worth showing: a schedule for a machine type the factory does not own is a
+      // typo in the type name, and it silently covers nothing.
+      machines: byType.get(schedule.machineType) ?? 0,
+    }))
   })
 }
 

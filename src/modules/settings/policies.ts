@@ -36,6 +36,7 @@ import type { FinancePolicy } from '../finance/service'
 import type { MaintenancePolicy } from '../maintenance/service'
 import type { MarbimPolicy } from '../marbim/service'
 import type { PlanningPolicy } from '../planning/service'
+import type { ProductionPolicy } from '../production/service'
 import type { ProcurementPolicy } from '../procurement/service'
 import type { QualityPolicy } from '../quality/service'
 import type { RfqPolicy } from '../rfq/service'
@@ -101,6 +102,25 @@ const planning = {
 } satisfies PolicyDefinition<PlanningPolicy>
 
 // ─────────────────────────────────────────────────────────────────────────────
+// 6.1 Line tracking
+// ─────────────────────────────────────────────────────────────────────────────
+
+const productionSchema = z.object({
+  /** Achievement against target below which a line is reported as behind. */
+  behindTargetPct: pct.optional(),
+})
+
+const production = {
+  moduleId: 'production',
+  label: 'Line Tracking',
+  schema: productionSchema,
+  // 95%: a line a few pieces under target has not lost its order, and calling it "behind"
+  // alongside a line that lost two hours to a seized machine makes the word useless. A
+  // factory that runs tighter or looser moves this rather than reading past it.
+  defaults: { behindTargetPct: '95' },
+} satisfies PolicyDefinition<ProductionPolicy>
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 5.1 Cutting
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -138,12 +158,15 @@ const quality = {
   moduleId: 'quality',
   label: 'Quality',
   schema: qualitySchema,
-  // 40 points per 100 square yards is the industry acceptance limit for the 4-point system.
+  // 20 points per 100 square yards is the acceptance limit most apparel buyers write into a
+  // woven fabric contract, and what the inspection screen states. 40 — the raw 4-point
+  // system's outer limit — passes fabric that a buyer would charge back, so it is the wrong
+  // DEFAULT even though it is a legal setting; a mill with a looser contract overrides it.
   // 5 DHU is where a line stops being merely imperfect. Three consecutive days is a
   // pattern rather than a bad shift.
   defaults: {
     aqlStandard: 'ansi-z1.4',
-    fabricMaxPointsPer100SqYd: '40',
+    fabricMaxPointsPer100SqYd: '20',
     dhuAlertThreshold: '5',
     repeatDefectDays: 3,
   },
@@ -490,6 +513,7 @@ export const POLICY_REGISTRY: Readonly<Record<string, PolicyDefinition<never>>> 
   marbim,
   planning,
   procurement,
+  production,
   quality,
   rfq,
   sampling,

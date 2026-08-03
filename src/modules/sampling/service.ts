@@ -168,6 +168,31 @@ async function loadRounds(tx: TenantDb, sampleRequestId: string): Promise<Feedba
   }))
 }
 
+/** The same rounds, keeping the buyer's itemised notes — see `sampleTimeline`. */
+async function loadRoundsWithComments(
+  tx: TenantDb,
+  sampleRequestId: string,
+): Promise<(FeedbackRound & { comments: { area: string; comment: string; page?: number }[] })[]> {
+  const rows = await tx
+    .select({
+      round: sampleFeedbackRounds.round,
+      verdict: sampleFeedbackRounds.verdict,
+      comments: sampleFeedbackRounds.comments,
+      recordedOn: sampleFeedbackRounds.recordedOn,
+    })
+    .from(sampleFeedbackRounds)
+    .where(eq(sampleFeedbackRounds.sampleRequestId, sampleRequestId))
+    .orderBy(sampleFeedbackRounds.round)
+
+  return rows.map((row) => ({
+    round: row.round,
+    verdict: row.verdict,
+    commentCount: row.comments.length,
+    recordedOn: row.recordedOn,
+    comments: row.comments as { area: string; comment: string; page?: number }[],
+  }))
+}
+
 /** Read-only preview of the gate — the merchandiser's "can they cut yet?" panel. */
 export async function checkPpApprovalFor(
   ctx: AnyCtx,
@@ -184,9 +209,47 @@ export async function createSampleRequest(
   ctx: RequestCtx,
   input: unknown,
 ): Promise<{ sampleRequestId: string }> {
+  return withTenantTx(ctx, (tx) => createSampleRequestIn(ctx, tx, input))
+}
+
+/**
+ * Commit a sample request drafted through the approve inbox.
+ *
+ * `sample_requests` was a pending target with no handler, so core's generic write took it
+ * and refused `rfqId`, `orderId`, `styleCode`, `requestNo` and `dueDate` as invalid column
+ * identifiers. Every drafted request failed at approval.
+ *
+ * Going through `createSampleRequestIn` keeps the cross-tenant order check — Postgres runs
+ * FK checks with RLS bypassed, so a generic insert would happily have pointed a sample at
+ * another company's order — and emits `sampling.requested`, which the PP-approval alerts
+ * hang off.
+ */
+export async function commitSampleRequestDraft(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  input: { operation: 'insert' | 'update' | 'delete'; targetId: string | null; payload: Record<string, unknown> },
+): Promise<{ rowId: string; before: null; after: Record<string, unknown> }> {
+  if (input.operation !== 'insert') {
+    throw new AppError('validation_failed', 'sampling.errors.request_draft_insert_only', {
+      operation: input.operation,
+    })
+  }
+  const result = await createSampleRequestIn(ctx, tx, input.payload)
+  return {
+    rowId: result.sampleRequestId,
+    before: null,
+    after: { sampleRequestId: result.sampleRequestId },
+  }
+}
+
+async function createSampleRequestIn(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  input: unknown,
+): Promise<{ sampleRequestId: string }> {
   const payload = sampleRequestPayload.parse(input)
 
-  return withTenantTx(ctx, async (tx) => {
+  return (async () => {
     if (payload.orderId) {
       // Postgres performs foreign-key checks with RLS bypassed, so the FK on `order_id`
       // would let another tenant reference an order that is not theirs — and the success
@@ -233,7 +296,7 @@ export async function createSampleRequest(
     })
 
     return { sampleRequestId: row.id }
-  })
+  })()
 }
 
 /**
@@ -392,6 +455,43 @@ export async function recordFeedback(
 ): Promise<FeedbackResult> {
   const payload = feedbackRoundPayload.parse(input)
   return withTenantTx(ctx, async (tx) => recordFeedbackIn(ctx, tx, payload))
+}
+
+/**
+ * Commit a buyer's feedback round drafted through the approve inbox — a comment sheet
+ * transcribed rather than typed live.
+ *
+ * Core's generic write refused `sampleRequestId`, `recordedOn` and `documentId` as invalid
+ * identifiers. It would also have written the round WITHOUT the two things that make a
+ * round mean anything: the request's status move, and the round NUMBER — which
+ * `recordFeedbackIn` assigns under a row lock precisely so a caller cannot reuse one and
+ * overwrite a verdict. A drafted round carrying its own round number is exactly that
+ * caller.
+ */
+export async function commitFeedbackRoundDraft(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  input: { operation: 'insert' | 'update' | 'delete'; targetId: string | null; payload: Record<string, unknown> },
+): Promise<{ rowId: string; before: null; after: Record<string, unknown> }> {
+  if (input.operation !== 'insert') {
+    // A verdict is a record of what the buyer said. Editing one rewrites history that the
+    // PP gate — and therefore the cutting floor — already acted on.
+    throw new AppError('validation_failed', 'sampling.errors.feedback_draft_insert_only', {
+      operation: input.operation,
+    })
+  }
+
+  const result = await recordFeedbackIn(ctx, tx, feedbackRoundPayload.parse(input.payload))
+  return {
+    rowId: result.roundId,
+    before: null,
+    after: {
+      roundId: result.roundId,
+      round: result.round,
+      ppGateOpen: result.ppGateOpen,
+      requestStatus: result.requestStatus,
+    },
+  }
 }
 
 async function recordFeedbackIn(
@@ -733,7 +833,9 @@ export async function ppBlockingAlerts(
 
 /** Raise the escalation events for today. Idempotent per (order, style, date) by design. */
 export async function emitPpBlocking(
-  ctx: RequestCtx,
+  // `AnyCtx`, not `RequestCtx`: this is a nightly job and the scheduler runs it as a system
+  // actor. It reads nothing off the caller but the company — nobody authored these alerts.
+  ctx: AnyCtx,
   input: { today: string },
   policy: SamplingPolicy,
 ): Promise<{ raised: number }> {
@@ -764,7 +866,14 @@ export async function sampleTimeline(
 ): Promise<{
   request: typeof sampleRequests.$inferSelect
   stages: (typeof sampleStageEvents.$inferSelect)[]
-  rounds: FeedbackRound[]
+  /**
+   * Rounds WITH their comments, unlike the board's summary.
+   *
+   * `FeedbackRound` carries only a count, which is right for a board — a row that lists
+   * eleven collar notes is unreadable at a glance. The detail screen is the one place the
+   * comments have to be legible, because it is where somebody remakes the sample from them.
+   */
+  rounds: (FeedbackRound & { comments: { area: string; comment: string; page?: number }[] })[]
   dispatches: (typeof sampleDispatches.$inferSelect)[]
   totalCost: string
 }> {
@@ -784,7 +893,7 @@ export async function sampleTimeline(
         .from(sampleStageEvents)
         .where(eq(sampleStageEvents.sampleRequestId, request.id))
         .orderBy(sampleStageEvents.occurredAt),
-      loadRounds(tx, request.id),
+      loadRoundsWithComments(tx, request.id),
       tx
         .select()
         .from(sampleDispatches)

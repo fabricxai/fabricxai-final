@@ -8,10 +8,16 @@
  */
 import { registerModule } from '../core/registry'
 
+import { settingsToolPack } from './tools'
+
 export const settingsModule = registerModule({
   id: 'settings',
 
   pendingTargets: [],
+
+  /** Read-only. A policy you cannot see is one you cannot question; changing one is owner
+   * and admin only and moves a number that gates money across every other module. */
+  toolPack: settingsToolPack,
   zodMap: {},
 
   approvalDefaults: { requiredRoles: ['owner'] },

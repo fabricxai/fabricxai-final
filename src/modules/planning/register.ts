@@ -13,7 +13,8 @@
  */
 import { registerModule } from '../core/registry'
 
-import { commitScenarioApply } from './service'
+import { commitScenarioApply, commitSmvRecord } from './service'
+import { planningToolPack } from './tools'
 import { PLANNING_ZOD_MAP } from './zod'
 
 export const planningModule = registerModule({
@@ -22,10 +23,16 @@ export const planningModule = registerModule({
   pendingTargets: ['allocations', 'smv_records'],
   zodMap: PLANNING_ZOD_MAP,
 
+  /** Read-only: an allocation is the factory promising its capacity, and a scenario is
+   * applied after somebody compares it — both already have a human route through the inbox. */
+  toolPack: planningToolPack,
+
   // Planner drafts, manager approves. Committing capacity is committing a ship date.
   approvalDefaults: { requiredRoles: ['owner', 'admin', 'planner'] },
 
   commitHandlers: {
+    smv_records: commitSmvRecord,
+
     allocations: async (ctx, tx, input) => {
       const result = await commitScenarioApply(ctx, tx, { payload: input.payload })
       return { rowId: result.rowId, after: result.after }

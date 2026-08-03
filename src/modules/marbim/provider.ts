@@ -124,3 +124,16 @@ export function getProvider(): MarbimProvider {
 }
 
 export const hasProvider = (): boolean => provider !== null
+
+/**
+ * Which model answered, for the surface to show.
+ *
+ * The design canvas prints a model name in the panel header and under every tool strip.
+ * This returns the id of the provider actually in force rather than that name: with
+ * `MARBIM_MOCK` set the answer came from `mock/deterministic-v1`, and a panel captioned
+ * `marbim-large` over a deterministic answer is the exact class of small lie that makes
+ * somebody trust the big numbers too.
+ *
+ * Null when nothing is registered — the caller shows nothing rather than guessing.
+ */
+export const providerId = (): string | null => provider?.id ?? null

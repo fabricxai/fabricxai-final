@@ -9,6 +9,8 @@
  */
 import { registerModule } from '../core/registry'
 
+import { productionToolPack } from './tools'
+
 import { registerProductionSyncHandlers } from './service'
 import { PRODUCTION_ZOD_MAP } from './zod'
 
@@ -19,6 +21,13 @@ export const productionModule = registerModule({
 
   pendingTargets: [],
   zodMap: PRODUCTION_ZOD_MAP,
+
+  /**
+   * Read-only, and the empty `pendingTargets` above is why: everything this module writes
+   * is somebody on the floor saying what happened in the last hour. A drafted output is a
+   * claim that work was done, arriving in an inbox looking like a count somebody took.
+   */
+  toolPack: productionToolPack,
   approvalDefaults: { requiredRoles: ['owner', 'production'] },
 
   domainPrimer: {

@@ -11,6 +11,8 @@
  */
 import { registerModule } from '../core/registry'
 
+import { financeToolPack } from './tools'
+
 import { FINANCE_ZOD_MAP } from './zod'
 
 export const financeModule = registerModule({
@@ -19,7 +21,37 @@ export const financeModule = registerModule({
   pendingTargets: ['invoices', 'payables'],
   zodMap: FINANCE_ZOD_MAP,
 
+  /**
+   * Read-only. `invoices` and `payables` are pending targets so a HUMAN can raise one with
+   * a second person signing; money leaving the factory is what rule 3 was built around, and
+   * a conversational route to proposing a payment is exactly what it exists to prevent.
+   */
+  toolPack: financeToolPack,
+
   approvalDefaults: { requiredRoles: ['owner', 'admin', 'finance'] },
+
+  // Both targets were registered from the start with nothing to commit them. A payment is
+  // the one that matters most: money leaving the factory, approved by somebody other than
+  // the person who negotiated the delivery.
+  commitHandlers: {
+    payables: async (ctx, tx, input) => {
+      // Lazy — a static import from './service' puts this file in the service's evaluation
+      // graph, which is how commercial ended up registering itself twice.
+      const { commitPayable } = await import('./service')
+      const result = await commitPayable(ctx, tx, {
+        operation: input.operation,
+        payload: input.payload,
+      })
+      return { rowId: result.rowId, after: result.after }
+    },
+    invoices: async (ctx, tx, input) => {
+      const { commitInvoice } = await import('./service')
+      const { getPolicy } = await import('../settings/service')
+      const policy = await getPolicy<import('./service').FinancePolicy>(ctx, 'finance')
+      const result = await commitInvoice(ctx, tx, { payload: input.payload }, policy)
+      return { rowId: result.rowId, after: result.after }
+    },
+  },
 
   domainPrimer: {
     version: '11.1.0',

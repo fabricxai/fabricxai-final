@@ -11,6 +11,12 @@
  */
 import { registerModule } from '../core/registry'
 
+import { procurementToolPack } from './tools'
+import {
+  commitPurchaseRequisitionDraft,
+  commitSupplierDraft,
+  commitSupplierQuoteDraft,
+} from './service'
 import { PROCUREMENT_ZOD_MAP } from './zod'
 
 export const procurementModule = registerModule({
@@ -18,6 +24,25 @@ export const procurementModule = registerModule({
 
   pendingTargets: ['suppliers', 'supplier_quotes', 'purchase_requisitions'],
   zodMap: PROCUREMENT_ZOD_MAP,
+
+  /**
+   * The landed-cost comparison chiefly, plus a draft for a supplier's proforma. Raising a
+   * PO is deliberately absent: that is the factory committing its own money behind the BTB
+   * gate, and a proposed one is a commitment nobody decided to make.
+   */
+  toolPack: procurementToolPack,
+
+  /**
+   * All three targets own their commit. None of them could before: core's generic write
+   * treats payload keys as literal column names, so every draft in this module died at the
+   * moment of approval — and for the two with lines it would also have written a header
+   * with no lines, which reads as a PR nobody quoted or a supplier who quoted nothing.
+   */
+  commitHandlers: {
+    suppliers: commitSupplierDraft,
+    supplier_quotes: commitSupplierQuoteDraft,
+    purchase_requisitions: commitPurchaseRequisitionDraft,
+  },
 
   // Procurement drafts, commercial approves — a PO is money leaving the company.
   approvalDefaults: { requiredRoles: ['owner', 'admin', 'procurement', 'commercial'] },

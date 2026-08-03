@@ -12,6 +12,8 @@
  */
 import { registerModule } from '../core/registry'
 
+import { costingToolPack } from './tools'
+
 import { commitBom } from './service'
 import { COSTING_ZOD_MAP } from './zod'
 
@@ -20,6 +22,13 @@ export const costingModule = registerModule({
 
   pendingTargets: ['boms'],
   zodMap: COSTING_ZOD_MAP,
+
+  /**
+   * Read-only. A cost sheet is a version somebody signs and quotes against, and a BOM
+   * arrives from a tech pack through document intake or from the builder — a third,
+   * conversational route would be a way to propose a price from a chat.
+   */
+  toolPack: costingToolPack,
 
   // Merchandiser drafts, manager approves (brief §Roles). Below the margin floor the
   // service itself requires the owner — that gate is in code, not in this config.

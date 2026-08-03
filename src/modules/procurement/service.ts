@@ -28,6 +28,7 @@ import {
   compareQuotes,
   matchReceipt,
   ProcurementError,
+  comparablePrices,
   supplierScore,
   type ComparisonRequirement,
   type QuoteComparison,
@@ -104,9 +105,50 @@ export async function createSupplier(
   ctx: RequestCtx,
   input: unknown,
 ): Promise<{ supplierId: string }> {
+  return withTenantTx(ctx, (tx) => createSupplierIn(ctx, tx, input))
+}
+
+/**
+ * Commit a supplier drafted through the approve inbox.
+ *
+ * `suppliers` was a pending target with no handler, so core wrote the row generically and
+ * refused `paymentTerms` and `defaultCurrency` as invalid column identifiers — every
+ * drafted supplier failed at the click.
+ */
+export async function commitSupplierDraft(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  input: { operation: 'insert' | 'update' | 'delete'; targetId: string | null; payload: Record<string, unknown> },
+): Promise<{ rowId: string; before: null; after: Record<string, unknown> }> {
+  if (input.operation !== 'insert') {
+    throw new AppError('validation_failed', 'procurement.errors.supplier_draft_insert_only', {
+      operation: input.operation,
+    })
+  }
+  const result = await createSupplierIn(ctx, tx, input.payload)
+  return { rowId: result.supplierId, before: null, after: { supplierId: result.supplierId } }
+}
+
+async function createSupplierIn(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  input: unknown,
+): Promise<{ supplierId: string }> {
   const payload = supplierPayload.parse(input)
 
-  return withTenantTx(ctx, async (tx) => {
+  return (async () => {
+    const [existing] = await tx
+      .select({ id: suppliers.id })
+      .from(suppliers)
+      .where(eq(suppliers.code, payload.code))
+
+    // A typed conflict rather than the `suppliers_company_code_key` violation a generic
+    // insert would have surfaced. Supplier codes collide for ordinary reasons — two people
+    // adding the same mill — and the person should be told which code.
+    if (existing) {
+      throw conflict('procurement.errors.supplier_code_exists', { code: payload.code })
+    }
+
     const [row] = await tx
       .insert(suppliers)
       .values({
@@ -124,7 +166,7 @@ export async function createSupplier(
 
     if (!row) throw new Error('suppliers insert returned nothing')
     return { supplierId: row.id }
-  })
+  })()
 }
 
 /**
@@ -138,9 +180,52 @@ export async function createPurchaseRequisition(
   ctx: RequestCtx,
   input: unknown,
 ): Promise<{ purchaseRequisitionId: string; lineCount: number }> {
+  return withTenantTx(ctx, (tx) => createPurchaseRequisitionIn(ctx, tx, input))
+}
+
+/**
+ * Commit a PR drafted through the approve inbox.
+ *
+ * Core's generic write refused `orderId`, `requisitionId`, `prNo` and `neededBy` as invalid
+ * identifiers — but the deeper reason for a handler is `purchase_requisition_lines`: a PR is
+ * a header AND its lines, and a row write would have inserted the header alone. A PR with no
+ * lines is one nobody can quote against, and it looks complete in the list.
+ */
+export async function commitPurchaseRequisitionDraft(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  input: { operation: 'insert' | 'update' | 'delete'; targetId: string | null; payload: Record<string, unknown> },
+): Promise<{ rowId: string; before: null; after: Record<string, unknown> }> {
+  if (input.operation !== 'insert') {
+    throw new AppError('validation_failed', 'procurement.errors.pr_draft_insert_only', {
+      operation: input.operation,
+    })
+  }
+  const result = await createPurchaseRequisitionIn(ctx, tx, input.payload)
+  return {
+    rowId: result.purchaseRequisitionId,
+    before: null,
+    after: { purchaseRequisitionId: result.purchaseRequisitionId, lineCount: result.lineCount },
+  }
+}
+
+async function createPurchaseRequisitionIn(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  input: unknown,
+): Promise<{ purchaseRequisitionId: string; lineCount: number }> {
   const payload = purchaseRequisitionPayload.parse(input)
 
-  return withTenantTx(ctx, async (tx) => {
+  return (async () => {
+    const [existingPr] = await tx
+      .select({ id: purchaseRequisitions.id })
+      .from(purchaseRequisitions)
+      .where(eq(purchaseRequisitions.prNo, payload.prNo))
+
+    if (existingPr) {
+      throw conflict('procurement.errors.pr_no_exists', { prNo: payload.prNo })
+    }
+
     const [row] = await tx
       .insert(purchaseRequisitions)
       .values({
@@ -173,16 +258,56 @@ export async function createPurchaseRequisition(
     })
 
     return { purchaseRequisitionId: row.id, lineCount: payload.lines.length }
-  })
+  })()
 }
 
 export async function recordSupplierQuote(
   ctx: RequestCtx,
   input: unknown,
 ): Promise<{ supplierQuoteId: string }> {
+  return withTenantTx(ctx, (tx) => recordSupplierQuoteIn(ctx, tx, input))
+}
+
+/**
+ * Commit a quote drafted through the approve inbox — the transcription this module's
+ * registration singled out as the one MARBIM should draft.
+ *
+ * It could not commit. Core's generic write refused `purchaseRequisitionId`, `supplierId`,
+ * `quotedOn` and `validUntil` as invalid identifiers, and would have written the quote
+ * header without its `supplier_quote_lines` — leaving a quote with no prices, which
+ * `compareQuotesForItem` reads as a supplier who quoted nothing rather than one whose
+ * lines were dropped.
+ *
+ * The PR existence check and the `open → quoted` transition come with it.
+ */
+export async function commitSupplierQuoteDraft(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  input: { operation: 'insert' | 'update' | 'delete'; targetId: string | null; payload: Record<string, unknown> },
+): Promise<{ rowId: string; before: null; after: Record<string, unknown> }> {
+  if (input.operation !== 'insert') {
+    // A revised quote is a new quote. Rewriting one in place would change the comparison a
+    // PO was already awarded on, with nothing recording that it moved.
+    throw new AppError('validation_failed', 'procurement.errors.quote_draft_insert_only', {
+      operation: input.operation,
+    })
+  }
+  const result = await recordSupplierQuoteIn(ctx, tx, input.payload)
+  return {
+    rowId: result.supplierQuoteId,
+    before: null,
+    after: { supplierQuoteId: result.supplierQuoteId },
+  }
+}
+
+async function recordSupplierQuoteIn(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  input: unknown,
+): Promise<{ supplierQuoteId: string }> {
   const payload = supplierQuotePayload.parse(input)
 
-  return withTenantTx(ctx, async (tx) => {
+  return (async () => {
     const [pr] = await tx
       .select()
       .from(purchaseRequisitions)
@@ -242,7 +367,7 @@ export async function recordSupplierQuote(
     })
 
     return { supplierQuoteId: row.id }
-  })
+  })()
 }
 
 /**
@@ -662,7 +787,9 @@ export async function applyReceipt(
  * caller, which is the whole point.
  */
 export async function computeSupplierScores(
-  ctx: RequestCtx,
+  // `AnyCtx`, because the nightly job runs this and the job has no user. Nothing here
+  // reads `ctx.userId` — a score is derived from receipts and quotes, not authored.
+  ctx: AnyCtx,
   input: { period: string },
 ): Promise<{ scored: number }> {
   const periodStart = input.period
@@ -725,6 +852,58 @@ export async function computeSupplierScores(
         ),
       )
 
+    /**
+     * The price index, compared like with like.
+     *
+     * This used to be passed as `null` for every supplier, so the column was permanently
+     * blank — a metric the schema carried, the pure function computed and nothing ever fed.
+     *
+     * The comparison only means anything ITEM BY ITEM: averaging a supplier's fabric price
+     * against the field's button prices produces a number that moves with what they happened
+     * to be asked to quote. So the basket is the set of items where this supplier quoted AND
+     * somebody else did too, and both sides of the ratio are summed over exactly that set.
+     *
+     * Items only one supplier quoted are excluded rather than treated as their own baseline,
+     * which would score every sole quote at exactly 100 and hide the fact that nobody
+     * competed for it.
+     */
+    const quoteLineRows =
+      quotesBySupplier.length > 0
+        ? await tx
+            .select({
+              supplierQuoteId: supplierQuoteLines.supplierQuoteId,
+              itemId: supplierQuoteLines.itemId,
+              unitPrice: supplierQuoteLines.unitPrice,
+              currency: supplierQuotes.currency,
+            })
+            .from(supplierQuoteLines)
+            .innerJoin(supplierQuotes, eq(supplierQuotes.id, supplierQuoteLines.supplierQuoteId))
+            .where(
+              inArray(
+                supplierQuoteLines.supplierQuoteId,
+                quotesBySupplier.map((q) => q.id),
+              ),
+            )
+        : []
+
+    const supplierOfQuote = new Map(quotesBySupplier.map((q) => [q.id, q.supplierId]))
+
+    /**
+     * `item|currency` → supplier → the prices they quoted this period.
+     *
+     * Keyed on the currency as well as the item, so a BDT quote is never averaged against a
+     * USD one. See `comparablePrices` for what that produced when it was not.
+     */
+    const pricesByItem = new Map<string, Map<string, string[]>>()
+    for (const line of quoteLineRows) {
+      const supplierId = supplierOfQuote.get(line.supplierQuoteId)
+      if (!supplierId) continue
+      const key = `${line.itemId}|${line.currency}`
+      const bySupplier = pricesByItem.get(key) ?? new Map<string, string[]>()
+      bySupplier.set(supplierId, [...(bySupplier.get(supplierId) ?? []), line.unitPrice])
+      pricesByItem.set(key, bySupplier)
+    }
+
     let scored = 0
     for (const supplier of supplierRows) {
       const theirPos = pos.filter((p) => p.supplierId === supplier.id)
@@ -732,25 +911,36 @@ export async function computeSupplierScores(
         (linesByPo.get(po.id) ?? [])
           .filter((line) => line.closedAt !== null)
           .map((line) => ({
+            // Null when the PO promised no date — that receipt is evidence a delivery
+            // happened, and no evidence at all about whether it was on time.
             onTime:
-              po.expectedDeliveryDate === null ||
-              line.closedAt!.toISOString().slice(0, 10) <= po.expectedDeliveryDate,
-            // Reject quantities come from GRN inspections, which 3.1 records per GRN
-            // rather than per PO line — see docs/STUBS.md.
-            rejectedQty: '0',
+              po.expectedDeliveryDate === null
+                ? null
+                : line.closedAt!.toISOString().slice(0, 10) <= po.expectedDeliveryDate,
+            // Null, NOT '0'. Rejects are found by quality's inspections and recorded
+            // against rolls, not against a PO line — the chain roll → GRN → PO does not
+            // exist yet (docs/STUBS.md). Passing '0' told the scorecard every supplier
+            // had a spotless record; passing null makes it say the rate is not measured,
+            // which is the truth.
+            rejectedQty: null,
             receivedQty: line.receivedQty,
           })),
       )
 
       const quotesReturned = quotesBySupplier.filter((q) => q.supplierId === supplier.id).length
 
+      // Their prices against the field's, over the items both quoted. The arithmetic is
+      // in `procurement.ts` where the money helpers and their tests live; this only
+      // gathers the rows.
+      const prices = comparablePrices(pricesByItem, supplier.id)
+
       const score = wrapProcurementError(() =>
         supplierScore({
           receipts,
           quotesRequested: quotesReturned,
           quotesReturned,
-          avgUnitPrice: null,
-          basketAvgUnitPrice: null,
+          avgUnitPrice: prices?.avgUnitPrice ?? null,
+          basketAvgUnitPrice: prices?.basketAvgUnitPrice ?? null,
         }),
       )
 

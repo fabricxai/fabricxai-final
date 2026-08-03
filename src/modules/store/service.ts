@@ -21,11 +21,13 @@ import { getRequisitionConsumption } from '../costing/queries'
 import { recordChange, registerAuditedTables } from '../core/audit'
 import type { AnyCtx, RequestCtx } from '../core/ctx'
 import { AppError, conflict, notFound } from '../core/errors'
+import { assertGate, GATES } from '../core/gates'
 import { registerSyncHandler } from '../core/offline-sync'
 import { emit } from '../core/outbox'
 import { type TenantDb, withTenantRead, withTenantTx } from '../core/tenancy'
 
 import { STORE_EVENTS } from './events'
+import { checkFabricInspection } from './gates'
 import {
   grnLines,
   grns,
@@ -35,6 +37,7 @@ import {
   requisitionLines,
   requisitions,
   rolls,
+  stockAdjustments,
 } from './schema'
 import {
   checkShadeMix,
@@ -43,7 +46,7 @@ import {
   type ItemStock,
   type StoreWarning,
 } from './stock'
-import { grnReceipt, issueRequest, requisitionRequest } from './zod'
+import { grnReceipt, issueRequest, requisitionRequest, stockAdjustmentDraft } from './zod'
 
 /** ⚖ — adjustments move stock value; GRNs are the customs-facing record of receipt. */
 registerAuditedTables('grns', 'stock_adjustments')
@@ -386,6 +389,15 @@ export async function issueStockIn(
     }
   }
 
+  // 4-point inspection (rule 8, `GATES.fabricInspection`). Checked AFTER the rolls are
+  // locked and their status verified, so the gate reasons about rolls that are genuinely
+  // issuable, and BEFORE anything is written — a gate that fires mid-transaction still
+  // rolls back, but the error it produces names the wrong step.
+  assertGate(
+    GATES.fabricInspection,
+    await checkFabricInspection(ctx, tx, { rollIds }),
+  )
+
   // Shade mixing: what this order already holds, plus what is being picked now.
   const alreadyIssued = await tx
     .select({ shadeGroup: rolls.shadeGroup })
@@ -591,4 +603,107 @@ async function resolveItemsByRef(
 
     return new Map(rows.map((row) => [row.code, row.id]))
   })
+}
+
+/**
+ * Commit an approved stock adjustment ⚖.
+ *
+ * Until this existed, `stock_adjustments` was a registered pending target with no handler:
+ * approving one fell through to core's generic writer, which uses the payload's keys as
+ * column names and rejected `itemId` against a snake_case identifier check. So a store
+ * count correction — a damaged roll, a miscount, a shortage found at inspection — could be
+ * drafted and never applied. It is routine work in a store, and it silently did nothing.
+ *
+ * **The delta is applied to the ROLL, not kept as a separate ledger.** Stock in this module
+ * is derived from rolls (`computeStock` reads rolls and reservations, nothing else), so an
+ * adjustment that only inserted its own row would leave on-hand unchanged and the screen
+ * would disagree with the correction somebody just approved. Writing the roll is what makes
+ * the number move; the `stock_adjustments` row is the reason it moved.
+ *
+ * A write-off that reaches zero sets the roll to `adjusted_out` rather than storing a zero
+ * quantity — `rolls_qty_positive` forbids the latter, and a roll that exists with no cloth
+ * on it is not a thing a storekeeper can be shown.
+ */
+export async function commitStockAdjustment(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  input: { payload: Record<string, unknown> },
+): Promise<{ rowId: string; before: Record<string, unknown> | null; after: Record<string, unknown> }> {
+  const payload = stockAdjustmentDraft.parse(input.payload)
+  const delta = Number(payload.qtyDelta)
+
+  let before: Record<string, unknown> | null = null
+
+  if (payload.rollId) {
+    const [roll] = await tx
+      .select({ id: rolls.id, qty: rolls.qty, unit: rolls.unit, status: rolls.status, itemId: rolls.itemId })
+      .from(rolls)
+      .where(eq(rolls.id, payload.rollId))
+
+    if (!roll) throw notFound('store.errors.roll_not_found', { rollId: payload.rollId })
+
+    if (roll.itemId !== payload.itemId) {
+      // The draft names both; disagreeing means the reviewer approved an adjustment
+      // against a different item than the roll belongs to.
+      throw new AppError('validation_failed', 'store.errors.roll_item_mismatch', {
+        rollId: payload.rollId,
+        itemId: payload.itemId,
+      })
+    }
+    if (roll.unit !== payload.unit) {
+      throw new AppError('validation_failed', 'store.errors.unit_mismatch', {
+        rollId: payload.rollId,
+        rollUnit: roll.unit,
+        payloadUnit: payload.unit,
+      })
+    }
+
+    const next = Number(roll.qty) + delta
+    if (next < 0) {
+      // Taking more off a roll than is on it is a miscount in the correction itself.
+      throw new AppError('validation_failed', 'store.errors.adjustment_below_zero', {
+        rollId: payload.rollId,
+        qty: roll.qty,
+        qtyDelta: payload.qtyDelta,
+      })
+    }
+
+    before = { rollId: roll.id, qty: roll.qty, status: roll.status }
+
+    await tx
+      .update(rolls)
+      .set(
+        next === 0
+          ? { status: 'adjusted_out', updatedAt: new Date() }
+          : { qty: next.toFixed(2), updatedAt: new Date() },
+      )
+      .where(eq(rolls.id, payload.rollId))
+  }
+
+  const [row] = await tx
+    .insert(stockAdjustments)
+    .values({
+      companyId: ctx.companyId,
+      itemId: payload.itemId,
+      rollId: payload.rollId ?? null,
+      qtyDelta: payload.qtyDelta,
+      unit: payload.unit,
+      reasonCode: payload.reasonCode,
+      note: payload.note,
+      createdBy: ctx.userId,
+    })
+    .returning({ id: stockAdjustments.id })
+
+  if (!row) throw new Error('stock_adjustments insert returned nothing')
+
+  return {
+    rowId: row.id,
+    before,
+    after: {
+      itemId: payload.itemId,
+      rollId: payload.rollId ?? null,
+      qtyDelta: payload.qtyDelta,
+      reasonCode: payload.reasonCode,
+    },
+  }
 }

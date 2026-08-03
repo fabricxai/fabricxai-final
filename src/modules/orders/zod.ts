@@ -124,12 +124,24 @@ export const actualizeMilestonePayload = z.object({
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** What MARBIM extracts from a buyer PO scan. Every field is uncertain, hence optional. */
+/**
+ * An order drafted from a buyer's purchase order.
+ *
+ * `styles` is required and at least one, because a PO always names what is being bought and
+ * an order with no style is one nobody can cost, cut or ship — `createOrder` refuses it. A
+ * draft that omitted them looked committable right up to the moment somebody approved it.
+ *
+ * `buyerId` is the one field no document carries: the PO names the buyer in words, and the
+ * uuid is ours. MARBIM's intake collects it from a picker and merges it in at confidence 1
+ * (`marbim/intake.ts`).
+ */
 export const orderFromPoDraft = z.object({
   buyerId: z.uuid(),
   poNumbers: z.array(z.string().min(1)).min(1),
   totalValue: moneyAmount.optional(),
   currency: currencyCode.default('USD'),
   plannedExFactoryDate: calendarDate.optional(),
+  styles: z.array(orderStylePayload).min(1),
 })
 
 /** A buyer's amendment, drafted from an email or an amended PO. */
@@ -139,6 +151,25 @@ export const orderRevisionDraft = z.object({
   reason: z.string().min(1),
   documentId: z.uuid().optional(),
 })
+
+/**
+ * `tna_milestones.depends_on`, as the engine actually writes it.
+ *
+ * Two shapes, both legitimate: a bare name when the dependency is plain
+ * sequencing, and `{name, gapDays}` when the gap is somebody's judgement —
+ * PP approval → cutting is four days for a reason. A reader that handles only
+ * the first drops exactly the dependencies that carry a decision, so this
+ * normalises both into one shape at the read boundary.
+ */
+export const milestoneDependency = z.union([
+  z.string().min(1).transform((name) => ({ name, gapDays: null as number | null })),
+  z.object({
+    name: z.string().min(1),
+    gapDays: z.number().int().nullable().default(null),
+  }),
+])
+
+export type MilestoneDependency = z.infer<typeof milestoneDependency>
 
 export const ORDERS_ZOD_MAP = {
   order_from_po_v1: orderFromPoDraft,

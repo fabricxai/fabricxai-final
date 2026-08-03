@@ -7,10 +7,19 @@
  */
 import { z } from 'zod'
 
-export const decimal = (max = 12) =>
+/**
+ * A positive decimal string.
+ *
+ * `max` bounds the integer digits and `frac` the fractional ones. `frac` is a
+ * parameter rather than a constant because a validator looser than its column
+ * lets bad data in, and one TIGHTER than its column silently truncates good
+ * data — an FX rate is the case that bites: BDT→USD is ~0.00837, so four
+ * decimals can only say 0.0084 and puts a 0.4% error into every labour cost.
+ */
+export const decimal = (max = 12, frac = 4) =>
   z
     .string()
-    .regex(new RegExp(`^\\d{1,${max}}(\\.\\d{1,4})?$`), 'expected a positive decimal')
+    .regex(new RegExp(`^\\d{1,${max}}(\\.\\d{1,${frac}})?$`), 'expected a positive decimal')
 
 export const pct = z.string().regex(/^\d{1,3}(\.\d{1,2})?$/, 'expected a percentage')
 
@@ -36,7 +45,8 @@ export const costSheetSections = z.object({
   currency: z.string().length(3).default('USD'),
   localCurrency: z.string().length(3).default('BDT'),
   /** Snapshotted onto the sheet — there is no ambient exchange rate in this system. */
-  fxRateLocalToBase: decimal(8),
+  // Matches `cost_sheets.fx_rate_local_to_base` — numeric(12, 6).
+  fxRateLocalToBase: decimal(6, 6),
   fabric: z.array(materialLine).default([]),
   trims: z.array(materialLine).default([]),
   embellishment: z
@@ -121,6 +131,35 @@ export const bomSeededFromOrderDraft = z.object({
       }),
     )
     .min(1),
+})
+
+/**
+ * A bill of materials somebody types, rather than one extracted or seeded.
+ *
+ * No `consumptionBasis` field, and its absence is the point: a hand-entered consumption is
+ * an estimate. Offering the choice would let somebody mark a guess as `actual`, and `actual`
+ * is what 1.6 Order Memory reads as a measured fact from a real order. The commit writes
+ * every manual line as `planned`.
+ */
+export const manualBomPayload = z.object({
+  styleCode: z.string().min(1),
+  lines: z
+    .array(
+      z.object({
+        lineGroup: z.enum(['fabric', 'trims', 'packing', 'embellishment']),
+        itemRef: z.string().optional(),
+        spec: z.string().optional(),
+        consumption: decimal(),
+        uom: z.string().min(1),
+        wastagePct: pct.default('0'),
+      }),
+    )
+    .min(1)
+    .refine((lines) => lines.every((l) => l.itemRef || l.spec), {
+      // A line that names neither an item nor a spec cannot be priced or requisitioned —
+      // it is a row that says "something goes here".
+      message: 'every line needs an item code or a written spec',
+    }),
 })
 
 export const COSTING_ZOD_MAP = {

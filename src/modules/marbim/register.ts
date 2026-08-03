@@ -13,6 +13,8 @@ import { env } from '@/lib/env'
 
 import { registerModule } from '../core/registry'
 
+import { marbimToolPack } from './tool-pack'
+
 import { mockProvider } from './mock-provider'
 import { registerProvider } from './provider'
 import { MARBIM_ZOD_MAP } from './zod'
@@ -21,6 +23,9 @@ export const marbimModule = registerModule({
   id: 'marbim',
 
   pendingTargets: [],
+
+  /** Its own record — chiefly the correction rate, the honest basis for trusting it more. */
+  toolPack: marbimToolPack,
   zodMap: MARBIM_ZOD_MAP,
 
   approvalDefaults: { requiredRoles: ['owner', 'admin'] },

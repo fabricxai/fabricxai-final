@@ -213,7 +213,7 @@ export function buyerScorecard(input: ScorecardInput, policy: ScorecardPolicy): 
 
   if (input.orders < policy.minOrders) {
     return unrated(
-      `${input.orders} orders is too few to score (minimum ${policy.minOrders})`,
+      `${input.orders} ${input.orders === 1 ? 'order' : 'orders'} is too few to score (minimum ${policy.minOrders})`,
     )
   }
   if (input.otdPct === null) return unrated('no on-time delivery record for this buyer')

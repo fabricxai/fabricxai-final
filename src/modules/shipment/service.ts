@@ -269,6 +269,41 @@ export async function packCarton(ctx: RequestCtx, input: unknown): Promise<PackC
   return withTenantTx(ctx, async (tx) => packCartonIn(ctx, tx, payload))
 }
 
+/**
+ * Commit a carton drafted through the approve inbox.
+ *
+ * Not the floor path — that is `offlinePackCarton`, and it stays that way: a packer at the
+ * bench should never wait for an office. This is the back-entry one, for a carton packed
+ * while the tablet was down and reconstructed from the paper list afterwards.
+ *
+ * It could not commit. Core's generic write refused `orderId`, `cartonNo`, `grossKg`,
+ * `lengthCm` and `offlineKey` as invalid column identifiers — and, worse, it would have
+ * skipped the over-pack check entirely. A drafted carton is exactly the one nobody watched
+ * being packed, so writing it without validating against remaining-to-pack is how an order
+ * ships more pieces than finishing ever produced. `cbm` and `totalQty` are computed here
+ * too; a raw insert would have left both null and quietly understated the freight.
+ */
+export async function commitCartonDraft(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  input: { operation: 'insert' | 'update' | 'delete'; targetId: string | null; payload: Record<string, unknown> },
+): Promise<{ rowId: string; before: null; after: Record<string, unknown> }> {
+  if (input.operation !== 'insert') {
+    // A carton is opened and repacked on the floor, not edited in a queue: the packing
+    // list and the shipped quantity are both derived from these rows.
+    throw new AppError('validation_failed', 'shipment.errors.carton_draft_insert_only', {
+      operation: input.operation,
+    })
+  }
+
+  const result = await packCartonIn(ctx, tx, cartonPayload.parse(input.payload))
+  return {
+    rowId: result.cartonId,
+    before: null,
+    after: { cartonId: result.cartonId, totalQty: result.totalQty, cbm: result.cbm },
+  }
+}
+
 async function packCartonIn(
   ctx: AnyCtx,
   tx: TenantDb,
@@ -1461,7 +1496,9 @@ export async function latestShipmentAlerts(
 
 /** Raise the countdown events for today. */
 export async function emitLatestShipmentCountdown(
-  ctx: RequestCtx,
+  // `AnyCtx`, not `RequestCtx`: this is a nightly job and the scheduler runs it as a system
+  // actor. It reads nothing off the caller but the company — nobody authored these alerts.
+  ctx: AnyCtx,
   input: { today: string; withinDays: number },
 ): Promise<{ raised: number }> {
   const alerts = await latestShipmentAlerts(ctx, input)

@@ -11,7 +11,8 @@
  */
 import { registerModule } from '../core/registry'
 
-import { commitBuyerRequirements } from './service'
+import { commitBuyerRequirements, commitBuyerTerms } from './service'
+import { buyersToolPack } from './tools'
 import { BUYERS_ZOD_MAP } from './zod'
 
 export const buyersModule = registerModule({
@@ -20,10 +21,16 @@ export const buyersModule = registerModule({
   pendingTargets: ['buyer_terms', 'buyer_requirements'],
   zodMap: BUYERS_ZOD_MAP,
 
+  /** Read-only: terms arrive through document intake, and a lead is somebody's account of
+   * a conversation — neither is improved by a second route. */
+  toolPack: buyersToolPack,
+
   // Terms bind the factory to an AQL level and a tolerance on every future order.
   approvalDefaults: { requiredRoles: ['owner', 'admin', 'merchandiser'] },
 
   commitHandlers: {
+    buyer_terms: commitBuyerTerms,
+
     buyer_requirements: async (ctx, tx, input) => {
       const result = await commitBuyerRequirements(ctx, tx, { payload: input.payload })
       return { rowId: result.rowId, after: result.after }

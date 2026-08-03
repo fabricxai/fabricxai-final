@@ -11,25 +11,41 @@
  * cutting floor waits for an office. Restating it afterwards is a different act, and that
  * one needs a human.
  */
+import type { AnyCtx } from '../core/ctx'
 import { registerSyncHandler } from '../core/offline-sync'
 import { registerModule } from '../core/registry'
 
 import {
   commitCutReportCorrection,
+  commitMarkerDraft,
   offlineCreateLay,
   offlineRecordCutReport,
   type CuttingPolicy,
 } from './service'
+import { cuttingToolPack } from './tools'
 import { createLayPayload, cutReportPayload, CUTTING_ZOD_MAP } from './zod'
 
 /**
- * The tolerance an offline-synced report is validated against.
+ * The policy an offline-synced report is judged by.
  *
- * A device replaying a week-old batch must be judged by the same allowance as the report
- * filed live, so this comes from one place rather than the request. X.3 Settings will own
- * it; until then it is here and visible rather than defaulted inside the checker.
+ * A device replaying a week-old batch must be judged by the same allowance as a report
+ * filed live — so this reads the tenant's own policy rather than a constant. It used to be
+ * `{ tolerancePct: '2' }` with a note saying X.3 Settings would own it "until then". X.3
+ * landed, and the constant stayed: a factory that agreed 5% with its buyer had every
+ * offline-filed report silently judged at 2%, and no bundle tickets generated at all,
+ * because the constant carried no `defaultBundleSize`.
+ *
+ * The floor files through the offline queue — it is the normal path, not the exception —
+ * so this was the tolerance almost every real report was measured against.
  */
-export const OFFLINE_CUTTING_POLICY: CuttingPolicy = { tolerancePct: '2' }
+async function offlineCuttingPolicy(ctx: AnyCtx): Promise<CuttingPolicy> {
+  // Imported lazily, like this module's other cross-module reads. A static edge from a
+  // `register.ts` into Settings puts this file in an import cycle — Settings' policy
+  // registry names every module's policy type — and the file was evaluated twice, which
+  // registration refuses with "module cutting is already registered".
+  const { getPolicy } = await import('@/modules/settings/service')
+  return getPolicy<CuttingPolicy>(ctx, 'cutting')
+}
 
 export const cuttingModule = registerModule({
   id: 'cutting',
@@ -37,10 +53,24 @@ export const cuttingModule = registerModule({
   pendingTargets: ['markers', 'cut_reports'],
   zodMap: CUTTING_ZOD_MAP,
 
+  /**
+   * What MARBIM may read and propose here. The primer taught this department's craft to an
+   * assistant that could not read a single one of its numbers.
+   */
+  toolPack: cuttingToolPack,
+
   // Cutting in-charge drafts, production manager approves.
   approvalDefaults: { requiredRoles: ['owner', 'admin', 'production'] },
 
+  /**
+   * Both pending targets own their commit, and `markers` learned that the expensive way:
+   * it was whitelisted from the start with no handler, so core's generic row write took
+   * it — and that write refuses `styleCode`, `sizeRatio` and `layLengthMeters` as invalid
+   * column identifiers. Every marker draft failed at the moment of approval.
+   */
   commitHandlers: {
+    markers: commitMarkerDraft,
+
     cut_reports: async (ctx, tx, input) => {
       const result = await commitCutReportCorrection(ctx, tx, { payload: input.payload })
       return { rowId: result.rowId, before: result.before, after: result.after }
@@ -98,6 +128,6 @@ registerSyncHandler('cutting', 'create_lay', async (ctx, tx, row) => {
 
 registerSyncHandler('cutting', 'record_cut_report', async (ctx, tx, row) => {
   const payload = cutReportPayload.parse({ ...row.payload, offlineKey: row.offlineKey })
-  const result = await offlineRecordCutReport(ctx, tx, payload, OFFLINE_CUTTING_POLICY)
+  const result = await offlineRecordCutReport(ctx, tx, payload, await offlineCuttingPolicy(ctx))
   return { rowId: result.cutReportId }
 })

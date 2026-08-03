@@ -13,8 +13,9 @@
 import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
 
 import { recordChange, registerAuditedTables } from '../core/audit'
-import type { AnyCtx, RequestCtx } from '../core/ctx'
+import { isSystemCtx, type AnyCtx, type RequestCtx } from '../core/ctx'
 import { AppError, conflict, notFound } from '../core/errors'
+import { notify } from '../core/notifications'
 import { emit } from '../core/outbox'
 import { withTenantRead, withTenantTx, type TenantDb } from '../core/tenancy'
 
@@ -37,7 +38,7 @@ import {
   payables,
   receivables,
 } from './schema'
-import { invoicePayload, payablePayload } from './zod'
+import { invoicePayload, payablePayload, payPayablePayload } from './zod'
 
 /** ⚖ — every row here is money the factory is owed or owes. */
 registerAuditedTables('invoices', 'receivables', 'payables', 'order_profitability')
@@ -95,8 +96,17 @@ export async function draftInvoice(
   policy: FinancePolicy,
 ): Promise<{ invoiceId: string; receivableId: string; expectedAt: string }> {
   const payload = invoicePayload.parse(input)
+  return withTenantTx(ctx, (tx) => draftInvoiceIn(ctx, tx, payload, policy))
+}
 
-  return withTenantTx(ctx, async (tx) => {
+/** Raise an invoice and its receivable inside the caller's transaction. */
+export async function draftInvoiceIn(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  payload: ReturnType<typeof invoicePayload.parse>,
+  policy: FinancePolicy,
+): Promise<{ invoiceId: string; receivableId: string; expectedAt: string }> {
+  {
     await assertOwnOrder(tx, payload.orderId)
 
     const [invoice] = await tx
@@ -174,7 +184,7 @@ export async function draftInvoice(
     })
 
     return { invoiceId: invoice.id, receivableId: receivable.id, expectedAt }
-  })
+  }
 }
 
 /** The buyer's realization lag, read through 2.1's own surface (rule 11). */
@@ -282,8 +292,21 @@ export async function openPayable(
   input: unknown,
 ): Promise<{ payableId: string }> {
   const payload = payablePayload.parse(input)
+  return withTenantTx(ctx, (tx) => openPayableIn(ctx, tx, payload))
+}
 
-  return withTenantTx(ctx, async (tx) => {
+/**
+ * Open a payable inside the caller's transaction.
+ *
+ * Extracted so the approve path can commit one without nesting transactions — the same
+ * split the store and production modules use for their own commit handlers.
+ */
+export async function openPayableIn(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  payload: ReturnType<typeof payablePayload.parse>,
+): Promise<{ payableId: string }> {
+  {
     const [row] = await tx
       .insert(payables)
       .values({
@@ -294,7 +317,7 @@ export async function openPayable(
         amount: payload.amount,
         currency: payload.currency,
         dueAt: payload.dueAt,
-        createdBy: ctx.userId,
+        createdBy: isSystemCtx(ctx) ? null : ctx.userId,
       })
       .returning({ id: payables.id })
 
@@ -320,14 +343,23 @@ export async function openPayable(
     })
 
     return { payableId: row.id }
-  })
+  }
 }
 
 export async function payPayable(
   ctx: RequestCtx,
   input: { payableId: string; paidAmount: string; paidAt: string },
 ): Promise<{ payableId: string; status: string }> {
-  return withTenantTx(ctx, async (tx) => {
+  return withTenantTx(ctx, (tx) => payPayableIn(ctx, tx, input))
+}
+
+/** Record a payment inside the caller's transaction — see `openPayableIn`. */
+export async function payPayableIn(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  input: { payableId: string; paidAmount: string; paidAt: string },
+): Promise<{ payableId: string; status: string }> {
+  {
     const [row] = await tx
       .select()
       .from(payables)
@@ -373,7 +405,7 @@ export async function payPayable(
     }
 
     return { payableId: row.id, status }
-  })
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -427,7 +459,9 @@ export async function cashTimelineFor(
 
 /** Raise the shortfall alert when the forecast dips below zero. */
 export async function emitCashShortfall(
-  ctx: RequestCtx,
+  // `AnyCtx`, not `RequestCtx`: this is a nightly job and the scheduler runs it as a system
+  // actor. It reads nothing off the caller but the company — nobody authored these alerts.
+  ctx: AnyCtx,
   input: { from: string; weeks?: number; currency: string; openingBalance?: string },
 ): Promise<{ raised: boolean; week: string | null }> {
   const timeline = await cashTimelineFor(ctx, input)
@@ -446,6 +480,29 @@ export async function emitCashShortfall(
       aggregateTable: 'receivables',
       aggregateId: timeline.firstNegativeWeek!,
     })
+
+    // The event alone reaches the `notify` queue, which has no worker — so it is a fact in
+    // the outbox that nobody is told. Every other nightly alert in this product writes a
+    // notification row directly, and the week cash first goes negative is the most
+    // actionable figure finance produces: it is only useful while there is still time to
+    // move a payment.
+    await notify(ctx, {
+      role: 'owner',
+      kind: 'finance.cash.shortfall',
+      severity: 'critical',
+      titleKey: 'finance.notifications.cash_shortfall.title',
+      params: {
+        week: timeline.firstNegativeWeek,
+        currency: timeline.currency,
+        inflow: timeline.totalInflow,
+        outflow: timeline.totalOutflow,
+      },
+      moduleId: 'finance',
+      // The week in the key: a forecast that moves to a different week is a new warning,
+      // while the same week re-forecast every night stays quiet.
+      dedupeKey: `finance.cash_shortfall:${timeline.firstNegativeWeek}`,
+    })
+
     return { raised: true, week: timeline.firstNegativeWeek }
   })
 }
@@ -824,3 +881,62 @@ function fromMinor(minor: bigint): string {
 }
 
 export { conflict }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Commit handlers for the pending targets registered in `register.ts`
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Commit an approved payable — either opening one, or recording a payment against it.
+ *
+ * One handler, dispatched on the operation, because `pending_changes` keys commit handlers
+ * by TARGET TABLE and both of these land on `payables`.
+ *
+ * Payment is the one that matters. The canvas routes it through the approve inbox with the
+ * owner as approver, and that is not ceremony: a payment is money leaving the factory, and
+ * the person who negotiated the delivery should not also be the person who releases the
+ * cash for it. The draft carries the amount and the date, so the owner is signing a number
+ * rather than a supplier's name.
+ */
+export async function commitPayable(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  input: {
+    operation: 'insert' | 'update' | 'delete'
+    payload: Record<string, unknown>
+  },
+): Promise<{ rowId: string; after: Record<string, unknown> }> {
+  if (input.operation === 'update') {
+    const payload = payPayablePayload.parse(input.payload)
+    const result = await payPayableIn(ctx, tx, payload)
+    return {
+      rowId: result.payableId,
+      after: { paidAmount: payload.paidAmount, paidAt: payload.paidAt, status: result.status },
+    }
+  }
+
+  const payload = payablePayload.parse(input.payload)
+  const result = await openPayableIn(ctx, tx, payload)
+  return { rowId: result.payableId, after: { ...payload } }
+}
+
+/** Commit an approved invoice, raising its receivable with it. */
+export async function commitInvoice(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  input: { payload: Record<string, unknown> },
+  policy: FinancePolicy,
+): Promise<{ rowId: string; after: Record<string, unknown> }> {
+  const payload = invoicePayload.parse(input.payload)
+  const result = await draftInvoiceIn(ctx, tx, payload, policy)
+  return {
+    rowId: result.invoiceId,
+    after: {
+      number: payload.number,
+      value: payload.value,
+      currency: payload.currency,
+      receivableId: result.receivableId,
+      expectedAt: result.expectedAt,
+    },
+  }
+}

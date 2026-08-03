@@ -262,7 +262,24 @@ export function matchReceipt(
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface ScoreObservations {
-  receipts: readonly { onTime: boolean; rejectedQty: string; receivedQty: string }[]
+  /**
+   * `onTime` is nullable, and null is not true.
+   *
+   * A purchase order with no promised delivery date says nothing about whether the supplier
+   * was late. This used to read `expectedDeliveryDate === null || closedAt <= expected`, so
+   * every receipt against an undated PO counted as a delivery ON TIME — a supplier nobody
+   * ever gave a date to scored 100%, and the less carefully a PO was raised the better they
+   * looked. Null excludes that receipt from the timeliness question while leaving it in the
+   * record as a delivery that happened.
+   *
+   * `rejectedQty` is nullable for the same reason, and null is not zero.
+   *
+   * Reject quantities come from quality's inspections, not from the receipt itself, so a
+   * caller that cannot reach them must say so. Passing `'0'` instead — which is what the
+   * scorer used to be handed for every receipt — reports a spotless quality record for
+   * every supplier in the factory, on a screen people use to decide who to buy from.
+   */
+  receipts: readonly { onTime: boolean | null; rejectedQty: string | null; receivedQty: string }[]
   quotesRequested: number
   quotesReturned: number
   avgUnitPrice: string | null
@@ -280,6 +297,54 @@ export interface SupplierScore {
 }
 
 /**
+ * A supplier's prices against the field's, over the items both quoted IN THE SAME CURRENCY.
+ *
+ * Three constraints, each of which this returned a confident wrong number without:
+ *
+ * **Item by item.** Averaging one supplier's fabric prices against the field's button prices
+ * produces a number that moves with what each was asked to quote, not with how dear they are.
+ *
+ * **Currency by currency.** A local mill quoting 330 BDT/m and an import mill quoting
+ * 2.42 USD/m for the same fabric are the same order of price. Pooled, the field average came
+ * out around 216 and scored the two BDT suppliers at 146 and 153 while the USD one scored
+ * 1.12 — three numbers that look like data. This module never converts at a rate nobody
+ * stated (see the domain primer), so the comparison stays inside a currency instead. The key
+ * of the outer map is therefore `item|currency`, not `item`.
+ *
+ * **Two suppliers minimum.** A quote nobody competed with is not cheap or dear; scoring it
+ * against itself puts it at exactly 100 and hides that nothing else was offered.
+ *
+ * Returns null when nothing overlaps — there is no field to be above or below.
+ */
+export function comparablePrices(
+  pricesByItem: ReadonlyMap<string, ReadonlyMap<string, readonly string[]>>,
+  supplierId: string,
+): { avgUnitPrice: string; basketAvgUnitPrice: string } | null {
+  const mean = (values: readonly string[]): bigint =>
+    values.reduce((sum, v) => sum + toMinor(v, 'price'), 0n) / BigInt(values.length)
+
+  let theirs = 0n
+  let basket = 0n
+  let comparable = 0
+
+  for (const bySupplier of pricesByItem.values()) {
+    const mine = bySupplier.get(supplierId)
+    // Two or more suppliers, or there is nothing to compare against.
+    if (!mine || mine.length === 0 || bySupplier.size < 2) continue
+
+    theirs += mean(mine)
+    // Each supplier counts once for the item, however many lines they quoted on it —
+    // otherwise a supplier who split one item across three lines drags the field average
+    // towards their own price and flatters their index.
+    basket += mean([...bySupplier.values()].map((prices) => toDecimal(mean(prices))))
+    comparable += 1
+  }
+
+  if (comparable === 0) return null
+  return { avgUnitPrice: toDecimal(theirs), basketAvgUnitPrice: toDecimal(basket) }
+}
+
+/**
  * Score a supplier from the record (brief: "never manual vibes").
  *
  * Every metric returns `null` rather than a flattering default when there is nothing to
@@ -293,14 +358,30 @@ export function supplierScore(input: ScoreObservations): SupplierScore {
   let rejectPct: string | null = null
 
   if (receipts.length > 0) {
-    const onTimeCount = receipts.filter((r) => r.onTime).length
-    onTime = percentage(BigInt(onTimeCount) * SCALE_FACTOR, BigInt(receipts.length) * SCALE_FACTOR)
+    // Only receipts whose PO carried a date. Counting the rest as the denominator would
+    // understate lateness; counting them as on time overstates the supplier outright.
+    const timed = receipts.filter((r) => r.onTime !== null)
+    if (timed.length > 0) {
+      const onTimeCount = timed.filter((r) => r.onTime === true).length
+      onTime = percentage(BigInt(onTimeCount) * SCALE_FACTOR, BigInt(timed.length) * SCALE_FACTOR)
+    }
 
     // Rejects are measured on QUANTITY. "2 of 4 receipts had a reject" would report 50%
     // and condemn a supplier over two bad metres.
-    const totalReceived = receipts.reduce((sum, r) => sum + toMinor(r.receivedQty, 'quantity'), 0n)
-    const totalRejected = receipts.reduce((sum, r) => sum + toMinor(r.rejectedQty, 'quantity'), 0n)
-    rejectPct = totalReceived > 0n ? percentage(totalRejected, totalReceived) : null
+    //
+    // All or nothing: one receipt with no reject figure makes the whole percentage an
+    // understatement, and an understated reject rate is read as a good one. Better to
+    // report nothing than a number that is wrong in the flattering direction.
+    const measured = receipts.every((r) => r.rejectedQty !== null)
+
+    if (measured) {
+      const totalReceived = receipts.reduce((sum, r) => sum + toMinor(r.receivedQty, 'quantity'), 0n)
+      const totalRejected = receipts.reduce(
+        (sum, r) => sum + toMinor(r.rejectedQty as string, 'quantity'),
+        0n,
+      )
+      rejectPct = totalReceived > 0n ? percentage(totalRejected, totalReceived) : null
+    }
   }
 
   const priceIndex =

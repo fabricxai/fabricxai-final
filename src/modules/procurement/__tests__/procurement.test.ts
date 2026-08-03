@@ -20,6 +20,7 @@ import {
   compareQuotes,
   matchReceipt,
   ProcurementError,
+  comparablePrices,
   supplierScore,
   type QuoteForComparison,
 } from '../procurement'
@@ -282,6 +283,80 @@ describe('supplierScore · from the record, never from an opinion', () => {
     expect(fresh.observations).toBe(0)
   })
 
+  it('21b · a PO with no promised date does not count as an on-time delivery', () => {
+    // This read `expectedDeliveryDate === null || closedAt <= expected`, so every receipt
+    // against an undated PO scored as ON TIME — a supplier nobody ever gave a date to came
+    // out at 100%, and the more carelessly a PO was raised the better they looked.
+    const undated = supplierScore({
+      receipts: [
+        { onTime: null, rejectedQty: null, receivedQty: '100.00' },
+        { onTime: null, rejectedQty: null, receivedQty: '100.00' },
+      ],
+      quotesRequested: 0,
+      quotesReturned: 0,
+      avgUnitPrice: null,
+      basketAvgUnitPrice: null,
+    })
+
+    expect(undated.onTimePct).toBeNull()
+    // Still two deliveries on the record — the receipts happened, they just say nothing
+    // about timeliness.
+    expect(undated.observations).toBe(2)
+  })
+
+  it('21c · scores on time over the dated receipts only', () => {
+    // One late, one on time, one undated. The answer is 50%, not 33% and not 67%.
+    const mixed = supplierScore({
+      receipts: [
+        { onTime: true, rejectedQty: null, receivedQty: '10.00' },
+        { onTime: false, rejectedQty: null, receivedQty: '10.00' },
+        { onTime: null, rejectedQty: null, receivedQty: '10.00' },
+      ],
+      quotesRequested: 0,
+      quotesReturned: 0,
+      avgUnitPrice: null,
+      basketAvgUnitPrice: null,
+    })
+
+    expect(mixed.onTimePct).toBe('50.00')
+    expect(mixed.observations).toBe(3)
+  })
+
+  it('22a · reports no reject rate when the rejects were never measured', () => {
+    // The scorer used to be handed '0' for every receipt, because reject quantities live
+    // in quality's inspections and the chain back to a PO line does not exist. That put a
+    // spotless quality record against every supplier in the factory, on the screen people
+    // use to decide who to buy from. Null says "not measured"; 0 says "flawless".
+    const unmeasured = supplierScore({
+      receipts: [{ onTime: true, rejectedQty: null, receivedQty: '100.00' }],
+      quotesRequested: 1,
+      quotesReturned: 1,
+      avgUnitPrice: null,
+      basketAvgUnitPrice: null,
+    })
+
+    expect(unmeasured.qualityRejectPct).toBeNull()
+    // The metrics that ARE measurable still come through.
+    expect(unmeasured.onTimePct).toBe('100.00')
+  })
+
+  it('22b · one unmeasured receipt makes the whole reject rate unavailable', () => {
+    // A partial count can only understate, and an understated reject rate reads as a good
+    // one — the direction that costs money.
+    const partial = supplierScore({
+      receipts: [
+        { onTime: true, rejectedQty: '5.00', receivedQty: '100.00' },
+        { onTime: true, rejectedQty: null, receivedQty: '100.00' },
+      ],
+      quotesRequested: 1,
+      quotesReturned: 1,
+      avgUnitPrice: null,
+      basketAvgUnitPrice: null,
+    })
+
+    expect(partial.qualityRejectPct).toBeNull()
+  })
+
   it('22 · carries the observation count so a thin score can be read as thin', () => {
     // One delivery at 100% is not a track record, and the number of observations is the
     // only thing that distinguishes it from one.
@@ -295,5 +370,61 @@ describe('supplierScore · from the record, never from an opinion', () => {
 
     expect(thin.onTimePct).toBe('100.00')
     expect(thin.observations).toBe(1)
+  })
+})
+
+describe('comparablePrices · like with like, or not at all', () => {
+  const map = (entries: Record<string, Record<string, string[]>>) =>
+    new Map(Object.entries(entries).map(([item, byS]) => [item, new Map(Object.entries(byS))]))
+
+  it('23 · compares only the items somebody else also quoted', () => {
+    // FAB is contested; TRIM was quoted by this supplier alone. Including TRIM would score
+    // it at exactly its own price — 100 — and dilute the one real comparison there is.
+    const result = comparablePrices(
+      map({
+        FAB: { us: ['110.00'], them: ['90.00'] },
+        TRIM: { us: ['999.00'] },
+      }),
+      'us',
+    )
+
+    // Ours 110 against a field mean of (110 + 90) / 2 = 100.
+    expect(result).toEqual({ avgUnitPrice: '110.00', basketAvgUnitPrice: '100.00' })
+    expect(supplierScore({
+      receipts: [], quotesRequested: 0, quotesReturned: 0, ...result!,
+    }).priceIndex).toBe('110.00')
+  })
+
+  it('23b · never compares across currencies', () => {
+    // Real seed data: the same fabric quoted at 316 and 330 BDT by two local mills and at
+    // 2.42 USD by an import mill. Pooled, the field average came out near 216 and the
+    // scorecard read 146, 153 and 1.12 — three numbers that look like data and are not.
+    // Keyed by item AND currency, the two BDT mills compare and the USD one has no field.
+    const byCurrency = map({
+      'FAB|BDT': { dhaka: ['316.00'], square: ['330.00'] },
+      'FAB|USD': { ningbo: ['2.42'] },
+    })
+
+    const square = comparablePrices(byCurrency, 'square')
+    expect(square).toEqual({ avgUnitPrice: '330.00', basketAvgUnitPrice: '323.00' })
+
+    // The import mill quoted alone in its currency, so there is nothing to be dearer than.
+    expect(comparablePrices(byCurrency, 'ningbo')).toBeNull()
+  })
+
+  it('24 · returns null when nothing overlaps — there is no field to be dearer than', () => {
+    const alone = comparablePrices(map({ FAB: { us: ['110.00'] } }), 'us')
+    expect(alone).toBeNull()
+  })
+
+  it('25 · a supplier splitting one item across lines does not sway the field average', () => {
+    // `us` quoted FAB three times cheaply. Each supplier counts ONCE per item, so the
+    // field mean stays (100 + 200) / 2 rather than being dragged towards 100.
+    const result = comparablePrices(
+      map({ FAB: { us: ['100.00', '100.00', '100.00'], them: ['200.00'] } }),
+      'us',
+    )
+
+    expect(result).toEqual({ avgUnitPrice: '100.00', basketAvgUnitPrice: '150.00' })
   })
 })
