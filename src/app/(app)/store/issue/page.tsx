@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation'
 import { EmptyState } from '@/components/fx/feedback'
 import { FloorScreen } from '@/components/fx/floor'
 import { PageHeader } from '@/components/shell/page-shell'
+import { tui } from '@/lib/i18n-ui'
+import { requestLocale } from '@/lib/ui-locale'
 import { getCtx } from '@/modules/core/session'
 import { outstandingRequisitions, rollsForItem, type RollRow } from '@/modules/store/queries'
 import { getStock } from '@/modules/store/service'
@@ -31,15 +33,21 @@ export default async function StoreIssuePage() {
   const ctx = await getCtx(await headers())
   if (!ctx) redirect('/login')
 
+  const locale = await requestLocale()
+
   const outstanding = await outstandingRequisitions(ctx)
 
   if (outstanding.length === 0) {
     return (
       <FloorScreen>
-        <PageHeader eyebrow="Store · issue to production" title="Nothing outstanding" ownsAmber />
+        <PageHeader
+          eyebrow={tui(locale, 'ui.store.issue_eyebrow')}
+          title={tui(locale, 'ui.store.issue_title_empty')}
+          ownsAmber
+        />
         <EmptyState
-          title="No requisition is waiting on the store"
-          body="An issue is made against a requisition, never against an order directly — that is what stops a cutting table taking another order's cloth. When merchandising sizes an order, its lines appear here."
+          title={tui(locale, 'ui.store.issue_empty_title')}
+          body={tui(locale, 'ui.store.issue_empty_body')}
         />
       </FloorScreen>
     )
@@ -68,9 +76,13 @@ export default async function StoreIssuePage() {
   return (
     <FloorScreen>
       <PageHeader
-        eyebrow="Store · issue to production"
-        title={`${outstanding.length} line${outstanding.length === 1 ? '' : 's'} to issue`}
-        meta="issue against free, never against on hand"
+        eyebrow={tui(locale, 'ui.store.issue_eyebrow')}
+        title={tui(
+          locale,
+          outstanding.length === 1 ? 'ui.store.issue_title_one' : 'ui.store.issue_title_other',
+          { count: outstanding.length },
+        )}
+        meta={tui(locale, 'ui.store.issue_meta')}
         ownsAmber
       />
       <IssueClient

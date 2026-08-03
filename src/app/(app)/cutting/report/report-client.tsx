@@ -5,6 +5,7 @@ import { useState } from 'react'
 
 import { InlineAlert } from '@/components/fx/feedback'
 import { SyncPill } from '@/components/fx/floor'
+import { useT } from '@/components/fx/locale'
 import { Button } from '@/components/fx/primitives'
 import { SectionHeading } from '@/components/fx/signature'
 import { useOfflineQueue } from '@/lib/offline/use-offline-queue'
@@ -32,6 +33,7 @@ export function ReportClient({
   openLays: readonly { id: string; layNo: string; color: string }[]
   tolerancePct: string
 }) {
+  const t = useT()
   const router = useRouter()
   const { capture, online, queued, syncing, refused, sync, clear } = useOfflineQueue()
 
@@ -74,7 +76,7 @@ export function ReportClient({
       },
     })
 
-    setFiled(`${lay.layNo} · ${totalCut} pieces`)
+    setFiled(t('ui.cutting.report_filed_summary', { layNo: lay.layNo, count: totalCut }))
     router.refresh()
   }
 
@@ -84,7 +86,7 @@ export function ReportClient({
 
       {refused.length > 0 ? (
         <InlineAlert tone="danger">
-          {refused.length} report{refused.length === 1 ? '' : 's'} the server refused.
+          {t.plural('ui.cutting.reports_refused', refused.length)}
           {refused.map((r) => (
             <button
               key={r.offlineKey}
@@ -98,7 +100,7 @@ export function ReportClient({
                 font: 'inherit',
               }}
             >
-              dismiss
+              {t('ui.common.dismiss')}
             </button>
           ))}
         </InlineAlert>
@@ -106,8 +108,9 @@ export function ReportClient({
 
       {filed ? (
         <InlineAlert tone="success">
-          Filed {filed}. {online ? 'Sent.' : 'Held on this device until you are back online.'} The
-          lay is now cut; changing this number later is a correction a manager approves.
+          {t('ui.cutting.report_filed', { summary: filed })}{' '}
+          {online ? t('ui.cutting.sent') : t('ui.cutting.held_offline')}{' '}
+          {t('ui.cutting.report_filed_note')}
         </InlineAlert>
       ) : null}
 
@@ -134,7 +137,9 @@ export function ReportClient({
         </div>
       ) : null}
 
-      <SectionHeading eyebrow="tap a cell to correct it">Cut against plan</SectionHeading>
+      <SectionHeading eyebrow={t('ui.cutting.report_eyebrow_hint')}>
+        {t('ui.cutting.report_heading')}
+      </SectionHeading>
 
       <div
         style={{
@@ -156,11 +161,11 @@ export function ReportClient({
             color: 'var(--fx-text-tertiary)',
           }}
         >
-          <div>Size</div>
-          <div style={{ textAlign: 'right' }}>Marker says</div>
-          <div style={{ textAlign: 'right' }}>Cut</div>
-          <div style={{ textAlign: 'right' }}>Difference</div>
-          <div style={{ textAlign: 'right' }}>Order needs</div>
+          <div>{t('ui.cutting.col_size')}</div>
+          <div style={{ textAlign: 'right' }}>{t('ui.cutting.col_marker_says')}</div>
+          <div style={{ textAlign: 'right' }}>{t('ui.cutting.col_cut')}</div>
+          <div style={{ textAlign: 'right' }}>{t('ui.cutting.col_difference')}</div>
+          <div style={{ textAlign: 'right' }}>{t('ui.cutting.col_order_needs')}</div>
         </div>
 
         {rows.map((row) => (
@@ -190,7 +195,7 @@ export function ReportClient({
             <div style={{ textAlign: 'right' }}>
               <input
                 inputMode="numeric"
-                aria-label={`Cut ${row.size}`}
+                aria-label={t('ui.cutting.cut_cell_label', { size: row.size })}
                 value={actual[row.size] ?? ''}
                 onChange={(e) => setActual((a) => ({ ...a, [row.size]: e.target.value }))}
                 style={{
@@ -243,7 +248,7 @@ export function ReportClient({
             font: "600 14px/1.3 var(--fx-font-mono)",
           }}
         >
-          <div>Total</div>
+          <div>{t('ui.common.total')}</div>
           <div style={{ textAlign: 'right', color: 'var(--fx-text-tertiary)' }}>{totalExpected}</div>
           <div style={{ textAlign: 'right' }}>{totalCut}</div>
           <div
@@ -261,20 +266,22 @@ export function ReportClient({
 
       {outside.length > 0 ? (
         <InlineAlert tone="danger">
-          {outside.map((r) => `${r.size} ${r.variance > 0 ? '+' : ''}${r.variance}`).join(', ')} —
-          outside the {tolerancePct}% tolerance. You can still file this; the variance is
-          recorded against the report and the manager sees it. The pieces are already cut,
-          and refusing to write down what happened does not un-cut them.
+          {t('ui.cutting.outside_tolerance', {
+            list: outside
+              .map((r) => `${r.size} ${r.variance > 0 ? '+' : ''}${r.variance}`)
+              .join(', '),
+            tolerance: tolerancePct,
+          })}
         </InlineAlert>
       ) : null}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <span style={{ font: "400 12px/1.4 var(--fx-font-mono)", color: 'var(--fx-text-tertiary)' }}>
-          filing closes {lay.layNo} · bundles are generated from this report
+          {t('ui.cutting.report_footer_note', { layNo: lay.layNo })}
         </span>
         <span style={{ marginLeft: 'auto' }}>
           <Button variant="primary" size="lg" disabled={!valid} onClick={() => void file()}>
-            Save the cut report
+            {t('ui.cutting.save_report_button')}
           </Button>
         </span>
       </div>

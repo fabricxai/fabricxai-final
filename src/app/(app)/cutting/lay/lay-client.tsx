@@ -6,6 +6,7 @@ import { useMemo, useState } from 'react'
 import { InlineAlert } from '@/components/fx/feedback'
 import { Ident } from '@/components/fx/format'
 import { SyncPill } from '@/components/fx/floor'
+import { useT } from '@/components/fx/locale'
 import { Badge, Button } from '@/components/fx/primitives'
 import { SectionHeading } from '@/components/fx/signature'
 import { useOfflineQueue } from '@/lib/offline/use-offline-queue'
@@ -66,6 +67,7 @@ export function LayClient({
   rolls: readonly IssuedRoll[]
   blocked: boolean
 }) {
+  const t = useT()
   const router = useRouter()
   const { capture, online, queued, syncing, refused, sync, clear } = useOfflineQueue()
 
@@ -140,7 +142,14 @@ export function LayClient({
       },
     })
 
-    setSpread((done) => [...done, `${layNo.trim()} · ${plyCount} plies · ${totalPieces} pcs`])
+    setSpread((done) => [
+      ...done,
+      t('ui.cutting.spread_summary', {
+        layNo: layNo.trim(),
+        plies: plyCount,
+        pieces: totalPieces,
+      }),
+    ])
     setLayNo('')
     setPlies('')
     setPicked(new Set())
@@ -153,8 +162,7 @@ export function LayClient({
 
       {refused.length > 0 ? (
         <InlineAlert tone="danger">
-          {refused.length} lay{refused.length === 1 ? '' : 's'} the server refused — most
-          likely a gate. Nothing was spread.
+          {t.plural('ui.cutting.lays_refused', refused.length)}
           {refused.map((r) => (
             <button
               key={r.offlineKey}
@@ -168,7 +176,7 @@ export function LayClient({
                 font: 'inherit',
               }}
             >
-              dismiss
+              {t('ui.common.dismiss')}
             </button>
           ))}
         </InlineAlert>
@@ -176,8 +184,8 @@ export function LayClient({
 
       {spread.length > 0 ? (
         <InlineAlert tone="success">
-          Spread {spread.join(' · ')}.{' '}
-          {online ? 'Sent.' : 'Held on this device until you are back online.'}
+          {t('ui.cutting.spread_done', { list: spread.join(' · ') })}{' '}
+          {online ? t('ui.cutting.sent') : t('ui.cutting.held_offline')}
         </InlineAlert>
       ) : null}
 
@@ -198,27 +206,27 @@ export function LayClient({
                 font: "500 12.5px/1 var(--fx-font-sans)",
               }}
             >
-              {o.poNumber ?? 'order'} · {o.styleCode}
+              {o.poNumber ?? t('ui.cutting.order_chip_fallback')} · {o.styleCode}
             </button>
           ))}
         </div>
       ) : null}
 
       {/* ── The marker ───────────────────────────────────────────────────── */}
-      <SectionHeading eyebrow={`${markers.length} released for this style`}>
-        Pick the marker
+      <SectionHeading eyebrow={t('ui.cutting.markers_released_eyebrow', { count: markers.length })}>
+        {t('ui.cutting.marker_heading')}
       </SectionHeading>
 
       {markers.length === 0 ? (
         <InlineAlert tone="warning">
-          No marker exists for {target.styleCode}. A lay is spread under a marker — the
-          arrangement of pattern pieces that decides what each ply yields — and CAD releases
-          it before cutting can start.
+          {t('ui.cutting.no_marker', { style: target.styleCode })}
         </InlineAlert>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14 }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <span style={{ font: "500 12.5px/1.3 var(--fx-font-sans)" }}>Marker</span>
+            <span style={{ font: "500 12.5px/1.3 var(--fx-font-sans)" }}>
+              {t('ui.cutting.field_marker')}
+            </span>
             <select value={markerId} onChange={(e) => setMarkerId(e.target.value)} style={field}>
               {markers.map((m) => (
                 <option key={m.id} value={m.id}>
@@ -228,7 +236,9 @@ export function LayClient({
             </select>
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <span style={{ font: "500 12.5px/1.3 var(--fx-font-sans)" }}>Lay no</span>
+            <span style={{ font: "500 12.5px/1.3 var(--fx-font-sans)" }}>
+              {t('ui.cutting.field_lay_no')}
+            </span>
             <input
               value={layNo}
               onChange={(e) => setLayNo(e.target.value)}
@@ -237,16 +247,20 @@ export function LayClient({
             />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <span style={{ font: "500 12.5px/1.3 var(--fx-font-sans)" }}>Colour</span>
+            <span style={{ font: "500 12.5px/1.3 var(--fx-font-sans)" }}>
+              {t('ui.cutting.field_colour')}
+            </span>
             <input
               value={colour}
               onChange={(e) => setColour(e.target.value)}
-              placeholder="Navy"
+              placeholder={t('ui.cutting.colour_placeholder')}
               style={field}
             />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <span style={{ font: "500 12.5px/1.3 var(--fx-font-sans)" }}>Plies</span>
+            <span style={{ font: "500 12.5px/1.3 var(--fx-font-sans)" }}>
+              {t('ui.cutting.field_plies')}
+            </span>
             <input
               inputMode="numeric"
               value={plies}
@@ -261,7 +275,9 @@ export function LayClient({
       {/* ── What that makes ──────────────────────────────────────────────── */}
       {yieldBySize.length > 0 ? (
         <>
-          <SectionHeading eyebrow={`${totalPieces} pieces`}>What that makes</SectionHeading>
+          <SectionHeading eyebrow={t('ui.cutting.pieces_eyebrow', { count: totalPieces })}>
+            {t('ui.cutting.yield_heading')}
+          </SectionHeading>
           <div
             style={{
               display: 'grid',
@@ -297,7 +313,7 @@ export function LayClient({
                   color: 'var(--fx-text-tertiary)',
                 }}
               >
-                Total
+                {t('ui.common.total')}
               </div>
               <div style={{ marginTop: 6, font: "600 20px/1.1 var(--fx-font-sans)" }}>
                 {totalPieces}
@@ -306,30 +322,27 @@ export function LayClient({
           </div>
           {planned ? (
             <span style={{ font: "400 12px/1.4 var(--fx-font-mono)", color: 'var(--fx-text-tertiary)' }}>
-              marker plan {planned.value} m · picked {drawn.value} m
+              {t('ui.cutting.marker_plan_note', { planned: planned.value, drawn: drawn.value })}
             </span>
           ) : null}
         </>
       ) : null}
 
       {/* ── Rolls ────────────────────────────────────────────────────────── */}
-      <SectionHeading eyebrow={`${available.length} issued to this order`}>
-        Rolls drawn from store
+      <SectionHeading eyebrow={t('ui.cutting.rolls_issued_eyebrow', { count: available.length })}>
+        {t('ui.cutting.rolls_heading')}
       </SectionHeading>
 
       {mixingShades ? (
         <InlineAlert tone="warning">
-          You are spreading shade groups {shadeGroups.join(' and ')} in one lay. Two dye lots
-          in a stack is a garment that leaves with two different navies in it.
+          {t('ui.cutting.mixing_shades', {
+            groups: shadeGroups.join(t('ui.cutting.shade_join')),
+          })}
         </InlineAlert>
       ) : null}
 
       {available.length === 0 ? (
-        <InlineAlert tone="warning">
-          The store has not issued any fabric against this order — or every issued roll is
-          already on a table. A lay may only draw rolls issued to its own order, so cutting
-          waits on the store.
-        </InlineAlert>
+        <InlineAlert tone="warning">{t('ui.cutting.no_rolls_issued')}</InlineAlert>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           {available.map((roll) => {
@@ -371,7 +384,9 @@ export function LayClient({
                   {roll.qty} {roll.unit}
                 </span>
                 <span style={{ textAlign: 'right' }}>
-                  {roll.shadeGroup ? <Badge>shade {roll.shadeGroup}</Badge> : null}
+                  {roll.shadeGroup ? (
+                    <Badge>{t('ui.cutting.shade_badge', { group: roll.shadeGroup })}</Badge>
+                  ) : null}
                 </span>
               </button>
             )
@@ -381,13 +396,13 @@ export function LayClient({
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <span style={{ font: "400 12px/1.4 var(--fx-font-mono)", color: 'var(--fx-text-tertiary)' }}>
-          {pickedRolls.length} roll{pickedRolls.length === 1 ? '' : 's'} · {drawn.value} m on
-          the table{planned ? `, ${planned.value} m consumed by the lay` : ''}
-          {blocked ? ' · blocked by the PP gate' : ''}
+          {t.plural('ui.cutting.rolls_on_table', pickedRolls.length, { drawn: drawn.value })}
+          {planned ? t('ui.cutting.lay_consumes_suffix', { planned: planned.value }) : ''}
+          {blocked ? t('ui.cutting.blocked_suffix') : ''}
         </span>
         <span style={{ marginLeft: 'auto' }}>
           <Button variant="primary" size="lg" disabled={!complete} onClick={() => void createLay()}>
-            {blocked ? 'Blocked — PP approval first' : 'Create the lay'}
+            {blocked ? t('ui.cutting.blocked_button') : t('ui.cutting.create_lay_button')}
           </Button>
         </span>
       </div>

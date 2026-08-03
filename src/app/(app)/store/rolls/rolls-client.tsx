@@ -6,6 +6,7 @@ import { useState, useTransition } from 'react'
 import { InlineAlert, Modal } from '@/components/fx/feedback'
 import { actionErrorMessage } from '@/lib/action-error'
 import { Ident } from '@/components/fx/format'
+import { useLocale, useT } from '@/components/fx/locale'
 import { Badge, Button } from '@/components/fx/primitives'
 import { SectionHeading } from '@/components/fx/signature'
 import { draftStockAdjustment } from '@/modules/store/actions'
@@ -21,11 +22,11 @@ import type { RollRow } from '@/modules/store/queries'
  * reason is a number somebody will have to explain to a customs officer later.
  */
 const REASONS = [
-  { code: 'miscount', label: 'Miscount — recount disagrees with the system' },
-  { code: 'damaged', label: 'Damaged — water, oil, or handling' },
-  { code: 'shortage_on_receipt', label: 'Short on receipt — challan overstated' },
-  { code: 'written_off', label: 'Written off — nothing recoverable' },
-  { code: 'found', label: 'Found — stock present that was not recorded' },
+  { code: 'miscount', labelKey: 'ui.store.reason_miscount' },
+  { code: 'damaged', labelKey: 'ui.store.reason_damaged' },
+  { code: 'shortage_on_receipt', labelKey: 'ui.store.reason_shortage_on_receipt' },
+  { code: 'written_off', labelKey: 'ui.store.reason_written_off' },
+  { code: 'found', labelKey: 'ui.store.reason_found' },
 ] as const
 
 export function RollsClient({
@@ -44,6 +45,7 @@ export function RollsClient({
   selectedItemId: string
   rolls: readonly RollRow[]
 }) {
+  const t = useT()
   const router = useRouter()
   const [adjusting, setAdjusting] = useState<RollRow | null>(null)
   const [drafted, setDrafted] = useState<string | null>(null)
@@ -52,8 +54,7 @@ export function RollsClient({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
       {drafted ? (
         <InlineAlert tone="success">
-          {drafted} — sent to the approve inbox. Nothing has changed in the store yet: an
-          adjustment is applied when it is signed, not when it is drafted.
+          {t('ui.store.adjust_drafted', { summary: drafted })}
         </InlineAlert>
       ) : null}
 
@@ -80,14 +81,16 @@ export function RollsClient({
               }}
             >
               <span style={{ font: "500 12px/1 var(--fx-font-mono)" }}>{item.code}</span>
-              {item.rollCount} roll{item.rollCount === 1 ? '' : 's'}
+              {t.plural('ui.store.roll_count', item.rollCount)}
             </button>
           )
         })}
       </div>
 
       {/* ── The rolls ────────────────────────────────────────────────────── */}
-      <SectionHeading eyebrow="Roll · lot">Every roll, and where it sits</SectionHeading>
+      <SectionHeading eyebrow={t('ui.store.roll_lot_eyebrow')}>
+        {t('ui.store.rolls_all_heading')}
+      </SectionHeading>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         {rolls.map((roll) => (
           <div
@@ -106,7 +109,9 @@ export function RollsClient({
           >
             <Ident>{roll.rollNo}</Ident>
             <span style={{ font: "400 12.5px/1.3 var(--fx-font-mono)", color: 'var(--fx-text-tertiary)' }}>
-              {roll.shadeGroup ? `shade ${roll.shadeGroup}` : 'no shade'}
+              {roll.shadeGroup
+                ? t('ui.store.shade_label', { group: roll.shadeGroup })
+                : t('ui.store.no_shade')}
               {roll.dyeLot ? ` · ${roll.dyeLot}` : ''}
             </span>
             <span style={{ font: "400 12px/1.3 var(--fx-font-mono)", color: 'var(--fx-text-tertiary)' }}>
@@ -123,7 +128,7 @@ export function RollsClient({
             <span style={{ textAlign: 'right' }}>
               {roll.status === 'in_stock' ? (
                 <Button variant="ghost" onClick={() => setAdjusting(roll)}>
-                  Adjust
+                  {t('ui.store.adjust_button')}
                 </Button>
               ) : (
                 <span style={{ font: "400 11.5px/1.3 var(--fx-font-mono)", color: 'var(--fx-text-tertiary)' }}>
@@ -162,6 +167,8 @@ function AdjustDialog({
   onClose: () => void
   onDrafted: (summary: string) => void
 }) {
+  const t = useT()
+  const locale = useLocale()
   const [counted, setCounted] = useState('')
   const [reasonCode, setReasonCode] = useState<string>(REASONS[0].code)
   const [note, setNote] = useState('')
@@ -192,7 +199,7 @@ function AdjustDialog({
         })
         onDrafted(`${roll.rollNo} · ${delta > 0 ? '+' : ''}${delta.toFixed(2)} ${roll.unit}`)
       } catch (e) {
-        setError(actionErrorMessage(e, 'the draft was refused'))
+        setError(actionErrorMessage(e, t('ui.store.adjust_refused'), locale))
       }
     })
   }
@@ -201,18 +208,18 @@ function AdjustDialog({
     <Modal
       open
       onClose={onClose}
-      title={`Adjust ${roll.rollNo}`}
+      title={t('ui.store.adjust_title', { roll: roll.rollNo })}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            Cancel
+            {t('ui.common.cancel')}
           </Button>
           <Button
             variant="primary"
             disabled={!valid || delta === 0 || noteTooShort || pending}
             onClick={submit}
           >
-            Send for approval
+            {t('ui.store.adjust_submit')}
           </Button>
         </>
       }
@@ -220,10 +227,13 @@ function AdjustDialog({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
           {[
-            { label: 'System says', value: `${roll.qty} ${roll.unit}` },
-            { label: 'You counted', value: valid ? `${countedQty.toFixed(2)} ${roll.unit}` : '—' },
+            { label: t('ui.store.cell_system_says'), value: `${roll.qty} ${roll.unit}` },
             {
-              label: 'Difference',
+              label: t('ui.store.cell_you_counted'),
+              value: valid ? `${countedQty.toFixed(2)} ${roll.unit}` : '—',
+            },
+            {
+              label: t('ui.store.cell_difference'),
               value: valid ? `${delta > 0 ? '+' : ''}${delta.toFixed(2)} ${roll.unit}` : '—',
               tone: delta < 0 ? 'danger' : delta > 0 ? 'success' : 'plain',
             },
@@ -258,7 +268,9 @@ function AdjustDialog({
         </div>
 
         <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span style={{ font: "500 13px/1.3 var(--fx-font-sans)" }}>Counted quantity</span>
+          <span style={{ font: "500 13px/1.3 var(--fx-font-sans)" }}>
+            {t('ui.store.field_counted_qty')}
+          </span>
           <input
             inputMode="decimal"
             value={counted}
@@ -277,7 +289,9 @@ function AdjustDialog({
         </label>
 
         <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span style={{ font: "500 13px/1.3 var(--fx-font-sans)" }}>Reason</span>
+          <span style={{ font: "500 13px/1.3 var(--fx-font-sans)" }}>
+            {t('ui.store.field_reason')}
+          </span>
           <select
             value={reasonCode}
             onChange={(e) => setReasonCode(e.target.value)}
@@ -293,7 +307,7 @@ function AdjustDialog({
           >
             {REASONS.map((reason) => (
               <option key={reason.code} value={reason.code}>
-                {reason.label}
+                {t(reason.labelKey)}
               </option>
             ))}
           </select>
@@ -301,13 +315,14 @@ function AdjustDialog({
 
         <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <span style={{ font: "500 13px/1.3 var(--fx-font-sans)" }}>
-            What happened{noteTooShort && note.length > 0 ? ' — at least 10 characters' : ''}
+            {t('ui.store.field_what_happened')}
+            {noteTooShort && note.length > 0 ? t('ui.store.note_too_short') : ''}
           </span>
           <textarea
             rows={3}
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="Water damage on the outer wraps, cut back to sound cloth."
+            placeholder={t('ui.store.note_placeholder')}
             style={{
               padding: '10px 12px',
               border: '1px solid var(--fx-border-default)',
@@ -322,10 +337,7 @@ function AdjustDialog({
 
         {error ? <InlineAlert tone="danger">{error}</InlineAlert> : null}
 
-        <InlineAlert tone="info">
-          Nothing is written now. This goes to the approve inbox, and the count changes only
-          when somebody signs it — writing off stock is writing off money.
-        </InlineAlert>
+        <InlineAlert tone="info">{t('ui.store.adjust_pending_note')}</InlineAlert>
       </div>
     </Modal>
   )

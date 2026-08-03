@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation'
 import { EmptyState } from '@/components/fx/feedback'
 import { FloorScreen } from '@/components/fx/floor'
 import { PageHeader } from '@/components/shell/page-shell'
+import { tui } from '@/lib/i18n-ui'
+import { requestLocale } from '@/lib/ui-locale'
 import { getCtx } from '@/modules/core/session'
 import { rollsForItem, stockOnHand, type RollRow } from '@/modules/store/queries'
 
@@ -26,15 +28,21 @@ export default async function StoreRollsPage({
   const ctx = await getCtx(await headers())
   if (!ctx) redirect('/login')
 
+  const locale = await requestLocale()
+
   const stock = await stockOnHand(ctx)
 
   if (stock.length === 0) {
     return (
       <FloorScreen>
-        <PageHeader eyebrow="Store · rolls and lots" title="Nothing in stock" ownsAmber />
+        <PageHeader
+          eyebrow={tui(locale, 'ui.store.rolls_eyebrow')}
+          title={tui(locale, 'ui.store.nothing_in_stock')}
+          ownsAmber
+        />
         <EmptyState
-          title="No rolls to show"
-          body="Rolls appear here once goods are received. Every quantity in the store is derived from them."
+          title={tui(locale, 'ui.store.rolls_empty_title')}
+          body={tui(locale, 'ui.store.rolls_empty_body')}
         />
       </FloorScreen>
     )
@@ -47,9 +55,13 @@ export default async function StoreRollsPage({
   return (
     <FloorScreen>
       <PageHeader
-        eyebrow="Store · rolls and lots"
+        eyebrow={tui(locale, 'ui.store.rolls_eyebrow')}
         title={selected.name}
-        meta={`${rolls.length} roll${rolls.length === 1 ? '' : 's'} · ${selected.onHand} ${selected.unit} on hand`}
+        meta={tui(
+          locale,
+          rolls.length === 1 ? 'ui.store.rolls_meta_one' : 'ui.store.rolls_meta_other',
+          { count: rolls.length, onHand: selected.onHand, unit: selected.unit },
+        )}
         ownsAmber
       />
       <RollsClient

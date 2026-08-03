@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 
 import { InlineAlert } from '@/components/fx/feedback'
 import { SyncPill } from '@/components/fx/floor'
+import { useT } from '@/components/fx/locale'
 import { Badge, Button } from '@/components/fx/primitives'
 import { SectionHeading } from '@/components/fx/signature'
 import { Ident } from '@/components/fx/format'
@@ -37,6 +38,7 @@ export function IssueClient({
   freeByItem: Record<string, string>
   onHandByItem: Record<string, string>
 }) {
+  const t = useT()
   const { capture, online, queued, syncing, refused, sync, clear } = useOfflineQueue()
   const [activeLineId, setActiveLineId] = useState(lines[0]?.requisitionLineId ?? null)
   const [picked, setPicked] = useState<Set<string>>(new Set())
@@ -122,7 +124,7 @@ export function IssueClient({
 
       {refused.length > 0 ? (
         <InlineAlert tone="danger">
-          {refused.length} write{refused.length === 1 ? '' : 's'} the server refused.
+          {t.plural('ui.store.issue_refused', refused.length)}
           {refused.map((r) => (
             <button
               key={r.offlineKey}
@@ -136,7 +138,7 @@ export function IssueClient({
                 font: 'inherit',
               }}
             >
-              dismiss
+              {t('ui.common.dismiss')}
             </button>
           ))}
         </InlineAlert>
@@ -144,12 +146,15 @@ export function IssueClient({
 
       {issued.length > 0 ? (
         <InlineAlert tone="success">
-          Issued {issued.join(' · ')}. {online ? 'Sent.' : 'Held on this device until you are back online.'}
+          {t('ui.store.issue_done', { list: issued.join(' · ') })}{' '}
+          {online ? t('ui.store.sync_sent') : t('ui.store.sync_held')}
         </InlineAlert>
       ) : null}
 
       {/* ── What the floor asked for ─────────────────────────────────────── */}
-      <SectionHeading eyebrow="Outstanding">Cutting is waiting on</SectionHeading>
+      <SectionHeading eyebrow={t('ui.store.outstanding_eyebrow')}>
+        {t('ui.store.outstanding_heading')}
+      </SectionHeading>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         {lines.map((l) => {
           const active = l.requisitionLineId === activeLineId
@@ -196,7 +201,7 @@ export function IssueClient({
                       : 'var(--fx-text-tertiary)',
                 }}
               >
-                {freeByItem[l.itemId] ?? '0'} free
+                {t('ui.store.qty_free', { qty: freeByItem[l.itemId] ?? '0' })}
               </span>
             </button>
           )
@@ -216,10 +221,18 @@ export function IssueClient({
             }}
           >
             {[
-              { label: 'Required', value: `${line.outstandingQty} ${line.unit}`, tone: 'plain' },
-              { label: 'Issuing', value: `${issuing.toFixed(2)} ${line.unit}`, tone: 'plain' },
               {
-                label: 'Difference',
+                label: t('ui.store.cell_required'),
+                value: `${line.outstandingQty} ${line.unit}`,
+                tone: 'plain',
+              },
+              {
+                label: t('ui.store.cell_issuing'),
+                value: `${issuing.toFixed(2)} ${line.unit}`,
+                tone: 'plain',
+              },
+              {
+                label: t('ui.store.cell_difference'),
                 value: `${difference > 0 ? '+' : ''}${difference.toFixed(2)} ${line.unit}`,
                 tone: difference === 0 ? 'ok' : 'warn',
               },
@@ -255,10 +268,12 @@ export function IssueClient({
 
           {overFree ? (
             <InlineAlert tone="danger">
-              This issue is blocked — {issuing.toFixed(2)} {line.unit} is more than the{' '}
-              {available.toFixed(2)} {line.unit} this order may draw. {onHand.toFixed(2)}{' '}
-              {line.unit} is on hand, and the rest is already promised to other orders.
-              Nothing has been written.
+              {t('ui.store.issue_blocked_over_free', {
+                issuing: issuing.toFixed(2),
+                available: available.toFixed(2),
+                onHand: onHand.toFixed(2),
+                unit: line.unit,
+              })}
             </InlineAlert>
           ) : null}
 
@@ -267,29 +282,30 @@ export function IssueClient({
             // shortfall is a conversation with merchandising, and hiding it until the
             // cutting table runs dry is how it becomes an emergency instead.
             <InlineAlert tone="warning">
-              Only {available.toFixed(2)} {line.unit} of the {required.toFixed(2)} {line.unit}{' '}
-              asked for can be drawn. Issue what is here and hold the lay, or have
-              merchandising re-size the order.
+              {t('ui.store.issue_shortfall', {
+                available: available.toFixed(2),
+                required: required.toFixed(2),
+                unit: line.unit,
+              })}
             </InlineAlert>
           ) : null}
 
           {mixingShades ? (
             <InlineAlert tone="warning">
-              You are mixing shade groups {shadeGroups.join(' and ')} in one lay. Split the lay
-              by shade, or have QC sign the mix — a two-shade garment is found by the buyer.
+              {t('ui.store.issue_mixing_shades', {
+                groups: shadeGroups.join(t('ui.store.shade_group_joiner')),
+              })}
             </InlineAlert>
           ) : null}
 
           {bonded ? (
-            <InlineAlert tone="info">
-              Bonded rolls are picked — this issue draws on a customs declaration. The UD
-              balance check lands with module 2.2; until then the draw is recorded but not
-              validated against a UD.
-            </InlineAlert>
+            <InlineAlert tone="info">{t('ui.store.issue_bonded_note')}</InlineAlert>
           ) : null}
 
           {/* ── Pick rolls, grouped by shade ────────────────────────────── */}
-          <SectionHeading eyebrow={`${rolls.length} in stock`}>Pick rolls · grouped by shade</SectionHeading>
+          <SectionHeading eyebrow={t('ui.store.rolls_in_stock_eyebrow', { count: rolls.length })}>
+            {t('ui.store.pick_rolls_heading')}
+          </SectionHeading>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
             {groupByShade(rolls).map(([group, groupRolls]) => (
               <div key={group ?? 'ungrouped'} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -305,9 +321,9 @@ export function IssueClient({
                     padding: '4px 2px',
                   }}
                 >
-                  {group ? `shade ${group}` : 'no shade group'}
+                  {group ? t('ui.store.shade_label', { group }) : t('ui.store.no_shade_group')}
                   <span style={{ textTransform: 'none', letterSpacing: 0 }}>
-                    {groupRolls.length} roll{groupRolls.length === 1 ? '' : 's'}
+                    {t.plural('ui.store.roll_count', groupRolls.length)}
                   </span>
                 </div>
                 {groupRolls.map((roll) => {
@@ -336,7 +352,11 @@ export function IssueClient({
                       </span>
                       <Ident>{roll.rollNo}</Ident>
                       <span style={{ font: "400 12.5px/1.3 var(--fx-font-mono)", color: 'var(--fx-text-tertiary)' }}>
-                        {roll.dyeLot ? `dye ${roll.dyeLot}` : roll.lot ? `lot ${roll.lot}` : '—'}
+                        {roll.dyeLot
+                          ? t('ui.store.dye_label', { lot: roll.dyeLot })
+                          : roll.lot
+                            ? t('ui.store.lot_label', { lot: roll.lot })
+                            : '—'}
                       </span>
                       <span style={{ font: "400 13px/1.3 var(--fx-font-mono)", textAlign: 'right' }}>
                         {roll.qty} {roll.unit}
@@ -355,8 +375,8 @@ export function IssueClient({
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <span style={{ font: "400 12px/1.4 var(--fx-font-mono)", color: 'var(--fx-text-tertiary)' }}>
-              {pickedRolls.length} roll{pickedRolls.length === 1 ? '' : 's'} picked
-              {overFree ? ' · blocked' : ''}
+              {t.plural('ui.store.rolls_picked', pickedRolls.length)}
+              {overFree ? t('ui.store.blocked_suffix') : ''}
             </span>
             <span style={{ marginLeft: 'auto' }}>
               <Button
@@ -366,8 +386,8 @@ export function IssueClient({
                 onClick={() => void issue()}
               >
                 {overFree
-                  ? 'Blocked — over free stock'
-                  : `Issue ${issuing.toFixed(2)} ${line.unit}`}
+                  ? t('ui.store.issue_button_blocked')
+                  : t('ui.store.issue_button', { qty: issuing.toFixed(2), unit: line.unit })}
               </Button>
             </span>
           </div>

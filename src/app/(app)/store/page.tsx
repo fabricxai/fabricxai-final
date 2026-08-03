@@ -8,6 +8,8 @@ import { Badge } from '@/components/fx/primitives'
 import { SectionHeading } from '@/components/fx/signature'
 import { Ident } from '@/components/fx/format'
 import { PageHeader } from '@/components/shell/page-shell'
+import { tui } from '@/lib/i18n-ui'
+import { requestLocale } from '@/lib/ui-locale'
 import { getCtx } from '@/modules/core/session'
 import { recentGrns, stockOnHand } from '@/modules/store/queries'
 
@@ -24,6 +26,8 @@ export default async function StorePage() {
   const ctx = await getCtx(await headers())
   if (!ctx) redirect('/login')
 
+  const locale = await requestLocale()
+
   const [stock, grns] = await Promise.all([stockOnHand(ctx), recentGrns(ctx)])
 
   const overReserved = stock.filter((s) => s.overReserved)
@@ -32,9 +36,27 @@ export default async function StorePage() {
   return (
     <FloorScreen>
       <PageHeader
-        eyebrow="Store"
-        title={stock.length === 0 ? 'Nothing in stock' : `${stock.length} items in stock`}
-        meta={overReserved.length > 0 ? `${overReserved.length} over-reserved` : undefined}
+        eyebrow={tui(locale, 'ui.store.index_eyebrow')}
+        title={
+          stock.length === 0
+            ? tui(locale, 'ui.store.nothing_in_stock')
+            : tui(
+                locale,
+                stock.length === 1 ? 'ui.store.index_title_one' : 'ui.store.index_title_other',
+                { count: stock.length },
+              )
+        }
+        meta={
+          overReserved.length > 0
+            ? tui(
+                locale,
+                overReserved.length === 1
+                  ? 'ui.store.index_meta_over_reserved_one'
+                  : 'ui.store.index_meta_over_reserved_other',
+                { count: overReserved.length },
+              )
+            : undefined
+        }
         ownsAmber
       />
 
@@ -43,9 +65,9 @@ export default async function StorePage() {
       <nav style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         {(
           [
-            { href: '/store/rolls', label: 'Rolls & lots' },
-            { href: '/store/issue', label: 'Issue to production' },
-            { href: '/store/receive', label: 'Receive goods' },
+            { href: '/store/rolls', label: tui(locale, 'ui.store.nav_rolls') },
+            { href: '/store/issue', label: tui(locale, 'ui.store.nav_issue') },
+            { href: '/store/receive', label: tui(locale, 'ui.store.nav_receive') },
           ] as const
         ).map(({ href, label }) => (
           <Link
@@ -73,26 +95,35 @@ export default async function StorePage() {
             nit — the schema requires the pairing, so this should be empty. */}
         {bondedWithoutUd.length > 0 ? (
           <InlineAlert tone="danger">
-            {bondedWithoutUd.length} bonded {bondedWithoutUd.length === 1 ? 'receipt has' : 'receipts have'}{' '}
-            no UD against them. Duty-free fabric must be drawn against a declaration.
+            {tui(
+              locale,
+              bondedWithoutUd.length === 1
+                ? 'ui.store.bonded_without_ud_one'
+                : 'ui.store.bonded_without_ud_other',
+              { count: bondedWithoutUd.length },
+            )}
           </InlineAlert>
         ) : null}
 
         {overReserved.length > 0 ? (
           <InlineAlert tone="warning">
-            {overReserved.length} {overReserved.length === 1 ? 'item is' : 'items are'} promised to
-            more orders than exist in the store. The shortage is real — better found here than at
-            the cutting table.
+            {tui(
+              locale,
+              overReserved.length === 1
+                ? 'ui.store.over_reserved_alert_one'
+                : 'ui.store.over_reserved_alert_other',
+              { count: overReserved.length },
+            )}
           </InlineAlert>
         ) : null}
 
         <section>
-          <SectionHeading>Stock</SectionHeading>
+          <SectionHeading>{tui(locale, 'ui.store.stock_heading')}</SectionHeading>
 
           {stock.length === 0 ? (
             <EmptyState
-              title="The store is empty"
-              body="Stock arrives as a GRN against a supplier challan. Bonded fabric is received against a UD, and the two are recorded together."
+              title={tui(locale, 'ui.store.stock_empty_title')}
+              body={tui(locale, 'ui.store.stock_empty_body')}
             />
           ) : (
             <div
@@ -116,12 +147,12 @@ export default async function StorePage() {
                   color: 'var(--fx-text-tertiary)',
                 }}
               >
-                <div>Code</div>
-                <div>Item</div>
-                <div>Rolls</div>
-                <div style={{ textAlign: 'right' }}>On hand</div>
-                <div style={{ textAlign: 'right' }}>Reserved</div>
-                <div style={{ textAlign: 'right' }}>Free</div>
+                <div>{tui(locale, 'ui.store.col_code')}</div>
+                <div>{tui(locale, 'ui.store.col_item')}</div>
+                <div>{tui(locale, 'ui.store.col_rolls')}</div>
+                <div style={{ textAlign: 'right' }}>{tui(locale, 'ui.store.col_on_hand')}</div>
+                <div style={{ textAlign: 'right' }}>{tui(locale, 'ui.store.col_reserved')}</div>
+                <div style={{ textAlign: 'right' }}>{tui(locale, 'ui.store.col_free')}</div>
               </div>
 
               {stock.map((row) => (
@@ -163,7 +194,13 @@ export default async function StorePage() {
                         <span
                           style={{ font: "400 12px/1.3 var(--fx-font-mono)", color: 'var(--fx-warning)' }}
                         >
-                          {row.shadeGroups.length} shades
+                          {tui(
+                            locale,
+                            row.shadeGroups.length === 1
+                              ? 'ui.store.shades_count_one'
+                              : 'ui.store.shades_count_other',
+                            { count: row.shadeGroups.length },
+                          )}
                         </span>
                       ) : null}
                     </div>
@@ -188,14 +225,16 @@ export default async function StorePage() {
                   color: 'var(--fx-text-tertiary)',
                 }}
               >
-                free = on hand − reserved · issue against free, never against on hand
+                {tui(locale, 'ui.store.free_formula')}
               </div>
             </div>
           )}
         </section>
 
         <section>
-          <SectionHeading eyebrow={`${grns.length} recent`}>Goods received</SectionHeading>
+          <SectionHeading eyebrow={tui(locale, 'ui.store.grns_recent_eyebrow', { count: grns.length })}>
+            {tui(locale, 'ui.store.grns_heading')}
+          </SectionHeading>
 
           {grns.length === 0 ? (
             <div
@@ -208,7 +247,7 @@ export default async function StorePage() {
                 color: 'var(--fx-text-secondary)',
               }}
             >
-              No receipts yet.
+              {tui(locale, 'ui.store.grns_none')}
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -236,10 +275,13 @@ export default async function StorePage() {
                   </span>
                   {g.bonded ? (
                     <Badge tone={g.udId ? 'info' : 'danger'}>
-                      {g.udId ? 'bonded · UD drawn' : 'bonded · NO UD'}
+                      {tui(
+                        locale,
+                        g.udId ? 'ui.store.badge_bonded_ud' : 'ui.store.badge_bonded_no_ud',
+                      )}
                     </Badge>
                   ) : (
-                    <Badge>general</Badge>
+                    <Badge>{tui(locale, 'ui.store.badge_general')}</Badge>
                   )}
                   <Badge tone={g.inspectionStatus === 'passed' ? 'success' : 'neutral'}>
                     {g.inspectionStatus}
@@ -253,7 +295,7 @@ export default async function StorePage() {
                         color: 'var(--fx-text-tertiary)',
                       }}
                     >
-                      entered on a device
+                      {tui(locale, 'ui.store.entered_on_device')}
                     </span>
                   ) : null}
                 </div>

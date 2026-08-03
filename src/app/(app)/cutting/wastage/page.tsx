@@ -7,6 +7,8 @@ import { FloorScreen } from '@/components/fx/floor'
 import { Ident } from '@/components/fx/format'
 import { SectionHeading } from '@/components/fx/signature'
 import { PageHeader } from '@/components/shell/page-shell'
+import { tui } from '@/lib/i18n-ui'
+import { requestLocale } from '@/lib/ui-locale'
 import { cutWastage, lays, markers } from '@/modules/cutting/schema'
 import type { CuttingPolicy } from '@/modules/cutting/service'
 import { getCtx } from '@/modules/core/session'
@@ -30,6 +32,8 @@ export const dynamic = 'force-dynamic'
 export default async function WastagePage() {
   const ctx = await getCtx(await headers())
   if (!ctx) redirect('/login')
+
+  const locale = await requestLocale()
 
   const [rows, layRows, policy] = await Promise.all([
     withTenantRead(ctx, (tx) =>
@@ -73,10 +77,14 @@ export default async function WastagePage() {
   if (rows.length === 0) {
     return (
       <FloorScreen>
-        <PageHeader eyebrow="Cutting · wastage" title="Nothing cut yet" ownsAmber />
+        <PageHeader
+          eyebrow={tui(locale, 'ui.cutting.wastage_eyebrow')}
+          title={tui(locale, 'ui.cutting.wastage_nothing_title')}
+          ownsAmber
+        />
         <EmptyState
-          title="No wastage to report"
-          body="Wastage is measured from lays that have been reported cut — fabric drawn off the rolls against what the marker said the spread would consume."
+          title={tui(locale, 'ui.cutting.wastage_empty_title')}
+          body={tui(locale, 'ui.cutting.wastage_empty_body')}
         />
       </FloorScreen>
     )
@@ -85,21 +93,29 @@ export default async function WastagePage() {
   return (
     <FloorScreen>
       <PageHeader
-        eyebrow="Cutting · wastage"
-        title="Drawn, consumed, wasted"
-        meta={alertAt !== null ? `alert past ${policy.wastageAlertPct}%` : undefined}
+        eyebrow={tui(locale, 'ui.cutting.wastage_eyebrow')}
+        title={tui(locale, 'ui.cutting.wastage_title')}
+        meta={
+          alertAt !== null
+            ? tui(locale, 'ui.cutting.wastage_alert_meta', { pct: policy.wastageAlertPct })
+            : undefined
+        }
         ownsAmber
       />
 
       {over.length > 0 ? (
         <InlineAlert tone="warning">
-          {over.length} order{over.length === 1 ? '' : 's'} past the {policy.wastageAlertPct}%
-          threshold. Fabric is the largest line on most cost sheets, and a percent here is
-          money that was already spent.
+          {tui(
+            locale,
+            over.length === 1 ? 'ui.cutting.wastage_over_one' : 'ui.cutting.wastage_over_other',
+            { count: over.length, pct: policy.wastageAlertPct },
+          )}
         </InlineAlert>
       ) : null}
 
-      <SectionHeading eyebrow="per order">Against the marker plan</SectionHeading>
+      <SectionHeading eyebrow={tui(locale, 'ui.cutting.wastage_per_order_eyebrow')}>
+        {tui(locale, 'ui.cutting.wastage_heading')}
+      </SectionHeading>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         {rows.map((row) => {
           const pct = Number(row.wastagePct)
@@ -119,10 +135,16 @@ export default async function WastagePage() {
               }}
             >
               <Ident>{row.poNumbers?.[0] ?? '—'}</Ident>
-              <Figure label="Drawn" value={`${row.fabricDrawn} ${row.unit}`} />
-              <Figure label="Consumed" value={`${row.markerConsumption} ${row.unit}`} />
               <Figure
-                label="Waste"
+                label={tui(locale, 'ui.cutting.figure_drawn')}
+                value={`${row.fabricDrawn} ${row.unit}`}
+              />
+              <Figure
+                label={tui(locale, 'ui.cutting.figure_consumed')}
+                value={`${row.markerConsumption} ${row.unit}`}
+              />
+              <Figure
+                label={tui(locale, 'ui.cutting.figure_waste')}
                 value={`${row.wastagePct}%`}
                 tone={flagged ? 'warning' : pct < 0 ? 'success' : 'plain'}
               />
@@ -131,7 +153,9 @@ export default async function WastagePage() {
         })}
       </div>
 
-      <SectionHeading eyebrow={`${layRows.length} cut`}>Lays this week</SectionHeading>
+      <SectionHeading eyebrow={tui(locale, 'ui.cutting.wastage_lays_eyebrow', { count: layRows.length })}>
+        {tui(locale, 'ui.cutting.wastage_lays_heading')}
+      </SectionHeading>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         {layRows.map((lay) => {
           // Per lay, the same arithmetic the order-level figure aggregates: what the marker
@@ -163,7 +187,7 @@ export default async function WastagePage() {
                 {lay.plies}
               </span>
               <span style={{ font: "400 13px/1.3 var(--fx-font-mono)", textAlign: 'right' }}>
-                {drawn.toFixed(2)} m
+                {tui(locale, 'ui.cutting.meters_value', { value: drawn.toFixed(2) })}
               </span>
               <span
                 style={{
@@ -172,7 +196,7 @@ export default async function WastagePage() {
                   color: 'var(--fx-text-tertiary)',
                 }}
               >
-                {planned.toFixed(2)} m
+                {tui(locale, 'ui.cutting.meters_value', { value: planned.toFixed(2) })}
               </span>
               <span
                 style={{

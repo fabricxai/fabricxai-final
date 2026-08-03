@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation'
 import { EmptyState, InlineAlert } from '@/components/fx/feedback'
 import { FloorScreen } from '@/components/fx/floor'
 import { PageHeader } from '@/components/shell/page-shell'
+import { tui } from '@/lib/i18n-ui'
+import { requestLocale } from '@/lib/ui-locale'
 import { checkPpApprovalFor } from '@/modules/sampling/service'
 import { cuttableOrders, issuedRollsForOrder } from '@/modules/cutting/queries'
 import { markers } from '@/modules/cutting/schema'
@@ -33,15 +35,21 @@ export default async function StartLayPage({
   const ctx = await getCtx(await headers())
   if (!ctx) redirect('/login')
 
+  const locale = await requestLocale()
+
   const orders = await cuttableOrders(ctx)
 
   if (orders.length === 0) {
     return (
       <FloorScreen>
-        <PageHeader eyebrow="Cutting · start a lay" title="Nothing to cut" ownsAmber />
+        <PageHeader
+          eyebrow={tui(locale, 'ui.cutting.lay_eyebrow')}
+          title={tui(locale, 'ui.cutting.lay_nothing_title')}
+          ownsAmber
+        />
         <EmptyState
-          title="No confirmed order is waiting on cutting"
-          body="An order reaches the cutting floor once it is confirmed and in production."
+          title={tui(locale, 'ui.cutting.lay_empty_title')}
+          body={tui(locale, 'ui.cutting.lay_empty_body')}
         />
       </FloorScreen>
     )
@@ -71,18 +79,20 @@ export default async function StartLayPage({
   return (
     <FloorScreen>
       <PageHeader
-        eyebrow="Cutting · start a lay"
-        title={`${target.poNumber ?? 'Order'} · ${target.styleCode}`}
-        meta={gate.passed ? undefined : 'blocked'}
+        eyebrow={tui(locale, 'ui.cutting.lay_eyebrow')}
+        title={`${target.poNumber ?? tui(locale, 'ui.cutting.order_fallback')} · ${target.styleCode}`}
+        meta={gate.passed ? undefined : tui(locale, 'ui.cutting.meta_blocked')}
         ownsAmber
       />
 
       {!gate.passed ? (
         <InlineAlert tone="danger">
-          This style cannot be spread yet — the PP gate is holding it
-          {gate.reasonKey ? ` (${gate.reasonKey})` : ''}. The buyer signs off one garment
-          before the factory makes eighty thousand. Nothing below will be accepted until
-          that approval is recorded in the sample room.
+          {tui(locale, 'ui.cutting.pp_gate_blocked')}
+          {/* The gate's key, not a sentence about it — it is the reference the sample room
+              is asked about, so it stays untranslated and quotable. */}
+          {gate.reasonKey
+            ? ` ${tui(locale, 'ui.cutting.pp_gate_reason', { reason: gate.reasonKey })}`
+            : ''}
         </InlineAlert>
       ) : null}
 

@@ -9,6 +9,9 @@ import { Badge } from '@/components/fx/primitives'
 import { Eyebrow, SectionHeading } from '@/components/fx/signature'
 import { Ident } from '@/components/fx/format'
 import { PageHeader } from '@/components/shell/page-shell'
+import type { Locale } from '@/lib/i18n'
+import { tui } from '@/lib/i18n-ui'
+import { requestLocale } from '@/lib/ui-locale'
 import { getCtx } from '@/modules/core/session'
 import { cuttableOrders, recentLays } from '@/modules/cutting/queries'
 
@@ -27,6 +30,8 @@ export default async function CuttingPage() {
   const ctx = await getCtx(await headers())
   if (!ctx) redirect('/login')
 
+  const locale = await requestLocale()
+
   const [lays, orders] = await Promise.all([recentLays(ctx), cuttableOrders(ctx)])
 
   // `lay_status` is open | cut | cancelled — there is no "closed", so the old
@@ -39,20 +44,28 @@ export default async function CuttingPage() {
   return (
     <FloorScreen>
       <PageHeader
-        eyebrow="Cutting"
-        title={lays.length === 0 ? 'Nothing spread yet' : `${open} lays open`}
-        meta={unreported > 0 ? `${unreported} not reported` : undefined}
+        eyebrow={tui(locale, 'ui.cutting.eyebrow')}
+        title={
+          lays.length === 0
+            ? tui(locale, 'ui.cutting.overview_empty_title')
+            : tui(locale, open === 1 ? 'ui.cutting.lays_open_one' : 'ui.cutting.lays_open_other', {
+                count: open,
+              })
+        }
+        meta={
+          unreported > 0 ? tui(locale, 'ui.cutting.unreported_meta', { count: unreported }) : undefined
+        }
         ownsAmber
       />
 
       <nav style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         {(
           [
-            { href: '/cutting/lay', label: 'Start a lay' },
-            { href: '/cutting/report', label: 'Cut report' },
-            { href: '/cutting/wastage', label: 'Wastage' },
+            { href: '/cutting/lay', labelKey: 'ui.cutting.nav_start_lay' },
+            { href: '/cutting/report', labelKey: 'ui.cutting.nav_cut_report' },
+            { href: '/cutting/wastage', labelKey: 'ui.cutting.nav_wastage' },
           ] as const
-        ).map(({ href, label }) => (
+        ).map(({ href, labelKey }) => (
           <Link
             key={href}
             href={href}
@@ -68,14 +81,14 @@ export default async function CuttingPage() {
               textDecoration: 'none',
             }}
           >
-            {label}
+            {tui(locale, labelKey)}
           </Link>
         ))}
       </nav>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
         <Card padding="18px 22px">
-          <Eyebrow>Before a lay can be spread</Eyebrow>
+          <Eyebrow>{tui(locale, 'ui.cutting.prereq_eyebrow')}</Eyebrow>
           <div
             style={{
               display: 'flex',
@@ -87,12 +100,16 @@ export default async function CuttingPage() {
             }}
           >
             <span>
-              <strong style={{ color: 'var(--fx-text-primary)' }}>PP sample approved</strong> — the
-              buyer has signed off one garment before eighty thousand
+              <strong style={{ color: 'var(--fx-text-primary)' }}>
+                {tui(locale, 'ui.cutting.prereq_pp_title')}
+              </strong>{' '}
+              {tui(locale, 'ui.cutting.prereq_pp_body')}
             </span>
             <span>
-              <strong style={{ color: 'var(--fx-text-primary)' }}>Fabric issued</strong> — rolls
-              actually left the store against this order
+              <strong style={{ color: 'var(--fx-text-primary)' }}>
+                {tui(locale, 'ui.cutting.prereq_fabric_title')}
+              </strong>{' '}
+              {tui(locale, 'ui.cutting.prereq_fabric_body')}
             </span>
           </div>
           {/* Both are checked on the server when the lay is created; neither is
@@ -104,12 +121,14 @@ export default async function CuttingPage() {
               color: 'var(--fx-text-tertiary)',
             }}
           >
-            both checked server-side · a blocked lay says which one failed
+            {tui(locale, 'ui.cutting.prereq_note')}
           </div>
         </Card>
 
         <section>
-          <SectionHeading eyebrow={`${orders.length} in production`}>Ready to cut</SectionHeading>
+          <SectionHeading eyebrow={tui(locale, 'ui.cutting.ready_eyebrow', { count: orders.length })}>
+            {tui(locale, 'ui.cutting.ready_heading')}
+          </SectionHeading>
           {orders.length === 0 ? (
             <div
               style={{
@@ -121,7 +140,7 @@ export default async function CuttingPage() {
                 color: 'var(--fx-text-secondary)',
               }}
             >
-              No confirmed orders with a style yet.
+              {tui(locale, 'ui.cutting.ready_none')}
             </div>
           ) : (
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
@@ -154,7 +173,7 @@ export default async function CuttingPage() {
                       color: 'var(--fx-text-tertiary)',
                     }}
                   >
-                    start a lay →
+                    {tui(locale, 'ui.cutting.start_lay_arrow')}
                   </span>
                 </Link>
               ))}
@@ -163,12 +182,12 @@ export default async function CuttingPage() {
         </section>
 
         <section>
-          <SectionHeading>Lays</SectionHeading>
+          <SectionHeading>{tui(locale, 'ui.cutting.lays_heading')}</SectionHeading>
 
           {lays.length === 0 ? (
             <EmptyState
-              title="No lays spread"
-              body="A lay is one spread of fabric, cut through many plies at once. Spreading it needs the PP sample approved and the fabric issued — both are checked when you start, not after."
+              title={tui(locale, 'ui.cutting.lays_empty_title')}
+              body={tui(locale, 'ui.cutting.lays_empty_body')}
             />
           ) : (
             <div
@@ -192,13 +211,13 @@ export default async function CuttingPage() {
                   color: 'var(--fx-text-tertiary)',
                 }}
               >
-                <div>Lay</div>
-                <div>Order</div>
-                <div>Colour</div>
-                <div style={{ textAlign: 'right' }}>Plies</div>
-                <div style={{ textAlign: 'right' }}>Fabric</div>
-                <div style={{ textAlign: 'right' }}>Cut</div>
-                <div style={{ textAlign: 'right' }}>Status</div>
+                <div>{tui(locale, 'ui.cutting.col_lay')}</div>
+                <div>{tui(locale, 'ui.cutting.col_order')}</div>
+                <div>{tui(locale, 'ui.cutting.col_colour')}</div>
+                <div style={{ textAlign: 'right' }}>{tui(locale, 'ui.cutting.col_plies')}</div>
+                <div style={{ textAlign: 'right' }}>{tui(locale, 'ui.cutting.col_fabric')}</div>
+                <div style={{ textAlign: 'right' }}>{tui(locale, 'ui.cutting.col_cut')}</div>
+                <div style={{ textAlign: 'right' }}>{tui(locale, 'ui.cutting.col_status')}</div>
               </div>
 
               {lays.map((lay) => (
@@ -234,7 +253,7 @@ export default async function CuttingPage() {
                         <span
                           style={{ font: "400 12px/1.3 var(--fx-font-mono)", color: 'var(--fx-text-tertiary)' }}
                         >
-                          from a device
+                          {tui(locale, 'ui.cutting.from_a_device')}
                         </span>
                       ) : null}
                     </div>
@@ -270,7 +289,7 @@ export default async function CuttingPage() {
                     >
                       {lay.fabricDrawnMeters ?? '—'}
                       <span style={{ color: 'var(--fx-text-tertiary)', fontSize: 12, marginLeft: 4 }}>
-                        m
+                        {tui(locale, 'ui.cutting.unit_meters')}
                       </span>
                     </span>
 
@@ -287,12 +306,19 @@ export default async function CuttingPage() {
                             : 'var(--fx-text-primary)',
                       }}
                     >
-                      {lay.reportedPieces === null ? 'not reported' : lay.reportedPieces}
+                      {lay.reportedPieces === null
+                        ? tui(locale, 'ui.cutting.not_reported')
+                        : lay.reportedPieces}
                     </span>
 
                     <span style={{ textAlign: 'right' }}>
-                      <Badge tone={lay.status === 'closed' ? 'success' : 'neutral'}>
-                        {lay.status}
+                      {/* The same phantom status as the count above: `closed` is not in
+                          `lay_status` (open | cut | cancelled), so this compared against a
+                          value that can never appear and every finished lay wore the
+                          neutral badge of one still on the table. `cut` is the success
+                          state — the bundles exist and the table is free. */}
+                      <Badge tone={lay.status === 'cut' ? 'success' : 'neutral'}>
+                        {layStatus(locale, lay.status)}
                       </Badge>
                     </span>
                   </div>
@@ -307,7 +333,7 @@ export default async function CuttingPage() {
                   color: 'var(--fx-text-tertiary)',
                 }}
               >
-                bundles are generated from the cut report, and carry the QR the sewing line scans
+                {tui(locale, 'ui.cutting.bundles_note')}
               </div>
             </div>
           )}
@@ -315,4 +341,22 @@ export default async function CuttingPage() {
       </div>
     </FloorScreen>
   )
+}
+
+/**
+ * The three values of `lay_status`, as words rather than as column values.
+ *
+ * `LayRow.status` is a plain string, so a fourth value added to the enum without touching
+ * this screen renders raw instead of as a missing key — wrong-looking, but readable, which
+ * on a floor tablet is the safer failure.
+ */
+const LAY_STATUS_COPY: Record<string, string> = {
+  open: 'ui.cutting.status_open',
+  cut: 'ui.cutting.status_cut',
+  cancelled: 'ui.cutting.status_cancelled',
+}
+
+function layStatus(locale: Locale, status: string): string {
+  const key = LAY_STATUS_COPY[status]
+  return key ? tui(locale, key) : status
 }
