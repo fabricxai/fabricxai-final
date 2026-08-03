@@ -31,6 +31,7 @@ import { checkFabricInspection } from './gates'
 import {
   grnLines,
   grns,
+  inspectionStatusEnum,
   issueLines,
   issues,
   items,
@@ -238,6 +239,39 @@ export async function receiveGrn(
   input: unknown,
 ): Promise<{ grnId: string; rolls: number }> {
   return withTenantTx(ctx, (tx) => receiveGrnIn(ctx, tx, input))
+}
+
+/**
+ * The ONE way a GRN's `inspection_status` changes (CLAUDE.md rule 11: `grns` has one
+ * writer, and it is this module). Quality's inspection roll-up calls this rather than
+ * updating the table itself — `grns` is ⚖, so the change must carry an audit row, and
+ * only the owner can promise that.
+ */
+export async function setGrnInspectionStatus(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  input: { grnId: string; status: (typeof inspectionStatusEnum.enumValues)[number] },
+): Promise<void> {
+  const [before] = await tx
+    .select({ inspectionStatus: grns.inspectionStatus })
+    .from(grns)
+    .where(eq(grns.id, input.grnId))
+
+  if (!before) throw notFound('store.errors.grn_not_found', { grnId: input.grnId })
+  if (before.inspectionStatus === input.status) return
+
+  await tx
+    .update(grns)
+    .set({ inspectionStatus: input.status, updatedAt: new Date() })
+    .where(eq(grns.id, input.grnId))
+
+  await recordChange(ctx, tx, {
+    action: 'update',
+    targetTable: 'grns',
+    targetId: input.grnId,
+    before: { inspectionStatus: before.inspectionStatus },
+    after: { inspectionStatus: input.status },
+  })
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

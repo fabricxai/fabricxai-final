@@ -490,6 +490,7 @@ export const MESSAGES: Catalogue = {
     'store.errors.bonded_requires_ud':
       'Bonded material must be issued against a utilization declaration. Issuing without one is a customs exposure, not a paperwork slip.',
     'store.errors.exceeds_requisition': 'That is more than the requisition asked for.',
+    'store.errors.grn_not_found': 'That goods receipt no longer exists.',
     'store.errors.item_not_found': 'That item is not in the store.',
     'store.errors.item_not_requisitioned':
       'That item is not on the requisition being issued against.',

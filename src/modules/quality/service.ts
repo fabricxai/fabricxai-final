@@ -1320,8 +1320,6 @@ export async function resolveFabricInspection(
  * delivery, and the good rolls can still be cut.
  */
 async function rollUpGrnInspection(ctx: AnyCtx, tx: TenantDb, grnId: string): Promise<void> {
-  const { grns } = await import('@/modules/store/schema')
-
   const filed = await tx
     .select({ result: fabricInspections.result })
     .from(fabricInspections)
@@ -1333,7 +1331,11 @@ async function rollUpGrnInspection(ctx: AnyCtx, tx: TenantDb, grnId: string): Pr
   const status =
     failures === 0 ? 'passed' : failures === filed.length ? 'failed' : 'failed_partial'
 
-  await tx.update(grns).set({ inspectionStatus: status }).where(eq(grns.id, grnId))
+  // Through the owner, never a raw update: `grns` is store's table and ⚖-audited, and
+  // this was the one place in the repo that wrote another module's table directly —
+  // an inspection verdict changing a customs-facing record with no audit row.
+  const { setGrnInspectionStatus } = await import('@/modules/store/service')
+  await setGrnInspectionStatus(ctx, tx, { grnId, status })
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
