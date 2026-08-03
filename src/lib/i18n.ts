@@ -667,6 +667,121 @@ export const MESSAGES: Catalogue = {
     'procurement.notifications.over_receipt.title':
       'অতিরিক্ত গ্রহণ: {orderedQty}-এর বিপরীতে {receivedQty} এসেছে ({overReceiptQty} বেশি, ছাড় {tolerancePct}%)',
 
+    // ── Refusals the FLOOR reads ────────────────────────────────────────────
+    //
+    // Only the departments whose readers are on the floor: store, cutting, production,
+    // quality, sampling, maintenance, plus the shared `errors.*` that any screen can hit.
+    // Commercial, finance, costing and the rest stay English on purpose — the office reads
+    // them, and `t()` falls back, so nothing goes blank.
+    //
+    // Same rule as the English: say what happened and what to do next. No `{placeholder}`
+    // here — `AppError.details` does not survive a server action, so a template would reach
+    // a storekeeper with the braces still in it.
+    'errors.confidence_required':
+      'AI যে ঘরগুলো পূরণ করেছে, ড্রাফটে তার প্রতিটির জন্য confidence থাকতে হবে — না থাকলে কোন ঘরটা ভালো করে দেখতে হবে তা বোঝার উপায় নেই।',
+    'errors.invalid_tenant_scope':
+      'অনুরোধটিতে কোন কোম্পানির কাজ তা বলা নেই, তাই সবার ডেটার উপর চালানোর বদলে এটি বাতিল করা হয়েছে।',
+
+    'cutting.errors.bundle_not_found': 'এই bundle-টি আর নেই।',
+    'cutting.errors.bundles_already_generated': 'এই lay-এর bundle আগেই তৈরি হয়ে গেছে।',
+    'cutting.errors.lay_not_found': 'এই lay-টি আর নেই।',
+    'cutting.errors.marker_code_exists': 'এই কোডের marker আগেই নিবন্ধিত আছে।',
+    'cutting.errors.marker_draft_insert_only':
+      'marker বদলাতে হলে নতুন marker করতে হবে: এটি ধরে যে lay গুলো বিছানো হয়েছে, সেগুলো এই ratio-তেই কাটা।',
+    'cutting.errors.marker_not_found': 'এই marker-টি আর নেই।',
+    'cutting.errors.no_breakdown':
+      'এই স্টাইলের রং ও সাইজের ব্রেকডাউন নেই, তাই বায়ার যা অর্ডার করেছে তার সাথে কাটিং মিলিয়ে দেখা যাচ্ছে না।',
+    'cutting.errors.no_cut_lays': 'এই অর্ডারে এখনও কিছু কাটা হয়নি।',
+    'cutting.errors.report_not_found': 'এই কাটিং রিপোর্টটি আর নেই।',
+    'cutting.errors.style_not_found': 'এই স্টাইলটি এই অর্ডারে নেই।',
+    'cutting.errors.uncomputable': 'হিসাব করার মতো যথেষ্ট এন্ট্রি এখনও হয়নি।',
+    'errors.commit_failed': 'পরিবর্তনটি সংরক্ষণ করা যায়নি। কিছুই লেখা হয়নি।',
+    'errors.confidence_out_of_range': 'confidence-এর মান ০ থেকে ১-এর মধ্যে হতে হবে।',
+    'errors.document_not_found': 'এই ডকুমেন্টটি আর নেই।',
+    'errors.document_not_uploaded': 'ফাইলটির আপলোড শেষ হয়নি, তাই যুক্ত করার কিছু নেই।',
+    // Deliberately as vague as the English. "Held in a security check" would name a
+    // mechanism that does not exist: nothing in the codebase ever sets `quarantined`
+    // (there is no AV scan yet — audit INFRA-M12), so the Bangla must not assert a scan
+    // the English does not claim and the system does not perform.
+    'errors.document_quarantined': 'ফাইলটি আটকে রাখা হয়েছে, এটি ব্যবহার করা যাবে না।',
+    'errors.document_size_invalid':
+      'ফাইলের সাইজ যা বলা হয়েছিল তার সাথে মিলছে না — আবার আপলোড করুন।',
+    'errors.document_too_large': 'ফাইলটি অনুমোদিত সীমার চেয়ে বড়।',
+    'errors.document_type_not_allowed':
+      'এই ধরনের ফাইল নেওয়া হয় না। PDF, ছবি, স্প্রেডশিট আর Word ডকুমেন্ট চলবে।',
+    'errors.empty_update': 'কিছু বদলানো হয়নি, তাই কিছু সংরক্ষণও হয়নি।',
+    'errors.forbidden': 'আপনার role-এ এই কাজের অনুমতি নেই।',
+    'errors.illegal_transition': 'এখনকার স্টেটাস থেকে সরাসরি ওই স্টেটাসে যাওয়া যায় না।',
+    'errors.invalid_identifier':
+      'এই ড্রাফটে এমন একটি ঘর আছে যার কলাম টার্গেট টেবিলে নেই, তাই লেখা যাচ্ছে না। এটি যে মডিউলের, কমিট সেই মডিউলকেই করতে হবে।',
+    'errors.not_an_approver': 'এই পরিবর্তনে যাদের অনুমোদন লাগে, আপনি তাদের একজন নন।',
+    'errors.payload_invalid':
+      'যা লেখা হয়েছে তার কিছু অংশ এই রেকর্ডে চলে না। কিছুই সংরক্ষণ হয়নি।',
+    'errors.pending_change_not_found': 'এই ড্রাফটটি আর নেই।',
+    'errors.pending_change_not_pending': 'এই ড্রাফটের সিদ্ধান্ত আগেই হয়ে গেছে।',
+    'errors.rate_limited':
+      'অল্প সময়ে অনেকবার চেষ্টা হয়েছে। একটু পরে আবার করুন — কিছু সংরক্ষণ হয়নি।',
+    'errors.sync_batch_too_large': 'অফলাইন ব্যাচটি এত বড় যে একবারে sync করা যাবে না।',
+    'errors.sync_failed': 'অফলাইন ব্যাচটি sync হয়নি। এর কোনো এন্ট্রিই জমা হয়নি।',
+    'errors.sync_operation_unknown':
+      'এই ধরনের এন্ট্রি সার্ভার চেনে না। ডিভাইসের অ্যাপ সম্ভবত সার্ভারের চেয়ে নতুন — যিনি সিস্টেম দেখেন তাকে জানান।',
+    'errors.sync_role_forbidden':
+      'এই এন্ট্রির জন্য যে role লাগে তা এই অ্যাকাউন্টে নেই। এন্ট্রিটি ডিভাইসেই জমা থাকবে — সুপারভাইজারকে বলে role নিয়ে আবার sync করুন।',
+    'errors.target_id_mismatch': 'এই ড্রাফট যে সারির কথা বলছে, বদলানো হচ্ছে অন্য সারি।',
+    'errors.target_not_registered': 'এই টেবিলে ড্রাফট রাখার অনুমতি ওই মডিউল দেয় না।',
+    'errors.target_row_not_found': 'এই ড্রাফট যে সারিটি বদলাতে চেয়েছিল সেটি আর নেই।',
+    'errors.unauthenticated': 'আপনি সাইন আউট হয়ে গেছেন। আবার সাইন ইন করুন — কিছু সংরক্ষণ হয়নি।',
+    'errors.unknown_module': 'এই মডিউলটি নিবন্ধিত নয়।',
+    'errors.unknown_schema': 'ড্রাফটটি এমন একটি গঠনের নাম বলছে যা এই মডিউলে নেই।',
+    'maintenance.errors.invalid': 'এই রক্ষণাবেক্ষণ রেকর্ডে এটি চলে না।',
+    'maintenance.errors.part_not_found': 'এই স্পেয়ার পার্টটি স্টোরে নেই।',
+    'maintenance.errors.ticket_not_found': 'এই টিকিটটি আর নেই।',
+    'production.errors.count_exceeds_checked':
+      'endline-এ যত পিস চেক হয়েছে, গণনা তার চেয়ে বেশি দেখানো হয়েছে।',
+    'production.errors.downtime_already_closed': 'এই ডাউনটাইমটি আগেই বন্ধ করা হয়েছে।',
+    'production.errors.downtime_already_open':
+      'এই লাইনে একটি ডাউনটাইম এখনও খোলা আছে। নতুন একটি শুরু করার আগে সেটি বন্ধ করুন।',
+    'production.errors.downtime_ends_before_start': 'ডাউনটাইম শুরুর আগে শেষ হতে পারে না।',
+    'production.errors.downtime_not_found': 'এই ডাউনটাইম এন্ট্রিটি আর নেই।',
+    'quality.errors.final_inspection_not_found': 'এই ফাইনাল ইন্সপেকশনটি আর নেই।',
+    'quality.errors.line_not_found': 'এই লাইনটি আর নেই।',
+    'quality.errors.no_aql_rows':
+      'এই সাইজের lot-এর জন্য কোনো AQL টেবিল নেই, তাই কত পিস নমুনা নিতে হবে বের করা যাচ্ছে না।',
+    'quality.errors.no_inline_checks': 'inline-এ এখনও কোনো চেক হয়নি, তাই DHU বের করার কিছু নেই।',
+    'quality.errors.spec_not_found': 'এই স্টাইলের কোনো মেজারমেন্ট চার্ট জমা নেই।',
+    'quality.errors.third_party_already_resulted':
+      'এই ইন্সপেকশনের ফল আগেই দেওয়া হয়েছে। দ্বিতীয়বার মানে নতুন করে ইন্সপেকশন, আগেরটা বদলানো নয়।',
+    'quality.errors.third_party_not_found': 'এই থার্ড-পার্টি ইন্সপেকশনটি আর নেই।',
+    'quality.errors.uncomputable': 'হিসাব করার মতো যথেষ্ট এন্ট্রি এখনও হয়নি।',
+    'quality.errors.unknown_defect_codes': 'এর মধ্যে কিছু ডিফেক্ট কোড ফ্যাক্টরির তালিকায় নেই।',
+    'sampling.errors.feedback_draft_insert_only':
+      'বায়ার যা বলেছে সেটাই এখানে লেখা থাকে। বদলালে PP gate যে কথার উপর ভরসা করে কাটিং ছেড়েছে সেটাই পাল্টে যায়।',
+    'sampling.errors.invalid': 'স্যাম্পল রেকর্ডে এটি চলে না।',
+    'sampling.errors.mixed_cost_currencies':
+      'এই স্যাম্পলের খরচগুলো আলাদা আলাদা মুদ্রায় আছে, রেট না দিলে যোগ করা যাবে না।',
+    'sampling.errors.order_not_found': 'এই অর্ডারটি আর নেই।',
+    'sampling.errors.request_closed': 'এই স্যাম্পল রিকোয়েস্টটি বন্ধ করা হয়েছে।',
+    'sampling.errors.request_draft_insert_only':
+      'স্যাম্পল রিকোয়েস্ট নতুন করে তোলা হয়, approve inbox থেকে বদলানো হয় না।',
+    'sampling.errors.request_not_found': 'এই স্যাম্পল রিকোয়েস্টটি আর নেই।',
+    'sampling.errors.stage_not_forward':
+      'স্যাম্পলের ধাপ শুধু সামনে এগোয়। প্যাটার্নে ফিরে যাওয়া মানে আবার নতুন করে বানানো, সেটা নতুন রিকোয়েস্ট।',
+    'store.errors.adjustment_below_zero': 'এই সমন্বয়ে স্টক শূন্যের নিচে চলে যাবে।',
+    'store.errors.bom_item_unknown': 'এই আইটেমটি স্টাইলের BOM-এ নেই।',
+    'store.errors.bonded_requires_ud':
+      'বন্ডেড মাল UD ছাড়া ইস্যু করা যাবে না। UD ছাড়া ইস্যু করলে সেটা কাগজের ছোট ভুল নয়, কাস্টমসের ঝুঁকি।',
+    'store.errors.exceeds_requisition': 'রিকুইজিশনে যা চাওয়া হয়েছে তার চেয়ে এটি বেশি।',
+    'store.errors.grn_not_found': 'এই GRN-টি আর নেই।',
+    'store.errors.item_not_found': 'এই আইটেমটি স্টোরে নেই।',
+    'store.errors.item_not_requisitioned':
+      'যে রিকুইজিশনের বিপরীতে ইস্যু হচ্ছে, তাতে এই আইটেমটি নেই।',
+    'store.errors.requisition_has_no_lines': 'এই রিকুইজিশনে কোনো লাইন নেই।',
+    'store.errors.roll_item_mismatch': 'এই roll যে আইটেমের, ইস্যু হচ্ছে অন্য আইটেম।',
+    'store.errors.roll_not_found': 'এই roll-টি আর নেই।',
+    'store.errors.roll_not_in_stock': 'এই roll স্টকে নেই।',
+    'store.errors.unit_mismatch':
+      'এই আইটেমটি যে ইউনিটে রাখা আছে, দেওয়া ইউনিট তার সাথে মিলছে না।',
+
     // ── 9.1 Maintenance · what a refused action says ──
     'maintenance.errors.serial_exists':
       'এই সিরিয়ালের মেশিন আগেই নিবন্ধিত আছে। দুটি সারি হলে সার্ভিস ইতিহাস ভাগ হয়ে যায় — যোগ করার আগে রেজিস্ট্রি দেখে নিন।',
