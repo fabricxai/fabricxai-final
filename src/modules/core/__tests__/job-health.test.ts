@@ -72,6 +72,7 @@ describe('maxSilenceMinutes · how long is too long', () => {
 
 describe('staleTasks · what has stopped firing', () => {
   const now = new Date('2026-03-10T09:00:00Z')
+  /** Old enough that a task with no run at all is a real gap, not a fresh start. */
   const companyCreatedAt = new Date('2025-01-01T00:00:00Z')
 
   const expectation = (task: string, pattern: string): TaskExpectation => ({
@@ -84,7 +85,7 @@ describe('staleTasks · what has stopped firing', () => {
       expectations: [expectation('marbim.run_extractions', '*/5 * * * *')],
       lastSuccessAt: { 'marbim.run_extractions': new Date('2026-03-10T08:57:00Z') },
       now,
-      companyCreatedAt,
+      watchingSince: companyCreatedAt,
       policy: POLICY,
     })
     expect(stale).toEqual([])
@@ -95,7 +96,7 @@ describe('staleTasks · what has stopped firing', () => {
       expectations: [expectation('marbim.run_extractions', '*/5 * * * *')],
       lastSuccessAt: { 'marbim.run_extractions': new Date('2026-03-10T08:40:00Z') },
       now,
-      companyCreatedAt,
+      watchingSince: companyCreatedAt,
       policy: POLICY,
     })
 
@@ -113,7 +114,7 @@ describe('staleTasks · what has stopped firing', () => {
       expectations: [expectation('orders.tna_scan', '30 1 * * *')],
       lastSuccessAt: { 'orders.tna_scan': new Date('2026-03-09T01:30:00Z') },
       now,
-      companyCreatedAt,
+      watchingSince: companyCreatedAt,
       policy: POLICY,
     })
     expect(stale).toEqual([])
@@ -124,7 +125,7 @@ describe('staleTasks · what has stopped firing', () => {
       expectations: [expectation('orders.tna_scan', '30 1 * * *')],
       lastSuccessAt: { 'orders.tna_scan': new Date('2026-03-07T01:30:00Z') },
       now,
-      companyCreatedAt,
+      watchingSince: companyCreatedAt,
       policy: POLICY,
     })
     expect(stale).toHaveLength(1)
@@ -138,7 +139,7 @@ describe('staleTasks · what has stopped firing', () => {
       expectations: [expectation('orders.tna_scan', '30 1 * * *')],
       lastSuccessAt: {},
       now,
-      companyCreatedAt,
+      watchingSince: companyCreatedAt,
       policy: POLICY,
     })
 
@@ -153,7 +154,7 @@ describe('staleTasks · what has stopped firing', () => {
       lastSuccessAt: {},
       now,
       // Created two hours ago. The nightly scan has not had a night yet.
-      companyCreatedAt: new Date('2026-03-10T07:00:00Z'),
+      watchingSince: new Date('2026-03-10T07:00:00Z'),
       policy: POLICY,
     })
     expect(stale).toEqual([])
@@ -172,7 +173,7 @@ describe('staleTasks · what has stopped firing', () => {
         'orders.tna_scan': new Date('2026-03-07T01:30:00Z'),
       },
       now,
-      companyCreatedAt,
+      watchingSince: companyCreatedAt,
       policy: POLICY,
     })
 
@@ -184,13 +185,54 @@ describe('staleTasks · what has stopped firing', () => {
     ])
   })
 
+  it('16 · a worker that has only just started is not an outage', () => {
+    // The shape that made /api/health return 503 on every fresh deployment: the frequent
+    // tasks have fired, the nightly ones have not had a night yet, and measuring those from
+    // the epoch reported a perfectly healthy worker as dead — for a day on every daily task
+    // and a month on every monthly one.
+    const startedAt = new Date('2026-03-10T08:57:00Z') // three minutes ago
+
+    const stale = staleTasks({
+      expectations: [
+        expectation('marbim.run_extractions', '*/5 * * * *'),
+        expectation('orders.tna_scan', '30 1 * * *'),
+        expectation('maintenance.downtime_costs', '0 4 1 * *'),
+      ],
+      lastSuccessAt: { 'marbim.run_extractions': new Date('2026-03-10T08:58:00Z') },
+      now,
+      watchingSince: startedAt,
+      policy: POLICY,
+    })
+
+    expect(stale).toEqual([])
+  })
+
+  it('17 · but the same never-run task IS reported once it has had its chance', () => {
+    // The other half of 16: the grace period must expire, or the check would never fire.
+    // Watching for ten days, and the nightly scan has still never run.
+    const stale = staleTasks({
+      expectations: [
+        expectation('orders.tna_scan', '30 1 * * *'),
+        // Monthly, and ten days is well inside its budget — still not a fault.
+        expectation('maintenance.downtime_costs', '0 4 1 * *'),
+      ],
+      lastSuccessAt: {},
+      now,
+      watchingSince: new Date('2026-02-28T09:00:00Z'),
+      policy: POLICY,
+    })
+
+    expect(stale.map((entry) => entry.task)).toEqual(['orders.tna_scan'])
+    expect(stale[0]!.neverRun).toBe(true)
+  })
+
   it('15 · REFUSES an expectation whose pattern it cannot classify', () => {
     expect(() =>
       staleTasks({
         expectations: [expectation('weird.task', '0 0 * * 1')],
         lastSuccessAt: {},
         now,
-        companyCreatedAt,
+        watchingSince: companyCreatedAt,
         policy: POLICY,
       }),
     ).toThrow(JobHealthError)

@@ -39,6 +39,14 @@ export const GATES = {
    * discount — but never silently.
    */
   finalInspection: 'final_inspection',
+  /**
+   * 4-point fabric inspection passed before a roll may be issued to production — 7.1 → 3.1.
+   *
+   * Woven only, and mandatory there. Fabric faults found on the cutting table have already
+   * cost the marker, the lay and the labour; found at the inspection frame they cost a
+   * claim against the mill. The gate is where the money is, not where the defect is.
+   */
+  fabricInspection: 'fabric_inspection',
 } as const
 
 export type GateId = (typeof GATES)[keyof typeof GATES]

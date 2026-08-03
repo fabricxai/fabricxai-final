@@ -14,7 +14,7 @@
  */
 import { randomUUID } from 'node:crypto'
 
-import { eq, sql } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { createDirectClient, createDirectDb } from '@/db/direct'
@@ -74,25 +74,20 @@ describe('provisionCompany', () => {
   })
 
   it('does not clobber a template the factory has customised', async () => {
+    // Scoped to THIS company on both sides. `db` here is the direct client, which
+    // has no RLS session var, so an unscoped write would rename every other
+    // tenant's knit template and an unscoped count would tally the whole
+    // database — the assertion would then depend on which suites ran first.
+    const ours = and(eq(tnaTemplates.companyId, COMPANY), eq(tnaTemplates.productType, 'knit'))
+
     // A factory that retuned its lead times must not have them overwritten by a re-run.
-    await db
-      .update(tnaTemplates)
-      .set({ name: 'Knit — OUR tuned 75 day' })
-      .where(eq(tnaTemplates.productType, 'knit'))
+    await db.update(tnaTemplates).set({ name: 'Knit — OUR tuned 75 day' }).where(ours)
 
     await provisionCompany(ctx)
 
-    const [knit] = await db
-      .select()
-      .from(tnaTemplates)
-      .where(eq(tnaTemplates.productType, 'knit'))
-    expect(knit!.name).toBe('Knit — OUR tuned 75 day')
-
+    const all = await db.select().from(tnaTemplates).where(ours)
+    expect(all[0]!.name).toBe('Knit — OUR tuned 75 day')
     // And there is still exactly one.
-    const all = await db
-      .select()
-      .from(tnaTemplates)
-      .where(eq(tnaTemplates.productType, 'knit'))
     expect(all).toHaveLength(1)
   })
 })

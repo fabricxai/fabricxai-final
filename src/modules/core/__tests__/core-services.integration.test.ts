@@ -276,7 +276,24 @@ describe('outbox relay · at-least-once delivery', () => {
     const [before] = await db.select().from(outbox).where(eq(outbox.id, eventId))
     expect(before?.publishedAt).toBeNull()
 
-    const { relayed } = await relayOnce()
+    /*
+     * Relay until THIS event is published, rather than once.
+     *
+     * `relayOnce` takes a batch of 100 oldest-first, so a single pass only reaches an event
+     * emitted just now when the unpublished backlog is smaller than a batch. That made this
+     * test pass on a clean database and fail on a real one — it failed after a session of
+     * seeding and screen work left 84 events behind, and would fail in CI the moment the
+     * seed grows. The assertion is about at-least-once delivery, not about batch size.
+     */
+    let relayed = 0
+    for (let pass = 0; pass < 50; pass += 1) {
+      const result = await relayOnce()
+      relayed += result.relayed
+      const [row] = await db.select().from(outbox).where(eq(outbox.id, eventId))
+      if (row?.publishedAt) break
+      // Nothing left to relay and still unpublished is a real failure, not a short batch.
+      if (result.relayed === 0) break
+    }
     expect(relayed).toBeGreaterThan(0)
 
     const [after] = await db.select().from(outbox).where(eq(outbox.id, eventId))

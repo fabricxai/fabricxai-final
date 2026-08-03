@@ -392,6 +392,32 @@ describe('the check that survives the worker being dead', () => {
     expect(tasks).toContain('production.day_close')
   })
 
+  it('app.scheduler_observed_since() dates the run history, with no company context', async () => {
+    // The baseline /api/health ages a never-run task from. Without it the endpoint treated
+    // "has not run YET" as "has stopped running", and reported every fresh deployment as an
+    // outage until its slowest schedule had fired once.
+    await recordRun(ctx, { task: 'orders.tna_scan' }, async () => ({ ok: true }))
+    await recordRun(otherCtx, { task: 'production.day_close' }, async () => ({ ok: true }))
+
+    const { db: pooled } = await import('@/db/client')
+    const result = await pooled.execute<{ observed_since: string | null }>(
+      sql`select app.scheduler_observed_since() as observed_since`,
+    )
+    const rows = Array.isArray(result) ? result : ((result as { rows?: unknown[] }).rows ?? [])
+    const observedSince = (rows as { observed_since: string | null }[])[0]?.observed_since
+
+    expect(observedSince).toBeTruthy()
+
+    // Across companies, like its sibling: the question is when this DEPLOYMENT started
+    // recording anything, not when one tenant did.
+    const earliest = await db
+      .select({ startedAt: jobRuns.startedAt })
+      .from(jobRuns)
+      .orderBy(jobRuns.startedAt)
+      .limit(1)
+    expect(new Date(observedSince!).getTime()).toBe(earliest[0]!.startedAt.getTime())
+  })
+
   it('returns only task names and timestamps — no company data', async () => {
     await recordRun(ctx, { task: 'orders.tna_scan' }, async () => ({ secret: 'tenant data' }))
 

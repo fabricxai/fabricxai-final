@@ -58,7 +58,9 @@ export async function runJobHealthCheck(
     expectations: input.expectations,
     lastSuccessAt: await lastSuccessByTask(ctx),
     now,
-    companyCreatedAt: input.companyCreatedAt,
+    // For a single tenant, "since when could we have seen this run" is the day the factory
+    // was created — before that there was nothing here to run anything for.
+    watchingSince: input.companyCreatedAt,
     policy,
   })
 

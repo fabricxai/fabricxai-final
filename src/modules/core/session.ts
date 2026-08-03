@@ -9,6 +9,24 @@
  * database on each request. Neither is ever taken from the client: a request that could
  * name its own company or its own role is not multi-tenant, it is multi-tenant-shaped.
  */
+/**
+ * Registration, in the graph that actually serves requests.
+ *
+ * `instrumentation.ts` already imports the registry, and that is NOT enough: Next bundles
+ * the instrumentation hook separately from app-router code, so the module singletons it
+ * populates are a different set of objects from the ones a server action reads. The result
+ * was every registry-dependent path failing at runtime while booting cleanly — approve
+ * returning `errors.unknown_module` for a target that IS registered, and MARBIM refusing
+ * with "no provider is registered" while `MARBIM_MOCK=true`. Exactly the three failures
+ * `modules/registry.ts` was written to prevent, from the one direction it did not cover.
+ * `app/api/sync/route.ts` had already hit this and imported the registry itself.
+ *
+ * Here rather than in each `actions.ts`: every server entry point in the app authenticates
+ * through this file, so registration cannot be forgotten by a module added later. The
+ * registry graph does not import this file, so there is no cycle.
+ */
+import '@/modules/registry'
+
 import { and, eq, isNull } from 'drizzle-orm'
 
 import { roles as rolesTable } from '@/db/schema/core'
@@ -92,4 +110,40 @@ export async function requireRole(
  */
 export function systemCtx(companyId: string, jobId?: string): SystemCtx {
   return { companyId, userId: null, roles: ['owner'], system: true, jobId }
+}
+
+/**
+ * Who is signed in, for the shell to say so out loud.
+ *
+ * Deliberately NOT on `RequestCtx`. A service has no business with a display name — it
+ * needs a company, a user id and roles, and adding a name would mean every BullMQ job had
+ * to invent one. This is a separate read for the one caller that renders a person.
+ *
+ * The shell had no way to answer "who am I". Its avatar showed `userId.slice(0, 2)`, so
+ * every seeded account rendered the same two letters and identified nobody — on a shared
+ * store or cutting terminal, which is how a floor actually works, you could not tell whose
+ * session you were about to approve something in.
+ */
+export interface SignedInUser {
+  userId: string
+  name: string | null
+  email: string
+  roles: readonly Role[]
+}
+
+export async function signedInUser(headers: Headers): Promise<SignedInUser | null> {
+  const result = await auth.api.getSession({ headers })
+  if (!result?.session || !result.user) return null
+
+  const ctx = await getCtx(headers)
+  if (!ctx) return null
+
+  return {
+    userId: result.user.id,
+    // Better Auth allows a nameless account. The shell falls back to the email rather than
+    // inventing initials from an id, which is what produced "SE" for everybody.
+    name: result.user.name?.trim() || null,
+    email: result.user.email,
+    roles: ctx.roles,
+  }
 }

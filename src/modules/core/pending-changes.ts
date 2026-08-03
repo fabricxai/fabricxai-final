@@ -27,7 +27,7 @@ import type { AnyCtx, RequestCtx, Role } from './ctx'
 import { AppError, conflict, notFound } from './errors'
 import { emit } from './outbox'
 import { getCommitHandler, getModule, resolvePendingSchema } from './registry'
-import { type TenantDb, withTenantTx } from './tenancy'
+import { type TenantDb, withTenantRead, withTenantTx } from './tenancy'
 
 type Operation = 'insert' | 'update' | 'delete'
 type Source = 'ai_extraction' | 'ai_chat' | 'user_draft' | 'import' | 'integration'
@@ -508,6 +508,42 @@ function assertIdentifier(name: string): string {
 function rowsOf(result: unknown): Record<string, unknown>[] {
   const rows = Array.isArray(result) ? result : ((result as { rows?: unknown[] }).rows ?? [])
   return rows as Record<string, unknown>[]
+}
+
+/**
+ * The row a draft would change, as the reviewer needs to see it.
+ *
+ * The approve inbox showed only the incoming value, so an UPDATE was approved without its
+ * before — a breakdown revision read as "cells: Navy/L 2000" with no sign of the grid it
+ * overwrites, which is exactly where the decision lives.
+ *
+ * Deliberately the SAME read `approve` uses to capture `before` for the audit log, so the
+ * diff a person signs is the diff the trail will record. A second, cleverer reader would
+ * eventually disagree with the first, and the one people trust is whichever they saw.
+ *
+ * Keys come back camelCased. Postgres returns `paid_amount` and payloads say `paidAmount`;
+ * matching them raw would leave every field with no before and render an update as though
+ * it were all new — a confident, wrong diff, which is worse than none.
+ */
+export async function currentRow(
+  ctx: AnyCtx,
+  targetTable: string,
+  targetId: string | null,
+): Promise<Record<string, unknown> | null> {
+  // An insert has nothing before it. Not an error — most drafts are inserts.
+  if (!targetId) return null
+
+  return withTenantRead(ctx, async (tx) => {
+    const row = await readRow(tx, targetTable, targetId)
+    if (!row) return null
+
+    return Object.fromEntries(
+      Object.entries(row).map(([column, value]) => [
+        column.replace(/_([a-z0-9])/g, (_, c: string) => c.toUpperCase()),
+        value,
+      ]),
+    )
+  })
 }
 
 async function readRow(

@@ -119,8 +119,8 @@ export const auth = betterAuth({
          * the owner role are created here rather than in a separate onboarding step that
          * could be abandoned half-way.
          */
-        after: async (user) => {
-          const companyName = deriveCompanyName(user)
+        after: async (user, context) => {
+          const companyName = deriveCompanyName(user, context?.body)
 
           // Creating the first row of a tenant looks like it must bypass RLS — the row
           // cannot satisfy `id = app.current_company_id()` before it exists. It does not:
@@ -206,8 +206,19 @@ export type Auth = typeof auth
 /**
  * Signup collects a factory name; fall back to the person's name so the account is never
  * created without a company. Renaming later is a Settings (X.3) concern.
+ *
+ * `companyName` is read off the request body rather than the user row on purpose: it
+ * belongs to the company, not the person, so persisting it on `users` would leave two
+ * places claiming to hold the factory's name and no rule about which one wins.
  */
-function deriveCompanyName(user: { name?: string | null; email: string }): string {
+function deriveCompanyName(
+  user: { name?: string | null; email: string },
+  body?: unknown,
+): string {
+  const raw = (body as { companyName?: unknown } | undefined)?.companyName
+  const submitted = typeof raw === 'string' ? raw.trim() : ''
+  if (submitted) return submitted
+
   const name = user.name?.trim()
   if (name) return name
   return user.email.split('@')[0] ?? 'New factory'

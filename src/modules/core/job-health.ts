@@ -112,13 +112,18 @@ export interface StaleTask {
 }
 
 /**
- * Which scheduled tasks have gone quiet for this company.
+ * Which scheduled tasks have gone quiet.
  *
- * A task that has NEVER succeeded is measured from the company's creation rather than
- * treated as infinitely stale. That handles both ends honestly: a factory created two hours
- * ago does not alarm because its nightly scan has not had a night yet, and a task that was
+ * A task that has NEVER succeeded is measured from `watchingSince` rather than treated as
+ * infinitely stale. That handles both ends honestly: a watcher that started two hours ago
+ * does not alarm because the nightly scan has not had a night yet, and a task that was
  * added to the schedule months ago and never wired up does — which is the case that would
  * otherwise be indistinguishable from a task running perfectly.
+ *
+ * Both callers answer "since when could we have seen this run?" with the oldest thing they
+ * honestly know: the per-company job passes the company's creation, and `/api/health`
+ * passes the start of the deployment's run history. Nothing can have been provably quiet
+ * for longer than somebody was listening.
  *
  * Ranked by how far each is PAST its own budget rather than by elapsed minutes. Otherwise
  * every daily task outranks every five-minute one purely for being daily, and the extraction
@@ -128,7 +133,8 @@ export function staleTasks(input: {
   expectations: readonly TaskExpectation[]
   lastSuccessAt: Readonly<Record<string, Date | undefined>>
   now: Date
-  companyCreatedAt: Date
+  /** The baseline a task with no run at all is aged from. */
+  watchingSince: Date
   policy: SilencePolicy
 }): StaleTask[] {
   const stale: StaleTask[] = []
@@ -139,7 +145,7 @@ export function staleTasks(input: {
     const budget = maxSilenceMinutes(interval, input.policy)
 
     const lastSuccess = input.lastSuccessAt[expectation.task] ?? null
-    const since = lastSuccess ?? input.companyCreatedAt
+    const since = lastSuccess ?? input.watchingSince
     const silentMinutes = Math.floor((input.now.getTime() - since.getTime()) / 60_000)
 
     if (silentMinutes <= budget) continue
