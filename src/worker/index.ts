@@ -16,6 +16,12 @@ import { Worker } from 'bullmq'
 
 import { env } from '@/lib/env'
 import { closeRedis, createQueueConnection, getRedis } from '@/lib/redis'
+// Module registration is a side effect of importing the registry, and it only happens in
+// processes that import it. The app gets it via instrumentation.ts; without this line the
+// worker got NOTHING — no pending-change schemas, no MARBIM provider, no primers — so
+// extraction skipped forever and, worse, would have terminally rejected every queued job
+// the moment a provider appeared without this import appearing with it.
+import { registeredSummary } from '@/modules/registry'
 
 import { routeDeriveJob } from './derive-router'
 import { runNotifyJob, type NotifyJobData } from './processors/notifier'
@@ -35,6 +41,14 @@ async function main() {
   // Fail loudly at boot if Redis is unreachable, rather than silently processing nothing.
   await getRedis().ping()
   console.log('[worker] redis ok')
+
+  // Same principle for the module registry: a worker with zero registered modules would
+  // run every schedule and understand none of the work.
+  const registered = registeredSummary()
+  if (registered.modules === 0) {
+    throw new Error('[worker] module registry is empty — registration import is broken')
+  }
+  console.log(`[worker] ${registered.modules} modules registered`)
 
   // The outbox relay is the only bridge from committed transactions to the queues, so it
   // starts first — module job families attach to queues it feeds.

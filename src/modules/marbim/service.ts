@@ -403,8 +403,17 @@ export async function runExtraction(
     // Retryable only while attempts remain. A provider timeout deserves another go; a
     // document this extractor cannot read does not, and neither does an attempt count that
     // has run out.
+    //
+    // One AppError IS retryable: `unknown_module`. That is the worker booting without the
+    // module registry imported — a deployment fault, not a fault in the document. Treating
+    // it as terminal would permanently reject every queued extraction on the first pass
+    // after such a misconfiguration.
+    const configFault =
+      error instanceof AppError && error.messageKey.endsWith('unknown_module')
     const retryable =
-      error instanceof ProviderError ? error.retryable : !(error instanceof AppError)
+      error instanceof ProviderError
+        ? error.retryable
+        : configFault || !(error instanceof AppError)
     const exhausted = job.attempts + 1 >= policy.maxAttempts
     const status = retryable && !exhausted ? ('failed' as const) : ('rejected' as const)
 
