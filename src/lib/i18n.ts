@@ -306,6 +306,8 @@ export const MESSAGES: Catalogue = {
       'Some of what was entered does not fit what this record accepts. Nothing was saved.',
     'errors.pending_change_not_found': 'That draft no longer exists.',
     'errors.pending_change_not_pending': 'That draft has already been decided.',
+    'errors.rate_limited':
+      'Too many attempts in a short time. Wait a moment and try again — nothing was saved.',
     'errors.sync_batch_too_large': 'That offline batch is too large to sync in one go.',
     'errors.sync_failed': 'The offline batch did not sync. Nothing in it was applied.',
     'errors.sync_operation_unknown':

@@ -3,6 +3,7 @@ import { z } from 'zod'
 
 import { isAppError } from '@/modules/core/errors'
 import { MAX_BATCH_ROWS, syncBatch } from '@/modules/core/offline-sync'
+import { consume, LIMITS, tooManyRequests } from '@/lib/rate-limit'
 import { getCtx } from '@/modules/core/session'
 
 // Registered HERE, not only in instrumentation. The registry is a module-level
@@ -45,6 +46,12 @@ export async function POST(request: Request) {
   if (!ctx) {
     return NextResponse.json({ error: { code: 'unauthenticated' } }, { status: 401 })
   }
+
+  // Per user, not per company: one tablet looping must not lock the rest of the floor
+  // out of recording production. Checked before the body is parsed, so a flood costs
+  // one Redis INCR rather than a 200-row JSON parse.
+  const limit = await consume(`rl:sync:${ctx.userId}`, LIMITS.sync)
+  if (!limit.ok) return tooManyRequests(limit)
 
   let body: unknown
   try {

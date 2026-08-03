@@ -23,10 +23,16 @@ import { MESSAGES } from '@/lib/i18n'
 
 /**
  * `new AppError('conflict', 'x.y')`, `notFound('x.y')`, `conflict('x.y')`, `forbidden('x.y')` —
- * plus `errorKey: 'x.y'`: the offline sync path REJECTS rows with an errorKey field instead
- * of throwing, and those keys end up on a floor tablet the same as any thrown one.
+ * plus two shapes that reach a user without throwing at all:
+ *
+ *  - `errorKey: 'x.y'` — the offline sync path REJECTS rows with this field rather than
+ *    throwing, and those keys land on a floor tablet the same as any thrown one.
+ *  - `messageKey: 'x.y'` — a route handler that answers with a typed error Response
+ *    instead of throwing, which is what the rate limiter does: a 429 is an HTTP-layer
+ *    decision made before any service is called, so there is nothing to throw from.
  */
-const THROWN = /(?:new AppError\(\s*'[a-z_]+',\s*|notFound\(\s*|conflict\(\s*|forbidden\(\s*|errorKey:\s*)'([a-z0-9_]+(?:\.[a-z0-9_]+)+)'/g
+const THROWN =
+  /(?:new AppError\(\s*'[a-z_]+',\s*|notFound\(\s*|conflict\(\s*|forbidden\(\s*|errorKey:\s*)'([a-z0-9_]+(?:\.[a-z0-9_]+)+)'|messageKey:\s*'((?:[a-z0-9_]+\.)?errors\.[a-z0-9_]+)'/g
 
 function sourceFiles(dir: string, out: string[] = []): string[] {
   for (const entry of readdirSync(dir)) {
@@ -47,7 +53,11 @@ function thrownKeys(): Map<string, string> {
   for (const path of sourceFiles('src')) {
     const source = readFileSync(path, 'utf8')
     for (const match of source.matchAll(THROWN)) {
-      const key = match[1]!
+      // Group 1 is every throwing shape; group 2 is the `messageKey:` alternative, which
+      // is scoped to the `errors.` namespace on purpose — `costing.flags.*` and
+      // `planning.violations.*` also travel as a messageKey, and they are domain flags
+      // with their own rendering rather than refusals this catalogue answers for.
+      const key = (match[1] ?? match[2])!
       if (!byKey.has(key)) byKey.set(key, path)
     }
   }

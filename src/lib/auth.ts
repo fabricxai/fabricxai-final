@@ -30,6 +30,8 @@ import { membershipsForUser, withTenantTx } from '@/modules/core/tenancy'
 import { env } from './env'
 import { sendVerificationEmail } from './mailer'
 import { provisionCompany } from './provisioning'
+import { LIMITS } from './rate-limit'
+import { getRedis } from './redis'
 
 export const auth = betterAuth({
   appName: 'FabricXAI',
@@ -55,6 +57,65 @@ export const auth = betterAuth({
     database: {
       // companies.id / roles.id are uuid columns; do not let the library pick a format.
       generateId: () => randomUUID(),
+    },
+    // Pinned rather than inferred. Better Auth decides secure-cookie behaviour from the
+    // baseURL's scheme, so an operator who sets APP_URL=http:// behind a TLS-terminating
+    // proxy would silently get non-secure session cookies on a real deployment — the kind
+    // of misconfiguration that looks like nothing until somebody is on the factory wifi
+    // with a packet capture (audit INFRA-L3).
+    useSecureCookies: env.NODE_ENV === 'production',
+  },
+
+  /**
+   * Brute-force and abuse limits (audit INFRA-H7).
+   *
+   * Nothing throttled password guessing, and nothing throttled sign-up — where each
+   * attempt runs `provisionCompany`, the most expensive unauthenticated write in the
+   * product. Better Auth's defaults are in-memory, which for this deployment means not
+   * shared between the app and worker processes and reset on every deploy.
+   *
+   * `secondaryStorage` below puts the counters in Redis, so the limit is one limit across
+   * processes and survives a restart. The per-path numbers live in `lib/rate-limit.ts`
+   * beside the ones for /api/sync and /api/documents, so all of them can be read together.
+   */
+  rateLimit: {
+    enabled: true,
+    storage: 'secondary-storage',
+    window: 60,
+    max: 60,
+    customRules: {
+      '/sign-in/email': { window: LIMITS.signIn.windowSeconds, max: LIMITS.signIn.limit },
+      '/sign-up/email': { window: LIMITS.signUp.windowSeconds, max: LIMITS.signUp.limit },
+      '/forget-password': {
+        window: LIMITS.authRecovery.windowSeconds,
+        max: LIMITS.authRecovery.limit,
+      },
+      '/reset-password': {
+        window: LIMITS.authRecovery.windowSeconds,
+        max: LIMITS.authRecovery.limit,
+      },
+      '/send-verification-email': {
+        window: LIMITS.authRecovery.windowSeconds,
+        max: LIMITS.authRecovery.limit,
+      },
+    },
+  },
+
+  /**
+   * Redis for rate-limit counters and session cache.
+   *
+   * Deliberately NOT a session store: sessions stay in Postgres, where they are joined to
+   * roles and survive a Redis flush. This is a cache and a counter, so losing it costs a
+   * round trip and resets a window — never a signed-in user's session.
+   */
+  secondaryStorage: {
+    get: async (key) => (await getRedis().get(`ba:${key}`)) ?? null,
+    set: async (key, value, ttl) => {
+      if (ttl) await getRedis().set(`ba:${key}`, value, 'EX', ttl)
+      else await getRedis().set(`ba:${key}`, value)
+    },
+    delete: async (key) => {
+      await getRedis().del(`ba:${key}`)
     },
   },
 

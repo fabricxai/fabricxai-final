@@ -7,6 +7,7 @@ import {
   DOCUMENT_LIMITS,
 } from '@/modules/core/documents'
 import { isAppError } from '@/modules/core/errors'
+import { consume, LIMITS, tooManyRequests } from '@/lib/rate-limit'
 import { getCtx } from '@/modules/core/session'
 
 /**
@@ -57,6 +58,11 @@ export async function POST(request: Request) {
   if (!ctx) {
     return NextResponse.json({ error: { code: 'unauthenticated' } }, { status: 401 })
   }
+
+  // Presign issuance. A compromised tablet session could otherwise mint unlimited 25MB
+  // upload grants against the factory's object storage.
+  const limit = await consume(`rl:documents:${ctx.userId}`, LIMITS.documents)
+  if (!limit.ok) return tooManyRequests(limit)
 
   let body: unknown
   try {
