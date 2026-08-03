@@ -15,7 +15,7 @@ import 'dotenv/config'
 import { Worker } from 'bullmq'
 
 import { env } from '@/lib/env'
-import { createQueueConnection, getRedis } from '@/lib/redis'
+import { closeRedis, createQueueConnection, getRedis } from '@/lib/redis'
 
 import { routeDeriveJob } from './derive-router'
 import { runNotifyJob, type NotifyJobData } from './processors/notifier'
@@ -98,7 +98,9 @@ async function main() {
     // connection mid-flight and the job would look failed rather than interrupted.
     await Promise.all(workers.map((worker) => worker.close()))
     await closeQueues()
-    getRedis().disconnect()
+    // closeRedis, not getRedis().disconnect(): the latter constructed a NEW
+    // client and disconnected that, leaving the boot-ping connection open.
+    await closeRedis()
     process.exit(0)
   }
 
