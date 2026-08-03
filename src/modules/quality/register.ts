@@ -100,7 +100,7 @@ sheet. Put the source page on every point. You may not draft an inspection verdi
 // Offline operations (rule 7) — inline capture happens on the floor
 // ─────────────────────────────────────────────────────────────────────────────
 
-registerSyncHandler('quality', 'inline_check', async (ctx, tx, row) => {
+registerSyncHandler('quality', 'inline_check', { roles: ['quality'] }, async (ctx, tx, row) => {
   const payload = inlineCheckPayload.parse({ ...row.payload, offlineKey: row.offlineKey })
   const result = await offlineCaptureInlineCheck(ctx, tx, payload)
   return { rowId: result.inlineCheckId }

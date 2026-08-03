@@ -21,8 +21,12 @@ import { describe, expect, it } from 'vitest'
 
 import { MESSAGES } from '@/lib/i18n'
 
-/** `new AppError('conflict', 'x.y')`, `notFound('x.y')`, `conflict('x.y')`, `forbidden('x.y')`. */
-const THROWN = /(?:new AppError\(\s*'[a-z_]+',\s*|notFound\(\s*|conflict\(\s*|forbidden\(\s*)'([a-z0-9_]+(?:\.[a-z0-9_]+)+)'/g
+/**
+ * `new AppError('conflict', 'x.y')`, `notFound('x.y')`, `conflict('x.y')`, `forbidden('x.y')` —
+ * plus `errorKey: 'x.y'`: the offline sync path REJECTS rows with an errorKey field instead
+ * of throwing, and those keys end up on a floor tablet the same as any thrown one.
+ */
+const THROWN = /(?:new AppError\(\s*'[a-z_]+',\s*|notFound\(\s*|conflict\(\s*|forbidden\(\s*|errorKey:\s*)'([a-z0-9_]+(?:\.[a-z0-9_]+)+)'/g
 
 function sourceFiles(dir: string, out: string[] = []): string[] {
   for (const entry of readdirSync(dir)) {

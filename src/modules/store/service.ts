@@ -609,14 +609,14 @@ function compareDecimal(a: string, b: string): number {
  * merely convenient.
  */
 export function registerStoreSyncHandlers(): void {
-  registerSyncHandler('store', 'receive_grn', async (ctx, tx, row) => {
+  registerSyncHandler('store', 'receive_grn', { roles: ['store'] }, async (ctx, tx, row) => {
     // The device's key goes onto the GRN itself, so a storekeeper reconciling a tablet
     // can find the record without being shown an internal ledger table.
     const result = await receiveGrnIn(ctx, tx, { ...row.payload, offlineKey: row.offlineKey })
     return { rowId: result.grnId }
   })
 
-  registerSyncHandler('store', 'issue_stock', async (ctx, tx, row) => {
+  registerSyncHandler('store', 'issue_stock', { roles: ['store'] }, async (ctx, tx, row) => {
     const result = await issueStockIn(ctx, tx, { ...row.payload, offlineKey: row.offlineKey })
     return { rowId: result.issueId }
   })

@@ -100,13 +100,13 @@ proposal carrying the numbers. You may not draft an EXP number or a bank submiss
 // Offline operations (rule 7) — finishing and packing happen on the floor
 // ─────────────────────────────────────────────────────────────────────────────
 
-registerSyncHandler('shipment', 'finishing_output', async (ctx, tx, row) => {
+registerSyncHandler('shipment', 'finishing_output', { roles: ['shipment'] }, async (ctx, tx, row) => {
   const payload = finishingOutputPayload.parse({ ...row.payload, offlineKey: row.offlineKey })
   const result = await offlineRecordFinishingOutput(ctx, tx, payload)
   return { rowId: result.finishingOutputId }
 })
 
-registerSyncHandler('shipment', 'pack_carton', async (ctx, tx, row) => {
+registerSyncHandler('shipment', 'pack_carton', { roles: ['shipment'] }, async (ctx, tx, row) => {
   const payload = cartonPayload.parse({ ...row.payload, offlineKey: row.offlineKey })
   const result = await offlinePackCarton(ctx, tx, payload)
   return { rowId: result.cartonId }

@@ -120,13 +120,13 @@ somebody who was standing at the table.`,
 // Offline operations (rule 7)
 // ─────────────────────────────────────────────────────────────────────────────
 
-registerSyncHandler('cutting', 'create_lay', async (ctx, tx, row) => {
+registerSyncHandler('cutting', 'create_lay', { roles: ['cutting', 'production'] }, async (ctx, tx, row) => {
   const payload = createLayPayload.parse({ ...row.payload, offlineKey: row.offlineKey })
   const result = await offlineCreateLay(ctx, tx, payload)
   return { rowId: result.layId }
 })
 
-registerSyncHandler('cutting', 'record_cut_report', async (ctx, tx, row) => {
+registerSyncHandler('cutting', 'record_cut_report', { roles: ['cutting', 'production'] }, async (ctx, tx, row) => {
   const payload = cutReportPayload.parse({ ...row.payload, offlineKey: row.offlineKey })
   const result = await offlineRecordCutReport(ctx, tx, payload, await offlineCuttingPolicy(ctx))
   return { rowId: result.cutReportId }

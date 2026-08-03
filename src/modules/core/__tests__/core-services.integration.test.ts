@@ -178,7 +178,7 @@ describe('offline sync · replay is a no-op', () => {
     __resetSyncHandlers()
     let handlerCalls = 0
 
-    registerSyncHandler('__demo__', 'record_note', async (c, tx, row) => {
+    registerSyncHandler('__demo__', 'record_note', { roles: ['store'] }, async (c, tx, row) => {
       handlerCalls += 1
       const result = await tx.execute<{ id: string }>(
         sql`insert into demo_sync_rows (company_id, note) values (${c.companyId}, ${String(row.payload.note)}) returning id`,
@@ -239,7 +239,7 @@ describe('offline sync · replay is a no-op', () => {
   it('remembers a rejection so a replay is not retried forever', async () => {
     const offlineKey = `fail-${randomUUID()}`
     __resetSyncHandlers()
-    registerSyncHandler('__demo__', 'always_fails', async () => {
+    registerSyncHandler('__demo__', 'always_fails', { roles: ['store'] }, async () => {
       throw new Error('handler blew up')
     })
 
@@ -259,6 +259,44 @@ describe('offline sync · replay is a no-op', () => {
     const ledger = await db.select().from(offlineKeys).where(eq(offlineKeys.offlineKey, offlineKey))
     expect(ledger).toHaveLength(1)
     expect(ledger[0]?.status).toBe('rejected')
+  })
+
+  it('refuses a caller without the handler’s role — and does NOT remember it as terminal', async () => {
+    // BE-H4: /api/sync is the one door for every floor write, and until this gate any
+    // authenticated member could issue bonded stock or record the feedback that opens
+    // the PP gate. A role refusal is a verdict on the CALLER, not the row: the same key
+    // replayed after the role is granted must apply.
+    __resetSyncHandlers()
+    registerSyncHandler('__demo__', 'record_note', { roles: ['store'] }, async (c, tx, row) => {
+      const result = await tx.execute<{ id: string }>(
+        sql`insert into demo_sync_rows (company_id, note) values (${c.companyId}, ${String(row.payload.note)}) returning id`,
+      )
+      const rows = Array.isArray(result) ? result : ((result as { rows?: unknown[] }).rows ?? [])
+      return { rowId: (rows[0] as { id: string }).id }
+    })
+
+    const clerk: RequestCtx = { companyId: COMPANY, userId: USER, roles: ['hr'] }
+    const row = {
+      offlineKey: `role-${randomUUID()}`,
+      moduleId: '__demo__',
+      operation: 'record_note',
+      payload: { note: 'entered by the wrong badge' },
+    }
+
+    const refused = await syncBatch(clerk, [row])
+    expect(refused[0]).toMatchObject({ status: 'rejected', errorKey: 'errors.sync_role_forbidden' })
+
+    // No offline_keys row was burned by the refusal …
+    const ledger = await db
+      .select()
+      .from(offlineKeys)
+      .where(eq(offlineKeys.offlineKey, row.offlineKey))
+    expect(ledger).toHaveLength(0)
+
+    // … so the SAME key applies once the operator holds the role.
+    const storekeeper: RequestCtx = { companyId: COMPANY, userId: USER, roles: ['store'] }
+    const applied = await syncBatch(storekeeper, [row])
+    expect(applied[0]?.status).toBe('applied')
   })
 })
 

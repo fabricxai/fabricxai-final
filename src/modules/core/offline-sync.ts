@@ -21,7 +21,7 @@ import { and, eq } from 'drizzle-orm'
 
 import { offlineKeys } from '@/db/schema/core'
 
-import type { AnyCtx } from './ctx'
+import { isSystemCtx, type AnyCtx, type Role } from './ctx'
 import { AppError, isAppError } from './errors'
 import { withTenantTx } from './tenancy'
 
@@ -61,19 +61,34 @@ export type SyncHandler = (
   row: SyncRow,
 ) => Promise<{ rowId: string }>
 
-const handlers = new Map<string, SyncHandler>()
+/** Roles that may post ANY floor operation — supervision, not a department. */
+const SUPERVISORY_ROLES: readonly Role[] = ['owner', 'admin']
+
+const handlers = new Map<string, { roles: readonly Role[]; handler: SyncHandler }>()
 
 const handlerKey = (moduleId: string, operation: string) => `${moduleId}:${operation}`
 
-/** Registered from each module's `register.ts`. Nothing else is syncable. */
+/**
+ * Registered from each module's `register.ts`. Nothing else is syncable.
+ *
+ * `roles` is REQUIRED (audit BE-H4): /api/sync is the one door for every floor write,
+ * and before this parameter existed any authenticated member of the company — a payroll
+ * clerk, a viewer — could receive GRNs, issue bonded stock against a UD, or record the
+ * buyer feedback that releases the PP-approval gate for cutting. A handler that truly
+ * wants "anyone in the company" must say so in its registration, visibly.
+ */
 export function registerSyncHandler(
   moduleId: string,
   operation: string,
+  opts: { roles: readonly Role[] },
   handler: SyncHandler,
 ): void {
   const key = handlerKey(moduleId, operation)
   if (handlers.has(key)) throw new Error(`sync handler "${key}" is already registered`)
-  handlers.set(key, handler)
+  if (opts.roles.length === 0) {
+    throw new Error(`sync handler "${key}" registered with no roles — every door needs a keyholder`)
+  }
+  handlers.set(key, { roles: opts.roles, handler })
 }
 
 export const listSyncHandlers = (): readonly string[] => [...handlers.keys()]
@@ -102,9 +117,9 @@ export async function syncBatch(
 }
 
 async function applyRow(ctx: AnyCtx, row: SyncRow): Promise<SyncRowResult> {
-  const handler = handlers.get(handlerKey(row.moduleId, row.operation))
+  const registered = handlers.get(handlerKey(row.moduleId, row.operation))
 
-  if (!handler) {
+  if (!registered) {
     return {
       offlineKey: row.offlineKey,
       status: 'rejected',
@@ -112,6 +127,23 @@ async function applyRow(ctx: AnyCtx, row: SyncRow): Promise<SyncRowResult> {
       details: { moduleId: row.moduleId, operation: row.operation },
     }
   }
+
+  // Role check BEFORE the offline key is claimed, and the refusal is NOT remembered as
+  // terminal: a role denial is a verdict on the caller, not on the row. The same row
+  // replayed after the operator's roles are fixed must apply, not echo an old refusal.
+  const allowed =
+    isSystemCtx(ctx) ||
+    [...registered.roles, ...SUPERVISORY_ROLES].some((role) => ctx.roles.includes(role))
+  if (!allowed) {
+    return {
+      offlineKey: row.offlineKey,
+      status: 'rejected',
+      errorKey: 'errors.sync_role_forbidden',
+      details: { moduleId: row.moduleId, operation: row.operation, required: registered.roles },
+    }
+  }
+
+  const { handler } = registered
 
   try {
     return await withTenantTx(ctx, async (tx): Promise<SyncRowResult> => {

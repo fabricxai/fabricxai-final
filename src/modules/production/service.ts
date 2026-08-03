@@ -500,7 +500,7 @@ export async function runRate(
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function registerProductionSyncHandlers(): void {
-  registerSyncHandler('production', 'record_hourly_outputs', async (ctx, tx, row) => {
+  registerSyncHandler('production', 'record_hourly_outputs', { roles: ['production'] }, async (ctx, tx, row) => {
     await recordHourlyOutputsIn(ctx, tx, row.payload, row.offlineKey)
     // The batch has no single row id; the offline key IS its identity, which is what the
     // device reconciles against anyway.
@@ -512,17 +512,17 @@ export function registerProductionSyncHandlers(): void {
   // reported, and the DHU every quality screen reads could never be entered by the person
   // holding the clicker. All three are logged on a tablet at a dead line or the end of a
   // sewing line, which is exactly where the network is worst.
-  registerSyncHandler('production', 'open_downtime', async (ctx, tx, row) => {
+  registerSyncHandler('production', 'open_downtime', { roles: ['production'] }, async (ctx, tx, row) => {
     const result = await openLineDowntimeIn(ctx, tx, row.payload)
     return { rowId: result.downtimeId }
   })
 
-  registerSyncHandler('production', 'close_downtime', async (ctx, tx, row) => {
+  registerSyncHandler('production', 'close_downtime', { roles: ['production'] }, async (ctx, tx, row) => {
     const result = await closeLineDowntimeIn(ctx, tx, row.payload)
     return { rowId: result.downtimeId }
   })
 
-  registerSyncHandler('production', 'record_endline_count', async (ctx, tx, row) => {
+  registerSyncHandler('production', 'record_endline_count', { roles: ['production'] }, async (ctx, tx, row) => {
     await recordEndlineCountIn(ctx, tx, row.payload)
     // One count per line per day — the row's identity is the pair, not a generated id.
     return { rowId: row.offlineKey }

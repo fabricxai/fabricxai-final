@@ -100,13 +100,13 @@ registerPpApprovalProvider(resolvePpApproval)
 // Offline operations (rule 7) — the sample room runs on a tablet
 // ─────────────────────────────────────────────────────────────────────────────
 
-registerSyncHandler('sampling', 'advance_stage', async (ctx, tx, row) => {
+registerSyncHandler('sampling', 'advance_stage', { roles: ['merchandiser'] }, async (ctx, tx, row) => {
   const payload = stageAdvancePayload.parse({ ...row.payload, offlineKey: row.offlineKey })
   const result = await offlineAdvanceStage(ctx, tx, payload)
   return { rowId: result.sampleRequestId }
 })
 
-registerSyncHandler('sampling', 'record_feedback', async (ctx, tx, row) => {
+registerSyncHandler('sampling', 'record_feedback', { roles: ['merchandiser'] }, async (ctx, tx, row) => {
   const payload = feedbackRoundPayload.parse(row.payload)
   const result = await offlineRecordFeedback(ctx, tx, payload)
   return { rowId: result.roundId }

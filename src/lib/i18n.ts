@@ -298,6 +298,10 @@ export const MESSAGES: Catalogue = {
     'errors.pending_change_not_pending': 'That draft has already been decided.',
     'errors.sync_batch_too_large': 'That offline batch is too large to sync in one go.',
     'errors.sync_failed': 'The offline batch did not sync. Nothing in it was applied.',
+    'errors.sync_operation_unknown':
+      'The server does not recognise this kind of entry. The device app is probably newer than the server — tell whoever runs the system.',
+    'errors.sync_role_forbidden':
+      'This entry needs a role this account does not hold. It stays queued on the device — ask a supervisor to grant the role, then sync again.',
     'errors.target_id_mismatch': 'This draft points at a different row than the one being changed.',
     'errors.target_not_registered': 'That module does not allow drafts against this table.',
     'errors.target_row_not_found': 'The row this draft was meant to change no longer exists.',
