@@ -28,6 +28,7 @@ import {
   getPayrollLines,
   uploadGazette,
 } from '@/modules/workforce/service'
+import { activeGazette, headcount, payrollRunList, roster } from '@/modules/workforce/queries'
 import { attendance, payrollLines, payrollRuns, wageGazettes, workers } from '@/modules/workforce/schema'
 
 const client = createDirectClient()
@@ -226,6 +227,67 @@ describe('10.1 · run lifecycle', () => {
       code: 'conflict',
       messageKey: 'workforce.errors.run_not_recomputable',
     })
+  })
+})
+
+describe('10.1 · the tenancy wall — the one place a leak is another factory’s wage bill', () => {
+  // A SECOND company, with full payroll rights in its own house. Every test in this file
+  // used one company until the audit pointed out that payroll — the module where
+  // cross-tenant reads matter most — was the only module without this block (TEST-B3).
+  const COMPANY_B = randomUUID()
+  const HR_B = `hr-b-${randomUUID().slice(0, 8)}`
+  const hrBCtx: RequestCtx = { companyId: COMPANY_B, userId: HR_B, roles: ['hr', 'owner'] }
+
+  beforeAll(async () => {
+    await db
+      .insert(companies)
+      .values({ id: COMPANY_B, name: 'Other Wage Co', slug: `wage-b-${COMPANY_B.slice(0, 8)}` })
+    await db.insert(users).values({ id: HR_B, email: `${HR_B}@fabricxai.test`, name: 'Other HR' })
+  })
+
+  afterAll(async () => {
+    await db.execute(sql`delete from audit_log where company_id = ${COMPANY_B}`)
+    await db.delete(users).where(eq(users.id, HR_B))
+    await db.delete(companies).where(eq(companies.id, COMPANY_B))
+  })
+
+  it('company B reads zero of company A’s payroll rows, by RLS', async () => {
+    // Company A has workers, gazettes, runs and lines by now. B must see none of them —
+    // zero rows, not an error: the wall does not admit the data exists.
+    expect(await payrollRunList(hrBCtx)).toHaveLength(0)
+    expect(await activeGazette(hrBCtx)).toBeNull()
+    expect(await roster(hrBCtx)).toHaveLength(0)
+    expect(await headcount(hrBCtx)).toHaveLength(0)
+  })
+
+  it('company B cannot read the lines of company A’s run', async () => {
+    const [run] = await db
+      .select({ id: payrollRuns.id })
+      .from(payrollRuns)
+      .where(eq(payrollRuns.companyId, COMPANY))
+    expect(run).toBeDefined()
+
+    // Same shape as "no such run": the id resolves to nothing under B's scope.
+    expect(await getPayrollLines(hrBCtx, run!.id)).toHaveLength(0)
+  })
+
+  it('company B cannot approve company A’s run', async () => {
+    const [run] = await db
+      .select({ id: payrollRuns.id })
+      .from(payrollRuns)
+      .where(eq(payrollRuns.companyId, COMPANY))
+
+    await expect(approvePayrollRun(hrBCtx, run!.id)).rejects.toMatchObject({
+      code: 'not_found',
+    })
+  })
+
+  it('the read audit is per-company: B’s probe wrote no audit row into A', async () => {
+    const rows = await db
+      .select()
+      .from(auditLog)
+      .where(eq(auditLog.companyId, COMPANY))
+    expect(rows.every((r) => r.actorUserId !== HR_B)).toBe(true)
   })
 })
 
