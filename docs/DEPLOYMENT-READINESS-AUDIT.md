@@ -23,6 +23,29 @@
 
 ---
 
+## Fix log
+
+**2026-08-03 (same day as the audit)** — Sprint 1 complete, plus the isolated Sprint-2/3 items:
+
+| Finding | Commit | Note |
+|---|---|---|
+| INFRA-B1 Redis leak | `076d151` | singleton in all envs; worker shutdown closes the real client |
+| BE-B4 worker registry | `74c662c` | registry imported + boot assertion; `unknown_module` now retryable |
+| AI-H2 auto-approve crash | `71f3d60` | SystemCtx path in approve(); 2 new integration tests (9c/9d) |
+| INFRA-B6 / BE-M5 renderPdf | `d48725e` | routes removed; boot asserts every routed queue has a worker |
+| DB-H1 compose superuser | `f8aa247` | app role in compose; app+worker refuse SUPERUSER/BYPASSRLS connections (also BE-B1's runtime half) |
+| BE-B2 unaudited grns write | `c50a6f8` | store owns `setGrnInspectionStatus`; quality calls it |
+| INFRA-H3 localhost appUrl | `7c3518e` | delivery default reads APP_URL |
+| DB-B1 owner privilege model | `c76a75f` | **partial**: decision recorded + enforced at provisioning (owner must BYPASSRLS); the non-superuser-owner CI job is still owed |
+| DB-H4 seed isolation check | `e08dda9` | real app-role sweep across all 134 RLS tables on every seed |
+| DB-H2 invitations RLS | `410bf50` | migration 0069: FORCE RLS deny-all until X.3 |
+| BE-B3 Number.parseFloat hole | `7674da6` | rule extended; FOB/BTB/UD/DHU/OT sites exact; keypad sites carry reasoned disables |
+| BE-H4 /api/sync roles | `eaa20f0` | roles required per handler; refusal non-terminal; +1 integration test |
+| TEST-B3 payroll tenancy | `b33cb4c` | 4-test cross-company block |
+| INFRA-H6 security headers | `76afd5d` | CSP/HSTS/XFO/nosniff/Referrer/Permissions in next.config |
+
+Still open from Sprint 1's neighbourhood: BE-B1 (service-layer `company_id` predicates + lint — the boot assertion half is done), DB-B1's CI job, and everything in Sprints 3–7 not named above.
+
 ## Severity index
 
 | Severity | Meaning |
@@ -38,7 +61,7 @@
 
 ### Blockers
 
-- [ ] **INFRA-B1 · Production Redis connection leak — pilot dies in ~2 days.**
+- [x] **INFRA-B1 · Production Redis connection leak — pilot dies in ~2 days.**
   `src/lib/redis.ts:8-15` caches the ioredis client only when `NODE_ENV !== 'production'`; in prod every `getRedis()` call opens a new socket that is never closed. `/api/health` (`src/app/api/health/route.ts:134`) is polled by Docker HEALTHCHECK every 30s → ≈5,700 leaked connections/day → Redis `maxclients` (10k) exhausted → BullMQ cannot connect, job system dies. Same bug breaks worker shutdown (`src/worker/index.ts:36` vs `:101` disconnect a *different* client).
   **Fix:** module-level singleton in all environments (keep `globalThis` only as the dev-HMR guard); disconnect the captured instance in shutdown.
 
@@ -58,7 +81,7 @@
   `src/lib/env.ts:69-85` hard-fails prod boot without `SENTRY_DSN`; `@sentry/nextjs` is not a dependency; `src/instrumentation.ts:4` promises the init that never landed. 34 unstructured `console.*` calls are the whole log strategy.
   **Fix:** install + init Sentry (app `instrumentation.ts` + worker), add pino structured JSON logging with `companyId`/`jobId`/`requestId`; or drop `SENTRY_DSN` from prod-required until wired (don't fail boot on dead config).
 
-- [ ] **INFRA-B6 · Two outbox routes target a BullMQ queue with no worker — jobs queue forever, Redis grows unbounded.**
+- [x] **INFRA-B6 · Two outbox routes target a BullMQ queue with no worker — jobs queue forever, Redis grows unbounded.**
   `src/worker/processors/outbox-relay.ts:79-80` routes `procurement.po.issued` and `shipment.packing_list.approved` to `QUEUE.renderPdf`; `src/worker/index.ts:46-79` starts workers only for `schedule`/`derive`/`notify`. `lib/pdf.ts` is a 13-line stub. With `noeviction` Redis eventually refuses writes. `QUEUE.extract`/`email`/`export` also declared and unconsumed.
   **Fix:** reroute or drop those prefixes until the PDF pipeline exists; add a startup assertion that every `QUEUE_ROUTES` target has a registered worker.
 
@@ -72,7 +95,7 @@
   `src/lib/dates.ts` exports only `FACTORY_TIMEZONE`. 85 non-test `toISOString().slice(0, 10)` occurrences (e.g. `src/modules/quality/queries.ts:474`, `quality/jobs.ts:35`, `procurement/queries.ts:60`, `finance/queries.ts:63`). Between 00:00–05:59 Dhaka — the night shift and every nightly cron — UTC "today" is *yesterday*. The correct helper is copy-pasted privately in 4 places (`commercial/service.ts:58`, `worker/processors/consumers.ts:475`, `commercial/jobs.ts:43`, `scheduler.ts:329`).
   **Fix:** implement `lib/dates.ts` (`factoryToday`, `toFactoryDate`, `startOfFactoryDay`), delete the 4 duplicates, migrate the 85 sites, add an ESLint ban on bare `toISOString().slice(0,10)` in `src/modules`.
 
-- [ ] **INFRA-H3 · Every notification email deep-links to `http://localhost:3000`.**
+- [x] **INFRA-H3 · Every notification email deep-links to `http://localhost:3000`.**
   `src/modules/settings/policies.ts:357` is the delivery-policy default consumed by `src/modules/core/delivery.ts:123-127`; no Settings surface exists to change it.
   **Fix:** default `appUrl` to `env.APP_URL`; keep the settings override optional.
 
@@ -84,7 +107,7 @@
   `src/db/migrate.ts` is correct but nothing invokes it outside CI; no ordering doc, no boot gate against a stale schema (69 migrations incl. RLS + SECURITY DEFINER).
   **Fix:** deploy step `docker compose run --rm app tsx src/db/migrate.ts && pnpm db:setup-roles` (or one-shot migrate service) + boot-time assertion that the newest journal entry is applied.
 
-- [ ] **INFRA-H6 · No security headers whatsoever.**
+- [x] **INFRA-H6 · No security headers whatsoever.**
   `next.config.ts:10-20` has no `headers()`, no `poweredByHeader: false`; zero hits repo-wide for CSP/HSTS/X-Frame-Options/Referrer-Policy.
   **Fix:** CSP (nonce), HSTS, `X-Frame-Options: DENY`, `nosniff`, Referrer-Policy, Permissions-Policy; `poweredByHeader: false`.
 
@@ -136,18 +159,18 @@
 
 ### High
 
-- [ ] **DB-H1 · `--profile full` runs app AND worker as the owner/superuser — RLS entirely bypassed.**
+- [x] **DB-H1 · `--profile full` runs app AND worker as the owner/superuser — RLS entirely bypassed.**
   `docker-compose.dev.yml:150-151,174-175` set both URLs to `fabricxai:fabricxai` (the initdb superuser; superusers bypass RLS even with FORCE). Contradicts `.env.example`, the pgbouncer config, and the compose file's own comments.
   **Fix:** point at `fabricxai_app_rw` via pgbouncer; add a boot assertion in `instrumentation.ts`/`worker/index.ts` that the connected role has `rolsuper = false AND rolbypassrls = false` and that `DATABASE_URL` username ≠ `DIRECT_DATABASE_URL` username.
 
-- [ ] **DB-H2 · `invitations` is a tenant table with zero tenancy enforcement in either wall.**
+- [x] **DB-H2 · `invitations` is a tenant table with zero tenancy enforcement in either wall.**
   Only table with a company FK and no RLS (`0003_auth.sql:17-27`); column is `organization_id` so convention sweeps miss it; carries a `role` that mints `roles` rows on accept; queried by Better Auth on the pooled handle **outside** `withTenantTx`; has full DML grants. Any IDOR in invite-accept = cross-tenant privilege escalation with nothing behind it. (Note: a naive policy breaks auth since Better Auth sets no `SET LOCAL` — route through a scoped tx or a narrow SECURITY DEFINER token-lookup fn.) Add an integration test that company A cannot read/accept company B's invitation.
 
 - [ ] **DB-H3 · The `hourly_outputs` DEFAULT-partition recovery path cannot work.**
   If the partition window lapses, rows land in DEFAULT (by design), but `app.ensure_hourly_output_partition` then **fails permanently** (Postgres refuses to create a range partition while matching rows sit in DEFAULT), and `production/jobs.ts:41-45` rolls all 13 months in one transaction so the first failure blocks every future month. Result: all writes land in DEFAULT forever; partition pruning gone on the highest-volume table. The `inDefault > 0` notification fires but no repair exists.
   **Fix:** teach the function to detach DEFAULT → create partition → move matching rows → re-attach; one transaction/savepoint per month in the job.
 
-- [ ] **DB-H4 · The seed's "wall 2" isolation assertion proves the opposite of its claim.**
+- [x] **DB-H4 · The seed's "wall 2" isolation assertion proves the opposite of its claim.**
   `src/db/seed/index.ts:200-217` runs on the **owner** connection with no scope and throws only if rows are *invisible* — it can never fail for a missing policy while claiming to be the wall-2 smoke test. Worse than no check: a green light labelled "verified".
   **Fix:** open a second client on the app-role URL with no `SET LOCAL` and assert `visible === 0`, per table across all 144 tables (would have caught DB-H2 immediately). Rename the current check `assertSeedWroteSomething`.
 
@@ -263,7 +286,7 @@
 ### High
 
 - [ ] **AI-H1** `extractorVersion` hardcoded `'1'` (`marbim/actions.ts:200-205`) — swapping mock→real or changing prompts pools correction rates the versioned key exists to separate. Derive from prompt semver + provider/model id.
-- [ ] **AI-H2 · Auto-approve from the worker throws a NOT NULL violation** — `pending-changes.ts:218-227` casts `SystemCtx` (userId: null) to `RequestCtx`; `approve` inserts `approverUserId: ctx.userId` into a `notNull()` column. Any company configuring auto-approve loses every high-confidence extraction (retried, then terminal `rejected`). The covering test uses a real user, so CI can't see it. Skip the approvals insert for system ctx (or make column nullable + record role); add an integration test with `SystemCtx`.
+- [x] **AI-H2 · Auto-approve from the worker throws a NOT NULL violation** — `pending-changes.ts:218-227` casts `SystemCtx` (userId: null) to `RequestCtx`; `approve` inserts `approverUserId: ctx.userId` into a `notNull()` column. Any company configuring auto-approve loses every high-confidence extraction (retried, then terminal `rejected`). The covering test uses a real user, so CI can't see it. Skip the approvals insert for system ctx (or make column nullable + record role); add an integration test with `SystemCtx`.
 - [ ] **AI-H3** Chat has no conversation history — every turn sends only the current question (`service.ts:571`) though `chat_turns` stores history. Follow-ups can't work. Load + budget prior turns.
 - [ ] **AI-H4** No cost/rate control on chat, no token accounting anywhere — unbounded chat against a metered API is direct financial exposure, and there's no data to price with. Add `chatRequestsPerMinute` + monthly token ceiling in policy, Redis limiter in `ask`, `marbim_call_log` written by the provider wrapper.
 - [ ] **AI-H5** `MARBIM_EVENTS` declared, never emitted (`events.ts:1-13`); no extraction success/rejection notification — the merchandiser who pastes a tech pack is never told anything; `extractorDrifting` unreachable. Emit from `runExtraction` in the same tx, route + notify.
@@ -301,7 +324,7 @@
   It posts `/api/production/outputs` and reads `/api/production/board`; neither route exists (`src/app/api/` has only auth/documents/health/me/sync). The 6.1 NFR (write p95<500ms, board p95<800ms, zero lost rows) is unverifiable — **and the floor has no HTTP surface for line tracking at all.**
   **Fix:** ship the two routes, run the scenario on VPS-class hardware against `seed --scale=factory`, commit the baseline; automate the row-count assertion (currently a comment telling a human to run SQL).
 
-- [ ] **TEST-B3 · workforce/payroll (🔒 most sensitive module) has no cross-company tenancy test.**
+- [x] **TEST-B3 · workforce/payroll (🔒 most sensitive module) has no cross-company tenancy test.**
   `payroll.integration.test.ts:36` uses a single `COMPANY` for all ctxs. The one place a leak means reading another factory's wage bill is the only module without the never-skipped test.
   **Fix:** second company fixture; assert 0 rows on runs/lines/gazettes/workers; `computePayrollRun(bCtx, aRunId)` refuses; audit `read` rows per-company.
 
@@ -335,15 +358,15 @@
   Zero `eq(<table>.companyId, ctx.companyId)` predicates in any of the 21 modules (`companyId` appears only in `.values()` on inserts, never in a `WHERE`). RLS policies are `FOR ALL TO fabricxai_app` only; the owner role bypasses them; nothing at runtime asserts which role the pool connected as (checked at setup time only, `scripts/setup-db-roles.mjs:70`). CLAUDE.md rule 2 says RLS is "never the only wall" — today it is. Combined with DB-H1 (compose full-profile runs as owner), this is live.
   **Fix:** boot assertion in `instrumentation.ts` + `worker/index.ts` refusing to start on an owner/BYPASSRLS connection role; add company predicates via a `scoped(tx, table)` helper + lint rule so wall 1 actually exists.
 
-- [ ] **BE-B2 · `quality` writes `store`'s `grns` table directly, unaudited (rules 11 + 10 at once).**
+- [x] **BE-B2 · `quality` writes `store`'s `grns` table directly, unaudited (rules 11 + 10 at once).**
   `quality/service.ts:1336` updates `grns.inspectionStatus` via a dynamic import of store's schema, with no `recordChange`, though `grns` is registered as an audited table by store. (Verified: this is the *only* cross-module write in the repo.)
   **Fix:** add `setGrnInspectionStatus(ctx, tx, …)` to `store/service.ts` (update + audit) and have quality call it.
 
-- [ ] **BE-B3 · `no-float-money` is bypassed repo-wide by `Number.parseFloat` — 22 live sites, some money-deciding.**
+- [x] **BE-B3 · `no-float-money` is bypassed repo-wide by `Number.parseFloat` — 22 live sites, some money-deciding.**
   The rule matches only bare-identifier `parseFloat`/`Number` (`eslint-rules/no-float-money.js:86,91`); `Number.parseFloat` is a MemberExpression and never matches. Live sites include the **FOB price computation** (`costing/cost-sheet.ts:297-308` — float divisor from a decimal string), `Number.parseFloat(fobPrice.amount) > 0` (`:325`), the **BTB over-limit decision** (`commercial/queries.ts:81-83,170`), and bonded UD quantity compares (`commercial/jobs.ts:101-102`, `service.ts:256`, `ud-queries.ts:110`).
   **Fix:** extend the rule to MemberExpression callees (+ `Math.*` on money); convert `cost-sheet.ts:297-308` to exact `mulDiv`; add justified inline disables where a float compare is genuinely display-only.
 
-- [ ] **BE-B4 · The BullMQ worker never imports the module registry — module registration (providers, schemas, primers) doesn't exist in the worker process.**
+- [x] **BE-B4 · The BullMQ worker never imports the module registry — module registration (providers, schemas, primers) doesn't exist in the worker process.**
   `src/worker/index.ts` never imports `@/modules/registry` (only `instrumentation.ts`, `core/session.ts`, and `/api/sync` do). So in the worker `hasProvider()` is always false → `marbim.run_extractions` skips forever. Worse: the moment a real provider is registered without fixing this import path asymmetry, `resolvePendingSchema` throws `unknown_module`, which is classified non-retryable → **every queued extraction is permanently rejected on first pass** — the exact scenario the provider check exists to prevent.
   **Fix:** `import '@/modules/registry'` in `worker/index.ts` + assert `listModules().length > 0` in `main()`; make registry/config `AppError`s retryable rather than terminal in `runExtraction`.
 
@@ -361,7 +384,7 @@
 - [ ] **BE-H1 · Rule-1 lint guard misses the real action layer.** The `no-restricted-imports` ban on `@/db/client` covers `src/app/actions/**` (empty) and `src/app/api/**` — not `src/modules/*/actions.ts`, where the 16 real `'use server'` files live. Already exercised: `shipment/actions.ts:162-172` runs its own drizzle query in the action. Extend the glob; move the carton query into the service.
 - [ ] **BE-H2 · `GATES.lcLatestShipment` is declared and never enforced.** Ex-factory computes LC conflicts, records the count, and blocks nothing — a container can leave after the credit's latest-shipment date with no server-side objection (that's the bank refusing the presentation later). Implement as a real waivable gate in `confirmExFactory`, or formally demote it to an alert in CLAUDE.md + STUBS.
 - [ ] **BE-H3 · Gate `facts` never survive the server-action boundary** — Next serializes only `Error.message`, so "UD short by 340 m of 1,200 m" degrades to a bare i18n key for all 7 gates (`src/lib/action-error.ts:5-19` documents this). Return typed `{ok:false, error: AppError.toJSON()}` results for `gate_blocked`/`illegal_transition` instead of throwing.
-- [ ] **BE-H4 · `/api/sync` has no role authorization** — any authenticated company member (any role) can receive GRNs, **issue bonded stock and draw a UD**, and via `sampling:record_feedback` record the buyer verdict that **opens the PP-approval gate for cutting**. Add a `roles` field to `SyncHandler` registration, enforced in `applyRow` before the offline key is claimed. (Complementary to INFRA-H7's rate limiting.)
+- [x] **BE-H4 · `/api/sync` has no role authorization** — any authenticated company member (any role) can receive GRNs, **issue bonded stock and draw a UD**, and via `sampling:record_feedback` record the buyer verdict that **opens the PP-approval gate for cutting**. Add a `roles` field to `SyncHandler` registration, enforced in `applyRow` before the offline key is claimed. (Complementary to INFRA-H7's rate limiting.)
 - [ ] **BE-H5 · 46 cross-module reads go through raw schema tables instead of the owner's `queries.ts`** (rule 11): `shipment/service.ts` reads `lcs` five times; `memory/service.ts` reads ten other modules' tables; nothing lints it (`analytics-no-writes` bans `service.ts` imports only, and only in analytics). Add a lint rule banning `modules/<a>` → `modules/<b>/schema` imports; publish named reads owner-by-owner, starting with `commercial.lcs` and `orders`.
 - [ ] **BE-H6 · Three source files contain embedded NUL bytes** (`orders/service.ts`, `cutting/cutting.ts`, `quality/quality.ts` use `\0` as a composite-key separator) — grep/ripgrep treat them as binary and **silently skip them**, which corrupted this audit's own first pass and will corrupt any future codemod/CI grep. Replace with `'␟'` or a guarded two-char sentinel; add a CI check that no tracked `.ts` file contains a NUL.
 
@@ -371,7 +394,7 @@
 - [ ] **BE-M2 · `lcs.status` never advances past `active`** — no operation/job sets `expired`/`closed`, yet `detectLcConflicts` reasons over the field. Add an `expireLapsedLcs` scheduled task + machine, or drop the dead enum members.
 - [ ] **BE-M3 · sampling has two write paths for the same operations, one without idempotency** — `moveSampleStage`/`recordBuyerVerdict` server actions call the same services as the registered offline handlers but with no `offlineKey`; a double-submit double-advances the stage that feeds the PP gate. (Quality documents why fabric inspection is action-only; sampling has no such note.) Route through `/api/sync` or claim an offline key in the action.
 - [ ] **BE-M4 · Payroll reads only partially audited** — `recordRead` called in 1 of 4 gated read paths (`getPayrollLines`); `activeGazette`, `payrollRunList` and the third `queries.ts` path gate but never audit. Rule 9 says reads are audited.
-- [ ] **BE-M5 · Two queues receive routed jobs with no worker attached** (same finding as INFRA-B6, from the routing side): `renderPdf` has no processor and no completes-gracefully fallback like `derive-router` has. Remove the routes or attach a stub worker until the PDF pipeline lands.
+- [x] **BE-M5 · Two queues receive routed jobs with no worker attached** (same finding as INFRA-B6, from the routing side): `renderPdf` has no processor and no completes-gracefully fallback like `derive-router` has. Remove the routes or attach a stub worker until the PDF pipeline lands.
 - [ ] **BE-M6 · Server components read through `service.ts` instead of `queries.ts`** in 9+ pages (`store/issue`, `ud/[udId]`, `cutting/lay`, 7 pages importing `companyProfile` from settings **service** — settings has no `queries.ts`). Re-export as named reads on `queries.ts`; extend the H5 lint to ban `src/app/**` → `modules/*/service`.
 - [ ] **BE-M7 · `/api/health` unauthenticated + echoes raw dependency error strings** (same as INFRA-M1; also the one route exempted from the db-import ban, which compounds it). Split public status-only vs authenticated detail.
 - [ ] **BE-M8 · `Money` type largely unadopted: `toMinor`/`fromMinor` reimplemented ~14 times** — finance, commercial, procurement, rfq, shipment, store all import `lib/money` zero times and carry private scaled-BigInt copies. Arithmetic is exact today, but "every amount carries currency" is structurally impossible with bare strings, and a rounding-convention change has 14 places to miss. Sanction `lib/money.ts`+`lib/quantity.ts` only; lint-ban local re-implementations; convert finance first.
