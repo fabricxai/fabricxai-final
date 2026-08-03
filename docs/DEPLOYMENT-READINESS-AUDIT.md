@@ -73,6 +73,8 @@
 | FE-M5 no language picker | `d2e6164` | the switch, in the account menu, per device — without it every translated string was gated behind the browser's `Accept-Language` |
 | FE-H1 no password recovery | `566483e` | reset email, one-hour single-use token, `/forgot-password` + `/reset-password`; enumeration-safe. Verified end to end through Mailpit |
 | DB-M4 unindexed cascade FKs | `24d0e52` | 24 indexes; the notification bell went from Seq Scan + Sort to a bare Index Scan (EXPLAIN before/after) |
+| DB-M1 (pruning half), DB-M2 unbounded worker tables | `67c8589` | definer prunes for the outbox and dedupe ledger, nightly; verified in a rolled-back transaction that an unpublished event survives a cutoff of now() |
+| FE-B1 floor routes (12 of 12) | `397eb6a`, `dfcda25` | quality ×5 and the Bangla error copy the floor reads |
 
 Also fixed in passing, each surfaced by the conversion rather than the audit: a lay badge comparing against a `'closed'` status absent from the enum, so every finished lay looked unfinished; a no-op ternary that was the only consumer of a prop that was in turn the only consumer of an `activeLines()` query, i.e. a database round trip per floor page load feeding nothing; and the refused-writes banner rendering a raw i18n key at the operator.
 
@@ -80,8 +82,9 @@ Also fixed in passing, each surfaced by the conversion rather than the audit: a 
 
 - **BE-B1** service-layer `company_id` predicates + a lint rule (the boot-assertion half is done).
 - **DB-B1** the non-superuser-owner CI job that would catch the privilege model regressing.
-- **FE-B1** the last two floor routes (quality inline + QC screens) — in progress.
-- **A gap this work surfaced, not in the original audit:** the `errors.*` catalogue has **no `bn` entries at all** — 28 error keys, English only. So on a fully converted Bangla screen, every refusal still reads in English. The floor sees Bangla until something goes wrong, which is when the words matter most.
+- ~~**FE-B1** the last two floor routes~~ ✅ **all twelve floor routes are converted** (`397eb6a`) — store ×4, cutting ×4, lines ×3 + the TV board, quality ×5, plus the shared `fx/floor.tsx` surface.
+- ~~**the `errors.*` catalogue has no `bn` entries**~~ ✅ closed for the floor (`dfcda25`): 77 error keys translated across the shared namespace plus store, cutting, production, quality, sampling and maintenance. The office-facing namespaces stay English on purpose.
+- **Still English:** the other 44 screens (office-facing) and the office error namespaces. That is the deliberate boundary, not an oversight — but it means a merchandiser's screens are English-only, so if that changes the mechanism is already in place.
 - **Sprints 5–7** essentially untouched: the flagship TNA and buyers write surfaces (FE-B2, FE-B4, BE-B6), the LC latest-shipment gate (BE-H2), the UTC "today" bug across 85 sites (INFRA-H2), MARBIM (AI-B1/B2/B3), and the test depth items (TEST-B1, TEST-B2, TEST-H4–H8).
 
 ## Severity index
