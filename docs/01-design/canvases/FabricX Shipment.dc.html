@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #F3F1EC; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  [data-mode="dark"] { --fx-bg-canvas:#0F131B !important; --fx-bg-surface:#181D29 !important; --fx-bg-raised:#212736 !important; --fx-bg-sunken:#0B0E15 !important; --fx-bg-hover:rgba(255,255,255,.05) !important; --fx-bg-selected:rgba(225,179,52,.17) !important; --fx-border-subtle:#252B3A !important; --fx-border-default:#343B4C !important; --fx-border-strong:#4E576B !important; --fx-text-primary:#F4F3F0 !important; --fx-text-secondary:#AEB5C4 !important; --fx-text-tertiary:#7C8497 !important; --fx-text-disabled:#565E71 !important; --fx-text-inverse:#181D29 !important; --fx-accent-hover:#EBC352 !important; --fx-accent-pressed:#F2D077 !important; --fx-accent-subtle:rgba(225,179,52,.14) !important; --fx-success:#4FA97D !important; --fx-warning:#D99A3F !important; --fx-danger:#E0665C !important; --fx-info:#6D9BE8 !important; --fx-focus:#E1B334 !important; --fx-sh1:0 0 0 1px #252B3A !important; --fx-sh2:0 0 0 1px #252B3A !important; --fx-sh3:0 0 0 1px #343B4C !important; }
+  body:has([data-mode="dark"]) { background: #0B0E15; }
+  a { color: #181D29; text-decoration: underline; text-underline-offset: 3px; }
+  a:hover { color: #B88C21; }
+  @keyframes fx-flash { 0%, 100% { box-shadow: inset 0 0 0 2px #B23A32; } 50% { box-shadow: inset 0 0 0 4px #B23A32; } }
+  @keyframes fx-travel { 0% { transform: translate(-10%, 10%); opacity: .25; } 40% { transform: translate(0, 0); opacity: 1; } 100% { transform: translate(10%, -10%); opacity: .25; } }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
+</style>
+</helmet>
+
+<div data-mode="{{ mode }}" style="--fx-bg-canvas:#FBFAF8; --fx-bg-surface:#FFFFFF; --fx-bg-sunken:#F3F1EC; --fx-bg-hover:rgba(24,29,41,.035); --fx-bg-selected:rgba(225,179,52,.12); --fx-border-subtle:#E7E4DE; --fx-border-default:#D6D2C9; --fx-border-strong:#A9A49A; --fx-text-primary:#181D29; --fx-text-secondary:#4C5364; --fx-text-tertiary:#767E90; --fx-text-disabled:#A8AEBB; --fx-text-inverse:#FBFAF8; --fx-accent:#E1B334; --fx-accent-hover:#CFA22B; --fx-accent-pressed:#B88C21; --fx-accent-subtle:#FAF1DA; --fx-accent-on:#181D29; --fx-success:#2F7D5B; --fx-warning:#B4741C; --fx-danger:#B23A32; --fx-info:#2F5FA8; --fx-focus:#181D29; --fx-sh1:0 1px 2px rgba(24,29,41,.06); --fx-sh2:0 4px 12px rgba(24,29,41,.08); --fx-sh3:0 12px 32px rgba(24,29,41,.12); font-family:'Plus Jakarta Sans',system-ui,sans-serif; color:var(--fx-text-primary); min-height:100vh; background:var(--fx-bg-sunken);">
+
+<div style="position:sticky; top:0; z-index:60; background:var(--fx-bg-surface); border-bottom:1px solid var(--fx-border-default); padding:10px 20px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+  <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Prototype bar</div>
+  <div style="display:flex; gap:2px; background:var(--fx-bg-sunken); border-radius:8px; padding:3px;">
+    <sc-for list="{{ screens }}" as="s" hint-placeholder-count="3">
+      <button onClick="{{ s.pick }}" style="{{ s.style }}">{{ s.label }}</button>
+    </sc-for>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px;">
+    <span style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">role</span>
+    <select onChange="{{ setRole }}" value="{{ role }}" style="background:var(--fx-bg-surface); color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:4px; padding:7px 9px; font:500 12px/1 'JetBrains Mono',monospace;">
+      <option value="packing">packing</option>
+      <option value="commercial">commercial</option>
+      <option value="manager">manager</option>
+      <option value="merchandiser">merchandiser</option>
+      <option value="owner">owner</option>
+      <option value="viewer">viewer</option>
+    </select>
+  </div>
+  <sc-if value="{{ isP1 }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex; align-items:center; gap:8px;">
+      <span style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">network</span>
+      <select onChange="{{ setNet }}" value="{{ net }}" style="background:var(--fx-bg-surface); color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:4px; padding:7px 9px; font:500 12px/1 'JetBrains Mono',monospace;">
+        <option value="online">online</option>
+        <option value="offline">offline queued</option>
+      </select>
+    </div>
+  </sc-if>
+  <sc-if value="{{ isP3 }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex; align-items:center; gap:8px;">
+      <span style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">exp</span>
+      <select onChange="{{ setExpState }}" value="{{ expState }}" style="background:var(--fx-bg-surface); color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:4px; padding:7px 9px; font:500 12px/1 'JetBrains Mono',monospace;">
+        <option value="missing">not filled</option>
+        <option value="filled">filled</option>
+      </select>
+    </div>
+  </sc-if>
+  <div style="display:flex; align-items:center; gap:10px; margin-left:auto;">
+    <button onClick="{{ toggleMode }}" style="{{ modeBtn }}">{{ modeLabel }}</button>
+    <button onClick="{{ toggleAnnot }}" style="{{ annotBtn }}">actions {{ annotLabel }}</button>
+  </div>
+</div>
+
+<div style="{{ densityVars }}">
+<div style="{{ pageStyle }}">
+
+  <sc-if value="{{ locked }}" hint-placeholder-val="{{ false }}">
+    <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:30px; display:flex; flex-direction:column; gap:14px; box-shadow:var(--fx-sh1); max-width:520px;">
+      <div style="font:600 22px/1.25 'Plus Jakarta Sans',sans-serif;">You don't have access to shipment</div>
+      <div style="font:400 15px/1.6 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">Export documents are bank records. Your role is <span style="font-family:'JetBrains Mono',monospace; font-size:13.5px; color:var(--fx-text-primary);">{{ role }}</span>.</div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP1 }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex; flex-direction:column; gap:var(--p-gap);">
+      <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Finishing and packing</div>
+          <div style="font:700 var(--p-h1)/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">{{ order.po }} · {{ order.style }}</div>
+        </div>
+        <div style="display:flex; gap:22px; flex-wrap:wrap;">
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <div style="font:400 11.5px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">Packed</div>
+            <div style="font:600 var(--p-num)/1.05 'JetBrains Mono',monospace;">{{ totals.packed }}</div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <div style="font:400 11.5px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">Finished</div>
+            <div style="font:600 var(--p-num)/1.05 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ totals.finished }}</div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <div style="font:400 11.5px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">Cartons</div>
+            <div style="font:600 var(--p-num)/1.05 'JetBrains Mono',monospace;">{{ totals.cartons }}</div>
+          </div>
+        </div>
+      </div>
+      <div style="height:9px; background-image:repeating-linear-gradient(115deg, var(--fx-accent) 0 2px, transparent 2px 9px);"></div>
+
+      <sc-if value="{{ overAny }}" hint-placeholder-val="{{ false }}">
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-danger); border-radius:8px; padding:18px 20px; display:flex; flex-direction:column; gap:11px;">
+          <div style="display:flex; align-items:center; gap:11px; flex-wrap:wrap;">
+            <div style="width:9px; height:9px; border-radius:999px; background:var(--fx-danger); flex-shrink:0;"></div>
+            <div style="font:600 var(--p-h3)/1.25 'Plus Jakarta Sans',sans-serif;">More packed than finished</div>
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-danger); margin-left:auto;">{{ overLabel }}</div>
+          </div>
+          <div style="font:400 var(--p-sm)/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ overText }}</div>
+          <sc-if value="{{ overTolerance }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ requestException }}" style="align-self:flex-start; background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-strong); border-radius:8px; padding:14px 18px; font:600 var(--p-sm)/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:var(--p-target);" style-hover="background:var(--fx-bg-hover)">Ask the manager to accept the over-ship</button>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+        <div style="display:flex; align-items:center; gap:12px; padding:16px 20px; border-bottom:1px solid var(--fx-border-subtle); flex-wrap:wrap;">
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Packed against finished · tap a cell</div>
+          <div style="font:400 12.5px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-left:auto;">24 pieces a carton, one colour and size each</div>
+        </div>
+        <div style="overflow-x:auto;">
+        <div style="min-width:860px; display:grid; grid-template-columns:120px repeat(5, 1fr) 120px; gap:1px; background:var(--fx-border-subtle);">
+          <div style="background:var(--fx-bg-sunken); padding:12px 14px; font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Colour</div>
+          <sc-for list="{{ sizes }}" as="z" hint-placeholder-count="5">
+            <div style="background:var(--fx-bg-sunken); padding:12px 14px; font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary); text-align:center;">{{ z }}</div>
+          </sc-for>
+          <div style="background:var(--fx-bg-sunken); padding:12px 14px; font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary); text-align:right;">Remaining</div>
+          <sc-for list="{{ grid }}" as="g" hint-placeholder-count="3">
+            <div style="background:var(--fx-bg-surface); padding:13px 14px; font:500 var(--p-sm)/1.3 'Plus Jakarta Sans',sans-serif; display:flex; align-items:center; gap:9px; min-height:var(--p-cell);">
+              <div style="width:12px; height:12px; border-radius:3px; border:1px solid var(--fx-border-default); flex-shrink:0; background:{{ g.swatch }};"></div>{{ g.color }}
+            </div>
+            <sc-for list="{{ g.cells }}" as="c" hint-placeholder-count="5">
+              <div onClick="{{ c.pick }}" style="{{ c.style }}">
+                <div style="font:600 var(--p-sm)/1.1 'JetBrains Mono',monospace; color:{{ c.numColor }};">{{ c.packed }}</div>
+                <div style="font:400 11.5px/1.1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">of {{ c.finished }}</div>
+                <div style="height:5px; border-radius:999px; background:var(--fx-bg-sunken); overflow:hidden; width:100%;"><div style="{{ c.fill }}"></div></div>
+              </div>
+            </sc-for>
+            <div style="background:var(--fx-bg-sunken); padding:13px 14px; font:600 var(--p-sm)/1.3 'JetBrains Mono',monospace; text-align:right; color:{{ g.remColor }}; display:flex; align-items:center; justify-content:flex-end; min-height:var(--p-cell);">{{ g.remaining }}</div>
+          </sc-for>
+        </div>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:var(--p-gap); align-items:start;">
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-accent); border-radius:8px; padding:20px; display:flex; flex-direction:column; gap:16px; box-shadow:var(--fx-sh2); clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);">
+          <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Carton builder</div>
+            <div style="font:500 var(--p-sm)/1.3 'JetBrains Mono',monospace; margin-left:auto;">{{ sel.label }}</div>
+          </div>
+          <div style="display:flex; gap:22px; flex-wrap:wrap;">
+            <div style="display:flex; flex-direction:column; gap:4px;">
+              <div style="font:400 11.5px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">Remaining here</div>
+              <div style="font:700 var(--p-big)/1 'JetBrains Mono',monospace; color:{{ sel.remColor }};">{{ sel.remaining }}</div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:4px;">
+              <div style="font:400 11.5px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">Cartons made</div>
+              <div style="font:600 var(--p-num)/1.05 'JetBrains Mono',monospace;">{{ sel.cartons }}</div>
+            </div>
+          </div>
+          <sc-if value="{{ canPack }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex; gap:11px; flex-wrap:wrap;">
+              <button onClick="{{ minusCarton }}" style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-strong); border-radius:8px; padding:16px 20px; font:600 var(--p-body)/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:60px;">− carton</button>
+              <button onClick="{{ plusCarton }}" style="flex:1; background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:16px 22px; font:600 var(--p-body)/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:60px;" style-hover="background:var(--fx-accent-hover)">＋ carton of 24</button>
+            </div>
+            <div style="display:flex; gap:11px; flex-wrap:wrap;">
+              <button onClick="{{ printLabel }}" style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:8px; padding:14px 18px; font:600 var(--p-sm)/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:var(--p-target);">Print the carton label</button>
+              <button onClick="{{ recordFinishing }}" style="background:transparent; color:var(--fx-text-secondary); border:1px solid var(--fx-border-default); border-radius:8px; padding:14px 18px; font:600 var(--p-sm)/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:var(--p-target);">＋ 24 finished</button>
+            </div>
+          </sc-if>
+          <div style="font:400 12.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ sel.note }}</div>
+        </div>
+
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:20px; display:flex; flex-direction:column; gap:13px; box-shadow:var(--fx-sh1);">
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Last cartons</div>
+          <sc-for list="{{ cartonLog }}" as="c" hint-placeholder-count="4">
+            <div style="display:flex; align-items:center; gap:12px; padding-bottom:11px; border-bottom:1px solid var(--fx-border-subtle);">
+              <div style="font:600 13px/1.3 'JetBrains Mono',monospace;">{{ c.no }}</div>
+              <div style="font:400 13px/1.35 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">{{ c.what }}</div>
+              <div style="font:400 12.5px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-left:auto;">{{ c.when }}</div>
+            </div>
+          </sc-for>
+          <div style="font:400 12.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">Every carton is one colour and one size — a mixed carton is what makes a packing list disagree with the goods, and the bank finds it before the buyer does.</div>
+        </div>
+      </div>
+
+      <div style="position:sticky; bottom:0; z-index:20; background:var(--fx-bg-surface); border:1px solid var(--fx-border-default); border-radius:8px; box-shadow:0 -4px 12px rgba(24,29,41,.06); padding:14px 18px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+        <div style="{{ syncPill }}">
+          <div style="{{ syncDot }}"></div>
+          <div style="font:500 13px/1.3 'JetBrains Mono',monospace;">{{ syncText }}</div>
+        </div>
+        <div style="font:400 13px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); flex:1 1 280px; min-width:0; text-wrap:pretty;">{{ syncNote }}</div>
+      </div>
+
+      <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">packing.recordFinishing · packing.buildCarton · packing.printCartonLabel — offline-queued on (order, colour, size, carton)</div>
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">the cell turns red on the tap that breaks it, not on save</div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP2 }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex; flex-direction:column; gap:18px;">
+      <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:20px; flex-wrap:wrap;">
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Packing · list</div>
+          <div style="font:700 30px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">Packing list against the breakdown</div>
+          <div style="font:400 14.5px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:66ch; text-wrap:pretty;">The list is generated from the cartons, never typed. Set beside the approved breakdown, every row that disagrees is a document the bank will reject.</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <button onClick="{{ generateList }}" style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:8px; padding:11px 16px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-bg-hover)">Regenerate</button>
+          <sc-if value="{{ canApproveList }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ approveList }}" style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:11px 18px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-accent-hover)">Approve and lock v3</button>
+          </sc-if>
+        </div>
+      </div>
+      <div style="height:9px; background-image:repeating-linear-gradient(115deg, var(--fx-accent) 0 2px, transparent 2px 9px);"></div>
+
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+        <div style="display:flex; align-items:center; gap:12px; padding:16px 20px; border-bottom:1px solid var(--fx-border-subtle); flex-wrap:wrap;">
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">v3 draft · generated 14 Aug 16:20</div>
+          <button onClick="{{ toggleAll }}" style="{{ allBtn }}">{{ allLabel }}</button>
+          <div style="font:500 13px/1.3 'JetBrains Mono',monospace; color:{{ listColor }}; margin-left:auto;">{{ listSummary }}</div>
+        </div>
+        <div style="overflow-x:auto;">
+        <div style="min-width:1000px;">
+          <div style="display:flex; align-items:stretch; background:var(--fx-bg-sunken); border-bottom:1px solid var(--fx-border-subtle);">
+            <div style="width:3px; flex-shrink:0;"></div>
+            <div style="flex:1; min-width:0; display:grid; grid-template-columns:120px 88px 132px 132px 132px 1fr; gap:14px; padding:11px 20px 11px 17px; font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">
+              <div>Colour</div><div>Size</div><div style="text-align:right;">Breakdown</div><div style="text-align:right;">Packing list</div><div style="text-align:right;">Difference</div><div>Note</div>
+            </div>
+          </div>
+          <sc-for list="{{ listRows }}" as="r" hint-placeholder-count="8">
+            <div style="display:flex; align-items:stretch; border-bottom:1px solid var(--fx-border-subtle);">
+              <div style="width:{{ r.selW }}; flex-shrink:0; background:{{ r.sel }};"></div>
+              <div style="flex:1; min-width:0; display:grid; grid-template-columns:120px 88px 132px 132px 132px 1fr; gap:14px; padding:12px 20px 12px 17px; align-items:center; min-height:44px;">
+                <div style="display:flex; align-items:center; gap:9px;">
+                  <div style="width:11px; height:11px; border-radius:3px; border:1px solid var(--fx-border-default); flex-shrink:0; background:{{ r.swatch }};"></div>
+                  <div style="font:500 13.5px/1.3 'Plus Jakarta Sans',sans-serif;">{{ r.color }}</div>
+                </div>
+                <div style="font:500 13px/1.3 'JetBrains Mono',monospace;">{{ r.size }}</div>
+                <div style="font:400 13.5px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); text-align:right;">{{ r.plan }}</div>
+                <div style="font:600 13.5px/1.3 'JetBrains Mono',monospace; text-align:right;">{{ r.actual }}</div>
+                <div style="font:500 13.5px/1.3 'JetBrains Mono',monospace; text-align:right; color:{{ r.sel }};">{{ r.diff }}</div>
+                <div style="font:400 12.5px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ r.note }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        </div>
+        <div style="padding:16px 20px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+          <div style="display:flex; gap:24px; flex-wrap:wrap;">
+            <div style="display:flex; flex-direction:column; gap:3px;">
+              <div style="font:400 11.5px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">Breakdown · {{ shownTotals.scope }}</div>
+              <div style="font:600 20px/1.1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ shownTotals.plan }}</div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:3px;">
+              <div style="font:400 11.5px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">Packing list · {{ shownTotals.scope }}</div>
+              <div style="font:600 20px/1.1 'JetBrains Mono',monospace;">{{ shownTotals.actual }}</div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:3px;">
+              <div style="font:400 11.5px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">Against LC tolerance</div>
+              <div style="font:600 20px/1.1 'JetBrains Mono',monospace; color:{{ listTotals.tolColor }};">{{ listTotals.tol }}</div>
+            </div>
+          </div>
+          <div style="font:400 12.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); flex:1 1 280px; min-width:0; text-wrap:pretty;">{{ listNote }}</div>
+        </div>
+      </div>
+
+      <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">packing.generateList — from cartons, always regenerable</div>
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">packing.approveList — manager · locks the version the invoice and B/L are built from</div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP3 }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex; flex-direction:column; gap:18px;">
+      <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:20px; flex-wrap:wrap;">
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Shipment</div>
+          <div style="font:700 30px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">{{ ship.id }} · {{ order.po }}</div>
+          <div style="font:400 14.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">{{ ship.route }}</div>
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <div style="display:flex; align-items:center; gap:10px; border:1px solid {{ lc.expColor }}; border-radius:999px; padding:11px 15px;">
+            <div style="width:8px; height:8px; border-radius:999px; background:{{ lc.expColor }}; flex-shrink:0;"></div>
+            <div style="font:500 13px/1.3 'JetBrains Mono',monospace; color:{{ lc.expColor }};">{{ lc.expiry }}</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px; border:1px solid {{ lc.shipColor }}; border-radius:999px; padding:11px 15px;">
+            <div style="width:8px; height:8px; border-radius:999px; background:{{ lc.shipColor }}; flex-shrink:0;"></div>
+            <div style="font:500 13px/1.3 'JetBrains Mono',monospace; color:{{ lc.shipColor }};">{{ lc.lastShip }}</div>
+          </div>
+        </div>
+      </div>
+      <div style="height:9px; background-image:repeating-linear-gradient(115deg, var(--fx-accent) 0 2px, transparent 2px 9px);"></div>
+
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:22px; box-shadow:var(--fx-sh1); display:flex; flex-direction:column; gap:18px;">
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Where it is</div>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:0;">
+          <sc-for list="{{ timeline }}" as="t" hint-placeholder-count="4">
+            <div style="display:flex; flex-direction:column; gap:11px; padding-right:14px;">
+              <div style="display:flex; align-items:center; gap:0;">
+                <div style="{{ t.dot }}"></div>
+                <div style="{{ t.line }}"></div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:4px;">
+                <div style="font:600 15px/1.3 'Plus Jakarta Sans',sans-serif; color:{{ t.titleColor }};">{{ t.name }}</div>
+                <div style="font:500 13px/1.3 'JetBrains Mono',monospace; color:{{ t.dateColor }};">{{ t.date }}</div>
+                <div style="font:400 12.5px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ t.note }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding-top:2px;">
+          <sc-if value="{{ canShip }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ confirmExf }}" style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-strong); border-radius:8px; padding:12px 17px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-bg-hover)">Confirm ex-factory</button>
+          </sc-if>
+          <div style="font:400 12.5px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); flex:1 1 300px; min-width:0; text-wrap:pretty;">Confirming ex-factory actualizes the last TNA milestone and drafts the commercial invoice from the locked packing list. Forwarder is {{ ship.forwarder }} — the buyer's nomination, pre-filled.</div>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(420px, 1fr)); gap:18px; align-items:start;">
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+          <div style="display:flex; align-items:center; gap:12px; padding:16px 20px; border-bottom:1px solid var(--fx-border-subtle); flex-wrap:wrap;">
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Documents for {{ lc.no }}</div>
+            <div style="font:500 13px/1.3 'JetBrains Mono',monospace; color:{{ docsColor }}; margin-left:auto;">{{ docsSummary }}</div>
+          </div>
+          <sc-for list="{{ docs }}" as="d" hint-placeholder-count="7">
+            <div style="display:flex; align-items:stretch; border-bottom:1px solid var(--fx-border-subtle);">
+              <div style="width:{{ d.selW }}; flex-shrink:0; background:{{ d.sel }};"></div>
+              <div style="flex:1; min-width:0; display:grid; grid-template-columns:1.5fr 1fr 132px; gap:12px; padding:12px 20px 12px 17px; align-items:center; min-height:44px;">
+                <div style="font:500 13.5px/1.35 'Plus Jakarta Sans',sans-serif;">{{ d.name }}</div>
+                <div style="font:400 12.5px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">{{ d.who }}</div>
+                <div style="font:500 11.5px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:{{ d.sel }}; text-align:right;">{{ d.state }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:18px;">
+          <div style="background:var(--fx-bg-surface); border:1px solid {{ expBorder }}; border-radius:8px; padding:20px; display:flex; flex-direction:column; gap:14px; box-shadow:var(--fx-sh1);">
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+              <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">EXP form</div>
+              <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:{{ expBorder }}; margin-left:auto;">{{ expLabel }}</div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:7px;">
+              <label style="font:500 13px/1 'Plus Jakarta Sans',sans-serif;">EXP number issued by the AD bank</label>
+              <input value="{{ expValue }}" onChange="{{ setExp }}" placeholder="e.g. 0231-2026-0004417" style="background:var(--fx-bg-surface); color:var(--fx-text-primary); border:1px solid {{ expBorder }}; border-radius:4px; padding:13px 14px; font:500 15px/1.2 'JetBrains Mono',monospace; min-height:48px; width:100%;" />
+              <div style="font:400 12.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ expHelp }}</div>
+            </div>
+          </div>
+
+          <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:20px; display:flex; flex-direction:column; gap:14px; box-shadow:var(--fx-sh1);">
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Presentation to the bank</div>
+            <sc-if value="{{ canSend }}" hint-placeholder-val="{{ false }}">
+              <button onClick="{{ sendDocs }}" style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:14px 20px; font:600 15px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:48px;" style-hover="background:var(--fx-accent-hover)">Send documents to the bank</button>
+            </sc-if>
+            <sc-if value="{{ cannotSend }}" hint-placeholder-val="{{ true }}">
+              <button style="background:var(--fx-bg-sunken); color:var(--fx-text-disabled); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:14px 20px; font:600 15px/1 'Plus Jakarta Sans',sans-serif; cursor:not-allowed; min-height:48px;">Send documents to the bank</button>
+              <div style="display:flex; align-items:flex-start; gap:11px;">
+                <div style="width:7px; height:7px; border-radius:999px; background:var(--fx-warning); margin-top:6px; flex-shrink:0;"></div>
+                <div style="font:400 13.5px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ sendBlockReason }}</div>
+              </div>
+            </sc-if>
+            <div style="font:400 12.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ sendNote }}</div>
+          </div>
+
+          <sc-if value="{{ canShip }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ requestException }}" style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:8px; padding:12px 17px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px; align-self:flex-start;" style-hover="background:var(--fx-bg-hover)">Request a tolerance exception</button>
+          </sc-if>
+        </div>
+      </div>
+
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-accent); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh2); clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);">
+        <div style="display:flex; align-items:center; gap:12px; padding:15px 20px; background:var(--fx-accent-subtle); flex-wrap:wrap;">
+          <div style="width:26px; height:26px; border-radius:999px; background:#181D29; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <img src="uploads/MARBIM_logo.png" alt="" style="width:14px; height:14px;" />
+          </div>
+          <div style="font:600 15px/1.3 'Plus Jakarta Sans',sans-serif;">{{ blHeadline }}</div>
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-accent-pressed); border:1px solid var(--fx-accent-pressed); border-radius:4px; padding:5px 7px;">draft check</div>
+          <div style="font:400 12px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-secondary); margin-left:auto;">BL-draft-CFOR-8841.pdf</div>
+        </div>
+        <sc-for list="{{ discrepancies }}" as="d" hint-placeholder-count="3">
+          <div style="display:flex; align-items:stretch; border-bottom:1px solid var(--fx-border-subtle);">
+            <div style="width:{{ d.selW }}; flex-shrink:0; background:{{ d.sel }};"></div>
+            <div style="flex:1; min-width:0; padding:16px 20px; display:flex; flex-direction:column; gap:9px;">
+              <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
+                <div style="font:600 14.5px/1.3 'Plus Jakarta Sans',sans-serif;">{{ d.field }}</div>
+                <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:{{ d.sel }}; margin-left:auto;">{{ d.confidence }}</div>
+              </div>
+              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(230px, 1fr)); gap:12px;">
+                <div style="display:flex; flex-direction:column; gap:3px;">
+                  <div style="font:400 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">LC says</div>
+                  <div style="font:400 13px/1.45 'JetBrains Mono',monospace; color:var(--fx-text-secondary); text-wrap:pretty;">{{ d.lc }}</div>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:3px;">
+                  <div style="font:400 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">Draft B/L says</div>
+                  <div style="font:400 13px/1.45 'JetBrains Mono',monospace; color:var(--fx-text-primary); text-wrap:pretty;">{{ d.bl }}</div>
+                </div>
+              </div>
+              <div style="font:400 13px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ d.say }}</div>
+            </div>
+          </div>
+        </sc-for>
+        <div style="padding:16px 20px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+          <div style="font:400 13px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); flex:1 1 320px; min-width:0; text-wrap:pretty;">I can compare text and dates against the LC. I cannot tell you whether this bank's checker will accept an abbreviated company name — that is a judgement about a person, and Tanvir has seen more of their rejections than I have.</div>
+          <sc-if value="{{ canShip }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ amendBl }}" style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-strong); border-radius:8px; padding:12px 17px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-bg-hover)">Send corrections to the forwarder</button>
+          </sc-if>
+        </div>
+      </div>
+
+      <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">shipment.book · shipment.confirmExFactory — actualizes the final TNA milestone and drafts the invoice</div>
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">shipment.setExp gates shipment.sendDocsToBank — the one disabled control in FabricX, because the fix is on the same screen</div>
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">shipment.requestToleranceException → Approve inbox (approver: manager)</div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <div style="{{ markWrap }}">
+    <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); background:var(--fx-bg-canvas); padding:2px 4px;">{{ markLabel }}</div>
+    <div role="img" aria-label="MARBIM" style="{{ markStage }}">
+      <sc-for list="{{ markSlashes }}" as="s" hint-placeholder-count="8">
+        <img src="{{ s.src }}" alt="" style="{{ s.style }}" />
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:12px;">
+    <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Role access — finishing, packing, shipment</div>
+    <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden;">
+      <sc-for list="{{ access }}" as="a" hint-placeholder-count="6">
+        <div style="display:grid; grid-template-columns:1fr 96px 1.4fr; gap:16px; padding:11px 18px; align-items:center; border-bottom:1px solid var(--fx-border-subtle);">
+          <div style="font:500 13px/1.4 'JetBrains Mono',monospace;">{{ a.role }}</div>
+          <div><span style="{{ a.chip }}">{{ a.level }}</span></div>
+          <div style="font:400 13px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ a.note }}</div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed; left:50%; bottom:28px; transform:translateX(-50%); z-index:90; background:var(--fx-text-primary); color:var(--fx-text-inverse); border-radius:8px; box-shadow:var(--fx-sh3); padding:14px 18px; display:flex; align-items:center; gap:14px; max-width:92vw;">
+    <div style="font:500 13.5px/1.4 'Plus Jakarta Sans',sans-serif;">{{ toast }}</div>
+    <button onClick="{{ clearToast }}" style="background:transparent; border:none; color:var(--fx-accent); font:600 12px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer;">Dismiss</button>
+  </div>
+</sc-if>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;role&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;packing&quot;,&quot;commercial&quot;,&quot;manager&quot;,&quot;merchandiser&quot;,&quot;owner&quot;,&quot;viewer&quot;],&quot;default&quot;:&quot;packing&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Access&quot;},&quot;showActionNames&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Annotation&quot;}}">
+const FLOOR = {
+  '--p-row': '56px', '--p-cell': '76px', '--p-target': '48px', '--p-body': '18px', '--p-sm': '15px',
+  '--p-h1': '30px', '--p-h3': '21px', '--p-num': '26px', '--p-big': '44px', '--p-gap': '18px'
+};
+const DESK = {
+  '--p-row': '44px', '--p-cell': '64px', '--p-target': '44px', '--p-body': '16px', '--p-sm': '14px',
+  '--p-h1': '28px', '--p-h3': '20px', '--p-num': '22px', '--p-big': '34px', '--p-gap': '16px'
+};
+
+const SLASH_VEC = [
+  { dx: -0.896, dy: 0.444 }, { dx: -0.271, dy: 0.963 }, { dx: -0.97, dy: -0.243 }, { dx: 0.415, dy: 0.91 },
+  { dx: -0.512, dy: -0.859 }, { dx: 0.936, dy: 0.352 }, { dx: 0.282, dy: -0.96 }, { dx: 0.908, dy: -0.419 }
+];
+
+const USERS = {
+  packing: 'Parvin Akter', commercial: 'Tanvir Hasan', manager: 'Shafiq Alam',
+  merchandiser: 'Nabila Rahman', owner: 'M. A. Chowdhury', viewer: 'Audit (external)'
+};
+
+const SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
+const COLOURS = [
+  ['Navy', '#243349', [1150, 2400, 5000, 2200, 700]],
+  ['White', '#F7F6F2', [1100, 2300, 2900, 2100, 700]],
+  ['Sky', '#9CB8D4', [700, 1400, 1700, 1300, 300]]
+];
+const PACKED0 = {
+  'Navy-S': 1150, 'Navy-M': 2400, 'Navy-L': 4800, 'Navy-XL': 2200, 'Navy-XXL': 700,
+  'White-S': 1100, 'White-M': 2300, 'White-L': 2900, 'White-XL': 2100, 'White-XXL': 700,
+  'Sky-S': 700, 'Sky-M': 1368, 'Sky-L': 1200, 'Sky-XL': 0, 'Sky-XXL': 0
+};
+
+const CARTON_LOG = [
+  ['CTN-1082', 'Sky · M · 24 pcs', '16:14'],
+  ['CTN-1081', 'Sky · M · 24 pcs', '16:11'],
+  ['CTN-1080', 'Sky · L · 24 pcs', '16:07'],
+  ['CTN-1079', 'Sky · L · 24 pcs', '16:03']
+];
+
+const TIMELINE = [
+  ['Booked', '02 Sep', 'Kuehne+Nagel · buyer nomination · MV Cape Fortune', 'done'],
+  ['Ex-factory', '04 Sep', '1,084 cartons left the unit at 18:40', 'done'],
+  ['Port · Chattogram', '06 Sep', 'gate-in complete, awaiting loading', 'now'],
+  ['On board', '08 Sep', 'ETD 08 Sep · ETA Hamburg 04 Oct', 'next']
+];
+
+const DOCS = [
+  ['Commercial invoice', 'drafted from the locked packing list', 'ready', 'var(--fx-success)'],
+  ['Packing list v3', 'locked by Shafiq Alam 14 Aug', 'ready', 'var(--fx-success)'],
+  ['Bill of lading', 'draft from the forwarder, 3 queries open', 'in check', 'var(--fx-warning)'],
+  ['Certificate of origin · EUR.1', 'EPB, applied 05 Sep', 'ready', 'var(--fx-success)'],
+  ['Inspection certificate', 'QC final · PASS 14 Aug', 'ready', 'var(--fx-success)'],
+  ['Beneficiary certificate', 'template signed', 'ready', 'var(--fx-success)'],
+  ['EXP form', 'Eastern Bank · needs the number', 'missing', 'var(--fx-danger)']
+];
+
+const DISCREPANCIES = [
+  ['Consignee name', 'H&M HENNES & MAURITZ GBC AB', 'H&M HENNES AND MAURITZ GBC', 'certain',
+    'The LC spells it with an ampersand and ends in AB. The draft drops the AB and writes "AND". A bank checker will call that a discrepancy — it is the most common one on this LC.', 'var(--fx-danger)', '5px'],
+  ['Shipped on board date', 'not later than 10 Sep 2026', '08 Sep 2026', 'certain',
+    'Inside the window with two days to spare. Nothing to do.', 'var(--fx-success)', '3px'],
+  ['Freight term', 'FOB Chattogram · freight collect', 'FREIGHT PREPAID', 'unsure',
+    'FOB means the buyer pays the freight, so "prepaid" contradicts the term. I am not certain whether the forwarder printed it by habit or the buyer really prepaid this one — ask them before you correct it.', 'var(--fx-warning)', '5px']
+];
+
+const ACCESS = [
+  ['packing', 'edit', 'Finishing and carton entry on the floor. Cannot approve a packing list or touch documents.'],
+  ['commercial', 'edit', 'Shipment, EXP, documents and the bank presentation. Cannot build cartons.'],
+  ['manager', 'approve', 'Locks the packing list version and approves tolerance exceptions.'],
+  ['merchandiser', 'view', 'Their own orders — where it is and whether documents are clean.'],
+  ['owner', 'view', 'Reads the shipment and the LC countdown. The money view, not the carton view.'],
+  ['viewer · qc · storekeeper · hr', 'none', 'HIDDEN — export documents are bank records.']
+];
+
+class Component extends DCLogic {
+  state = {
+    screen: 'p1', role: 'packing', annot: true, packed: PACKED0,
+    sel: 'Sky-M', expState: 'missing', exp: '', net: 'online', showAll: false, toast: ''
+  };
+
+  componentWillUnmount() { clearTimeout(this._t); }
+
+  flash(msg) {
+    clearTimeout(this._t);
+    this.setState({ toast: msg });
+    this._t = setTimeout(() => this.setState({ toast: '' }), 4200);
+  }
+
+  pill(active) {
+    return {
+      background: active ? 'var(--fx-bg-surface)' : 'transparent',
+      color: active ? 'var(--fx-text-primary)' : 'var(--fx-text-secondary)',
+      border: '1px solid ' + (active ? 'var(--fx-border-default)' : 'transparent'),
+      borderRadius: '6px', padding: '9px 12px', cursor: 'pointer',
+      font: "600 12.5px/1 'Plus Jakarta Sans',sans-serif", whiteSpace: 'nowrap'
+    };
+  }
+
+  ghost(on) {
+    return {
+      background: on ? 'var(--fx-text-primary)' : 'transparent',
+      color: on ? 'var(--fx-text-inverse)' : 'var(--fx-text-secondary)',
+      border: '1px solid ' + (on ? 'var(--fx-text-primary)' : 'var(--fx-border-default)'),
+      borderRadius: '8px', padding: '10px 13px', cursor: 'pointer', minHeight: '44px',
+      font: "500 12px/1 'JetBrains Mono',monospace", whiteSpace: 'nowrap'
+    };
+  }
+
+  chip(level) {
+    const base = {
+      font: "500 11px/1 'JetBrains Mono',monospace", letterSpacing: '.05em', textTransform: 'uppercase',
+      borderRadius: '4px', padding: '6px 8px', display: 'inline-block', whiteSpace: 'nowrap'
+    };
+    if (level === 'none') return { ...base, color: 'var(--fx-text-tertiary)', border: '1px solid var(--fx-border-subtle)' };
+    if (level === 'view') return { ...base, color: 'var(--fx-text-secondary)', background: 'var(--fx-bg-sunken)', border: '1px solid transparent' };
+    if (level === 'edit') return { ...base, color: 'var(--fx-text-primary)', border: '1px solid var(--fx-border-strong)' };
+    return { ...base, color: 'var(--fx-text-primary)', border: '1px solid var(--fx-text-primary)', boxShadow: 'inset 3px 0 0 var(--fx-accent)', paddingLeft: '12px' };
+  }
+
+  finishedOf(c, z) {
+    const row = COLOURS.find(x => x[0] === c);
+    return row[2][SIZES.indexOf(z)];
+  }
+
+  renderVals() {
+    const s = this.state;
+    const mode = s.mode || 'light';
+    const role = s.role, screen = s.screen;
+    const locked = role === 'viewer';
+    const canPack = role === 'packing';
+    const canShip = role === 'commercial';
+    const isDesk = screen !== 'p1';
+
+    const packedTotal = Object.keys(s.packed).reduce((a, k) => a + s.packed[k], 0);
+    const finishedTotal = COLOURS.reduce((a, c) => a + c[2].reduce((b, v) => b + v, 0), 0);
+    const ordered = 26000;
+    const lcTolerance = Math.round(ordered * 1.02);
+
+    let overCount = 0;
+    const grid = COLOURS.map(c => {
+      const cells = SIZES.map(z => {
+        const key = c[0] + '-' + z;
+        const fin = this.finishedOf(c[0], z);
+        const pk = s.packed[key] || 0;
+        const over = pk > fin;
+        if (over) overCount += 1;
+        const pct = fin ? Math.min(100, pk / fin * 100) : 0;
+        return {
+          packed: pk.toLocaleString('en-US'), finished: fin.toLocaleString('en-US'),
+          numColor: over ? 'var(--fx-danger)' : pk === fin ? 'var(--fx-success)' : 'var(--fx-text-primary)',
+          pick: () => this.setState({ sel: key }),
+          fill: { height: '100%', width: pct + '%', background: over ? 'var(--fx-danger)' : pk === fin ? 'var(--fx-success)' : 'var(--fx-accent)' },
+          style: {
+            background: 'var(--fx-bg-surface)', padding: '11px 12px', minHeight: 'var(--p-cell)',
+            display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer',
+            boxShadow: over ? 'inset 0 0 0 2px var(--fx-danger)' : s.sel === key ? 'inset 0 0 0 2px var(--fx-focus)' : 'none',
+            animation: over ? 'fx-flash 900ms ease-in-out 3' : 'none'
+          }
+        };
+      });
+      const rem = c[2].reduce((a, v, i) => a + (v - (s.packed[c[0] + '-' + SIZES[i]] || 0)), 0);
+      return {
+        color: c[0], swatch: c[1], cells,
+        remaining: rem.toLocaleString('en-US'),
+        remColor: rem < 0 ? 'var(--fx-danger)' : rem === 0 ? 'var(--fx-success)' : 'var(--fx-text-primary)'
+      };
+    });
+
+    const selC = s.sel.split('-')[0], selZ = s.sel.split('-')[1];
+    const selFin = this.finishedOf(selC, selZ);
+    const selPk = s.packed[s.sel] || 0;
+    const selRem = selFin - selPk;
+
+    const listAll = COLOURS.reduce((acc, c) => {
+      SIZES.forEach(z => {
+        const key = c[0] + '-' + z;
+        const plan = this.finishedOf(c[0], z);
+        const act = s.packed[key] || 0;
+        const d = act - plan;
+        acc.push({
+          match: d === 0,
+          color: c[0], swatch: c[1], size: z,
+          plan: plan.toLocaleString('en-US'), actual: act.toLocaleString('en-US'),
+          diff: d === 0 ? '—' : (d > 0 ? '+' : '−') + Math.abs(d).toLocaleString('en-US'),
+          sel: d === 0 ? 'var(--fx-success)' : d > 0 ? 'var(--fx-danger)' : 'var(--fx-warning)',
+          selW: d === 0 ? '3px' : '5px',
+          note: d === 0 ? 'matches' : d > 0
+            ? 'More in the cartons than the breakdown allows — the invoice cannot be raised on this.'
+            : 'Short. Either finish the balance or the list ships short and the invoice follows it.'
+        });
+      });
+      return acc;
+    }, []);
+    const mismatches = listAll.filter(r => !r.match).length;
+    const hiddenCount = listAll.length - mismatches;
+    const listRows = s.showAll ? listAll : listAll.filter(r => !r.match);
+    const shownPlan = listRows.reduce((a, r) => a + Number(r.plan.replace(/,/g, '')), 0);
+    const shownAct = listRows.reduce((a, r) => a + Number(r.actual.replace(/,/g, '')), 0);
+
+    const expFilled = s.expState === 'filled' || s.exp.trim().length > 8;
+    const blOpen = DISCREPANCIES.filter(d => d[5] !== 'var(--fx-success)').length;
+    const blChecks = DISCREPANCIES.length;
+    const docsReady = DOCS.filter(d => d[2] === 'ready').length + (expFilled ? 1 : 0);
+    const offline = s.net === 'offline';
+
+    const timeline = TIMELINE.map((t, i) => ({
+      name: t[0], date: t[1], note: t[2],
+      titleColor: t[3] === 'next' ? 'var(--fx-text-tertiary)' : 'var(--fx-text-primary)',
+      dateColor: t[3] === 'now' ? 'var(--fx-accent-pressed)' : t[3] === 'next' ? 'var(--fx-text-tertiary)' : 'var(--fx-text-secondary)',
+      dot: {
+        width: t[3] === 'now' ? '15px' : '13px', height: t[3] === 'now' ? '15px' : '13px', borderRadius: '999px', flexShrink: 0,
+        background: t[3] === 'done' ? 'var(--fx-success)' : t[3] === 'now' ? 'var(--fx-accent)' : 'transparent',
+        border: t[3] === 'next' ? '2px dashed var(--fx-border-strong)' : 'none'
+      },
+      line: {
+        flex: 1, height: '2px', marginLeft: '4px',
+        background: i === TIMELINE.length - 1 ? 'transparent' : t[3] === 'done' ? 'var(--fx-success)' : 'var(--fx-border-default)'
+      }
+    }));
+
+    return {
+      screens: [['p1', 'P1 packing floor'], ['p2', 'P2 packing list'], ['p3', 'P3 shipment']].map(x => ({
+        label: x[1], pick: () => this.setState({ screen: x[0] }), style: this.pill(screen === x[0])
+      })),
+      role, setRole: (e) => this.setState({ role: e.target.value }),
+      annot: s.annot, annotLabel: s.annot ? 'on' : 'off', annotBtn: this.ghost(s.annot),
+      mode, modeLabel: mode === 'dark' ? 'dark' : 'light', modeBtn: this.ghost(mode === 'dark'),
+      logoSrc: 'uploads/fabricxai-logo-' + (mode === 'dark' ? 'dark' : 'light') + '.png',
+      toggleMode: () => this.setState(x => ({ mode: x.mode === 'dark' ? 'light' : 'dark' })),
+      toggleAnnot: () => this.setState(x => ({ annot: !x.annot })),
+      densityVars: isDesk ? DESK : FLOOR,
+      pageStyle: {
+        maxWidth: isDesk ? '1280px' : '1024px', margin: '0 auto', position: 'relative',
+        padding: '22px 22px 80px', display: 'flex', flexDirection: 'column', gap: '20px'
+      },
+
+      locked,
+      isP1: !locked && screen === 'p1', isP2: !locked && screen === 'p2', isP3: !locked && screen === 'p3',
+      canPack, canShip,
+      order: { po: 'PO-88203', style: 'SH-4471 · H&M · men\u2019s shirt' },
+      totals: {
+        packed: packedTotal.toLocaleString('en-US'),
+        finished: finishedTotal.toLocaleString('en-US'),
+        cartons: Math.floor(packedTotal / 24).toLocaleString('en-US')
+      },
+      sizes: SIZES, grid,
+
+      overAny: overCount > 0,
+      overLabel: overCount + ' cell' + (overCount > 1 ? 's' : ''),
+      overText: packedTotal > lcTolerance
+        ? 'The cartons now hold ' + packedTotal.toLocaleString('en-US') + ' pieces against ' + ordered.toLocaleString('en-US') + ' ordered — past the 2% the LC allows (' + lcTolerance.toLocaleString('en-US') + '). Either the extra comes out of the carton or the manager accepts an over-ship.'
+        : 'A cell has more in cartons than finishing has produced. Somebody has packed pieces that were not counted out of finishing — find the carton before the packing list is generated, because the list is built from cartons.',
+      overTolerance: packedTotal > lcTolerance,
+      requestException: () => this.flash('Tolerance exception requested · approver: manager (Shafiq Alam) · the LC allows 2%, this asks for more'),
+
+      sel: {
+        label: selC + ' · ' + selZ,
+        remaining: selRem.toLocaleString('en-US'),
+        remColor: selRem < 0 ? 'var(--fx-danger)' : selRem === 0 ? 'var(--fx-success)' : 'var(--fx-text-primary)',
+        cartons: Math.floor(selPk / 24).toLocaleString('en-US'),
+        note: selRem < 0
+          ? 'This one is over. Take ' + Math.abs(selRem) + ' pieces back out, or record the finishing that produced them.'
+          : selRem === 0
+            ? 'This colour and size is complete. Nothing left to pack here.'
+            : selRem < 24
+              ? 'Only ' + selRem + ' left — the last carton on this size will be short, which the packing list will show as a part carton.'
+              : Math.floor(selRem / 24) + ' full cartons left on this size.'
+      },
+      plusCarton: () => this.setState(x => ({ packed: { ...x.packed, [x.sel]: (x.packed[x.sel] || 0) + 24 } })),
+      minusCarton: () => this.setState(x => ({ packed: { ...x.packed, [x.sel]: Math.max(0, (x.packed[x.sel] || 0) - 24) } })),
+      printLabel: () => this.flash('Carton label printed · CTN-' + (1083 + Math.floor(selPk / 24) % 9) + ' · ' + selC + ' ' + selZ + ' · 24 pcs'),
+      recordFinishing: () => this.flash('24 more finished on ' + selC + ' ' + selZ + ' · finishing count updated, not the carton'),
+      cartonLog: CARTON_LOG.map(c => ({ no: c[0], what: c[1], when: c[2] })),
+
+      canApproveList: role === 'manager',
+      generateList: () => this.flash('Packing list v3 regenerated from ' + Math.floor(packedTotal / 24).toLocaleString('en-US') + ' cartons'),
+      approveList: () => this.flash('Packing list v3 locked · the invoice and the B/L are built from this version only'),
+      listRows,
+      listSummary: mismatches ? mismatches + ' row' + (mismatches > 1 ? 's' : '') + ' disagree' : 'every row matches',
+      listColor: mismatches ? 'var(--fx-danger)' : 'var(--fx-success)',
+      listTotals: {
+        plan: finishedTotal.toLocaleString('en-US'),
+        actual: packedTotal.toLocaleString('en-US'),
+        tol: packedTotal > lcTolerance ? 'over by ' + (packedTotal - lcTolerance).toLocaleString('en-US') : 'within 2%',
+        tolColor: packedTotal > lcTolerance ? 'var(--fx-danger)' : 'var(--fx-success)'
+      },
+      listNote: mismatches
+        ? 'A locked list is what the invoice and the bill of lading are built from, so it is locked once and only by a manager. Fix the floor first, then regenerate.'
+        : 'Nothing disagrees. Locking this version freezes what the invoice and the B/L will say.',
+
+      ship: {
+        id: 'SHP-2026-0412',
+        route: 'Chattogram → Hamburg · FOB · 1,084 cartons · 4,062 kg gross',
+        forwarder: 'Kuehne+Nagel'
+      },
+      lc: {
+        no: 'LC 0231-24-000517',
+        expiry: '24 Sep · 27 days to expiry', expColor: 'var(--fx-text-primary)',
+        lastShip: '10 Sep · 13 days to last shipment', shipColor: 'var(--fx-warning)'
+      },
+      timeline,
+      confirmExf: () => this.flash('Ex-factory confirmed 04 Sep · final TNA milestone actualized · commercial invoice drafted'),
+
+      showAll: s.showAll,
+      toggleAll: () => this.setState(x => ({ showAll: !x.showAll })),
+      allBtn: this.ghost(s.showAll),
+      allLabel: s.showAll ? 'showing all 15 rows' : hiddenCount + ' matching rows hidden',
+      shownTotals: {
+        plan: shownPlan.toLocaleString('en-US'),
+        actual: shownAct.toLocaleString('en-US'),
+        scope: s.showAll ? 'all 15 rows' : mismatches + ' rows shown'
+      },
+      net: s.net, setNet: (e) => this.setState({ net: e.target.value }),
+      syncPill: {
+        display: 'flex', alignItems: 'center', gap: '10px', borderRadius: '999px', padding: '10px 14px', flexShrink: 0,
+        border: '1px solid ' + (offline ? 'var(--fx-info)' : 'var(--fx-border-default)'),
+        background: offline ? 'var(--fx-bg-sunken)' : 'transparent',
+        color: offline ? 'var(--fx-info)' : 'var(--fx-text-secondary)'
+      },
+      syncDot: { width: '9px', height: '9px', borderRadius: '999px', flexShrink: 0, background: offline ? 'var(--fx-info)' : 'var(--fx-success)' },
+      syncText: offline ? 'offline · 7 cartons queued' : 'synced 16:14',
+      syncNote: offline
+        ? 'The packing floor sits behind the finishing room and the signal drops there. Cartons are held on this device and go up in order when it returns — a carton already sent is never counted twice.'
+        : 'Each carton writes as you build it. The list on the next screen is generated from what has actually synced.',
+      markWrap: {
+        position: 'absolute', right: '22px', zIndex: 10,
+        bottom: screen === 'p1' ? '104px' : '22px',
+        display: 'flex', alignItems: 'center', gap: '11px'
+      },
+      markLabel: offline ? 'MARBIM · syncing' : 'MARBIM · rest',
+      markStage: { position: 'relative', width: '32px', height: '32px', flexShrink: 0 },
+      markSlashes: SLASH_VEC.map((v, i) => ({
+        src: 'assets/mark/' + (mode === 'dark' ? 'w-' : 'i-') + (i + 1) + '.png',
+        style: {
+          position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block',
+          '--dx': v.dx, '--dy': v.dy, transformOrigin: 'center',
+          animation: offline ? 'fx-travel .8s ease-in-out ' + (-i * 90) + 'ms infinite' : 'none'
+        }
+      })),
+
+      docs: DOCS.map(d => ({
+        name: d[0], who: d[1],
+        state: d[0] === 'EXP form' && expFilled ? 'ready' : d[2],
+        sel: d[0] === 'EXP form' && expFilled ? 'var(--fx-success)' : d[3],
+        selW: d[3] === 'var(--fx-danger)' && !(d[0] === 'EXP form' && expFilled) ? '5px' : '3px'
+      })).map(d => (d.name === 'Bill of lading'
+        ? { ...d, who: 'draft from the forwarder · ' + blOpen + ' quer' + (blOpen === 1 ? 'y' : 'ies') + ' open' }
+        : d)),
+      blHeadline: 'I checked the draft B/L against the LC — ' + blChecks + ' checks, ' + blOpen + ' problem' + (blOpen === 1 ? '' : 's'),
+      docsSummary: docsReady + ' of 7 ready · ' + blOpen + ' B/L quer' + (blOpen === 1 ? 'y' : 'ies') + ' open',
+      docsColor: expFilled ? 'var(--fx-warning)' : 'var(--fx-danger)',
+
+      expState: s.expState, setExpState: (e) => this.setState({ expState: e.target.value, exp: e.target.value === 'filled' ? '0231-2026-0004417' : '' }),
+      expValue: s.expState === 'filled' ? (s.exp || '0231-2026-0004417') : s.exp,
+      setExp: (e) => this.setState({ exp: e.target.value }),
+      expLabel: expFilled ? 'filled' : 'required',
+      expBorder: expFilled ? 'var(--fx-success)' : 'var(--fx-danger)',
+      expHelp: expFilled
+        ? 'Recorded against this shipment. Bangladesh Bank matches the EXP to the realised proceeds, so it has to be the number the AD bank issued, not the one from the last shipment.'
+        : 'Eastern Bank issues this against the LC before shipment. Without it the presentation is incomplete and the bank returns the whole set — which is why the button below will not fire.',
+
+      canSend: canShip && expFilled,
+      cannotSend: !(canShip && expFilled),
+      sendBlockReason: !expFilled
+        ? 'The EXP number is empty. It is the one field the bank cannot proceed without, and it is on this screen — fill it above and this button lights up.'
+        : 'Only commercial presents documents to the bank. You can read the set, not send it.',
+      sendNote: expFilled
+        ? 'Sending hands the set to the LC submission flow with the locked packing list, the invoice, the B/L and all five certificates attached.'
+        : 'This is the only disabled control in FabricX. Everywhere else a control you cannot use is absent — here it stays visible because the missing thing is a field you can fill without leaving the page.',
+      sendDocs: () => this.flash('Document set presented to Eastern Bank · 7 documents · submission SUB-2026-0188 opened'),
+
+      discrepancies: DISCREPANCIES.map(d => ({
+        field: d[0], lc: d[1], bl: d[2], confidence: d[3] === 'certain' ? 'certain' : 'not sure',
+        say: d[4], sel: d[5], selW: d[6]
+      })),
+      amendBl: () => this.flash('2 corrections sent to Kuehne+Nagel · freight term query flagged for you to confirm with H&M first'),
+
+      access: ACCESS.map(a => ({ role: a[0], level: a[1], note: a[2], chip: this.chip(a[1]) })),
+      toast: s.toast, clearToast: () => this.setState({ toast: '' })
+    };
+  }
+}
+
+</script>
+</body>
+</html>

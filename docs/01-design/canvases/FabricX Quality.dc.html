@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #F3F1EC; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  [data-mode="dark"] { --fx-bg-canvas:#0F131B !important; --fx-bg-surface:#181D29 !important; --fx-bg-raised:#212736 !important; --fx-bg-sunken:#0B0E15 !important; --fx-bg-hover:rgba(255,255,255,.05) !important; --fx-bg-selected:rgba(225,179,52,.17) !important; --fx-border-subtle:#252B3A !important; --fx-border-default:#343B4C !important; --fx-border-strong:#4E576B !important; --fx-text-primary:#F4F3F0 !important; --fx-text-secondary:#AEB5C4 !important; --fx-text-tertiary:#7C8497 !important; --fx-text-disabled:#565E71 !important; --fx-text-inverse:#181D29 !important; --fx-accent-hover:#EBC352 !important; --fx-accent-pressed:#F2D077 !important; --fx-accent-subtle:rgba(225,179,52,.14) !important; --fx-success:#4FA97D !important; --fx-warning:#D99A3F !important; --fx-danger:#E0665C !important; --fx-info:#6D9BE8 !important; --fx-focus:#E1B334 !important; --fx-sh1:0 0 0 1px #252B3A !important; --fx-sh2:0 0 0 1px #252B3A !important; --fx-sh3:0 0 0 1px #343B4C !important; }
+  body:has([data-mode="dark"]) { background: #0B0E15; }
+  a { color: #181D29; text-decoration: underline; text-underline-offset: 3px; }
+  a:hover { color: #B88C21; }
+  @keyframes fx-breathe { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(calc(var(--dx) * 3.5%), calc(var(--dy) * 3.5%)); } }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
+</style>
+</helmet>
+
+<div data-mode="{{ mode }}" style="--fx-bg-canvas:#FBFAF8; --fx-bg-surface:#FFFFFF; --fx-bg-sunken:#F3F1EC; --fx-bg-hover:rgba(24,29,41,.035); --fx-bg-selected:rgba(225,179,52,.12); --fx-border-subtle:#E7E4DE; --fx-border-default:#D6D2C9; --fx-border-strong:#A9A49A; --fx-text-primary:#181D29; --fx-text-secondary:#4C5364; --fx-text-tertiary:#767E90; --fx-text-disabled:#A8AEBB; --fx-text-inverse:#FBFAF8; --fx-accent:#E1B334; --fx-accent-hover:#CFA22B; --fx-accent-pressed:#B88C21; --fx-accent-subtle:#FAF1DA; --fx-accent-on:#181D29; --fx-success:#2F7D5B; --fx-warning:#B4741C; --fx-danger:#B23A32; --fx-info:#2F5FA8; --fx-focus:#181D29; --fx-sh1:0 1px 2px rgba(24,29,41,.06); --fx-sh2:0 4px 12px rgba(24,29,41,.08); --fx-sh3:0 12px 32px rgba(24,29,41,.12); font-family:'Plus Jakarta Sans',system-ui,sans-serif; color:var(--fx-text-primary); min-height:100vh; background:var(--fx-bg-sunken);">
+
+<div style="position:sticky; top:0; z-index:60; background:var(--fx-bg-surface); border-bottom:1px solid var(--fx-border-default); padding:10px 20px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+  <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Prototype bar</div>
+  <div style="display:flex; gap:2px; background:var(--fx-bg-sunken); border-radius:8px; padding:3px; flex-wrap:wrap;">
+    <sc-for list="{{ screens }}" as="s" hint-placeholder-count="5">
+      <button onClick="{{ s.pick }}" style="{{ s.style }}">{{ s.label }}</button>
+    </sc-for>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px;">
+    <span style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">role</span>
+    <select onChange="{{ setRole }}" value="{{ role }}" style="background:var(--fx-bg-surface); color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:4px; padding:7px 9px; font:500 12px/1 'JetBrains Mono',monospace;">
+      <option value="qc">qc</option>
+      <option value="manager">manager</option>
+      <option value="merchandiser">merchandiser</option>
+      <option value="supervisor">supervisor</option>
+      <option value="viewer">viewer</option>
+    </select>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px;">
+    <span style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">order</span>
+    <select onChange="{{ setFtype }}" value="{{ ftype }}" style="background:var(--fx-bg-surface); color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:4px; padding:7px 9px; font:500 12px/1 'JetBrains Mono',monospace;">
+      <option value="woven">woven · shirt</option>
+      <option value="knit">knit · polo</option>
+    </select>
+  </div>
+  <div style="display:flex; align-items:center; gap:10px; margin-left:auto;">
+    <button onClick="{{ toggleMode }}" style="{{ modeBtn }}">{{ modeLabel }}</button>
+    <button onClick="{{ toggleAnnot }}" style="{{ annotBtn }}">actions {{ annotLabel }}</button>
+  </div>
+</div>
+
+<div style="{{ densityVars }}">
+<div style="{{ pageStyle }}">
+
+  <sc-if value="{{ isP1 }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex; flex-direction:column; gap:var(--q-gap);">
+      <div style="display:flex; background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+        <div style="width:5px; flex-shrink:0; background:{{ dhuColor }};"></div>
+        <div style="flex:1; min-width:0; padding:18px 20px; display:flex; align-items:center; gap:28px; flex-wrap:wrap;">
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <div style="font:400 11.5px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">Line DHU · live</div>
+            <div style="font:700 40px/1 'JetBrains Mono',monospace; color:{{ dhuColor }};">{{ dhu }}</div>
+          </div>
+          <div style="display:flex; gap:24px; flex-wrap:wrap;">
+            <div style="display:flex; flex-direction:column; gap:4px;">
+              <div style="font:400 11.5px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">Checked</div>
+              <div style="font:600 var(--q-num)/1.05 'JetBrains Mono',monospace;">{{ checked }}</div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:4px;">
+              <div style="font:400 11.5px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">Defects</div>
+              <div style="font:600 var(--q-num)/1.05 'JetBrains Mono',monospace; color:var(--fx-danger);">{{ defectCount }}</div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:4px;">
+              <div style="font:400 11.5px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">Target</div>
+              <div style="font:500 var(--q-num)/1.05 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">≤ 4.0%</div>
+            </div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:3px; margin-left:auto;">
+            <div style="font:500 var(--q-sm)/1.2 'Plus Jakarta Sans',sans-serif;">{{ line.label }} · {{ line.po }}</div>
+            <div style="font:400 12.5px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ line.style }} · 14 Aug</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:3px; background:var(--fx-bg-sunken); border-radius:8px; padding:4px; flex-wrap:wrap;">
+        <sc-for list="{{ lineTabs }}" as="t" hint-placeholder-count="3">
+          <button onClick="{{ t.pick }}" style="{{ t.style }}">{{ t.label }}</button>
+        </sc-for>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:11px;">
+        <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Tap 1 · which operation</div>
+          <div style="font:400 12.5px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-left:auto;">{{ tapNote }}</div>
+        </div>
+        <div style="display:flex; gap:10px; overflow-x:auto; padding-bottom:4px;">
+          <sc-for list="{{ operations }}" as="o" hint-placeholder-count="8">
+            <button onClick="{{ o.pick }}" style="{{ o.style }}">{{ o.label }}</button>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:11px;">
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Tap 2 · what is wrong</div>
+        <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:10px;">
+          <sc-for list="{{ defects }}" as="d" hint-placeholder-count="12">
+            <button onClick="{{ d.tap }}" style="{{ d.style }}">
+              <div style="font:600 var(--q-sm)/1.25 'Plus Jakarta Sans',sans-serif; text-align:left;">{{ d.label }}</div>
+              <div style="font:400 12px/1.2 'JetBrains Mono',monospace; opacity:.7; text-align:left;">{{ d.today }}</div>
+            </button>
+          </sc-for>
+        </div>
+      </div>
+
+      <sc-if value="{{ showOperators }}" hint-placeholder-val="{{ false }}">
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-accent); border-radius:8px; padding:18px 20px; display:flex; flex-direction:column; gap:13px; box-shadow:var(--fx-sh2);">
+          <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Tap 3 · whose machine, if you know</div>
+            <button onClick="{{ skipOperator }}" style="margin-left:auto; background:transparent; border:none; font:500 13px/1.3 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); cursor:pointer; text-decoration:underline; text-underline-offset:3px;">skip — just log the defect</button>
+          </div>
+          <div style="font:400 var(--q-sm)/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ recordedLabel }}</div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <sc-for list="{{ operators }}" as="o" hint-placeholder-count="5">
+              <button onClick="{{ o.pick }}" style="{{ o.style }}">
+                <div style="font:600 var(--q-sm)/1.2 'Plus Jakarta Sans',sans-serif;">{{ o.name }}</div>
+                <div style="font:400 12px/1.2 'JetBrains Mono',monospace; opacity:.7;">{{ o.station }}</div>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+        <sc-if value="{{ canEdit }}" hint-placeholder-val="{{ true }}">
+          <button onClick="{{ addChecked }}" style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:18px 28px; font:600 var(--q-body)/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:64px;" style-hover="background:var(--fx-accent-hover)">＋ 1 checked, no defect</button>
+        </sc-if>
+        <div style="font:400 12.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); flex:1 1 260px; min-width:0; text-wrap:pretty;">Most garments are fine, so the fine ones get the biggest button. A defect is three taps at the most and never opens a form.</div>
+      </div>
+
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+        <div style="padding:16px 20px 12px; font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Last few</div>
+        <sc-for list="{{ recent }}" as="r" hint-placeholder-count="4">
+          <div style="display:flex; align-items:stretch; border-top:1px solid var(--fx-border-subtle);">
+            <div style="width:3px; flex-shrink:0; background:{{ r.c }};"></div>
+            <div style="flex:1; min-width:0; display:grid; grid-template-columns:96px 1fr 1fr 108px; gap:12px; padding:12px 20px; align-items:center; min-height:var(--q-row);">
+              <div style="font:500 12.5px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ r.time }}</div>
+              <div style="font:500 var(--q-sm)/1.3 'Plus Jakarta Sans',sans-serif;">{{ r.defect }}</div>
+              <div style="font:400 13px/1.3 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">{{ r.op }}</div>
+              <div style="font:400 12.5px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); text-align:right;">{{ r.who }}</div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+
+      <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">qc.recordInline — operation + defect, written on the second tap</div>
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">qc.tagOperator — optional third tap, skippable by design</div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP2 }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex; flex-direction:column; gap:var(--q-gap);">
+      <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Quality · fabric</div>
+          <div style="font:700 var(--q-h1)/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">4-point inspection</div>
+          <div style="font:400 var(--q-sm)/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:66ch; text-wrap:pretty;">{{ fabricLead }}</div>
+        </div>
+        <div style="font:400 13px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ grn.id }} · {{ grn.supplier }}</div>
+      </div>
+      <div style="height:9px; background-image:repeating-linear-gradient(115deg, var(--fx-accent) 0 2px, transparent 2px 9px);"></div>
+
+      <sc-if value="{{ isWoven }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; background:var(--fx-bg-surface); border:1px solid var(--fx-warning); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+          <div style="width:5px; flex-shrink:0; background:var(--fx-warning);"></div>
+          <div style="flex:1; min-width:0; padding:18px 20px; display:flex; flex-direction:column; gap:9px;">
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+              <div style="font:600 var(--q-h3)/1.25 'Plus Jakarta Sans',sans-serif;">Store cannot issue this fabric yet</div>
+              <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-warning); margin-left:auto;">woven · mandatory</div>
+            </div>
+            <div style="font:400 var(--q-sm)/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">Shell fabric on a woven order is inspected before it goes to cutting, not after. Until this GRN has a result, <span style="font-family:'JetBrains Mono',monospace; font-size:13.5px; color:var(--fx-text-primary);">store.issueToProduction</span> shows the rolls as pending inspection and refuses the issue with that reason.</div>
+          </div>
+        </div>
+      </sc-if>
+
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+        <div style="display:flex; align-items:center; gap:12px; padding:16px 20px; border-bottom:1px solid var(--fx-border-subtle); flex-wrap:wrap;">
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">{{ grn.scope }}</div>
+          <div style="font:400 12.5px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-left:auto;">pass at 20 points per 100 yd² or less</div>
+        </div>
+        <div style="overflow-x:auto;">
+        <div style="min-width:900px;">
+          <div style="display:flex; align-items:stretch; background:var(--fx-bg-sunken); border-bottom:1px solid var(--fx-border-subtle);">
+            <div style="width:3px; flex-shrink:0;"></div>
+            <div style="flex:1; min-width:0; display:grid; grid-template-columns:132px 1fr 92px 92px 92px 108px 108px; gap:12px; padding:11px 20px 11px 17px; font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">
+              <div>Roll</div><div>Lot · shade</div><div style="text-align:right;">1 pt</div><div style="text-align:right;">2 pt</div><div style="text-align:right;">4 pt</div><div style="text-align:right;">Points/100</div><div style="text-align:right;">Result</div>
+            </div>
+          </div>
+          <sc-for list="{{ rollRows }}" as="r" hint-placeholder-count="5">
+            <div style="display:flex; align-items:stretch; border-bottom:1px solid var(--fx-border-subtle);">
+              <div style="width:{{ r.selW }}; flex-shrink:0; background:{{ r.sel }};"></div>
+              <div style="flex:1; min-width:0; display:grid; grid-template-columns:132px 1fr 92px 92px 92px 108px 108px; gap:12px; padding:12px 20px 12px 17px; align-items:center; min-height:var(--q-row);">
+                <div style="display:flex; flex-direction:column; gap:3px;">
+                  <div style="font:600 var(--q-sm)/1.25 'JetBrains Mono',monospace;">{{ r.no }}</div>
+                  <div style="font:400 12px/1.2 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ r.qty }}</div>
+                </div>
+                <div style="font:400 13px/1.35 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">{{ r.lot }}</div>
+                <div style="font:400 13px/1.3 'JetBrains Mono',monospace; text-align:right; color:var(--fx-text-secondary);">{{ r.p1 }}</div>
+                <div style="font:400 13px/1.3 'JetBrains Mono',monospace; text-align:right; color:var(--fx-text-secondary);">{{ r.p2 }}</div>
+                <div style="font:400 13px/1.3 'JetBrains Mono',monospace; text-align:right; color:var(--fx-text-secondary);">{{ r.p4 }}</div>
+                <div style="font:600 var(--q-sm)/1.3 'JetBrains Mono',monospace; text-align:right; color:{{ r.sel }};">{{ r.score }}</div>
+                <div style="display:flex; justify-content:flex-end;"><span style="{{ r.chip }}">{{ r.result }}</span></div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        </div>
+        <div style="padding:16px 20px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <div style="font:400 11.5px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">GRN result</div>
+            <div style="font:600 var(--q-num)/1.05 'JetBrains Mono',monospace; color:{{ grnResultColor }};">{{ grnResult }}</div>
+          </div>
+          <div style="font:400 var(--q-sm)/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); flex:1 1 300px; min-width:0; text-wrap:pretty;">{{ grnVerdict }}</div>
+          <sc-if value="{{ canEdit }}" hint-placeholder-val="{{ true }}">
+            <button onClick="{{ submitFabric }}" style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:16px 24px; font:600 var(--q-body)/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:56px;" style-hover="background:var(--fx-accent-hover)">Record the result</button>
+          </sc-if>
+        </div>
+      </div>
+
+      <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+        <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px; align-self:flex-start;">qc.recordFabricInspection — updates the GRN status, which is what unblocks store.issueToProduction</div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP3 }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex; flex-direction:column; gap:var(--q-gap);">
+      <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Quality · measurements</div>
+          <div style="font:700 var(--q-h1)/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">{{ meas.title }}</div>
+          <div style="font:400 var(--q-sm)/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">{{ meas.sub }}</div>
+        </div>
+        <sc-if value="{{ canEdit }}" hint-placeholder-val="{{ true }}">
+          <button onClick="{{ shootSheet }}" style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-strong); border-radius:8px; padding:15px 20px; font:600 var(--q-sm)/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:var(--q-target);" style-hover="background:var(--fx-bg-hover)">Photograph the paper sheet</button>
+        </sc-if>
+      </div>
+      <div style="height:9px; background-image:repeating-linear-gradient(115deg, var(--fx-accent) 0 2px, transparent 2px 9px);"></div>
+
+      <sc-if value="{{ sheetDraft }}" hint-placeholder-val="{{ false }}">
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-accent); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh2); clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);">
+          <div style="display:flex; align-items:center; gap:12px; padding:15px 20px; background:var(--fx-accent-subtle); flex-wrap:wrap;">
+            <div style="width:26px; height:26px; border-radius:999px; background:#181D29; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+              <img src="uploads/MARBIM_logo.png" alt="" style="width:14px; height:14px;" />
+            </div>
+            <div style="font:600 var(--q-sm)/1.3 'Plus Jakarta Sans',sans-serif;">I read the sheet — 21 of 21 cells, 3 I am unsure about</div>
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-accent-pressed); border:1px solid var(--fx-accent-pressed); border-radius:4px; padding:5px 7px;">draft</div>
+          </div>
+          <div style="padding:16px 20px; display:flex; flex-direction:column; gap:12px;">
+            <div style="font:400 var(--q-sm)/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">Handwritten 7 and 1 look alike, and a 4 with an open top reads as 9. The three cells I am unsure about are outlined below — check those and the rest is almost certainly right.</div>
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+              <button onClick="{{ acceptSheet }}" style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:14px 20px; font:600 var(--q-sm)/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:var(--q-target);" style-hover="background:var(--fx-accent-hover)">Fill the table from the photo</button>
+              <button onClick="{{ dropSheet }}" style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:8px; padding:13px 18px; font:600 var(--q-sm)/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:var(--q-target);">I'll key it myself</button>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+        <div style="display:flex; align-items:center; gap:12px; padding:16px 20px; border-bottom:1px solid var(--fx-border-subtle); flex-wrap:wrap;">
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Points of measure · size L · 3 pieces</div>
+          <div style="font:500 var(--q-sm)/1.3 'JetBrains Mono',monospace; color:{{ measColor }}; margin-left:auto;">{{ measSummary }}</div>
+        </div>
+        <div style="overflow-x:auto;">
+        <div style="min-width:840px;">
+          <div style="display:flex; align-items:stretch; background:var(--fx-bg-sunken); border-bottom:1px solid var(--fx-border-subtle);">
+            <div style="width:3px; flex-shrink:0;"></div>
+            <div style="flex:1; min-width:0; display:grid; grid-template-columns:1.4fr 96px 88px 108px 108px 108px; gap:12px; padding:11px 20px 11px 17px; font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">
+              <div>Point of measure</div><div style="text-align:right;">Spec</div><div style="text-align:right;">Tol ±</div><div style="text-align:right;">Pc 1</div><div style="text-align:right;">Pc 2</div><div style="text-align:right;">Pc 3</div>
+            </div>
+          </div>
+          <sc-for list="{{ poms }}" as="p" hint-placeholder-count="7">
+            <div style="display:flex; align-items:stretch; border-bottom:1px solid var(--fx-border-subtle);">
+              <div style="width:{{ p.selW }}; flex-shrink:0; background:{{ p.sel }};"></div>
+              <div style="flex:1; min-width:0; display:grid; grid-template-columns:1.4fr 96px 88px 108px 108px 108px; gap:12px; padding:12px 20px 12px 17px; align-items:center; min-height:var(--q-row);">
+                <div style="font:500 var(--q-sm)/1.3 'Plus Jakarta Sans',sans-serif;">{{ p.name }}</div>
+                <div style="font:400 13px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-secondary); text-align:right;">{{ p.spec }}</div>
+                <div style="font:400 13px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); text-align:right;">{{ p.tol }}</div>
+                <sc-for list="{{ p.cells }}" as="c" hint-placeholder-count="3">
+                  <div onClick="{{ c.pick }}" style="{{ c.style }}">{{ c.v }}</div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        </div>
+        <div style="padding:16px 20px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+          <div style="font:400 var(--q-sm)/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); flex:1 1 300px; min-width:0; text-wrap:pretty;">{{ measNote }}</div>
+          <sc-if value="{{ canEdit }}" hint-placeholder-val="{{ true }}">
+            <button onClick="{{ saveMeas }}" style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:16px 24px; font:600 var(--q-body)/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:56px;" style-hover="background:var(--fx-accent-hover)">Save measurements</button>
+          </sc-if>
+        </div>
+      </div>
+
+      <sc-if value="{{ padOpen }}" hint-placeholder-val="{{ false }}">
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-strong); border-radius:8px; padding:20px; display:flex; gap:20px; flex-wrap:wrap; box-shadow:var(--fx-sh2);">
+          <div style="display:flex; flex-direction:column; gap:14px; flex:1 1 260px; min-width:0;">
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">{{ padLabel }}</div>
+            <div style="border:1px solid var(--fx-border-strong); border-radius:8px; padding:16px 18px; display:flex; align-items:baseline; gap:12px; background:var(--fx-bg-sunken);">
+              <div style="font:600 40px/1 'JetBrains Mono',monospace;">{{ padValue }}</div>
+              <div style="font:500 var(--q-sm)/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-left:auto;">cm</div>
+            </div>
+            <div style="font:400 12.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ padHint }}</div>
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; flex:1 1 240px;">
+            <sc-for list="{{ keys }}" as="k" hint-placeholder-count="12">
+              <button onClick="{{ k.press }}" style="{{ k.style }}">{{ k.label }}</button>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">qc.recordMeasurements</div>
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">marbim.extractMeasurementSheet — photo → filled draft, low-confidence cells outlined</div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP4 }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex; flex-direction:column; gap:var(--q-gap);">
+      <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Quality · final inspection</div>
+          <div style="font:700 var(--q-h1)/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">{{ aql.po }} · {{ aql.style }}</div>
+        </div>
+        <div style="font:400 13px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">ISO 2859-1 · single sampling · normal</div>
+      </div>
+
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <sc-for list="{{ aqlSteps }}" as="st" hint-placeholder-count="4">
+          <div onClick="{{ st.pick }}" style="{{ st.style }}">
+            <div style="font:600 13px/1 'JetBrains Mono',monospace;">{{ st.n }}</div>
+            <div style="font:600 var(--q-sm)/1.2 'Plus Jakarta Sans',sans-serif; white-space:nowrap;">{{ st.label }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <sc-if value="{{ aqlStep1 }}" hint-placeholder-val="{{ true }}">
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+          <div style="padding:16px 20px 12px; font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">The lot in front of you</div>
+          <sc-for list="{{ aqlFacts }}" as="f" hint-placeholder-count="6">
+            <div style="display:grid; grid-template-columns:200px 1fr; gap:14px; padding:12px 20px; border-top:1px solid var(--fx-border-subtle); align-items:center; min-height:var(--q-row);">
+              <div style="font:400 13px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">{{ f.k }}</div>
+              <div style="font:500 var(--q-sm)/1.4 'JetBrains Mono',monospace; color:{{ f.c }};">{{ f.v }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ aqlStep2 }}" hint-placeholder-val="{{ false }}">
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:22px; display:flex; flex-direction:column; gap:18px; box-shadow:var(--fx-sh1);">
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">The rule, not just the numbers</div>
+          <div style="font:400 var(--q-body)/1.6 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-primary); max-width:70ch; text-wrap:pretty;">{{ aql.ruleSentence }}</div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:16px;">
+            <sc-for list="{{ aql.figures }}" as="f" hint-placeholder-count="4">
+              <div style="display:flex; background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden;">
+                <div style="width:3px; flex-shrink:0; background:{{ f.c }};"></div>
+                <div style="padding:14px 16px; display:flex; flex-direction:column; gap:5px; flex:1; min-width:0;">
+                  <div style="font:400 11.5px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">{{ f.k }}</div>
+                  <div style="font:600 var(--q-num)/1.05 'JetBrains Mono',monospace; color:{{ f.c }};">{{ f.v }}</div>
+                  <div style="font:400 12.5px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">{{ f.note }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="font:400 12.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:70ch; text-wrap:pretty;">The table is printed in the standard and the buyer has the same copy. Showing the code letter and the two limits means nobody has to take the app's word for the verdict.</div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ aqlStep3 }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex; flex-direction:column; gap:var(--q-gap);">
+          <div style="display:flex; gap:14px; flex-wrap:wrap;">
+            <sc-for list="{{ severities }}" as="v" hint-placeholder-count="3">
+              <div style="flex:1 1 180px; display:flex; background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+                <div style="width:5px; flex-shrink:0; background:{{ v.c }};"></div>
+                <div style="padding:16px 18px; display:flex; flex-direction:column; gap:6px; flex:1; min-width:0;">
+                  <div style="font:400 11.5px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">{{ v.k }}</div>
+                  <div style="font:600 var(--q-num)/1.05 'JetBrains Mono',monospace; color:{{ v.c }};">{{ v.n }}</div>
+                  <div style="font:400 12.5px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">{{ v.note }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+            <div style="display:flex; align-items:center; gap:12px; padding:16px 20px; border-bottom:1px solid var(--fx-border-subtle); flex-wrap:wrap;">
+              <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Defects found · {{ foundCount }}</div>
+              <sc-if value="{{ canEdit }}" hint-placeholder-val="{{ true }}">
+                <button onClick="{{ addDefect }}" style="margin-left:auto; background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-strong); border-radius:8px; padding:13px 17px; font:600 var(--q-sm)/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:var(--q-target);" style-hover="background:var(--fx-bg-hover)">＋ defect with photo</button>
+              </sc-if>
+            </div>
+            <sc-for list="{{ found }}" as="f" hint-placeholder-count="4">
+              <div style="display:flex; align-items:stretch; border-bottom:1px solid var(--fx-border-subtle);">
+                <div style="width:3px; flex-shrink:0; background:{{ f.c }};"></div>
+                <div style="flex:1; min-width:0; display:flex; gap:14px; padding:14px 20px; align-items:center;">
+                  <div style="width:64px; height:64px; border-radius:4px; border:1px solid var(--fx-border-default); background:var(--fx-bg-sunken); flex-shrink:0; display:flex; align-items:center; justify-content:center; font:400 9.5px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); text-align:center; padding:4px;">photo<br />{{ f.shot }}</div>
+                  <div style="display:flex; flex-direction:column; gap:4px; min-width:0; flex:1;">
+                    <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">
+                      <div style="font:600 var(--q-sm)/1.3 'Plus Jakarta Sans',sans-serif;">{{ f.name }}</div>
+                      <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:{{ f.c }};">{{ f.sev }}</div>
+                    </div>
+                    <div style="font:400 13px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ f.note }}</div>
+                  </div>
+                  <div style="font:400 12.5px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); flex-shrink:0;">{{ f.where }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ aqlStep4 }}" hint-placeholder-val="{{ false }}">
+        <div style="{{ verdict.panel }}">
+          <div style="font:500 13px/1 'JetBrains Mono',monospace; letter-spacing:.14em; text-transform:uppercase; opacity:.85;">{{ verdict.kicker }}</div>
+          <div style="font:700 var(--q-verdict)/1 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">{{ verdict.word }}</div>
+          <div style="font:500 var(--q-h3)/1.4 'Plus Jakarta Sans',sans-serif; max-width:52ch; text-wrap:pretty;">{{ verdict.line }}</div>
+          <div style="font:400 var(--q-sm)/1.6 'JetBrains Mono',monospace; opacity:.9;">{{ verdict.math }}</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+          <sc-if value="{{ canEdit }}" hint-placeholder-val="{{ true }}">
+            <button onClick="{{ submitVerdict }}" style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:18px 26px; font:600 var(--q-body)/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:60px;" style-hover="background:var(--fx-accent-hover)">Submit the verdict</button>
+          </sc-if>
+          <div style="font:400 12.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); flex:1 1 280px; min-width:0; text-wrap:pretty;">{{ verdict.consequence }}</div>
+        </div>
+      </sc-if>
+
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+        <sc-if value="{{ aqlNotFirst }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ aqlPrev }}" style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:8px; padding:14px 20px; font:600 var(--q-sm)/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:var(--q-target);">Back</button>
+        </sc-if>
+        <sc-if value="{{ aqlNotLast }}" hint-placeholder-val="{{ true }}">
+          <button onClick="{{ aqlNext }}" style="margin-left:auto; background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:15px 24px; font:600 var(--q-body)/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:56px;" style-hover="background:var(--fx-accent-hover)">{{ aqlNextLabel }}</button>
+        </sc-if>
+      </div>
+
+      <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">qc.startFinalInspection · qc.recordDefect</div>
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">qc.submitVerdict — actualizes the "final inspection" TNA milestone</div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP5 }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex; flex-direction:column; gap:18px;">
+      <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:20px; flex-wrap:wrap;">
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Quality · dashboard</div>
+          <div style="font:700 30px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">Where quality is costing us</div>
+          <div style="font:400 14.5px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:66ch; text-wrap:pretty;">{{ dashLead }}</div>
+        </div>
+        <sc-if value="{{ canPack }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ genPack }}" style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:12px 18px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-accent-hover)">Generate a buyer pack</button>
+        </sc-if>
+      </div>
+      <div style="height:9px; background-image:repeating-linear-gradient(115deg, var(--fx-accent) 0 2px, transparent 2px 9px);"></div>
+
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(420px, 1fr)); gap:18px; align-items:start;">
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:20px; display:flex; flex-direction:column; gap:14px; box-shadow:var(--fx-sh1);">
+          <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">DHU · 14 days, all lines</div>
+            <div style="font:500 13px/1.3 'JetBrains Mono',monospace; color:var(--fx-warning); margin-left:auto;">4.6% average · target 4.0%</div>
+          </div>
+          <div style="position:relative; height:112px; display:flex; align-items:flex-end; gap:4px;">
+            <sc-for list="{{ trend }}" as="t" hint-placeholder-count="14">
+              <div style="{{ t.style }}"></div>
+            </sc-for>
+            <div style="{{ targetLine }}"></div>
+            <div style="{{ targetLabel }}">target 4.0%</div>
+          </div>
+          <div style="font:400 12.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">Two spikes, both on days a new style started. The floor learns a style in about four days and DHU follows the learning curve — the plan should carry that, not the QC target.</div>
+        </div>
+
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:20px; display:flex; flex-direction:column; gap:13px; box-shadow:var(--fx-sh1);">
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Defect pareto · 80% sits in 4 causes</div>
+          <sc-for list="{{ pareto }}" as="p" hint-placeholder-count="6">
+            <div style="display:flex; flex-direction:column; gap:6px;">
+              <div style="display:flex; align-items:baseline; gap:10px;">
+                <div style="font:400 13.5px/1.4 'Plus Jakarta Sans',sans-serif;">{{ p.name }}</div>
+                <div style="font:500 12.5px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-left:auto;">{{ p.n }} · {{ p.cum }}</div>
+              </div>
+              <div style="height:9px; border-radius:999px; background:var(--fx-bg-sunken); overflow:hidden;"><div style="height:100%; width:{{ p.pct }}; background:{{ p.c }};"></div></div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+          <div style="padding:16px 20px 12px; display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Repeats worth a conversation</div>
+            <div style="font:400 12px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-left:auto;">same defect, same station, 3+ days</div>
+          </div>
+          <sc-for list="{{ repeats }}" as="r" hint-placeholder-count="3">
+            <div style="display:flex; align-items:stretch; border-top:1px solid var(--fx-border-subtle);">
+              <div style="width:3px; flex-shrink:0; background:{{ r.c }};"></div>
+              <div style="flex:1; min-width:0; padding:14px 20px; display:flex; flex-direction:column; gap:5px;">
+                <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">
+                  <div style="font:500 13.5px/1.3 'Plus Jakarta Sans',sans-serif;">{{ r.who }}</div>
+                  <div style="font:400 12.5px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ r.station }}</div>
+                  <div style="font:500 12.5px/1.3 'JetBrains Mono',monospace; color:{{ r.c }}; margin-left:auto;">{{ r.count }}</div>
+                </div>
+                <div style="font:400 13px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ r.note }}</div>
+              </div>
+            </div>
+          </sc-for>
+          <div style="padding:14px 20px; font:400 12.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">These are machine and training signals, not a discipline list. Two of the three cleared after a needle change.</div>
+        </div>
+
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+          <div style="padding:16px 20px 12px; font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Buyer report packs</div>
+          <sc-for list="{{ packs }}" as="p" hint-placeholder-count="3">
+            <div style="display:flex; align-items:stretch; border-top:1px solid var(--fx-border-subtle);">
+              <div style="width:3px; flex-shrink:0; background:{{ p.c }};"></div>
+              <div style="flex:1; min-width:0; display:grid; grid-template-columns:1.4fr 116px 128px 108px; gap:12px; padding:13px 20px; align-items:center; min-height:44px;">
+                <div style="display:flex; flex-direction:column; gap:3px; min-width:0;">
+                  <div style="font:500 13.5px/1.3 'Plus Jakarta Sans',sans-serif;">{{ p.name }}</div>
+                  <div style="font:400 12px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ p.contents }}</div>
+                </div>
+                <div style="font:400 12.5px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-secondary);">{{ p.po }}</div>
+                <div style="font:400 12.5px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ p.when }}</div>
+                <div style="font:500 11.5px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:{{ p.c }}; text-align:right;">{{ p.state }}</div>
+              </div>
+            </div>
+          </sc-for>
+          <div style="padding:14px 20px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            <div style="font:400 12.5px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); flex:1 1 240px; min-width:0; text-wrap:pretty;">{{ packNote }}</div>
+          </div>
+        </div>
+      </div>
+
+      <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+        <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px; align-self:flex-start;">qc.generateBuyerPack — PDF · qc drafts it, manager approves before it leaves the building</div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <div style="display:flex; flex-direction:column; gap:12px;">
+    <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Role access — quality</div>
+    <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden;">
+      <sc-for list="{{ access }}" as="a" hint-placeholder-count="6">
+        <div style="display:grid; grid-template-columns:1fr 96px 1.4fr; gap:16px; padding:11px 18px; align-items:center; border-bottom:1px solid var(--fx-border-subtle);">
+          <div style="font:500 13px/1.4 'JetBrains Mono',monospace;">{{ a.role }}</div>
+          <div><span style="{{ a.chip }}">{{ a.level }}</span></div>
+          <div style="font:400 13px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ a.note }}</div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed; left:50%; bottom:28px; transform:translateX(-50%); z-index:90; background:var(--fx-text-primary); color:var(--fx-text-inverse); border-radius:8px; box-shadow:var(--fx-sh3); padding:14px 18px; display:flex; align-items:center; gap:14px; max-width:92vw;">
+    <div style="font:500 13.5px/1.4 'Plus Jakarta Sans',sans-serif;">{{ toast }}</div>
+    <button onClick="{{ clearToast }}" style="background:transparent; border:none; color:var(--fx-accent); font:600 12px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer;">Dismiss</button>
+  </div>
+</sc-if>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;role&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;qc&quot;,&quot;manager&quot;,&quot;merchandiser&quot;,&quot;supervisor&quot;,&quot;viewer&quot;],&quot;default&quot;:&quot;qc&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Access&quot;},&quot;orderKind&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;woven&quot;,&quot;knit&quot;],&quot;default&quot;:&quot;woven&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Content&quot;},&quot;showActionNames&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Annotation&quot;}}">
+const FLOOR = {
+  '--q-row': '56px', '--q-target': '48px', '--q-body': '18px', '--q-sm': '15px',
+  '--q-h1': '30px', '--q-h3': '21px', '--q-num': '26px', '--q-gap': '18px', '--q-verdict': '96px'
+};
+const DESK = {
+  '--q-row': '44px', '--q-target': '44px', '--q-body': '16px', '--q-sm': '14px',
+  '--q-h1': '28px', '--q-h3': '20px', '--q-num': '22px', '--q-gap': '16px', '--q-verdict': '72px'
+};
+
+const USERS = { qc: 'Rina Begum', manager: 'Shafiq Alam', merchandiser: 'Nabila Rahman', supervisor: 'Aminul Haque', viewer: 'Audit (external)' };
+
+const OPS = ['Collar attach', 'Placket', 'Shoulder join', 'Sleeve attach', 'Side seam', 'Cuff attach', 'Bottom hem', 'Button hole'];
+const OPS_KNIT = ['Collar attach', 'Placket', 'Shoulder join', 'Sleeve attach', 'Side seam', 'Cuff rib', 'Bottom hem', 'Label attach'];
+
+const DEFECT_TYPES = [
+  ['Broken stitch', 21], ['Skip stitch', 16], ['Open seam', 9], ['Puckering', 7],
+  ['Uneven hem', 6], ['Measurement', 14], ['Oil spot', 11], ['Dirty spot', 5],
+  ['Needle mark', 4], ['Shading', 3], ['Missing stitch', 2], ['Wrong label', 1]
+];
+
+const OPERATORS = [
+  ['Shirin A.', 'stn 12'], ['Momena K.', 'stn 15'], ['Rahima B.', 'stn 18'],
+  ['Nasrin S.', 'stn 22'], ['Jharna R.', 'stn 26']
+];
+
+const RECENT = [
+  ['14:38', 'Broken stitch', 'Side seam', 'Shirin A.', 'var(--fx-danger)'],
+  ['14:31', 'Measurement', 'Collar attach', '—', 'var(--fx-warning)'],
+  ['14:22', 'Oil spot', 'Bottom hem', 'Momena K.', 'var(--fx-warning)'],
+  ['14:14', 'Skip stitch', 'Sleeve attach', 'Rahima B.', 'var(--fx-danger)']
+];
+
+// roll, qty m, lot, 1pt, 2pt, 4pt count
+const ROLLS = {
+  woven: [
+    ['R-1188-01', 228, 'DL-1188-A · shade A', 2, 1, 0],
+    ['R-1188-02', 241, 'DL-1188-A · shade A', 3, 0, 0],
+    ['R-1188-03', 236, 'DL-1188-A · shade A', 1, 2, 1],
+    ['R-1188-15', 244, 'DL-1188-B · shade B', 9, 8, 14],
+    ['R-1188-16', 238, 'DL-1188-B · shade B', 4, 3, 2]
+  ],
+  knit: [
+    ['R-2210-08', 52, 'DL-2210-B · shade B', 1, 1, 0],
+    ['R-2210-09', 48, 'DL-2210-B · shade B', 2, 0, 0],
+    ['R-2210-10', 51, 'DL-2210-B · shade B', 2, 1, 1],
+    ['R-2210-02', 50, 'DL-2210-A · shade A', 5, 4, 6]
+  ]
+};
+
+// name, spec, tol, three measured values
+const POMS = {
+  woven: [
+    ['Chest 1/2 · 2.5 cm below armhole', 58.0, 1.5, [58.4, 57.2, 59.8]],
+    ['Body length · HPS to hem', 78.0, 1.0, [78.2, 77.6, 78.4]],
+    ['Sleeve length · from CB', 63.5, 1.0, [63.6, 63.2, 64.8]],
+    ['Shoulder across', 46.0, 0.5, [46.2, 45.8, 46.1]],
+    ['Neck round · relaxed', 40.0, 0.5, [40.1, 40.0, 39.9]],
+    ['Cuff width · buttoned', 23.0, 0.5, [23.1, 22.8, 23.2]],
+    ['Bottom hem sweep', 60.0, 1.5, [60.4, 59.8, 60.2]]
+  ],
+  knit: [
+    ['Chest 1/2 · 2.5 cm below armhole', 54.0, 1.5, [54.2, 53.4, 55.8]],
+    ['Body length · HPS to hem', 72.0, 1.0, [72.1, 71.6, 72.3]],
+    ['Sleeve length · from shoulder', 22.5, 0.5, [22.6, 22.3, 23.2]],
+    ['Shoulder across', 44.0, 0.5, [44.1, 43.7, 44.2]],
+    ['Collar height', 3.5, 0.3, [3.5, 3.6, 3.4]],
+    ['Placket length', 14.0, 0.5, [14.1, 13.8, 14.2]],
+    ['Bottom hem sweep', 52.0, 1.5, [52.3, 51.7, 52.1]]
+  ]
+};
+
+const FOUND = [
+  ['Broken stitch · side seam', 'major', 'Right side seam, 4 cm run at the waist. Repairable, but it went past the endline.', 'pc 41', 'DEF-014', 'var(--fx-danger)'],
+  ['Measurement · chest over', 'major', 'Chest 1/2 at 59.8 against 58.0 ±1.5 — 0.3 over tolerance on one piece.', 'pc 88', 'DEF-015', 'var(--fx-danger)'],
+  ['Oil spot · back panel', 'minor', 'Faint, washes out. Logged so the machine gets looked at, not to fail the lot.', 'pc 112', 'DEF-016', 'var(--fx-warning)'],
+  ['Shading · sleeve to body', 'critical', 'Sleeve reads half a step darker under the lightbox. Shade B rolls on a shade A lay.', 'pc 203', 'DEF-017', 'var(--fx-danger)']
+];
+
+const TREND = [4.1, 3.8, 4.4, 6.2, 5.8, 4.9, 4.2, 3.9, 4.0, 5.6, 6.4, 5.1, 4.4, 4.2];
+
+const PARETO = [
+  ['Broken stitch', 312, '46%', '46%', 'var(--fx-danger)'],
+  ['Skip stitch', 188, '28%', '74%', 'var(--fx-warning)'],
+  ['Measurement', 124, '18%', '92%', 'var(--fx-warning)'],
+  ['Oil spot', 38, '6%', '98%', 'var(--fx-text-primary)'],
+  ['Shading', 9, '1%', '99%', 'var(--fx-text-primary)'],
+  ['Wrong label', 6, '1%', '100%', 'var(--fx-text-primary)']
+];
+
+const REPEATS = [
+  ['Station 12 · Shirin A.', 'L3 · side seam', '31 in 5 days', 'Broken stitch, same station, since the needle plate was changed on 09 Aug. Mechanic looked at the tension, not the plate.', 'var(--fx-danger)'],
+  ['Station 26 · Jharna R.', 'L4 · cuff attach', '18 in 4 days', 'Skip stitch on cuff only. She was moved from hem three days ago — this is training, not carelessness.', 'var(--fx-warning)'],
+  ['Station 18 · Rahima B.', 'L3 · sleeve attach', '9 in 3 days', 'Cleared after the machine was serviced on 12 Aug. Kept here for one more day to be sure.', 'var(--fx-success)']
+];
+
+const PACKS = [
+  ['H&M final inspection pack', 'AQL sheet · 12 photos · measurement table · DHU trend', 'PO-88203', 'draft 14 Aug', 'awaiting manager', 'var(--fx-warning)'],
+  ['Primark weekly quality report', 'DHU by line · pareto · corrective actions', 'PO-88214', 'sent 11 Aug', 'sent', 'var(--fx-success)'],
+  ['Bestseller shade approval pack', 'lightbox photos · shade band comparison', 'PO-88219', 'sent 08 Aug', 'sent', 'var(--fx-success)']
+];
+
+const ACCESS = [
+  ['qc', 'edit', 'Records inline, fabric, measurements and final inspection. Drafts buyer packs.'],
+  ['manager', 'approve', 'Approves a buyer report pack before it leaves the building. Reads everything.'],
+  ['merchandiser', 'view', 'Their own orders — the final verdict and the measurement table the buyer will ask about.'],
+  ['supervisor', 'view', 'Their own line DHU and the defects behind it. No other line.'],
+  ['cutting · storekeeper', 'view', 'Fabric inspection results only, because it gates their work.'],
+  ['viewer · hr · accounts', 'view', 'Read-only dashboard. No photos, no operator names.']
+];
+
+class Component extends DCLogic {
+  state = {
+    screen: 'p1', role: 'qc', ftype: 'woven', annot: true,
+    line: 'L3', op: 0, pendingDefect: -1, checked: 1240, defects: 62,
+    aqlStep: 1, sheetDraft: false, padCell: '', buf: '', toast: ''
+  };
+
+  componentWillUnmount() { clearTimeout(this._t); }
+
+  flash(msg) {
+    clearTimeout(this._t);
+    this.setState({ toast: msg });
+    this._t = setTimeout(() => this.setState({ toast: '' }), 4000);
+  }
+
+  pill(active) {
+    return {
+      background: active ? 'var(--fx-bg-surface)' : 'transparent',
+      color: active ? 'var(--fx-text-primary)' : 'var(--fx-text-secondary)',
+      border: '1px solid ' + (active ? 'var(--fx-border-default)' : 'transparent'),
+      borderRadius: '6px', padding: '9px 12px', cursor: 'pointer',
+      font: "600 12.5px/1 'Plus Jakarta Sans',sans-serif", whiteSpace: 'nowrap'
+    };
+  }
+
+  ghost(on) {
+    return {
+      background: on ? 'var(--fx-text-primary)' : 'transparent',
+      color: on ? 'var(--fx-text-inverse)' : 'var(--fx-text-secondary)',
+      border: '1px solid ' + (on ? 'var(--fx-text-primary)' : 'var(--fx-border-default)'),
+      borderRadius: '8px', padding: '10px 13px', cursor: 'pointer', minHeight: '44px',
+      font: "500 12px/1 'JetBrains Mono',monospace", whiteSpace: 'nowrap'
+    };
+  }
+
+  chip(level) {
+    const base = {
+      font: "500 11px/1 'JetBrains Mono',monospace", letterSpacing: '.05em', textTransform: 'uppercase',
+      borderRadius: '4px', padding: '6px 8px', display: 'inline-block', whiteSpace: 'nowrap'
+    };
+    if (level === 'view') return { ...base, color: 'var(--fx-text-secondary)', background: 'var(--fx-bg-sunken)', border: '1px solid transparent' };
+    if (level === 'edit') return { ...base, color: 'var(--fx-text-primary)', border: '1px solid var(--fx-border-strong)' };
+    return { ...base, color: 'var(--fx-text-primary)', border: '1px solid var(--fx-text-primary)', boxShadow: 'inset 3px 0 0 var(--fx-accent)', paddingLeft: '12px' };
+  }
+
+  renderVals() {
+    const s = this.state;
+    const mode = s.mode || 'light';
+    const role = s.role, ft = s.ftype, screen = s.screen;
+    const isWoven = ft === 'woven';
+    const canEdit = role === 'qc';
+    const isDesk = screen === 'p5';
+    const ownLines = role === 'supervisor' ? ['L3'] : null;
+
+    const dhuVal = s.checked ? s.defects / s.checked * 100 : 0;
+    const ops = isWoven ? OPS : OPS_KNIT;
+
+    // fabric 4-point
+    const rollSrc = ROLLS[ft];
+    const yd2 = (m, w) => (m * 1.0936) * (isWoven ? 1.611 : 1.778);
+    const rollRows = rollSrc.map(r => {
+      const pts = r[3] * 1 + r[4] * 2 + r[5] * 4;
+      const area = yd2(r[1]);
+      const score = pts / area * 100;
+      const pass = score <= 20;
+      return {
+        no: r[0], qty: r[1] + (isWoven ? ' m' : ' kg'), lot: r[2],
+        p1: r[3], p2: r[4], p4: r[5],
+        score: score.toFixed(1),
+        result: pass ? 'pass' : 'fail',
+        sel: pass ? 'var(--fx-success)' : 'var(--fx-danger)',
+        selW: pass ? '3px' : '5px',
+        chip: {
+          font: "500 11.5px/1 'JetBrains Mono',monospace", letterSpacing: '.05em', textTransform: 'uppercase',
+          color: pass ? 'var(--fx-success)' : 'var(--fx-danger)',
+          border: '1px solid ' + (pass ? 'var(--fx-success)' : 'var(--fx-danger)'),
+          borderRadius: '4px', padding: '6px 8px', display: 'inline-block'
+        }
+      };
+    });
+    const failCount = rollRows.filter(r => r.result === 'fail').length;
+    const totalPts = rollSrc.reduce((a, r) => a + r[3] + r[4] * 2 + r[5] * 4, 0);
+    const totalArea = rollSrc.reduce((a, r) => a + yd2(r[1]), 0);
+    const grnScore = totalPts / totalArea * 100;
+
+    // measurements
+    const pomSrc = POMS[ft];
+    const poms = pomSrc.map((p, pi) => {
+      const cells = p[3].map((v, ci) => {
+        const out = Math.abs(v - p[1]) > p[2];
+        const key = pi + '-' + ci;
+        return {
+          v: v.toFixed(1),
+          pick: () => { if (canEdit) this.setState({ padCell: key, buf: '' }); },
+          style: {
+            font: (out ? '600 ' : '400 ') + '13.5px/1.3 \'JetBrains Mono\',monospace',
+            textAlign: 'right', color: out ? 'var(--fx-danger)' : 'var(--fx-text-primary)',
+            padding: '8px 10px', borderRadius: '4px', cursor: canEdit ? 'pointer' : 'default',
+            boxShadow: s.padCell === key ? 'inset 0 0 0 2px var(--fx-focus)' : out ? 'inset 0 0 0 2px var(--fx-danger)' : 'none'
+          }
+        };
+      });
+      const anyOut = p[3].some(v => Math.abs(v - p[1]) > p[2]);
+      return {
+        name: p[0], spec: p[1].toFixed(1), tol: '± ' + p[2].toFixed(1),
+        cells, sel: anyOut ? 'var(--fx-danger)' : 'transparent', selW: anyOut ? '5px' : '3px'
+      };
+    });
+    const outCells = pomSrc.reduce((a, p) => a + p[3].filter(v => Math.abs(v - p[1]) > p[2]).length, 0);
+
+    // AQL
+    const lot = 24000, sample = 315, accept = 14, reject = 15;
+    const majors = FOUND.filter(f => f[1] === 'major').length * 4 + 6;
+    const criticals = FOUND.filter(f => f[1] === 'critical').length;
+    const minors = 9;
+    const pass = criticals === 0 && majors <= accept;
+
+    const keys = ['7', '8', '9', '4', '5', '6', '1', '2', '3', 'C', '0', '.'].map(k => ({
+      label: k,
+      press: () => this.setState(x => ({ buf: k === 'C' ? '' : (x.buf + k).slice(0, 5) })),
+      style: {
+        minHeight: '54px', borderRadius: '8px', cursor: 'pointer',
+        background: k === 'C' ? 'var(--fx-bg-sunken)' : 'var(--fx-bg-surface)',
+        border: '1px solid ' + (k === 'C' ? 'var(--fx-border-default)' : 'var(--fx-border-strong)'),
+        color: 'var(--fx-text-primary)', font: "600 22px/1 'JetBrains Mono',monospace"
+      }
+    }));
+
+    return {
+      screens: [['p1', 'P1 inline'], ['p2', 'P2 fabric'], ['p3', 'P3 measurements'], ['p4', 'P4 final AQL'], ['p5', 'P5 dashboard']].map(x => ({
+        label: x[1], pick: () => this.setState({ screen: x[0] }), style: this.pill(screen === x[0])
+      })),
+      role, setRole: (e) => this.setState({ role: e.target.value }),
+      ftype: ft, setFtype: (e) => this.setState({ ftype: e.target.value, padCell: '' }),
+      annot: s.annot, annotLabel: s.annot ? 'on' : 'off', annotBtn: this.ghost(s.annot),
+      mode, modeLabel: mode === 'dark' ? 'dark' : 'light', modeBtn: this.ghost(mode === 'dark'),
+      logoSrc: 'uploads/fabricxai-logo-' + (mode === 'dark' ? 'dark' : 'light') + '.png',
+      toggleMode: () => this.setState(x => ({ mode: x.mode === 'dark' ? 'light' : 'dark' })),
+      toggleAnnot: () => this.setState(x => ({ annot: !x.annot })),
+      densityVars: isDesk ? DESK : FLOOR,
+      pageStyle: {
+        maxWidth: isDesk ? '1280px' : '1024px', margin: '0 auto',
+        padding: '22px 22px 80px', display: 'flex', flexDirection: 'column', gap: '20px'
+      },
+      canEdit,
+
+      isP1: screen === 'p1', isP2: screen === 'p2', isP3: screen === 'p3',
+      isP4: screen === 'p4', isP5: screen === 'p5',
+      isWoven,
+
+      dhu: dhuVal.toFixed(1) + '%',
+      dhuColor: dhuVal > 4 ? 'var(--fx-danger)' : 'var(--fx-success)',
+      checked: s.checked.toLocaleString('en-US'),
+      defectCount: String(s.defects),
+      line: {
+        label: s.line, po: isWoven ? 'PO-88203' : 'PO-88219',
+        style: isWoven ? 'SH-4471 shirt' : 'PL-2210 polo'
+      },
+      lineTabs: (ownLines || ['L1', 'L2', 'L3', 'L4', 'L5', 'L6']).map(l => ({
+        label: l, pick: () => this.setState({ line: l }), style: this.pill(s.line === l)
+      })),
+      tapNote: s.pendingDefect > -1 ? 'defect logged — tag the machine or skip' : 'operation stays selected between garments',
+      operations: ops.map((o, i) => ({
+        label: o, pick: () => this.setState({ op: i }),
+        style: {
+          borderRadius: '8px', padding: '15px 18px', cursor: 'pointer', minHeight: 'var(--q-target)',
+          font: "600 var(--q-sm)/1 'Plus Jakarta Sans',sans-serif", whiteSpace: 'nowrap', flexShrink: 0,
+          background: s.op === i ? 'var(--fx-text-primary)' : 'var(--fx-bg-surface)',
+          color: s.op === i ? 'var(--fx-text-inverse)' : 'var(--fx-text-primary)',
+          border: '1px solid ' + (s.op === i ? 'var(--fx-text-primary)' : 'var(--fx-border-default)')
+        }
+      })),
+      defects: DEFECT_TYPES.map((d, i) => ({
+        label: d[0], today: d[1] + ' today',
+        tap: () => { if (canEdit) this.setState(x => ({ pendingDefect: i, defects: x.defects + 1, checked: x.checked + 1 })); },
+        style: {
+          display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-start',
+          borderRadius: '8px', padding: '16px 16px', cursor: 'pointer', minHeight: '88px',
+          background: s.pendingDefect === i ? 'var(--fx-bg-selected)' : 'var(--fx-bg-surface)',
+          border: '1px solid ' + (s.pendingDefect === i ? 'var(--fx-accent)' : 'var(--fx-border-default)'),
+          color: 'var(--fx-text-primary)'
+        }
+      })),
+      showOperators: s.pendingDefect > -1,
+      recordedLabel: s.pendingDefect > -1
+        ? 'Logged: ' + DEFECT_TYPES[s.pendingDefect][0] + ' at ' + ops[s.op] + ' on ' + s.line + '. It is already saved.'
+        : '',
+      operators: OPERATORS.map(o => ({
+        name: o[0], station: o[1],
+        pick: () => { this.setState({ pendingDefect: -1 }); this.flash('Tagged ' + o[0] + ' · ' + o[1] + ' — goes to the repeat list, not a discipline file'); },
+        style: {
+          display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start',
+          borderRadius: '8px', padding: '14px 16px', cursor: 'pointer', minHeight: 'var(--q-target)',
+          background: 'var(--fx-bg-surface)', border: '1px solid var(--fx-border-default)', color: 'var(--fx-text-primary)'
+        }
+      })),
+      skipOperator: () => this.setState({ pendingDefect: -1 }),
+      addChecked: () => this.setState(x => ({ checked: x.checked + 1 })),
+      recent: RECENT.map(r => ({ time: r[0], defect: r[1], op: r[2], who: r[3], c: r[4] })),
+
+      fabricLead: isWoven
+        ? 'Every roll gets four points per defect at its worst, scored against 100 square yards. Twenty points or fewer and the roll can be cut.'
+        : 'Knit fabric is inspected the same way, but the shade group matters more than the point score — a passing roll in the wrong shade still cannot go on the lay.',
+      grn: {
+        id: isWoven ? 'GRN-2026-0841' : 'GRN-2026-0834',
+        supplier: isWoven ? 'Well Group Fabrics' : 'Fakir Knitwears',
+        scope: rollSrc.length + ' rolls inspected of ' + (isWoven ? 46 : 38) + ' received'
+      },
+      rollRows,
+      grnResult: failCount ? 'FAIL · ' + failCount + ' roll' + (failCount > 1 ? 's' : '') : 'PASS',
+      grnResultColor: failCount ? 'var(--fx-danger)' : 'var(--fx-success)',
+      grnVerdict: failCount
+        ? 'Overall ' + grnScore.toFixed(1) + ' points per 100 yd². The failing rolls are all shade B — quarantine those and the rest of the GRN can be issued, which is what the store screen will show.'
+        : 'Overall ' + grnScore.toFixed(1) + ' points per 100 yd². The whole GRN can be issued.',
+      submitFabric: () => this.flash(failCount
+        ? 'Recorded · GRN status set to partially accepted · ' + failCount + ' roll quarantined, the rest released to store'
+        : 'Recorded · GRN accepted · store can issue these rolls now'),
+
+      meas: {
+        title: isWoven ? 'SH-4471 · size L' : 'PL-2210 · size L',
+        sub: (isWoven ? 'H&M · PO-88203' : 'Bestseller · PO-88219') + ' · PP sample, 3 pieces measured'
+      },
+      sheetDraft: s.sheetDraft,
+      shootSheet: () => { this.setState({ sheetDraft: true }); this.flash('Reading the measurement sheet…'); },
+      acceptSheet: () => { this.setState({ sheetDraft: false }); this.flash('Table filled from the photo · 3 cells outlined for you to confirm'); },
+      dropSheet: () => this.setState({ sheetDraft: false }),
+      poms,
+      measSummary: outCells ? outCells + ' of 21 out of tolerance' : 'all 21 inside tolerance',
+      measColor: outCells ? 'var(--fx-danger)' : 'var(--fx-success)',
+      measNote: outCells
+        ? 'Piece 3 is out on ' + outCells + ' point' + (outCells > 1 ? 's' : '') + ' — both on the same garment, which points at one badly cut panel rather than a pattern problem. Measure two more before you call it.'
+        : 'Every point inside tolerance across all three pieces.',
+      saveMeas: () => this.flash('Measurements saved · the buyer pack picks them up automatically'),
+      padOpen: s.padCell !== '',
+      padLabel: 'Re-measure',
+      padValue: s.buf || '—',
+      padHint: 'Tap a cell in the table, key the real number, and the tolerance flag updates as you type. No save on this pad — the table is the record.',
+      keys,
+
+      aql: {
+        po: isWoven ? 'PO-88203' : 'PO-88219', style: isWoven ? 'SH-4471 shirt' : 'PL-2210 polo',
+        ruleSentence: 'Lot of ' + lot.toLocaleString('en-US') + ' pieces, general inspection level II, AQL 2.5 for majors. That is code letter M, so the sample is ' + sample + ' pieces: accept at ' + accept + ' majors, reject at ' + reject + '.',
+        figures: [
+          { k: 'Lot size', v: lot.toLocaleString('en-US'), note: 'offered for inspection', c: 'var(--fx-text-primary)' },
+          { k: 'Sample', v: String(sample), note: 'code letter M', c: 'var(--fx-text-primary)' },
+          { k: 'Accept at', v: String(accept), note: 'majors or fewer', c: 'var(--fx-success)' },
+          { k: 'Reject at', v: String(reject), note: 'majors or more', c: 'var(--fx-danger)' }
+        ]
+      },
+      aqlSteps: [[1, 'Lot facts'], [2, 'The rule'], [3, 'Defects'], [4, 'Verdict']].map(x => ({
+        n: String(x[0]), label: x[1], pick: () => this.setState({ aqlStep: x[0] }),
+        style: {
+          display: 'flex', alignItems: 'center', gap: '10px', borderRadius: '8px', padding: '12px 15px', cursor: 'pointer',
+          minHeight: '48px', border: '1px solid ' + (s.aqlStep === x[0] ? 'var(--fx-text-primary)' : 'var(--fx-border-subtle)'),
+          background: s.aqlStep === x[0] ? 'var(--fx-bg-selected)' : 'var(--fx-bg-surface)',
+          color: s.aqlStep >= x[0] ? 'var(--fx-text-primary)' : 'var(--fx-text-tertiary)'
+        }
+      })),
+      aqlStep1: s.aqlStep === 1, aqlStep2: s.aqlStep === 2, aqlStep3: s.aqlStep === 3, aqlStep4: s.aqlStep === 4,
+      aqlNotFirst: s.aqlStep > 1, aqlNotLast: s.aqlStep < 4,
+      aqlNextLabel: ['Show the rule', 'Capture defects', 'See the verdict'][s.aqlStep - 1] || 'Next',
+      aqlNext: () => this.setState(x => ({ aqlStep: Math.min(4, x.aqlStep + 1) })),
+      aqlPrev: () => this.setState(x => ({ aqlStep: Math.max(1, x.aqlStep - 1) })),
+      aqlFacts: [
+        { k: 'Order', v: (isWoven ? 'PO-88203 · H&M · SH-4471' : 'PO-88219 · Bestseller · PL-2210'), c: 'var(--fx-text-primary)' },
+        { k: 'Offered quantity', v: lot.toLocaleString('en-US') + ' pcs · 100% packed', c: 'var(--fx-text-primary)' },
+        { k: 'Cartons', v: '1,000 cartons · 24 pcs each', c: 'var(--fx-text-primary)' },
+        { k: 'Inspection level', v: 'General II · single sampling · normal', c: 'var(--fx-text-primary)' },
+        { k: 'AQL', v: 'critical 0 · major 2.5 · minor 4.0', c: 'var(--fx-text-primary)' },
+        { k: 'Buyer present', v: 'H&M Dhaka QA joining at 11:00', c: 'var(--fx-warning)' }
+      ],
+      severities: [
+        { k: 'Critical', n: String(criticals), note: 'any critical fails the lot outright', c: criticals ? 'var(--fx-danger)' : 'var(--fx-success)' },
+        { k: 'Major', n: String(majors), note: 'accept ' + accept + ' · reject ' + reject, c: majors > accept ? 'var(--fx-danger)' : 'var(--fx-warning)' },
+        { k: 'Minor', n: String(minors), note: 'AQL 4.0 · accept 21', c: 'var(--fx-text-primary)' }
+      ],
+      foundCount: FOUND.length,
+      found: FOUND.map(f => ({ name: f[0], sev: f[1], note: f[2], where: f[3], shot: f[4], c: f[5] })),
+      addDefect: () => this.flash('Camera opened · the photo is stamped with the piece number and the carton'),
+      verdict: {
+        panel: {
+          background: pass ? 'var(--fx-success)' : 'var(--fx-danger)', color: '#FFFFFF',
+          borderRadius: '8px', padding: '48px 40px', display: 'flex', flexDirection: 'column', gap: '16px',
+          alignItems: 'flex-start', boxShadow: 'var(--fx-sh3)'
+        },
+        kicker: 'final inspection · ' + (isWoven ? 'PO-88203' : 'PO-88219'),
+        word: pass ? 'PASS' : 'FAIL',
+        line: pass
+          ? 'The lot is accepted. Cartons can be sealed and the ex-factory milestone closes on this verdict.'
+          : 'The lot is rejected on a critical defect. Nothing ships until the shading is sorted and the lot is re-offered.',
+        math: criticals
+          ? criticals + ' critical · ' + majors + ' major of ' + accept + ' allowed · ' + minors + ' minor — one critical is enough on its own'
+          : majors + ' major of ' + accept + ' allowed · ' + minors + ' minor of 21 allowed',
+        consequence: pass
+          ? 'Submitting actualizes the final-inspection milestone and tells packing to seal.'
+          : 'Submitting actualizes the milestone as failed, holds the shipment, and puts a re-offer on the QC queue. The buyer sees the same sheet.'
+      },
+      submitVerdict: () => this.flash(pass
+        ? 'Verdict submitted · PASS · TNA milestone actualized 14 Aug'
+        : 'Verdict submitted · FAIL · shipment held, re-offer queued, merchandiser notified'),
+
+      dashLead: role === 'supervisor'
+        ? 'Your line only. DHU, what caused it, and which stations repeat.'
+        : 'Fourteen days across six lines. The pareto is the only chart that changes what anyone does tomorrow.',
+      canPack: role === 'qc' || role === 'manager',
+      genPack: () => this.flash(role === 'qc'
+        ? 'Pack drafted · awaiting manager approval before it goes to H&M'
+        : 'Pack approved and sent to H&M · 14 pages, 12 photos'),
+      trend: TREND.map(v => ({
+        style: {
+          flex: 1, height: (v / 8 * 100) + '%', minWidth: '5px', borderRadius: '2px 2px 0 0',
+          background: v > 4 ? 'var(--fx-warning)' : 'var(--fx-success)'
+        }
+      })),
+      targetLine: {
+        position: 'absolute', left: 0, right: 0, height: 0, bottom: (4 / 8 * 100) + '%',
+        borderTop: '1px dashed var(--fx-text-primary)'
+      },
+      targetLabel: {
+        position: 'absolute', right: 0, bottom: (4 / 8 * 100) + '%', transform: 'translateY(-100%)',
+        font: "500 11px/1 'JetBrains Mono',monospace", color: 'var(--fx-text-primary)',
+        background: 'var(--fx-bg-surface)', padding: '2px 4px'
+      },
+      pareto: PARETO.map(p => ({ name: p[0], n: p[1], pct: p[2], cum: 'cum ' + p[3], c: p[4] })),
+      repeats: REPEATS.map(r => ({ who: r[0], station: r[1], count: r[2], note: r[3], c: r[4] })),
+      packs: PACKS.map(p => ({ name: p[0], contents: p[1], po: p[2], when: p[3], state: p[4], c: p[5] })),
+      packNote: role === 'qc'
+        ? 'You draft the pack, the manager releases it. A quality report leaving the building without a second pair of eyes is how a factory promises something it cannot support.'
+        : 'One pack is waiting on you. It carries the failed shading photos, so read it before it goes.',
+
+      access: ACCESS.map(a => ({ role: a[0], level: a[1], note: a[2], chip: this.chip(a[1]) })),
+      toast: s.toast, clearToast: () => this.setState({ toast: '' })
+    };
+  }
+}
+
+</script>
+</body>
+</html>

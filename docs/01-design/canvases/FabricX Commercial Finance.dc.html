@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #F3F1EC; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  [data-mode="dark"] { --fx-bg-canvas:#0F131B !important; --fx-bg-surface:#181D29 !important; --fx-bg-raised:#212736 !important; --fx-bg-sunken:#0B0E15 !important; --fx-bg-hover:rgba(255,255,255,.05) !important; --fx-bg-selected:rgba(225,179,52,.17) !important; --fx-border-subtle:#252B3A !important; --fx-border-default:#343B4C !important; --fx-border-strong:#4E576B !important; --fx-text-primary:#F4F3F0 !important; --fx-text-secondary:#AEB5C4 !important; --fx-text-tertiary:#7C8497 !important; --fx-text-disabled:#565E71 !important; --fx-text-inverse:#181D29 !important; --fx-accent-hover:#EBC352 !important; --fx-accent-pressed:#F2D077 !important; --fx-accent-subtle:rgba(225,179,52,.14) !important; --fx-success:#4FA97D !important; --fx-warning:#D99A3F !important; --fx-danger:#E0665C !important; --fx-info:#6D9BE8 !important; --fx-focus:#E1B334 !important; --fx-sh1:0 0 0 1px #252B3A !important; --fx-sh2:0 0 0 1px #252B3A !important; --fx-sh3:0 0 0 1px #343B4C !important; }
+  body:has([data-mode="dark"]) { background: #0B0E15; }
+  a { color: #181D29; text-decoration: underline; text-underline-offset: 3px; }
+  a:hover { color: #B88C21; }
+</style>
+</helmet>
+
+<div data-mode="{{ mode }}" style="--fx-bg-canvas:#FBFAF8; --fx-bg-surface:#FFFFFF; --fx-bg-sunken:#F3F1EC; --fx-bg-hover:rgba(24,29,41,.035); --fx-bg-selected:rgba(225,179,52,.12); --fx-border-subtle:#E7E4DE; --fx-border-default:#D6D2C9; --fx-border-strong:#A9A49A; --fx-text-primary:#181D29; --fx-text-secondary:#4C5364; --fx-text-tertiary:#767E90; --fx-text-disabled:#A8AEBB; --fx-text-inverse:#FBFAF8; --fx-accent:#E1B334; --fx-accent-hover:#CFA22B; --fx-accent-pressed:#B88C21; --fx-accent-subtle:#FAF1DA; --fx-accent-on:#181D29; --fx-success:#2F7D5B; --fx-warning:#B4741C; --fx-danger:#B23A32; --fx-info:#2F5FA8; --fx-focus:#181D29; --fx-sh1:0 1px 2px rgba(24,29,41,.06); --fx-sh2:0 4px 12px rgba(24,29,41,.08); --fx-sh3:0 12px 32px rgba(24,29,41,.12); font-family:'Plus Jakarta Sans',system-ui,sans-serif; color:var(--fx-text-primary); min-height:100vh; background:var(--fx-bg-sunken);">
+
+<div style="position:sticky; top:0; z-index:60; background:var(--fx-bg-surface); border-bottom:1px solid var(--fx-border-default); padding:10px 20px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+  <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Prototype bar</div>
+  <div style="display:flex; gap:2px; background:var(--fx-bg-sunken); border-radius:8px; padding:3px; flex-wrap:wrap;">
+    <sc-for list="{{ screens }}" as="s" hint-placeholder-count="4">
+      <button onClick="{{ s.pick }}" style="{{ s.style }}">{{ s.label }}</button>
+    </sc-for>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px;">
+    <span style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">role</span>
+    <select onChange="{{ setRole }}" value="{{ role }}" style="background:var(--fx-bg-surface); color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:4px; padding:7px 9px; font:500 12px/1 'JetBrains Mono',monospace;">
+      <option value="accounts">accounts</option>
+      <option value="owner">owner</option>
+      <option value="commercial">commercial</option>
+    </select>
+  </div>
+  <div style="display:flex; align-items:center; gap:10px; margin-left:auto;">
+    <button onClick="{{ toggleMode }}" style="{{ modeBtn }}">{{ modeLabel }}</button>
+    <button onClick="{{ toggleAnnot }}" style="{{ annotBtn }}">actions {{ annotLabel }}</button>
+  </div>
+</div>
+
+<div style="display:flex; align-items:stretch; min-height:calc(100vh - 49px);">
+
+  <div style="width:232px; flex-shrink:0; background:var(--fx-bg-surface); border-right:1px solid var(--fx-border-subtle); padding:20px 14px; display:flex; flex-direction:column; gap:20px;">
+    <img src="{{ logoSrc }}" alt="FabricX AI" style="height:26px; width:auto; align-self:flex-start; max-width:100%; object-fit:contain;" />
+    <sc-if value="{{ allowed }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex; flex-direction:column; gap:2px;">
+        <sc-for list="{{ nav }}" as="n" hint-placeholder-count="4">
+          <div onClick="{{ n.pick }}" style="{{ n.style }}">
+            <div style="{{ n.marker }}"></div>{{ n.label }}
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:9px;">
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Position today</div>
+        <sc-for list="{{ position }}" as="p" hint-placeholder-count="3">
+          <div style="display:flex; flex-direction:column; gap:3px; padding-bottom:9px; border-bottom:1px solid var(--fx-border-subtle);">
+            <div style="font:400 11.5px/1.3 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">{{ p.k }}</div>
+            <div style="font:600 15px/1.2 'JetBrains Mono',monospace; color:{{ p.c }};">{{ p.v }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+    <div style="margin-top:auto; display:flex; flex-direction:column; gap:7px;">
+      <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Signed in</div>
+      <div style="font:500 14px/1.3 'Plus Jakarta Sans',sans-serif;">{{ userName }}</div>
+      <div style="font:400 12px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ role }} · 12 Sep 2026</div>
+    </div>
+  </div>
+
+  <div style="flex:1; min-width:0; background:var(--fx-bg-canvas); position:relative; padding:0 0 90px;">
+
+  <sc-if value="{{ blocked }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:26px 28px; display:flex; flex-direction:column; gap:18px; max-width:640px;">
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:32px; display:flex; flex-direction:column; gap:14px; box-shadow:var(--fx-sh1); background-image:repeating-linear-gradient(146deg, transparent 0 8px, rgba(24,29,41,.028) 8px 10px, transparent 10px 18px);">
+        <div style="font:600 22px/1.25 'Plus Jakarta Sans',sans-serif;">Commercial finance is closed to your role</div>
+        <div style="font:400 15px/1.6 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">Two roles reach these four screens: <span style="font-family:'JetBrains Mono',monospace; font-size:13.5px;">accounts</span> and <span style="font-family:'JetBrains Mono',monospace; font-size:13.5px;">owner</span>. You are signed in as <span style="font-family:'JetBrains Mono',monospace; font-size:13.5px; color:var(--fx-text-primary);">{{ role }}</span>.</div>
+        <div style="font:400 14px/1.6 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">Margin per order and the cash position are the two things a factory does not show its own staff. Commercial sees the LC register and the quotes it negotiates, not what either earned.</div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP1 }}" hint-placeholder-val="{{ true }}">
+    <div style="padding:26px 28px; display:flex; flex-direction:column; gap:20px; max-width:1320px;">
+      <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex-wrap:wrap;">
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Finance · cash</div>
+          <div style="font:700 34px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">Eight weeks of cash</div>
+          <div style="font:400 15px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:68ch; text-wrap:pretty;">Money in is realizations the bank has accepted or is holding. Money out is what suppliers and the BTBs are owed. Every bar opens the documents it was built from — nothing here is a forecast typed by hand.</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+          <sc-for list="{{ legend }}" as="l" hint-placeholder-count="3">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <div style="{{ l.swatch }}"></div>
+              <div style="font:400 12px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-secondary);">{{ l.label }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="height:9px; background-image:repeating-linear-gradient(115deg, var(--fx-accent) 0 2px, transparent 2px 9px);"></div>
+
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+        <div style="overflow-x:auto;">
+        <div style="min-width:1020px; padding:22px 24px 16px;">
+          <div style="display:grid; grid-template-columns:repeat(8, 1fr); gap:12px; align-items:end; height:300px; border-bottom:1px solid var(--fx-border-strong); padding-bottom:2px;">
+            <sc-for list="{{ weeks }}" as="w" hint-placeholder-count="8">
+              <div style="display:flex; flex-direction:column; justify-content:flex-end; gap:5px; height:100%;">
+                <div style="display:flex; align-items:flex-end; gap:5px; height:100%;">
+                  <div onClick="{{ w.openIn }}" style="{{ w.inBar }}" title="{{ w.inTitle }}"></div>
+                  <div onClick="{{ w.openOut }}" style="{{ w.outBar }}" title="{{ w.outTitle }}"></div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(8, 1fr); gap:12px; padding-top:11px;">
+            <sc-for list="{{ weeks }}" as="w" hint-placeholder-count="8">
+              <div style="display:flex; flex-direction:column; gap:5px;">
+                <div style="font:500 12px/1.2 'JetBrains Mono',monospace; color:{{ w.labelColor }};">{{ w.label }}</div>
+                <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ w.dates }}</div>
+                <div style="font:500 12.5px/1.3 'JetBrains Mono',monospace; color:{{ w.netColor }};">{{ w.net }}</div>
+                <div style="font:400 11px/1.35 'Plus Jakarta Sans',sans-serif; color:{{ w.netColor }}; text-wrap:pretty;">{{ w.netNote }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        </div>
+        <div style="border-top:1px solid var(--fx-border-subtle); padding:16px 24px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+          <div style="display:flex; flex-direction:column; gap:3px;">
+            <div style="font:400 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">Closing position, week 8</div>
+            <div style="font:600 22px/1.1 'JetBrains Mono',monospace; color:{{ closing.c }};">{{ closing.v }}</div>
+          </div>
+          <div style="font:400 13px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); flex:1 1 380px; min-width:0; text-wrap:pretty;">{{ closing.note }}</div>
+        </div>
+      </div>
+
+      <sc-if value="{{ drill }}" hint-placeholder-val="{{ false }}">
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-default); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh2);">
+          <div style="display:flex; align-items:center; gap:12px; padding:16px 20px; border-bottom:1px solid var(--fx-border-subtle); flex-wrap:wrap;">
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">{{ drill.title }}</div>
+            <div style="font:600 15px/1.2 'JetBrains Mono',monospace; color:{{ drill.c }};">{{ drill.total }}</div>
+            <button onClick="{{ closeDrill }}" style="margin-left:auto; background:transparent; border:1px solid var(--fx-border-default); border-radius:8px; padding:9px 12px; font:600 12.5px/1 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); cursor:pointer; min-height:44px;">Close</button>
+          </div>
+          <sc-for list="{{ drill.rows }}" as="r" hint-placeholder-count="3">
+            <div style="display:flex; align-items:stretch; border-bottom:1px solid var(--fx-border-subtle);">
+              <div style="width:3px; flex-shrink:0; background:{{ drill.c }};"></div>
+              <div style="flex:1; min-width:0; display:grid; grid-template-columns:170px 1fr 140px; gap:14px; padding:12px 20px 12px 17px; align-items:center; min-height:44px;">
+                <div style="font:500 12.5px/1.3 'JetBrains Mono',monospace;">{{ r.doc }}</div>
+                <div style="font:400 13px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ r.what }}</div>
+                <div style="font:600 13px/1.3 'JetBrains Mono',monospace; text-align:right;">{{ r.amount }}</div>
+              </div>
+            </div>
+          </sc-for>
+          <div style="padding:13px 20px; font:400 12px/1.45 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ drill.foot }}</div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">every bar drills to the documents behind it — no typed forecast</div>
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">in = indigo · out = muted · amber stays off this chart entirely</div>
+        </div>
+      </sc-if>
+
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Role access — commercial finance</div>
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden;">
+          <sc-for list="{{ access }}" as="a" hint-placeholder-count="4">
+            <div style="display:grid; grid-template-columns:1fr 108px 1.5fr; gap:16px; padding:11px 18px; align-items:center; border-bottom:1px solid var(--fx-border-subtle);">
+              <div style="font:500 13px/1.4 'JetBrains Mono',monospace;">{{ a.role }}</div>
+              <div><span style="{{ a.chip }}">{{ a.level }}</span></div>
+              <div style="font:400 13px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ a.note }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP2 }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:26px 28px; display:flex; flex-direction:column; gap:18px; max-width:1320px;">
+      <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex-wrap:wrap;">
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Finance · profitability</div>
+          <div style="font:700 30px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">What each order actually earned</div>
+          <div style="font:400 14.5px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:68ch; text-wrap:pretty;">Quoted margin against the margin the shipment realised. The delta is the number worth arguing about, and the waterfall says which of the three places it came from.</div>
+        </div>
+        <button onClick="{{ exportFinance }}" style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:8px; padding:11px 16px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-bg-hover)">Export</button>
+      </div>
+      <div style="height:9px; background-image:repeating-linear-gradient(115deg, var(--fx-accent) 0 2px, transparent 2px 9px);"></div>
+
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+        <div style="display:flex; align-items:center; gap:12px; padding:14px 20px; border-bottom:1px solid var(--fx-border-subtle); flex-wrap:wrap;">
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">{{ profCount }}</div>
+          <div style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-left:auto;">floor is 15% · below it the order lost money on the way through</div>
+        </div>
+        <div style="overflow-x:auto;">
+        <div style="min-width:1080px;">
+          <div style="display:grid; grid-template-columns:132px 1fr 128px 128px 148px 152px; gap:14px; padding:11px 20px; background:var(--fx-bg-sunken); border-bottom:1px solid var(--fx-border-subtle); font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">
+            <div>PO</div><div>Buyer · style</div><div style="text-align:right;">Quoted</div><div style="text-align:right;">Actual</div><div style="text-align:right;">Delta</div><div style="text-align:right;">Value</div>
+          </div>
+          <sc-for list="{{ prof }}" as="p" hint-placeholder-count="5">
+            <div>
+              <div onClick="{{ p.toggle }}" style="{{ p.rowStyle }}">
+                <div style="width:{{ p.selW }}; flex-shrink:0; background:{{ p.sel }};"></div>
+                <div style="flex:1; min-width:0; display:grid; grid-template-columns:132px 1fr 128px 128px 148px 152px; gap:14px; padding:12px 20px 12px 17px; align-items:center; min-height:44px;">
+                  <div style="display:flex; align-items:center; gap:9px;">
+                    <div style="font:500 12px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ p.chev }}</div>
+                    <div style="font:500 13px/1.3 'JetBrains Mono',monospace;">{{ p.po }}</div>
+                  </div>
+                  <div style="display:flex; flex-direction:column; gap:3px; min-width:0;">
+                    <div style="font:500 13.5px/1.3 'Plus Jakarta Sans',sans-serif;">{{ p.buyer }}</div>
+                    <div style="font:400 11.5px/1.2 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ p.style }}</div>
+                  </div>
+                  <div style="font:400 13px/1.3 'JetBrains Mono',monospace; text-align:right; color:var(--fx-text-secondary);">{{ p.quoted }}</div>
+                  <div style="font:600 13.5px/1.3 'JetBrains Mono',monospace; text-align:right; color:{{ p.actualColor }};">{{ p.actual }}</div>
+                  <div style="display:flex; justify-content:flex-end;"><span style="{{ p.deltaChip }}">{{ p.delta }}</span></div>
+                  <div style="font:500 13px/1.3 'JetBrains Mono',monospace; text-align:right;">{{ p.value }}</div>
+                </div>
+              </div>
+              <sc-if value="{{ p.open }}" hint-placeholder-val="{{ false }}">
+                <div style="background:var(--fx-bg-sunken); border-bottom:1px solid var(--fx-border-subtle); padding:18px 20px 20px 34px; display:flex; flex-direction:column; gap:14px;">
+                  <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Where the {{ p.deltaAbs }} went</div>
+                  <div style="display:flex; align-items:flex-end; gap:14px; height:170px; padding-bottom:2px; border-bottom:1px solid var(--fx-border-strong);">
+                    <sc-for list="{{ p.waterfall }}" as="w" hint-placeholder-count="5">
+                      <div style="flex:1; display:flex; flex-direction:column; justify-content:flex-end; gap:6px; height:100%; min-width:0;">
+                        <div style="font:600 12.5px/1.2 'JetBrains Mono',monospace; color:{{ w.c }}; text-align:center;">{{ w.v }}</div>
+                        <div style="{{ w.bar }}"></div>
+                      </div>
+                    </sc-for>
+                  </div>
+                  <div style="display:flex; gap:14px;">
+                    <sc-for list="{{ p.waterfall }}" as="w" hint-placeholder-count="5">
+                      <div style="flex:1; display:flex; flex-direction:column; gap:3px; min-width:0;">
+                        <div style="font:500 12px/1.3 'Plus Jakarta Sans',sans-serif;">{{ w.label }}</div>
+                        <div style="font:400 11.5px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ w.note }}</div>
+                      </div>
+                    </sc-for>
+                  </div>
+                  <div style="font:400 13px/1.6 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:74ch; text-wrap:pretty;">{{ p.lesson }}</div>
+                </div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+        </div>
+      </div>
+
+      <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">finance.export</div>
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">actual margin comes from GRN prices and the payroll cost of the sewing days, not an estimate</div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP3 }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:26px 28px; display:flex; flex-direction:column; gap:18px; max-width:1280px;">
+      <div style="display:flex; flex-direction:column; gap:5px;">
+        <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Finance · receivables</div>
+        <div style="font:700 30px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">What the buyers owe</div>
+        <div style="font:400 14.5px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:68ch; text-wrap:pretty;">Aging is the obvious half. The half that changes decisions is the lag — how long each buyer's bank actually takes from presentation to credit, which is what a quoted payment term becomes in practice.</div>
+        <div style="height:9px; background-image:repeating-linear-gradient(115deg, var(--fx-accent) 0 2px, transparent 2px 9px);"></div>
+      </div>
+
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+        <div style="overflow-x:auto;">
+        <div style="min-width:1020px;">
+          <div style="display:grid; grid-template-columns:1fr 116px 116px 116px 116px 132px; gap:14px; padding:11px 20px; background:var(--fx-bg-sunken); border-bottom:1px solid var(--fx-border-subtle); font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">
+            <div>Buyer</div><div style="text-align:right;">Current</div><div style="text-align:right;">1–30 d</div><div style="text-align:right;">31–60 d</div><div style="text-align:right;">60 d +</div><div style="text-align:right;">Total</div>
+          </div>
+          <sc-for list="{{ aging }}" as="a" hint-placeholder-count="4">
+            <div style="display:flex; align-items:stretch; border-bottom:1px solid var(--fx-border-subtle);">
+              <div style="width:{{ a.selW }}; flex-shrink:0; background:{{ a.sel }};"></div>
+              <div style="flex:1; min-width:0; display:grid; grid-template-columns:1fr 116px 116px 116px 116px 132px; gap:14px; padding:13px 20px 13px 17px; align-items:center; min-height:44px;">
+                <div style="display:flex; flex-direction:column; gap:3px; min-width:0;">
+                  <div style="font:500 13.5px/1.3 'Plus Jakarta Sans',sans-serif;">{{ a.buyer }}</div>
+                  <div style="font:400 11.5px/1.2 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ a.terms }}</div>
+                </div>
+                <sc-for list="{{ a.buckets }}" as="b" hint-placeholder-count="4">
+                  <div style="font:400 13px/1.3 'JetBrains Mono',monospace; text-align:right; color:{{ b.c }};">{{ b.v }}</div>
+                </sc-for>
+                <div style="font:600 13.5px/1.3 'JetBrains Mono',monospace; text-align:right;">{{ a.total }}</div>
+              </div>
+            </div>
+          </sc-for>
+          <div style="display:grid; grid-template-columns:1fr 116px 116px 116px 116px 132px; gap:14px; padding:13px 20px; background:var(--fx-bg-sunken); align-items:center;">
+            <div style="font:600 12.5px/1.3 'JetBrains Mono',monospace; letter-spacing:.04em; text-transform:uppercase; color:var(--fx-text-secondary);">Total</div>
+            <sc-for list="{{ agingTotals }}" as="t" hint-placeholder-count="4">
+              <div style="font:500 13px/1.3 'JetBrains Mono',monospace; text-align:right; color:{{ t.c }};">{{ t.v }}</div>
+            </sc-for>
+            <div style="font:700 15px/1.2 'JetBrains Mono',monospace; text-align:right;">{{ agingGrand }}</div>
+          </div>
+        </div>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:18px;">
+        <sc-for list="{{ lags }}" as="l" hint-placeholder-count="4">
+          <div style="display:flex; background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+            <div style="width:3px; flex-shrink:0; background:{{ l.c }};"></div>
+            <div style="padding:18px 20px; display:flex; flex-direction:column; gap:12px; flex:1; min-width:0;">
+              <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">
+                <div style="font:600 15.5px/1.3 'Plus Jakarta Sans',sans-serif;">{{ l.buyer }}</div>
+                <div style="font:700 24px/1 'JetBrains Mono',monospace; color:{{ l.c }}; margin-left:auto;">{{ l.avg }}</div>
+              </div>
+              <div style="display:flex; align-items:flex-end; gap:4px; height:34px;">
+                <sc-for list="{{ l.bars }}" as="b" hint-placeholder-count="6">
+                  <div style="{{ b.style }}"></div>
+                </sc-for>
+              </div>
+              <div style="font:400 12px/1.45 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ l.source }}</div>
+              <div style="font:400 13px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ l.note }}</div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:20px; display:flex; flex-direction:column; gap:12px; box-shadow:var(--fx-sh1); clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);">
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">What the lag is for</div>
+        <div style="font:400 14px/1.6 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:74ch; text-wrap:pretty;">{{ lagVerdict }}</div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP4 }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:26px 28px; display:flex; flex-direction:column; gap:18px; max-width:1280px;">
+      <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex-wrap:wrap;">
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Finance · payables</div>
+          <div style="font:700 30px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">What we owe, and against what</div>
+          <div style="font:400 14.5px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:68ch; text-wrap:pretty;">Nothing is payable without a GRN behind it. Where the received quantity is short of the PO, the payable is short too — and the row says so rather than leaving accounts to spot it.</div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-end;">
+          <div style="font:400 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">Due inside 7 days</div>
+          <div style="font:700 26px/1.1 'JetBrains Mono',monospace; color:var(--fx-warning);">{{ dueSoon }}</div>
+        </div>
+      </div>
+      <div style="height:9px; background-image:repeating-linear-gradient(115deg, var(--fx-accent) 0 2px, transparent 2px 9px);"></div>
+
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+        <div style="display:flex; align-items:center; gap:12px; padding:14px 20px; border-bottom:1px solid var(--fx-border-subtle); flex-wrap:wrap;">
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">{{ payCount }}</div>
+          <div style="display:flex; align-items:center; gap:7px; margin-left:auto;">
+            <div style="width:5px; height:13px; background:var(--fx-danger);"></div>
+            <div style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">5px = past due, or blocked on a short GRN</div>
+          </div>
+        </div>
+        <div style="overflow-x:auto;">
+        <div style="min-width:1140px;">
+          <div style="display:grid; grid-template-columns:1fr 148px 168px 120px 132px 168px; gap:14px; padding:11px 20px; background:var(--fx-bg-sunken); border-bottom:1px solid var(--fx-border-subtle); font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">
+            <div>Supplier · what</div><div>PO</div><div>Against</div><div style="text-align:right;">Due</div><div style="text-align:right;">Amount</div><div style="text-align:right;">Action</div>
+          </div>
+          <sc-for list="{{ payables }}" as="p" hint-placeholder-count="5">
+            <div style="display:flex; align-items:stretch; border-bottom:1px solid var(--fx-border-subtle);">
+              <div style="width:{{ p.selW }}; flex-shrink:0; background:{{ p.sel }};"></div>
+              <div style="flex:1; min-width:0; display:grid; grid-template-columns:1fr 148px 168px 120px 132px 168px; gap:14px; padding:13px 20px 13px 17px; align-items:center; min-height:44px;">
+                <div style="display:flex; flex-direction:column; gap:3px; min-width:0;">
+                  <div style="font:500 13.5px/1.3 'Plus Jakarta Sans',sans-serif;">{{ p.supplier }}</div>
+                  <div style="font:400 11.5px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ p.what }}</div>
+                </div>
+                <div style="font:400 12.5px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-secondary);">{{ p.po }}</div>
+                <div style="display:flex; flex-direction:column; gap:3px;">
+                  <div style="font:400 12.5px/1.3 'JetBrains Mono',monospace; color:{{ p.grnColor }};">{{ p.grn }}</div>
+                  <div style="font:400 11.5px/1.3 'JetBrains Mono',monospace; color:{{ p.grnColor }};">{{ p.grnNote }}</div>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:3px; text-align:right;">
+                  <div style="font:500 12.5px/1.3 'JetBrains Mono',monospace; color:{{ p.dueColor }};">{{ p.due }}</div>
+                  <div style="font:400 11.5px/1.3 'JetBrains Mono',monospace; color:{{ p.dueColor }};">{{ p.dueNote }}</div>
+                </div>
+                <div style="font:600 13.5px/1.3 'JetBrains Mono',monospace; text-align:right;">{{ p.amount }}</div>
+                <div style="display:flex; justify-content:flex-end;">
+                  <sc-if value="{{ p.canPay }}" hint-placeholder-val="{{ true }}">
+                    <button onClick="{{ p.pay }}" style="{{ p.payStyle }}">{{ p.payLabel }}</button>
+                  </sc-if>
+                  <sc-if value="{{ p.barred }}" hint-placeholder-val="{{ false }}">
+                    <div style="font:500 12px/1.4 'JetBrains Mono',monospace; color:{{ p.barredColor }}; text-align:right;">{{ p.barredNote }}</div>
+                  </sc-if>
+                </div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        </div>
+        <div style="padding:15px 20px; display:flex; align-items:center; gap:11px; flex-wrap:wrap;">
+          <div style="font:500 11.5px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-primary); border:1px solid var(--fx-text-primary); border-radius:4px; padding:7px 10px 7px 12px; box-shadow:inset 3px 0 0 var(--fx-accent);">approver · owner</div>
+          <div style="font:400 13px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); flex:1 1 300px; min-width:0; text-wrap:pretty;">{{ payRoute }}</div>
+        </div>
+      </div>
+
+      <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">finance.recordPayment → Approve inbox · approver: OWNER</div>
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">no GRN, no payable — the row cannot be created at all</div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <div style="position:absolute; right:22px; bottom:22px; display:flex; align-items:center; gap:11px;">
+    <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">MARBIM · rest</div>
+    <div role="img" aria-label="MARBIM" style="{{ markStage }}">
+      <sc-for list="{{ markSlashes }}" as="s" hint-placeholder-count="8">
+        <img src="{{ s.src }}" alt="" style="{{ s.style }}" />
+      </sc-for>
+    </div>
+  </div>
+
+  </div>
+</div>
+
+<sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed; left:50%; bottom:28px; transform:translateX(-50%); z-index:90; background:var(--fx-text-primary); color:var(--fx-text-inverse); border-radius:8px; box-shadow:var(--fx-sh3); padding:14px 18px; display:flex; align-items:center; gap:14px; max-width:92vw;">
+    <div style="font:500 13.5px/1.4 'Plus Jakarta Sans',sans-serif;">{{ toast }}</div>
+    <button onClick="{{ clearToast }}" style="background:transparent; border:none; color:var(--fx-accent); font:600 12px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer;">Dismiss</button>
+  </div>
+</sc-if>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;role&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;accounts&quot;,&quot;owner&quot;,&quot;commercial&quot;],&quot;default&quot;:&quot;accounts&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Access&quot;},&quot;showActionNames&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Annotation&quot;}}">
+const SLASH_VEC = [
+  { dx: -0.896, dy: 0.444 }, { dx: -0.271, dy: 0.963 }, { dx: -0.97, dy: -0.243 }, { dx: 0.415, dy: 0.91 },
+  { dx: -0.512, dy: -0.859 }, { dx: 0.936, dy: 0.352 }, { dx: 0.282, dy: -0.96 }, { dx: 0.908, dy: -0.419 }
+];
+
+const TODAY = new Date(2026, 8, 12);
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const fmt = d => String(d.getDate()).padStart(2, '0') + ' ' + MONTHS[d.getMonth()];
+const days = d => Math.round((d - TODAY) / 86400000);
+const k = v => (v < 0 ? '−$' : '$') + Math.round(Math.abs(v) / 1000) + 'k';
+const usd0 = v => '$' + Math.round(v).toLocaleString('en-US');
+
+const USERS = { accounts: 'Rounak Islam', owner: 'M. A. Chowdhury', commercial: 'Tanvir Hasan' };
+
+// week label, dates, in, out, in-docs, out-docs
+const WEEKS = [
+  ['W38', '14–20 Sep', 61200, 48400,
+    [['SUB-0165', 'Bestseller · realization credited 08 Sep', 61200]],
+    [['BTB-0231-1181', 'Square Yarns · yarn, at sight', 31400], ['FX-PO-2026-0296', 'Zaber and Zubair · trims, 45 d credit', 17000]]],
+  ['W39', '21–27 Sep', 0, 92600, [],
+    [['BTB-0231-1188', 'Well Group · fabric, at sight', 62800], ['FX-PO-2026-0301', 'Well Group · poplin top-up', 8420], ['Payroll', 'September, first half', 21380]]],
+  ['W40', '28 Sep–04 Oct', 141000, 34200,
+    [['SUB-0141', 'C&A · accepted 12 Aug, 90 d sight matures', 141000]],
+    [['FX-PO-2026-0288', 'Ningbo Textile Mill · 50s twill', 17555], ['Utilities and gas', 'September', 16645]]],
+  ['W41', '05–11 Oct', 128400, 71800,
+    [['SUB-0172', 'H&M · presented 24 Sep, 12 d typical lag', 128400]],
+    [['BTB-0231-1205', 'Ningbo · fabric, at sight', 31400], ['Payroll', 'September, second half', 40400]]],
+  ['W42', '12–18 Oct', 0, 26900, [],
+    [['FX-PO-2026-0319', 'Zaber and Zubair · trims', 12100], ['Bank charges and BTB interest', 'quarter', 14800]]],
+  ['W43', '19–25 Oct', 97200, 44600,
+    [['SUB-0178', 'H&M · LC 602 shipment, presented 09 Oct', 97200]],
+    [['FX-PO-2026-0318', 'Ningbo · twill balance', 27200], ['Utilities and gas', 'October', 17400]]],
+  ['W44', '26 Oct–01 Nov', 0, 62300, [],
+    [['Payroll', 'October, first half', 41200], ['Dye house subcontract', 'Fakir Knitwears', 21100]]],
+  ['W45', '02–08 Nov', 88700, 31500,
+    [['SUB-0181', 'Primark · presented 22 Oct, 12 d typical lag', 88700]],
+    [['FX-PO-2026-0324', 'Square Yarns · yarn', 19800], ['Utilities and gas', 'balance', 11700]]]
+];
+
+// po, buyer, style, quoted%, actual%, value, waterfall[[label, pts, note]], lesson
+const PROF = [
+  ['PO-88203', 'H&M', 'SH-4471 · poplin shirt', 17.9, 16.5, 139100, [
+    ['Quoted', 17.9, 'costed 04 Jun'],
+    ['Fabric', -1.6, '8.4% wastage against 6% costed'],
+    ['CM', 0.7, 'line ran at 71% against 68%'],
+    ['Commercial', -0.5, 'air freight on the short 600 labels'],
+    ['Actual', 16.5, 'realised 08 Sep']
+  ], 'The fabric line is the whole story: 2.4 points of wastage over plan on the biggest cost in the sheet. The line efficiency gain was real and it still could not cover it.'],
+  ['PO-88219', 'Bestseller', 'BS-2210 · piqué polo', 19.2, 20.1, 179760, [
+    ['Quoted', 19.2, 'costed 22 Jun'],
+    ['Fabric', 0.4, 'yarn bought 4% under the costed rate'],
+    ['CM', 0.9, 'no changeover loss, same style all month'],
+    ['Commercial', -0.4, 'one shade re-dyed'],
+    ['Actual', 20.1, 'realised 08 Sep']
+  ], 'The only order this quarter that beat its quote, and it beat it on the boring things: yarn bought well and a line that never changed style.'],
+  ['PO-88214', 'Primark', 'PR-8890 · basic tee', 15.4, 13.1, 96400, [
+    ['Quoted', 15.4, 'costed 18 Jun'],
+    ['Fabric', -0.8, 'greige shrinkage above allowance'],
+    ['CM', -1.1, 'two days lost to the needle-bar failure on L4'],
+    ['Commercial', -0.4, 'discrepancy charge on the first presentation'],
+    ['Actual', 13.1, 'realised 28 Aug']
+  ], 'Below the 15% floor, and two of the three points came from a maintenance failure. The costing was not wrong — the month was.'],
+  ['PO-88190', 'C&A', 'CA-4402 · denim jacket', 16.8, 11.9, 214500, [
+    ['Quoted', 16.8, 'costed 02 Apr'],
+    ['Fabric', -2.9, 'denim template 137 days stale, +7.4% drift'],
+    ['CM', -1.2, 'SMV assumed 24.5, ran at 27.8'],
+    ['Commercial', -0.8, '38 days of unrealised working capital'],
+    ['Actual', 11.9, 'accepted 12 Aug, unpaid']
+  ], 'This is the order the stale denim template cost us. The consumption was learned in April and never refreshed, so every jacket was quoted on fabric prices that had moved 7.4%.'],
+  ['PO-88240', 'Primark', 'PR-9014 · basic tee', 15.9, 0, 118600, [], '']
+];
+
+// buyer, terms, buckets[current, 1-30, 31-60, 60+], lag avg, lag bars, source, note
+const AGING = [
+  ['H&M', 'LC at sight · 21 d presentation', [128400, 0, 0, 0], 9, [7, 8, 11, 9, 8, 10], 'from 14 realizations in the last 12 months', 'The fastest bank of the four. Presentation to credit is close to the term, so the term is the plan.'],
+  ['Primark', 'LC at sight · 15 d presentation', [88700, 42300, 0, 0], 12, [10, 14, 11, 13, 12, 12], 'from 11 realizations in the last 12 months', 'Consistent 12 days. Not fast, but it never surprises, which is worth more than fast.'],
+  ['Bestseller', 'LC 90 d sight', [0, 61200, 0, 0], 14, [12, 16, 13, 15, 14, 14], 'from 9 realizations in the last 12 months', 'The 90 days is the term, not the lag — the lag is what the bank adds on top once the tenor matures.'],
+  ['C&A', 'LC 90 d sight', [0, 0, 0, 214500], 31, [24, 38, 29, 34, 27, 33], 'from 6 realizations in the last 12 months', 'Two and a half times H&M, on the largest single exposure we carry. Every C&A quote should price 31 days of money, and none of them do.']
+];
+
+// supplier, what, po, grn, grnNote, dueDate, amount, state
+const PAYABLES = [
+  ['Square Yarns', '30/1 combed cotton · lot YL-2274', 'FX-PO-2026-0304', 'GRN-2026-0839', '2,100 kg of 2,100 kg', [2026, 8, 14], 31400, 'ok'],
+  ['Well Group Fabrics', '40s poplin · shade A top-up', 'FX-PO-2026-0301', 'GRN-2026-0841', '2,400 m of 2,400 m', [2026, 8, 16], 8420, 'ok'],
+  ['Zaber and Zubair', 'Trims for SH-4471', 'FX-PO-2026-0296', 'GRN-2026-0828', 'labels 23,400 of 24,000', [2026, 8, 9], 17000, 'short'],
+  ['DyStar Bangladesh', 'Reactive dyes · 4 shades', 'FX-PO-2026-0299', 'GRN-2026-0833', '2,900 kg of 3,200 kg', [2026, 8, 18], 2846, 'short'],
+  ['Ningbo Textile Mill', '50s twill · first order', 'FX-PO-2026-0288', '—', 'no GRN — nothing received yet', [2026, 9, 2], 17555, 'nogrn']
+];
+
+const ACCESS = [
+  ['accounts', 'edit', 'Builds the payment run, records realizations, exports the P&L. Cannot approve a payment.'],
+  ['owner', 'approve', 'Sees everything and is the only signature on a payment. The two are deliberately split.'],
+  ['commercial', 'none', 'HIDDEN — negotiates the LC and the quote, never sees what either earned.'],
+  ['manager · planner · merchandiser · qc · storekeeper · hr · viewer', 'none', 'HIDDEN — margin per order is not general-access.']
+];
+
+class Component extends DCLogic {
+  state = { screen: 'p1', role: 'accounts', annot: true, drillWeek: -1, drillDir: 'in', openProf: -1, toast: '' };
+
+  componentWillUnmount() { clearTimeout(this._t); }
+
+  flash(msg) {
+    clearTimeout(this._t);
+    this.setState({ toast: msg });
+    this._t = setTimeout(() => this.setState({ toast: '' }), 4400);
+  }
+
+  pill(active) {
+    return {
+      background: active ? 'var(--fx-bg-surface)' : 'transparent',
+      color: active ? 'var(--fx-text-primary)' : 'var(--fx-text-secondary)',
+      border: '1px solid ' + (active ? 'var(--fx-border-default)' : 'transparent'),
+      borderRadius: '6px', padding: '9px 12px', cursor: 'pointer',
+      font: "600 12.5px/1 'Plus Jakarta Sans',sans-serif", whiteSpace: 'nowrap'
+    };
+  }
+
+  ghost(on) {
+    return {
+      background: on ? 'var(--fx-text-primary)' : 'transparent',
+      color: on ? 'var(--fx-text-inverse)' : 'var(--fx-text-secondary)',
+      border: '1px solid ' + (on ? 'var(--fx-text-primary)' : 'var(--fx-border-default)'),
+      borderRadius: '8px', padding: '10px 13px', cursor: 'pointer', minHeight: '44px',
+      font: "500 12px/1 'JetBrains Mono',monospace", whiteSpace: 'nowrap'
+    };
+  }
+
+  chip(level) {
+    const base = {
+      font: "500 11px/1 'JetBrains Mono',monospace", letterSpacing: '.05em', textTransform: 'uppercase',
+      borderRadius: '4px', padding: '6px 8px', display: 'inline-block', whiteSpace: 'nowrap'
+    };
+    if (level === 'none') return { ...base, color: 'var(--fx-text-tertiary)', border: '1px solid var(--fx-border-subtle)' };
+    if (level === 'view') return { ...base, color: 'var(--fx-text-secondary)', background: 'var(--fx-bg-sunken)', border: '1px solid transparent' };
+    if (level === 'edit') return { ...base, color: 'var(--fx-text-primary)', border: '1px solid var(--fx-border-strong)' };
+    return { ...base, color: 'var(--fx-text-primary)', border: '1px solid var(--fx-text-primary)', boxShadow: 'inset 3px 0 0 var(--fx-accent)', paddingLeft: '12px' };
+  }
+
+  renderVals() {
+    const s = this.state;
+    const mode = s.mode || 'light';
+    const role = s.role, screen = s.screen;
+    const allowed = role === 'accounts' || role === 'owner';
+    const canEdit = role === 'accounts';
+
+    const maxFlow = Math.max.apply(null, WEEKS.map(w => Math.max(w[2], w[3])));
+    let running = 0;
+    const weeks = WEEKS.map((w, i) => {
+      const net = w[2] - w[3];
+      running += net;
+      const active = s.drillWeek === i;
+      return {
+        label: w[0], dates: w[1],
+        labelColor: active ? 'var(--fx-text-primary)' : 'var(--fx-text-secondary)',
+        net: (net >= 0 ? '+' : '') + k(net),
+        netColor: net >= 0 ? 'var(--fx-success)' : 'var(--fx-danger)',
+        netNote: net >= 0 ? 'running ' + k(running) : 'running ' + k(running),
+        inBar: {
+          flex: 1, height: Math.max(2, w[2] / maxFlow * 100) + '%', borderRadius: '3px 3px 0 0',
+          background: w[2] ? 'var(--fx-info)' : 'transparent', cursor: w[2] ? 'pointer' : 'default',
+          boxShadow: active && s.drillDir === 'in' ? '0 0 0 2px var(--fx-text-primary)' : 'none'
+        },
+        outBar: {
+          flex: 1, height: Math.max(2, w[3] / maxFlow * 100) + '%', borderRadius: '3px 3px 0 0',
+          background: 'var(--fx-border-strong)', cursor: 'pointer',
+          boxShadow: active && s.drillDir === 'out' ? '0 0 0 2px var(--fx-text-primary)' : 'none'
+        },
+        inTitle: w[2] ? 'in ' + usd0(w[2]) : 'nothing expected in',
+        outTitle: 'out ' + usd0(w[3]),
+        openIn: () => w[2] && this.setState({ drillWeek: i, drillDir: 'in' }),
+        openOut: () => this.setState({ drillWeek: i, drillDir: 'out' })
+      };
+    });
+
+    const dw = s.drillWeek >= 0 ? WEEKS[s.drillWeek] : null;
+    const dRows = dw ? (s.drillDir === 'in' ? dw[4] : dw[5]) : [];
+
+    const prof = PROF.map((p, i) => {
+      const shipped = p[4] > 0;
+      const delta = shipped ? p[4] - p[3] : 0;
+      const open = s.openProf === i;
+      let cum = 0;
+      const wf = p[6].map((x, xi) => {
+        const isEnd = xi === 0 || xi === p[6].length - 1;
+        const h = isEnd ? x[1] : Math.abs(x[1]);
+        const scale = 22;
+        if (!isEnd) cum += x[1];
+        return {
+          label: x[0], note: x[2],
+          v: isEnd ? x[1].toFixed(1) + '%' : (x[1] > 0 ? '+' : '') + x[1].toFixed(1),
+          c: isEnd ? 'var(--fx-text-primary)' : x[1] > 0 ? 'var(--fx-success)' : 'var(--fx-danger)',
+          bar: {
+            width: '100%', height: Math.max(4, h * scale * (isEnd ? 0.28 : 1)) + 'px',
+            borderRadius: '3px',
+            background: isEnd ? 'var(--fx-text-primary)' : x[1] > 0 ? 'var(--fx-success)' : 'var(--fx-danger)'
+          }
+        };
+      });
+      return {
+        po: p[0], buyer: p[1], style: p[2],
+        quoted: p[3].toFixed(1) + '%',
+        actual: shipped ? p[4].toFixed(1) + '%' : 'in production',
+        actualColor: !shipped ? 'var(--fx-text-tertiary)' : p[4] < 15 ? 'var(--fx-danger)' : 'var(--fx-text-primary)',
+        delta: shipped ? (delta > 0 ? '+' : '') + delta.toFixed(1) + ' pts' : '—',
+        deltaAbs: shipped ? Math.abs(delta).toFixed(1) + ' points' : '',
+        deltaChip: {
+          font: "500 12px/1 'JetBrains Mono',monospace", borderRadius: '4px', padding: '6px 9px', whiteSpace: 'nowrap',
+          color: !shipped ? 'var(--fx-text-tertiary)' : delta >= 0 ? 'var(--fx-success)' : 'var(--fx-danger)',
+          border: '1px solid ' + (!shipped ? 'var(--fx-border-subtle)' : delta >= 0 ? 'var(--fx-success)' : 'var(--fx-danger)')
+        },
+        value: usd0(p[5]),
+        sel: !shipped ? 'var(--fx-border-subtle)' : p[4] < 15 ? 'var(--fx-danger)' : delta >= 0 ? 'var(--fx-success)' : 'var(--fx-warning)',
+        selW: shipped && p[4] < 15 ? '5px' : '3px',
+        chev: !shipped ? '' : open ? '▾' : '▸',
+        open: open && shipped,
+        waterfall: wf, lesson: p[7],
+        toggle: () => shipped && this.setState(x => ({ openProf: x.openProf === i ? -1 : i })),
+        rowStyle: {
+          display: 'flex', alignItems: 'stretch', borderBottom: '1px solid var(--fx-border-subtle)',
+          cursor: shipped ? 'pointer' : 'default',
+          background: open ? 'var(--fx-bg-hover)' : 'transparent'
+        }
+      };
+    });
+
+    const bucketTotals = [0, 1, 2, 3].map(bi => AGING.reduce((a, r) => a + r[2][bi], 0));
+    const grand = bucketTotals.reduce((a, b) => a + b, 0);
+    const maxLag = Math.max.apply(null, AGING.map(a => Math.max.apply(null, a[4])));
+
+    const payables = PAYABLES.map(p => {
+      const due = new Date(p[5][0], p[5][1], p[5][2]);
+      const dDue = days(due);
+      const short = p[7] === 'short';
+      const noGrn = p[7] === 'nogrn';
+      const overdue = dDue < 0;
+      return {
+        supplier: p[0], what: p[1], po: p[2],
+        grn: p[3], grnNote: p[4],
+        grnColor: noGrn ? 'var(--fx-danger)' : short ? 'var(--fx-warning)' : 'var(--fx-text-secondary)',
+        due: fmt(due), dueNote: dDue < 0 ? Math.abs(dDue) + ' d overdue' : dDue + ' d',
+        dueColor: overdue ? 'var(--fx-danger)' : dDue <= 7 ? 'var(--fx-warning)' : 'var(--fx-text-primary)',
+        amount: usd0(p[6]),
+        sel: noGrn ? 'var(--fx-danger)' : overdue ? 'var(--fx-danger)' : short ? 'var(--fx-warning)' : 'var(--fx-border-subtle)',
+        selW: noGrn || overdue ? '5px' : '3px',
+        canPay: canEdit && !noGrn,
+        barred: !canEdit || noGrn,
+        barredNote: noGrn ? 'no GRN · not payable' : 'owner approves, accounts prepares',
+        barredColor: noGrn ? 'var(--fx-danger)' : 'var(--fx-text-tertiary)',
+        payLabel: short ? 'Pay ' + usd0(p[6]) : 'Record payment',
+        payStyle: overdue
+          ? { background: 'var(--fx-accent)', color: 'var(--fx-accent-on)', border: 'none', borderRadius: '8px', padding: '11px 14px', font: "600 12.5px/1 'Plus Jakarta Sans',sans-serif", cursor: 'pointer', minHeight: '44px', whiteSpace: 'nowrap' }
+          : { background: 'transparent', color: 'var(--fx-text-primary)', border: '1px solid var(--fx-border-strong)', borderRadius: '8px', padding: '11px 14px', font: "600 12.5px/1 'Plus Jakarta Sans',sans-serif", cursor: 'pointer', minHeight: '44px', whiteSpace: 'nowrap' },
+        pay: () => this.flash(short
+          ? 'Payment of ' + usd0(p[6]) + ' drafted against the received quantity only · approver: OWNER'
+          : 'Payment of ' + usd0(p[6]) + ' drafted for ' + p[0] + ' · approver: OWNER')
+      };
+    });
+    const dueSoonTotal = PAYABLES.filter(p => {
+      const dd = days(new Date(p[5][0], p[5][1], p[5][2]));
+      return dd <= 7 && p[7] !== 'nogrn';
+    }).reduce((a, p) => a + p[6], 0);
+
+    return {
+      screens: [['p1', 'P1 cash'], ['p2', 'P2 profitability'], ['p3', 'P3 receivables'], ['p4', 'P4 payables']].map(x => ({
+        label: x[1], pick: () => this.setState({ screen: x[0] }), style: this.pill(screen === x[0])
+      })),
+      role, userName: USERS[role],
+      setRole: (e) => this.setState({ role: e.target.value }),
+      annot: s.annot, annotLabel: s.annot ? 'on' : 'off', annotBtn: this.ghost(s.annot),
+      mode, modeLabel: mode === 'dark' ? 'dark' : 'light', modeBtn: this.ghost(mode === 'dark'),
+      logoSrc: 'uploads/fabricxai-logo-' + (mode === 'dark' ? 'dark' : 'light') + '.png',
+      toggleMode: () => this.setState(x => ({ mode: x.mode === 'dark' ? 'light' : 'dark' })),
+      toggleAnnot: () => this.setState(x => ({ annot: !x.annot })),
+
+      allowed, blocked: !allowed,
+      isP1: allowed && screen === 'p1', isP2: allowed && screen === 'p2',
+      isP3: allowed && screen === 'p3', isP4: allowed && screen === 'p4',
+
+      nav: [['p1', 'Cash'], ['p2', 'Profitability'], ['p3', 'Receivables'], ['p4', 'Payables']].map(x => ({
+        label: x[1], pick: () => this.setState({ screen: x[0] }),
+        style: {
+          display: 'flex', alignItems: 'center', gap: '11px', padding: '11px 12px', borderRadius: '8px', cursor: 'pointer',
+          minHeight: '44px', font: "500 14px/1 'Plus Jakarta Sans',sans-serif",
+          background: screen === x[0] ? 'var(--fx-bg-selected)' : 'transparent',
+          color: screen === x[0] ? 'var(--fx-text-primary)' : 'var(--fx-text-secondary)'
+        },
+        marker: { width: '2px', height: '15px', transform: 'skewX(-34deg)', background: screen === x[0] ? 'var(--fx-accent)' : 'transparent', flexShrink: 0 }
+      })),
+      position: [
+        { k: 'Receivable', v: usd0(grand), c: 'var(--fx-text-primary)' },
+        { k: 'Payable', v: usd0(PAYABLES.reduce((a, p) => a + p[6], 0)), c: 'var(--fx-text-primary)' },
+        { k: 'Unrealised over 30 d', v: usd0(214500), c: 'var(--fx-danger)' }
+      ],
+
+      legend: [
+        { label: 'realizations in', swatch: { width: '13px', height: '13px', borderRadius: '3px', background: 'var(--fx-info)' } },
+        { label: 'payables out', swatch: { width: '13px', height: '13px', borderRadius: '3px', background: 'var(--fx-border-strong)' } },
+        { label: 'net per week below', swatch: { width: '13px', height: '2px', background: 'var(--fx-text-primary)' } }
+      ],
+      weeks,
+      closing: {
+        v: (running >= 0 ? '+' : '') + usd0(running),
+        c: running >= 0 ? 'var(--fx-success)' : 'var(--fx-danger)',
+        note: 'Two weeks in the eight have money out and nothing in — W39 and W44, both payroll weeks. The C&A realization in W40 is what carries them, and it is the one maturity nobody has chased.'
+      },
+      drill: dw ? {
+        title: (s.drillDir === 'in' ? 'Money in · ' : 'Money out · ') + dw[0] + ' · ' + dw[1],
+        total: usd0(dRows.reduce((a, r) => a + r[2], 0)),
+        c: s.drillDir === 'in' ? 'var(--fx-info)' : 'var(--fx-border-strong)',
+        rows: dRows.map(r => ({ doc: r[0], what: r[1], amount: usd0(r[2]) })),
+        foot: s.drillDir === 'in'
+          ? 'each line is a submission on the LC register · presented dates and typical bank lag, not a guess'
+          : 'each line is a BTB at sight, a supplier PO with a GRN behind it, or a fixed monthly cost'
+      } : null,
+      closeDrill: () => this.setState({ drillWeek: -1 }),
+
+      profCount: PROF.filter(p => p[4] > 0).length + ' shipped orders · 1 still in production',
+      prof,
+      exportFinance: () => this.flash('Exported · 4 shipped orders with variance detail, one sheet per order'),
+
+      aging: AGING.map(a => {
+        const total = a[2].reduce((x, y) => x + y, 0);
+        const over60 = a[2][3] > 0;
+        return {
+          buyer: a[0], terms: a[1],
+          buckets: a[2].map((v, i) => ({
+            v: v ? usd0(v) : '—',
+            c: !v ? 'var(--fx-text-disabled)' : i === 3 ? 'var(--fx-danger)' : i === 2 ? 'var(--fx-warning)' : 'var(--fx-text-primary)'
+          })),
+          total: usd0(total),
+          sel: over60 ? 'var(--fx-danger)' : 'var(--fx-border-subtle)',
+          selW: over60 ? '5px' : '3px'
+        };
+      }),
+      agingTotals: bucketTotals.map((v, i) => ({
+        v: v ? usd0(v) : '—',
+        c: !v ? 'var(--fx-text-disabled)' : i === 3 ? 'var(--fx-danger)' : i === 2 ? 'var(--fx-warning)' : 'var(--fx-text-primary)'
+      })),
+      agingGrand: usd0(grand),
+      lags: AGING.map(a => ({
+        buyer: a[0], avg: a[3] + ' d avg', source: a[5], note: a[6],
+        c: a[3] >= 25 ? 'var(--fx-danger)' : a[3] >= 12 ? 'var(--fx-warning)' : 'var(--fx-success)',
+        bars: a[4].map(v => ({
+          style: {
+            flex: 1, minWidth: '5px', height: (v / maxLag * 100) + '%', borderRadius: '2px 2px 0 0',
+            background: a[3] >= 25 ? 'var(--fx-danger)' : a[3] >= 12 ? 'var(--fx-warning)' : 'var(--fx-success)'
+          }
+        }))
+      })),
+      lagVerdict: 'A quoted payment term is a promise about paperwork. The lag is what the money actually does. C&A at 31 days against H&M at 9 means the same $100,000 order ties up three weeks more working capital with C&A — and at the rate the BTBs cost, three weeks is roughly 0.4 points of margin that never appears in any cost sheet.',
+
+      payCount: PAYABLES.length + ' open payables · ' + PAYABLES.filter(p => p[7] !== 'ok').length + ' with something wrong behind them',
+      dueSoon: usd0(dueSoonTotal),
+      payables,
+      payRoute: canEdit
+        ? 'Accounts prepares the payment, the owner releases it. Splitting the two is the only control a factory this size has over its own bank account.'
+        : 'You are the approver. Accounts has prepared these; each one arrives in your inbox with the GRN attached.',
+
+      access: ACCESS.map(a => ({ role: a[0], level: a[1], note: a[2], chip: this.chip(a[1]) })),
+      toast: s.toast, clearToast: () => this.setState({ toast: '' }),
+      markStage: { position: 'relative', width: '32px', height: '32px', flexShrink: 0 },
+      markSlashes: SLASH_VEC.map((v, i) => ({
+        src: 'assets/mark/' + (mode === 'dark' ? 'w-' : 'i-') + (i + 1) + '.png',
+        style: { position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', '--dx': v.dx, '--dy': v.dy, transformOrigin: 'center', animation: 'none' }
+      }))
+    };
+  }
+}
+
+</script>
+</body>
+</html>

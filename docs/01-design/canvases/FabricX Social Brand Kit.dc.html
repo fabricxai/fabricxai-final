@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Archivo:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #F3F1EC; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: #181D29; text-decoration: underline; text-underline-offset: 3px; }
+  a:hover { color: #B88C21; }
+</style>
+</helmet>
+
+<div style="--ink:#181D29; --canvas:#FBFAF8; --surface:#FFFFFF; --sunken:#F3F1EC; --t2:#4C5364; --t3:#767E90; --bs:#E7E4DE; --bd:#D6D2C9; --st:#A9A49A; --accent:#E1B334; --accent-sub:#FAF1DA; --accent-press:#B88C21; --ok:#2F7D5B; --warn:#B4741C; --bad:#B23A32; --info:#2F5FA8; --d-canvas:#0F131B; --d-surface:#181D29; --d-raised:#212736; --d-bs:#252B3A; --d-bd:#343B4C; --d-st:#4E576B; --d-t1:#F4F3F0; --d-t2:#AEB5C4; --d-t3:#7C8497; font-family:'Plus Jakarta Sans',system-ui,sans-serif; color:var(--ink); background:var(--sunken); width:2680px; padding:56px 60px 120px; display:flex; flex-direction:column; gap:64px;">
+
+  <div style="display:flex; align-items:flex-end; gap:48px; flex-wrap:wrap; padding-bottom:32px; border-bottom:1px solid var(--bd);">
+    <div style="display:flex; flex-direction:column; gap:14px; max-width:70ch;">
+      <img src="uploads/fabricxai-logo-light.png" alt="FabricX AI" style="height:38px; width:auto; align-self:flex-start; object-fit:contain;" />
+      <div style="font:700 46px/1.12 'Archivo',sans-serif; letter-spacing:-.02em;">Social brand kit</div>
+      <div style="height:14px; width:96px; background-image:repeating-linear-gradient(115deg, var(--bd) 0 2px, transparent 2px 6px);"></div>
+      <div style="font:400 17px/1.6 'Plus Jakarta Sans',sans-serif; color:var(--t2); text-wrap:pretty;">Every artboard below sits at its true export size — the thin frame around each one is a document affordance, not part of the asset. The wordmark and X mark are the project logo files, placed and never redrawn. One amber moment per asset, and amber only ever means a person must act.</div>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:12px; margin-left:auto;">
+      <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.09em; text-transform:uppercase; color:var(--t3);">Type in this kit</div>
+      <div style="display:flex; flex-direction:column; gap:9px;">
+        <div style="display:grid; grid-template-columns:150px 1fr; gap:16px; align-items:baseline;">
+          <div style="font:600 22px/1.1 'Archivo',sans-serif;">Archivo</div>
+          <div style="font:400 13.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--t2);">social display only — claims, quotes, thumbnail titles</div>
+        </div>
+        <div style="display:grid; grid-template-columns:150px 1fr; gap:16px; align-items:baseline;">
+          <div style="font:600 20px/1.1 'Plus Jakarta Sans',sans-serif;">Plus Jakarta</div>
+          <div style="font:400 13.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--t2);">the product face — labels, captions, body</div>
+        </div>
+        <div style="display:grid; grid-template-columns:150px 1fr; gap:16px; align-items:baseline;">
+          <div style="font:500 19px/1.1 'JetBrains Mono',monospace;">JetBrains Mono</div>
+          <div style="font:400 13.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--t2);">every number, PO, LC and style code</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 1 · AVATARS ═══ -->
+  <div style="display:flex; flex-direction:column; gap:24px;">
+    <div style="display:flex; align-items:baseline; gap:18px; flex-wrap:wrap;">
+      <div style="font:500 12px/1 'JetBrains Mono',monospace; letter-spacing:.09em; text-transform:uppercase; color:var(--t3);">01</div>
+      <div style="font:700 30px/1.15 'Archivo',sans-serif; letter-spacing:-.015em;">Avatars</div>
+      <div style="font:400 15px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--t2); max-width:64ch; text-wrap:pretty;">The X mark alone at 60% of the frame, so 20% clear on every side survives a circular crop. Ink is the default everywhere; the canvas version is for light-background embeds and press kits.</div>
+    </div>
+    <div style="display:flex; gap:32px; flex-wrap:wrap; align-items:flex-start;">
+
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="font:600 14px/1 'Plus Jakarta Sans',sans-serif;">Avatar · ink</div>
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; color:var(--t3); border:1px solid var(--bs); border-radius:3px; padding:5px 7px;">800 × 800</div>
+          <div style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--t3);">default</div>
+        </div>
+        <div id="ab-avatar-ink" style="width:800px; height:800px; background:var(--d-surface); position:relative; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+          <img src="uploads/Group 2 (1)-120c2d00.svg" alt="MARBIM mark" style="height:466px; width:auto; object-fit:contain; display:block; flex-shrink:0;" />
+          <sc-if value="{{ guides }}" hint-placeholder-val="{{ true }}">
+            <div style="position:absolute; inset:0; border-radius:999px; border:2px dashed rgba(255,255,255,.28); pointer-events:none;"></div>
+            <div style="position:absolute; left:160px; top:160px; right:160px; bottom:160px; border:2px dashed rgba(225,179,52,.4); pointer-events:none;"></div>
+            <div style="position:absolute; left:0; right:0; bottom:28px; text-align:center; font:400 15px/1 'JetBrains Mono',monospace; color:rgba(255,255,255,.42);">circle = platform crop · amber = 20% safe box</div>
+          </sc-if>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="font:600 14px/1 'Plus Jakarta Sans',sans-serif;">Avatar · warm canvas</div>
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; color:var(--t3); border:1px solid var(--bs); border-radius:3px; padding:5px 7px;">800 × 800</div>
+        </div>
+        <div id="ab-avatar-canvas" style="width:800px; height:800px; background:var(--canvas); border:1px solid var(--bs); position:relative; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+          <img src="uploads/Group 2-5ccff24a.svg" alt="MARBIM mark" style="height:466px; width:auto; object-fit:contain; display:block; flex-shrink:0;" />
+          <sc-if value="{{ guides }}" hint-placeholder-val="{{ true }}">
+            <div style="position:absolute; inset:0; border-radius:999px; border:2px dashed rgba(24,29,41,.2); pointer-events:none;"></div>
+            <div style="position:absolute; left:160px; top:160px; right:160px; bottom:160px; border:2px dashed rgba(184,140,33,.42); pointer-events:none;"></div>
+          </sc-if>
+        </div>
+      </div>
+
+      <div style="width:420px; display:flex; flex-direction:column; gap:16px; background:var(--surface); border:1px solid var(--bs); border-radius:8px; padding:26px; box-shadow:0 1px 2px rgba(24,29,41,.06); clip-path:polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);">
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.09em; text-transform:uppercase; color:var(--t3);">Which mark file</div>
+        <div style="display:flex; flex-direction:column; gap:13px;">
+          <div style="display:flex; flex-direction:column; gap:4px; padding-bottom:12px; border-bottom:1px solid var(--bs);">
+            <div style="font:500 13px/1.4 'JetBrains Mono',monospace;">Group 2 (1)-120c2d00.svg</div>
+            <div style="font:400 13.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--t2); text-wrap:pretty;">Vector, dark surfaces — four strokes white, four amber. Crisp at any export size.</div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:4px; padding-bottom:12px; border-bottom:1px solid var(--bs);">
+            <div style="font:500 13px/1.4 'JetBrains Mono',monospace;">Group 2-5ccff24a.svg</div>
+            <div style="font:400 13.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--t2); text-wrap:pretty;">Vector, light surfaces — the same geometry with the neutral strokes in black.</div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:4px; padding-bottom:12px; border-bottom:1px solid var(--bs);">
+            <div style="font:500 13px/1.4 'JetBrains Mono',monospace;">MARBIM_logo.png</div>
+            <div style="font:400 13.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--t2); text-wrap:pretty;">Inline product placements on dark — the small disc in a MARBIM header, and the mark on video end cards.</div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <div style="font:500 13px/1.4 'JetBrains Mono',monospace;">MARBIM_logo-onwhite.png</div>
+            <div style="font:400 13.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--t2); text-wrap:pretty;">Favicon and any 20–32px placement where the mark needs its own plate.</div>
+          </div>
+        </div>
+        <div style="font:400 13px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--t2); padding-top:4px; border-top:1px solid var(--bs); text-wrap:pretty;">Minimum mark 20px, and the aspect ratio is 99 : 105 — never square it. No outline, no gradient, no duotone, and never the eight stroke layers, which exist only for the animated mark inside the product.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 2 · BANNERS ═══ -->
+  <div style="display:flex; flex-direction:column; gap:24px;">
+    <div style="display:flex; align-items:baseline; gap:18px; flex-wrap:wrap;">
+      <div style="font:500 12px/1 'JetBrains Mono',monospace; letter-spacing:.09em; text-transform:uppercase; color:var(--t3);">02</div>
+      <div style="font:700 30px/1.15 'Archivo',sans-serif; letter-spacing:-.015em;">Banners</div>
+      <div style="font:400 15px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--t2); max-width:64ch; text-wrap:pretty;">Wordmark left, one thread rule, one line. Nothing else — a cover photo that has to be read while scrolling past has room for exactly one sentence.</div>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:10px;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div style="font:600 14px/1 'Plus Jakarta Sans',sans-serif;">LinkedIn · company cover</div>
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; color:var(--t3); border:1px solid var(--bs); border-radius:3px; padding:5px 7px;">1128 × 191</div>
+      </div>
+      <div id="ab-li-company" style="width:1128px; height:191px; background:var(--canvas); border:1px solid var(--bs); position:relative; overflow:hidden; display:flex; align-items:center; padding:0 56px;">
+        <div style="position:absolute; inset:0; background-image:repeating-linear-gradient(146deg, transparent 0 12px, rgba(24,29,41,.032) 12px 14px, transparent 14px 26px);"></div>
+        <div style="position:relative; display:flex; align-items:center; gap:34px;">
+          <img src="uploads/fabricxai-logo-light.png" alt="FabricX AI" style="height:40px; width:auto; align-self:center; object-fit:contain;" />
+          <div style="width:2px; height:52px; background:var(--bd); transform:skewX(-34deg);"></div>
+          <div style="font:500 25px/1.3 'Plus Jakarta Sans',sans-serif; color:var(--t2);">The system that runs the floor.</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:10px;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div style="font:600 14px/1 'Plus Jakarta Sans',sans-serif;">LinkedIn · personal background</div>
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; color:var(--t3); border:1px solid var(--bs); border-radius:3px; padding:5px 7px;">1584 × 396</div>
+      </div>
+      <div id="ab-li-personal" style="width:1584px; height:396px; background:var(--canvas); border:1px solid var(--bs); position:relative; overflow:hidden; display:flex; flex-direction:column; justify-content:center; gap:26px; padding:0 96px;">
+        <div style="position:absolute; right:0; top:0; bottom:0; width:620px; background-image:repeating-linear-gradient(146deg, transparent 0 14px, rgba(24,29,41,.035) 14px 17px, transparent 17px 31px);"></div>
+        <img src="uploads/fabricxai-logo-light.png" alt="FabricX AI" style="height:58px; width:auto; align-self:flex-start; object-fit:contain; position:relative;" />
+        <div style="height:16px; width:150px; background-image:repeating-linear-gradient(115deg, var(--bd) 0 3px, transparent 3px 9px); position:relative;"></div>
+        <div style="font:600 34px/1.3 'Plus Jakarta Sans',sans-serif; color:var(--ink); position:relative;">The system that runs the floor.</div>
+      </div>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:10px;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div style="font:600 14px/1 'Plus Jakarta Sans',sans-serif;">X · header</div>
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; color:var(--t3); border:1px solid var(--bs); border-radius:3px; padding:5px 7px;">1500 × 500</div>
+        <div style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--t3);">avatar overlaps lower-left — content sits right of 340px</div>
+      </div>
+      <div id="ab-x-header" style="width:1500px; height:500px; background:var(--d-surface); position:relative; overflow:hidden; display:flex; flex-direction:column; justify-content:center; gap:28px; padding:0 96px 0 360px;">
+        <div style="position:absolute; inset:0; background-image:repeating-linear-gradient(146deg, transparent 0 16px, rgba(255,255,255,.045) 16px 19px, transparent 19px 35px);"></div>
+        <img src="uploads/fabricxai-logo-dark.png" alt="FabricX AI" style="height:64px; width:auto; align-self:flex-start; object-fit:contain; position:relative;" />
+        <div style="height:18px; width:168px; background-image:repeating-linear-gradient(115deg, var(--d-bd) 0 3px, transparent 3px 10px); position:relative;"></div>
+        <div style="font:600 38px/1.3 'Plus Jakarta Sans',sans-serif; color:var(--d-t1); position:relative;">The system that runs the floor.</div>
+        <sc-if value="{{ guides }}" hint-placeholder-val="{{ true }}">
+          <div style="position:absolute; left:0; bottom:0; width:340px; height:340px; border-right:2px dashed rgba(255,255,255,.18); border-top:2px dashed rgba(255,255,255,.18);"></div>
+          <div style="position:absolute; left:24px; bottom:24px; font:400 15px/1 'JetBrains Mono',monospace; color:rgba(255,255,255,.32);">avatar zone</div>
+        </sc-if>
+      </div>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:10px;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div style="font:600 14px/1 'Plus Jakarta Sans',sans-serif;">Facebook · cover</div>
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; color:var(--t3); border:1px solid var(--bs); border-radius:3px; padding:5px 7px;">820 × 312</div>
+      </div>
+      <div id="ab-fb-cover" style="width:820px; height:312px; background:var(--canvas); border:1px solid var(--bs); position:relative; overflow:hidden; display:flex; flex-direction:column; justify-content:center; gap:20px; padding:0 56px;">
+        <div style="position:absolute; right:0; top:0; bottom:0; width:300px; background-image:repeating-linear-gradient(146deg, transparent 0 12px, rgba(24,29,41,.035) 12px 14px, transparent 14px 26px);"></div>
+        <img src="uploads/fabricxai-logo-light.png" alt="FabricX AI" style="height:44px; width:auto; align-self:flex-start; object-fit:contain; position:relative;" />
+        <div style="height:14px; width:112px; background-image:repeating-linear-gradient(115deg, var(--bd) 0 2px, transparent 2px 7px); position:relative;"></div>
+        <div style="font:600 27px/1.3 'Plus Jakarta Sans',sans-serif; position:relative;">The system that runs the floor.</div>
+      </div>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:10px;">
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+        <div style="font:600 14px/1 'Plus Jakarta Sans',sans-serif;">YouTube · channel art</div>
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; color:var(--t3); border:1px solid var(--bs); border-radius:3px; padding:5px 7px;">2560 × 1440</div>
+        <div style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--t3);">everything inside the 1546 × 423 TV-safe centre</div>
+      </div>
+      <div id="ab-yt-channel" style="width:2560px; height:1440px; background:var(--d-surface); position:relative; overflow:hidden; display:flex; align-items:center; justify-content:center;">
+        <div style="position:absolute; inset:0; background-image:repeating-linear-gradient(146deg, transparent 0 20px, rgba(255,255,255,.04) 20px 24px, transparent 24px 44px);"></div>
+        <div style="position:relative; width:1546px; height:423px; display:flex; flex-direction:column; justify-content:center; gap:32px; padding-left:8px;">
+          <img src="uploads/fabricxai-logo-dark.png" alt="FabricX AI" style="height:74px; width:auto; align-self:flex-start; object-fit:contain;" />
+          <div style="height:20px; width:186px; background-image:repeating-linear-gradient(115deg, var(--d-bd) 0 3px, transparent 3px 11px);"></div>
+          <div style="font:600 44px/1.28 'Plus Jakarta Sans',sans-serif; color:var(--d-t1);">The system that runs the floor.</div>
+          <sc-if value="{{ guides }}" hint-placeholder-val="{{ true }}">
+            <div style="position:absolute; inset:0; border:2px dashed rgba(225,179,52,.45); pointer-events:none;"></div>
+            <div style="position:absolute; left:0; top:-38px; font:400 17px/1 'JetBrains Mono',monospace; color:rgba(225,179,52,.75);">1546 × 423 · safe on every device</div>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 3 · POST TEMPLATES ═══ -->
+  <div style="display:flex; flex-direction:column; gap:24px;">
+    <div style="display:flex; align-items:baseline; gap:18px; flex-wrap:wrap;">
+      <div style="font:500 12px/1 'JetBrains Mono',monospace; letter-spacing:.09em; text-transform:uppercase; color:var(--t3);">03</div>
+      <div style="font:700 30px/1.15 'Archivo',sans-serif; letter-spacing:-.015em;">Post templates</div>
+      <div style="font:400 15px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--t2); max-width:64ch; text-wrap:pretty;">Four workhorses, each filled with real copy rather than placeholder. Light is the default; the ink variant is for launch weeks and anything that has to hold its own in a dark feed.</div>
+    </div>
+
+    <div style="font:500 12px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--t3); padding-top:8px;">a · stat card</div>
+    <div style="display:flex; gap:32px; flex-wrap:wrap; align-items:flex-start;">
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="font:600 14px/1 'Plus Jakarta Sans',sans-serif;">Stat card · light</div>
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; color:var(--t3); border:1px solid var(--bs); border-radius:3px; padding:5px 7px;">1080 × 1080</div>
+        </div>
+        <div id="ab-stat-light" style="width:1080px; height:1080px; background:var(--canvas); border:1px solid var(--bs); position:relative; overflow:hidden; display:flex; flex-direction:column; padding:88px;">
+          <img src="uploads/fabricxai-logo-light.png" alt="FabricX AI" style="height:36px; width:auto; align-self:flex-start; object-fit:contain;" />
+          <div style="margin-top:auto; display:flex; flex-direction:column; gap:30px;">
+            <div style="font:400 22px/1 'JetBrains Mono',monospace; letter-spacing:.1em; text-transform:uppercase; color:var(--t3);">Measured, not claimed</div>
+            <div style="display:flex; align-items:baseline; gap:26px;">
+              <div style="font:500 250px/.86 'JetBrains Mono',monospace; letter-spacing:-.045em; color:var(--ink);">42</div>
+              <div style="font:600 62px/1 'Archivo',sans-serif; letter-spacing:-.02em; color:var(--ink);">seconds</div>
+            </div>
+            <div style="height:12px; width:300px; background:var(--accent);"></div>
+            <div style="font:600 48px/1.28 'Archivo',sans-serif; letter-spacing:-.015em; max-width:22ch; text-wrap:pretty;">Buyer email to structured RFQ.</div>
+          </div>
+          <div style="margin-top:56px; padding-top:28px; border-top:1px solid var(--bd); display:flex; align-items:baseline; gap:20px;">
+            <div style="font:400 22px/1.45 'JetBrains Mono',monospace; color:var(--t3); max-width:44ch;">median across 214 extractions · Jul 2026 · p90 71 s</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="font:600 14px/1 'Plus Jakarta Sans',sans-serif;">Stat card · ink</div>
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; color:var(--t3); border:1px solid var(--bs); border-radius:3px; padding:5px 7px;">1080 × 1080</div>
+        </div>
+        <div id="ab-stat-dark" style="width:1080px; height:1080px; background:var(--d-canvas); position:relative; overflow:hidden; display:flex; flex-direction:column; padding:88px;">
+          <div style="position:absolute; right:-120px; top:-120px; width:680px; height:680px; background-image:repeating-linear-gradient(146deg, transparent 0 18px, rgba(255,255,255,.05) 18px 21px, transparent 21px 39px);"></div>
+          <img src="uploads/fabricxai-logo-dark.png" alt="FabricX AI" style="height:36px; width:auto; align-self:flex-start; object-fit:contain; position:relative;" />
+          <div style="margin-top:auto; display:flex; flex-direction:column; gap:30px; position:relative;">
+            <div style="font:400 22px/1 'JetBrains Mono',monospace; letter-spacing:.1em; text-transform:uppercase; color:var(--d-t3);">Measured, not claimed</div>
+            <div style="display:flex; align-items:baseline; gap:26px;">
+              <div style="font:500 250px/.86 'JetBrains Mono',monospace; letter-spacing:-.045em; color:var(--d-t1);">42</div>
+              <div style="font:600 62px/1 'Archivo',sans-serif; letter-spacing:-.02em; color:var(--d-t1);">seconds</div>
+            </div>
+            <div style="height:12px; width:300px; background:var(--accent);"></div>
+            <div style="font:600 48px/1.28 'Archivo',sans-serif; letter-spacing:-.015em; color:var(--d-t1); max-width:22ch; text-wrap:pretty;">Buyer email to structured RFQ.</div>
+          </div>
+          <div style="margin-top:56px; padding-top:28px; border-top:1px solid var(--d-bd); position:relative;">
+            <div style="font:400 22px/1.45 'JetBrains Mono',monospace; color:var(--d-t3); max-width:44ch;">median across 214 extractions · Jul 2026 · p90 71 s</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="font:500 12px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--t3); padding-top:8px;">b · ui moment</div>
+    <div style="display:flex; gap:32px; flex-wrap:wrap; align-items:flex-start;">
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="font:600 14px/1 'Plus Jakarta Sans',sans-serif;">UI moment · square</div>
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; color:var(--t3); border:1px solid var(--bs); border-radius:3px; padding:5px 7px;">1080 × 1080</div>
+        </div>
+        <div id="ab-ui-square" style="width:1080px; height:1080px; background:var(--canvas); border:1px solid var(--bs); position:relative; overflow:hidden; display:flex; flex-direction:column; padding:76px 76px 68px;">
+          <img src="uploads/fabricxai-logo-light.png" alt="FabricX AI" style="height:32px; width:auto; align-self:flex-start; object-fit:contain;" />
+          <div style="margin-top:44px; display:flex; flex-direction:column; gap:36px;">
+            <div style="{{ frameOuter }}">
+              <div style="{{ frameChrome }}">
+                <div style="display:flex; gap:9px;">
+                  <div style="width:13px; height:13px; border-radius:999px; background:var(--bd);"></div>
+                  <div style="width:13px; height:13px; border-radius:999px; background:var(--bd);"></div>
+                  <div style="width:13px; height:13px; border-radius:999px; background:var(--bd);"></div>
+                </div>
+                <div style="{{ framePill }}">{{ frameUrl }}</div>
+              </div>
+              <div style="background:var(--canvas); padding:26px;">
+                <div style="background:var(--surface); border:1px solid var(--accent); border-radius:8px; overflow:hidden; clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);">
+                  <div style="background:var(--accent-sub); padding:18px 22px; display:flex; align-items:center; gap:14px;">
+                    <div style="width:34px; height:34px; border-radius:999px; background:var(--ink); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                      <img src="uploads/MARBIM_logo.png" alt="" style="width:19px; height:19px; object-fit:contain;" />
+                    </div>
+                    <div style="font:600 20px/1.3 'Plus Jakarta Sans',sans-serif;">MARBIM read the revised PO — 2 changes to approve</div>
+                    <div style="font:500 13px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--accent-press); border:1px solid var(--accent-press); border-radius:4px; padding:7px 9px; margin-left:auto; flex-shrink:0;">draft</div>
+                  </div>
+                  <sc-for list="{{ draftRows }}" as="r" hint-placeholder-count="3">
+                    <div style="display:flex; align-items:stretch; border-bottom:1px solid var(--bs);">
+                      <div style="width:4px; flex-shrink:0; background:{{ r.sel }};"></div>
+                      <div style="flex:1; min-width:0; display:grid; grid-template-columns:200px 1fr 168px; gap:18px; padding:17px 22px 17px 18px; align-items:center;">
+                        <div style="font:400 16px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--t3);">{{ r.field }}</div>
+                        <div style="font:500 18px/1.4 'JetBrains Mono',monospace;">{{ r.value }}</div>
+                        <div style="display:flex; align-items:center; gap:12px;">
+                          <div style="flex:1; height:8px; border-radius:999px; background:var(--sunken); overflow:hidden;"><div style="{{ r.bar }}"></div></div>
+                          <div style="font:500 15px/1 'JetBrains Mono',monospace; color:{{ r.confColor }}; width:44px; text-align:right;">{{ r.conf }}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </sc-for>
+                  <div style="padding:20px 22px; display:flex; align-items:center; gap:14px;">
+                    <div style="background:var(--accent); color:var(--ink); border-radius:8px; padding:15px 20px; font:600 17px/1 'Plus Jakarta Sans',sans-serif;">Approve both</div>
+                    <div style="border:1px solid var(--bd); color:var(--t2); border-radius:8px; padding:14px 19px; font:600 17px/1 'Plus Jakarta Sans',sans-serif;">Reject</div>
+                    <div style="font:400 15px/1.4 'JetBrains Mono',monospace; color:var(--t3); margin-left:auto;">PO-88203-rev2.pdf</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:22px;">
+              <div style="height:14px; width:132px; background-image:repeating-linear-gradient(115deg, var(--bd) 0 3px, transparent 3px 9px);"></div>
+              <div style="font:600 42px/1.3 'Archivo',sans-serif; letter-spacing:-.015em; max-width:30ch; text-wrap:pretty;">Nothing writes itself. Every field is a draft until a person approves it.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="font:600 14px/1 'Plus Jakarta Sans',sans-serif;">UI moment · link card</div>
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; color:var(--t3); border:1px solid var(--bs); border-radius:3px; padding:5px 7px;">1200 × 627</div>
+        </div>
+        <div id="ab-ui-link" style="width:1200px; height:627px; background:var(--canvas); border:1px solid var(--bs); position:relative; overflow:hidden; display:flex; align-items:stretch;">
+          <div style="width:452px; flex-shrink:0; padding:56px 40px 48px 56px; display:flex; flex-direction:column; gap:24px;">
+            <img src="uploads/fabricxai-logo-light.png" alt="FabricX AI" style="height:30px; width:auto; align-self:flex-start; object-fit:contain;" />
+            <div style="height:13px; width:104px; background-image:repeating-linear-gradient(115deg, var(--bd) 0 2px, transparent 2px 7px);"></div>
+            <div style="font:600 38px/1.26 'Archivo',sans-serif; letter-spacing:-.015em; text-wrap:pretty;">The draft nobody skips.</div>
+            <div style="font:400 19px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--t2); text-wrap:pretty;">Extraction is fast. Approval is deliberate. That order is the whole design.</div>
+            <div style="margin-top:auto; font:400 16px/1.4 'JetBrains Mono',monospace; color:var(--t3);">fabricxai.com/marbim</div>
+          </div>
+          <div style="flex:1; min-width:0; background:var(--sunken); position:relative; overflow:hidden; display:flex; align-items:center; padding-left:34px;">
+            <div style="position:absolute; inset:0; background-image:repeating-linear-gradient(146deg, transparent 0 14px, rgba(24,29,41,.03) 14px 16px, transparent 16px 30px);"></div>
+            <div style="position:relative; width:800px; background:var(--surface); border:1px solid var(--accent); border-radius:8px; overflow:hidden; box-shadow:0 12px 32px rgba(24,29,41,.12); clip-path:polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);">
+              <div style="background:var(--accent-sub); padding:14px 18px; display:flex; align-items:center; gap:12px;">
+                <div style="width:28px; height:28px; border-radius:999px; background:var(--ink); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <img src="uploads/MARBIM_logo.png" alt="" style="width:16px; height:16px; object-fit:contain;" />
+                </div>
+                <div style="font:600 16px/1.3 'Plus Jakarta Sans',sans-serif;">2 changes to approve</div>
+                <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--accent-press); border:1px solid var(--accent-press); border-radius:4px; padding:6px 8px; margin-left:auto;">draft</div>
+              </div>
+              <sc-for list="{{ draftRows }}" as="r" hint-placeholder-count="3">
+                <div style="display:flex; align-items:stretch; border-bottom:1px solid var(--bs);">
+                  <div style="width:3px; flex-shrink:0; background:{{ r.sel }};"></div>
+                  <div style="flex:1; min-width:0; display:grid; grid-template-columns:160px 1fr 128px; gap:14px; padding:13px 18px 13px 15px; align-items:center;">
+                    <div style="font:400 13px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--t3);">{{ r.field }}</div>
+                    <div style="font:500 14px/1.4 'JetBrains Mono',monospace;">{{ r.value }}</div>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                      <div style="flex:1; height:6px; border-radius:999px; background:var(--sunken); overflow:hidden;"><div style="{{ r.bar }}"></div></div>
+                      <div style="font:500 12px/1 'JetBrains Mono',monospace; color:{{ r.confColor }}; width:36px; text-align:right;">{{ r.conf }}</div>
+                    </div>
+                  </div>
+                </div>
+              </sc-for>
+              <div style="padding:15px 18px; display:flex; align-items:center; gap:11px;">
+                <div style="background:var(--accent); color:var(--ink); border-radius:8px; padding:12px 16px; font:600 14px/1 'Plus Jakarta Sans',sans-serif;">Approve both</div>
+                <div style="border:1px solid var(--bd); color:var(--t2); border-radius:8px; padding:11px 15px; font:600 14px/1 'Plus Jakarta Sans',sans-serif;">Reject</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="font:600 14px/1 'Plus Jakarta Sans',sans-serif;">UI moment · ink</div>
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; color:var(--t3); border:1px solid var(--bs); border-radius:3px; padding:5px 7px;">1080 × 1080</div>
+        </div>
+        <div id="ab-ui-dark" style="width:1080px; height:1080px; background:var(--d-canvas); position:relative; overflow:hidden; display:flex; flex-direction:column; padding:76px 76px 68px;">
+          <img src="uploads/fabricxai-logo-dark.png" alt="FabricX AI" style="height:32px; width:auto; align-self:flex-start; object-fit:contain;" />
+          <div style="margin-top:44px; display:flex; flex-direction:column; gap:36px;">
+            <div style="background:var(--d-raised); border:1px solid var(--d-bd); border-radius:14px; overflow:hidden;">
+              <div style="background:var(--d-surface); border-bottom:1px solid var(--d-bd); padding:16px 20px; display:flex; align-items:center; gap:16px;">
+                <div style="display:flex; gap:9px;">
+                  <div style="width:13px; height:13px; border-radius:999px; background:var(--d-st);"></div>
+                  <div style="width:13px; height:13px; border-radius:999px; background:var(--d-st);"></div>
+                  <div style="width:13px; height:13px; border-radius:999px; background:var(--d-st);"></div>
+                </div>
+                <div style="flex:1; background:var(--d-canvas); border-radius:6px; padding:9px 14px; font:400 14px/1.3 'JetBrains Mono',monospace; color:var(--d-t3);">app.fabricxai.com/orders/PO-88203</div>
+              </div>
+              <div style="background:var(--d-canvas); padding:26px;">
+                <div style="background:var(--d-surface); border:1px solid var(--accent); border-radius:8px; overflow:hidden; clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);">
+                  <div style="background:rgba(225,179,52,.14); padding:18px 22px; display:flex; align-items:center; gap:14px;">
+                    <div style="width:34px; height:34px; border-radius:999px; background:var(--d-canvas); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                      <img src="uploads/MARBIM_logo.png" alt="" style="width:19px; height:19px; object-fit:contain;" />
+                    </div>
+                    <div style="font:600 20px/1.3 'Plus Jakarta Sans',sans-serif; color:var(--d-t1);">MARBIM read the revised PO — 2 changes to approve</div>
+                    <div style="font:500 13px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--accent); border:1px solid var(--accent); border-radius:4px; padding:7px 9px; margin-left:auto; flex-shrink:0;">draft</div>
+                  </div>
+                  <sc-for list="{{ draftRowsDark }}" as="r" hint-placeholder-count="3">
+                    <div style="display:flex; align-items:stretch; border-bottom:1px solid var(--d-bs);">
+                      <div style="width:4px; flex-shrink:0; background:{{ r.sel }};"></div>
+                      <div style="flex:1; min-width:0; display:grid; grid-template-columns:200px 1fr 168px; gap:18px; padding:17px 22px 17px 18px; align-items:center;">
+                        <div style="font:400 16px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--d-t3);">{{ r.field }}</div>
+                        <div style="font:500 18px/1.4 'JetBrains Mono',monospace; color:var(--d-t1);">{{ r.value }}</div>
+                        <div style="display:flex; align-items:center; gap:12px;">
+                          <div style="flex:1; height:8px; border-radius:999px; background:var(--d-canvas); overflow:hidden;"><div style="{{ r.bar }}"></div></div>
+                          <div style="font:500 15px/1 'JetBrains Mono',monospace; color:{{ r.confColor }}; width:44px; text-align:right;">{{ r.conf }}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </sc-for>
+                  <div style="padding:20px 22px; display:flex; align-items:center; gap:14px;">
+                    <div style="background:var(--accent); color:var(--ink); border-radius:8px; padding:15px 20px; font:600 17px/1 'Plus Jakarta Sans',sans-serif;">Approve both</div>
+                    <div style="border:1px solid var(--d-bd); color:var(--d-t2); border-radius:8px; padding:14px 19px; font:600 17px/1 'Plus Jakarta Sans',sans-serif;">Reject</div>
+                    <div style="font:400 15px/1.4 'JetBrains Mono',monospace; color:var(--d-t3); margin-left:auto;">PO-88203-rev2.pdf</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:22px;">
+              <div style="height:14px; width:132px; background-image:repeating-linear-gradient(115deg, var(--d-bd) 0 3px, transparent 3px 9px);"></div>
+              <div style="font:600 42px/1.3 'Archivo',sans-serif; letter-spacing:-.015em; color:var(--d-t1); max-width:30ch; text-wrap:pretty;">Nothing writes itself. Every field is a draft until a person approves it.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="font:500 12px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--t3); padding-top:8px;">c · quote card</div>
+    <div style="display:flex; gap:32px; flex-wrap:wrap; align-items:flex-start;">
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="font:600 14px/1 'Plus Jakarta Sans',sans-serif;">Quote card · light</div>
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; color:var(--t3); border:1px solid var(--bs); border-radius:3px; padding:5px 7px;">1080 × 1080</div>
+        </div>
+        <div id="ab-quote-light" style="width:1080px; height:1080px; background:var(--canvas); border:1px solid var(--bs); position:relative; overflow:hidden; display:flex; flex-direction:column; padding:88px;">
+          <div style="position:absolute; left:0; right:0; bottom:0; height:340px; background-image:repeating-linear-gradient(146deg, transparent 0 16px, rgba(24,29,41,.03) 16px 19px, transparent 19px 35px);"></div>
+          <div style="position:relative; display:flex; align-items:center; gap:20px;">
+            <img src="assets/MARBIM_logo-ink.png" alt="MARBIM" style="width:56px; height:56px; object-fit:contain; flex-shrink:0;" />
+            <div style="height:12px; width:88px; background-image:repeating-linear-gradient(115deg, var(--bd) 0 2px, transparent 2px 8px);"></div>
+          </div>
+          <div style="margin-top:auto; position:relative; display:flex; flex-direction:column; gap:52px;">
+            <div style="font:600 60px/1.24 'Archivo',sans-serif; letter-spacing:-.02em; max-width:19ch; text-wrap:pretty;">I stopped keeping a second spreadsheet in week two.</div>
+            <div style="display:flex; flex-direction:column; gap:12px; padding-top:34px; border-top:1px solid var(--bd);">
+              <div style="font:600 32px/1.3 'Plus Jakarta Sans',sans-serif;">Nabila Rahman</div>
+              <div style="font:400 24px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--t2);">Merchandiser · woven unit, Gazipur · 1,284 workers</div>
+            </div>
+          </div>
+          <div style="position:relative; margin-top:56px; display:flex; align-items:center;">
+            <img src="uploads/fabricxai-logo-light.png" alt="FabricX AI" style="height:32px; width:auto; align-self:center; object-fit:contain;" />
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="font:600 14px/1 'Plus Jakarta Sans',sans-serif;">Quote card · ink</div>
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; color:var(--t3); border:1px solid var(--bs); border-radius:3px; padding:5px 7px;">1080 × 1080</div>
+        </div>
+        <div id="ab-quote-dark" style="width:1080px; height:1080px; background:var(--d-canvas); position:relative; overflow:hidden; display:flex; flex-direction:column; padding:88px;">
+          <div style="position:absolute; left:0; right:0; bottom:0; height:340px; background-image:repeating-linear-gradient(146deg, transparent 0 16px, rgba(255,255,255,.05) 16px 19px, transparent 19px 35px);"></div>
+          <div style="position:relative; display:flex; align-items:center; gap:20px;">
+            <img src="uploads/MARBIM_logo.png" alt="MARBIM" style="width:56px; height:56px; object-fit:contain; flex-shrink:0;" />
+            <div style="height:12px; width:88px; background-image:repeating-linear-gradient(115deg, var(--d-bd) 0 2px, transparent 2px 8px);"></div>
+          </div>
+          <div style="margin-top:auto; position:relative; display:flex; flex-direction:column; gap:52px;">
+            <div style="font:600 60px/1.24 'Archivo',sans-serif; letter-spacing:-.02em; color:var(--d-t1); max-width:19ch; text-wrap:pretty;">I stopped keeping a second spreadsheet in week two.</div>
+            <div style="display:flex; flex-direction:column; gap:12px; padding-top:34px; border-top:1px solid var(--d-bd);">
+              <div style="font:600 32px/1.3 'Plus Jakarta Sans',sans-serif; color:var(--d-t1);">Nabila Rahman</div>
+              <div style="font:400 24px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--d-t2);">Merchandiser · woven unit, Gazipur · 1,284 workers</div>
+            </div>
+          </div>
+          <div style="position:relative; margin-top:56px; display:flex; align-items:center;">
+            <img src="uploads/fabricxai-logo-dark.png" alt="FabricX AI" style="height:32px; width:auto; align-self:center; object-fit:contain;" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="font:500 12px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--t3); padding-top:8px;">d · problem → solution</div>
+    <div style="display:flex; gap:32px; flex-wrap:wrap; align-items:flex-start;">
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="font:600 14px/1 'Plus Jakarta Sans',sans-serif;">Problem → solution · light</div>
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; color:var(--t3); border:1px solid var(--bs); border-radius:3px; padding:5px 7px;">1080 × 1350</div>
+        </div>
+        <div id="ab-ps-light" style="width:1080px; height:1350px; background:var(--canvas); border:1px solid var(--bs); position:relative; overflow:hidden; display:flex; flex-direction:column;">
+          <div style="height:600px; flex-shrink:0; padding:72px; display:flex; flex-direction:column; gap:26px; position:relative;">
+            <div style="position:absolute; right:0; top:0; width:400px; height:400px; background-image:repeating-linear-gradient(146deg, transparent 0 16px, rgba(24,29,41,.03) 16px 19px, transparent 19px 35px);"></div>
+            <div style="display:flex; align-items:center; gap:16px; position:relative;">
+              <div style="width:14px; height:14px; border-radius:999px; background:var(--bad); flex-shrink:0;"></div>
+              <div style="font:400 21px/1 'JetBrains Mono',monospace; letter-spacing:.1em; text-transform:uppercase; color:var(--bad);">What happens without a gate</div>
+            </div>
+            <div style="font:700 60px/1.2 'Archivo',sans-serif; letter-spacing:-.022em; max-width:20ch; position:relative; text-wrap:pretty;">Cutting started before the PP sample came back.</div>
+            <div style="font:400 28px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--t2); max-width:32ch; position:relative; text-wrap:pretty;">Nobody knew until the buyer did. Four hundred pieces of a rejected collar, already bundled.</div>
+          </div>
+          <div style="height:16px; flex-shrink:0; background-image:repeating-linear-gradient(115deg, var(--bd) 0 3px, transparent 3px 10px);"></div>
+          <div style="flex:1; min-height:0; background:var(--surface); padding:64px 72px 72px; display:flex; flex-direction:column; gap:30px;">
+            <div style="display:flex; align-items:center; gap:16px;">
+              <div style="width:14px; height:14px; border-radius:999px; background:var(--ok); flex-shrink:0;"></div>
+              <div style="font:400 21px/1 'JetBrains Mono',monospace; letter-spacing:.1em; text-transform:uppercase; color:var(--ok);">What FabricXAI does instead</div>
+            </div>
+            <div style="font:600 46px/1.26 'Archivo',sans-serif; letter-spacing:-.018em; max-width:26ch; text-wrap:pretty;">The lay will not open. The refusal names the sample.</div>
+            <div style="background:var(--canvas); border:1px solid var(--bad); border-radius:8px; padding:30px 32px; display:flex; flex-direction:column; gap:20px;">
+              <div style="display:flex; align-items:center; gap:14px;">
+                <div style="width:12px; height:12px; border-radius:999px; background:var(--bad); flex-shrink:0;"></div>
+                <div style="font:600 26px/1.3 'Plus Jakarta Sans',sans-serif;">This lay cannot be created</div>
+                <div style="font:500 14px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--bad); margin-left:auto;">nothing written</div>
+              </div>
+              <div style="font:400 21px/1.6 'Plus Jakarta Sans',sans-serif; color:var(--t2); text-wrap:pretty;">SMP-0912 is still in sewing on round 2, sent 30 Jul. Fabric is issued and the marker is ready — the sample is the only thing missing.</div>
+              <div style="display:flex; align-items:center; gap:16px;">
+                <div style="background:var(--accent); color:var(--ink); border-radius:8px; padding:19px 26px; font:600 22px/1 'Plus Jakarta Sans',sans-serif;">Chase the approval</div>
+                <div style="font:400 18px/1.4 'JetBrains Mono',monospace; color:var(--t3);">PO-88231 · line 3</div>
+              </div>
+            </div>
+            <div style="margin-top:auto; display:flex; align-items:center; gap:20px;">
+              <img src="uploads/fabricxai-logo-light.png" alt="FabricX AI" style="height:32px; width:auto; align-self:center; object-fit:contain;" />
+              <div style="font:400 19px/1.4 'JetBrains Mono',monospace; color:var(--t3); margin-left:auto;">1 of 5 gates</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="font:600 14px/1 'Plus Jakarta Sans',sans-serif;">Problem → solution · ink</div>
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; color:var(--t3); border:1px solid var(--bs); border-radius:3px; padding:5px 7px;">1080 × 1350</div>
+        </div>
+        <div id="ab-ps-dark" style="width:1080px; height:1350px; background:var(--d-canvas); position:relative; overflow:hidden; display:flex; flex-direction:column;">
+          <div style="height:600px; flex-shrink:0; padding:72px; display:flex; flex-direction:column; gap:26px; position:relative;">
+            <div style="position:absolute; right:0; top:0; width:400px; height:400px; background-image:repeating-linear-gradient(146deg, transparent 0 16px, rgba(255,255,255,.05) 16px 19px, transparent 19px 35px);"></div>
+            <div style="display:flex; align-items:center; gap:16px; position:relative;">
+              <div style="width:14px; height:14px; border-radius:999px; background:#E0665C; flex-shrink:0;"></div>
+              <div style="font:400 21px/1 'JetBrains Mono',monospace; letter-spacing:.1em; text-transform:uppercase; color:#E0665C;">What happens without a gate</div>
+            </div>
+            <div style="font:700 60px/1.2 'Archivo',sans-serif; letter-spacing:-.022em; color:var(--d-t1); max-width:20ch; position:relative; text-wrap:pretty;">Cutting started before the PP sample came back.</div>
+            <div style="font:400 28px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--d-t2); max-width:32ch; position:relative; text-wrap:pretty;">Nobody knew until the buyer did. Four hundred pieces of a rejected collar, already bundled.</div>
+          </div>
+          <div style="height:16px; flex-shrink:0; background-image:repeating-linear-gradient(115deg, var(--d-bd) 0 3px, transparent 3px 10px);"></div>
+          <div style="flex:1; min-height:0; background:var(--d-surface); padding:64px 72px 72px; display:flex; flex-direction:column; gap:30px;">
+            <div style="display:flex; align-items:center; gap:16px;">
+              <div style="width:14px; height:14px; border-radius:999px; background:#4FA97D; flex-shrink:0;"></div>
+              <div style="font:400 21px/1 'JetBrains Mono',monospace; letter-spacing:.1em; text-transform:uppercase; color:#4FA97D;">What FabricXAI does instead</div>
+            </div>
+            <div style="font:600 46px/1.26 'Archivo',sans-serif; letter-spacing:-.018em; color:var(--d-t1); max-width:26ch; text-wrap:pretty;">The lay will not open. The refusal names the sample.</div>
+            <div style="background:var(--d-raised); border:1px solid #E0665C; border-radius:8px; padding:30px 32px; display:flex; flex-direction:column; gap:20px;">
+              <div style="display:flex; align-items:center; gap:14px;">
+                <div style="width:12px; height:12px; border-radius:999px; background:#E0665C; flex-shrink:0;"></div>
+                <div style="font:600 26px/1.3 'Plus Jakarta Sans',sans-serif; color:var(--d-t1);">This lay cannot be created</div>
+                <div style="font:500 14px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:#E0665C; margin-left:auto;">nothing written</div>
+              </div>
+              <div style="font:400 21px/1.6 'Plus Jakarta Sans',sans-serif; color:var(--d-t2); text-wrap:pretty;">SMP-0912 is still in sewing on round 2, sent 30 Jul. Fabric is issued and the marker is ready — the sample is the only thing missing.</div>
+              <div style="display:flex; align-items:center; gap:16px;">
+                <div style="background:var(--accent); color:var(--ink); border-radius:8px; padding:19px 26px; font:600 22px/1 'Plus Jakarta Sans',sans-serif;">Chase the approval</div>
+                <div style="font:400 18px/1.4 'JetBrains Mono',monospace; color:var(--d-t3);">PO-88231 · line 3</div>
+              </div>
+            </div>
+            <div style="margin-top:auto; display:flex; align-items:center; gap:20px;">
+              <img src="uploads/fabricxai-logo-dark.png" alt="FabricX AI" style="height:32px; width:auto; align-self:center; object-fit:contain;" />
+              <div style="font:400 19px/1.4 'JetBrains Mono',monospace; color:var(--d-t3); margin-left:auto;">1 of 5 gates</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 4 · CAROUSEL ═══ -->
+  <div style="display:flex; flex-direction:column; gap:24px;">
+    <div style="display:flex; align-items:baseline; gap:18px; flex-wrap:wrap;">
+      <div style="font:500 12px/1 'JetBrains Mono',monospace; letter-spacing:.09em; text-transform:uppercase; color:var(--t3);">04</div>
+      <div style="font:700 30px/1.15 'Archivo',sans-serif; letter-spacing:-.015em;">Carousel system</div>
+      <div style="font:400 15px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--t2); max-width:64ch; text-wrap:pretty;">Seven frames: a cover, five ideas, one ask. Page position is a row of thread stitches — the current frame's stitch is the asset's only amber, which is why the content frames carry none.</div>
+      <div style="font:500 11px/1 'JetBrains Mono',monospace; color:var(--t3); border:1px solid var(--bs); border-radius:3px; padding:5px 7px;">1080 × 1080 × 7</div>
+    </div>
+    <div style="display:flex; gap:28px; flex-wrap:wrap; align-items:flex-start;">
+      <sc-for list="{{ carousel }}" as="f" hint-placeholder-count="7">
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <div style="font:600 14px/1 'Plus Jakarta Sans',sans-serif;">{{ f.label }}</div>
+            <div style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--t3);">{{ f.role }}</div>
+          </div>
+          <div id="{{ f.domId }}" style="{{ f.board }}">
+            <sc-if value="{{ f.weave }}" hint-placeholder-val="{{ false }}">
+              <div style="{{ f.weaveStyle }}"></div>
+            </sc-if>
+            <div style="position:relative; display:flex; align-items:center; gap:18px;">
+              <img src="{{ f.logo }}" alt="FabricX AI" style="height:30px; width:auto; align-self:center; object-fit:contain;" />
+              <sc-if value="{{ f.hasEyebrow }}" hint-placeholder-val="{{ false }}">
+                <div style="{{ f.eyebrowStyle }}">{{ f.eyebrow }}</div>
+              </sc-if>
+            </div>
+            <div style="position:relative; margin-top:auto; display:flex; flex-direction:column; gap:30px;">
+              <div style="{{ f.headStyle }}">{{ f.head }}</div>
+              <sc-if value="{{ f.hasBody }}" hint-placeholder-val="{{ true }}">
+                <div style="{{ f.bodyStyle }}">{{ f.body }}</div>
+              </sc-if>
+              <sc-if value="{{ f.hasCta }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex; align-items:center; gap:22px; flex-wrap:wrap;">
+                  <div style="background:var(--accent); color:var(--ink); border-radius:8px; padding:22px 30px; font:600 26px/1 'Plus Jakarta Sans',sans-serif;">{{ f.ctaLabel }}</div>
+                  <div style="{{ f.ctaNoteStyle }}">{{ f.ctaNote }}</div>
+                </div>
+              </sc-if>
+            </div>
+            <div style="position:relative; margin-top:56px; display:flex; align-items:center; gap:14px;">
+              <sc-for list="{{ f.dots }}" as="d" hint-placeholder-count="7">
+                <div style="{{ d.style }}"></div>
+              </sc-for>
+              <div style="{{ f.pageStyle }}">{{ f.page }}</div>
+            </div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <!-- ═══ 5 · VIDEO FRAMES ═══ -->
+  <div style="display:flex; flex-direction:column; gap:24px;">
+    <div style="display:flex; align-items:baseline; gap:18px; flex-wrap:wrap;">
+      <div style="font:500 12px/1 'JetBrains Mono',monospace; letter-spacing:.09em; text-transform:uppercase; color:var(--t3);">05</div>
+      <div style="font:700 30px/1.15 'Archivo',sans-serif; letter-spacing:-.015em;">Video frames</div>
+      <div style="font:400 15px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--t2); max-width:64ch; text-wrap:pretty;">Same conventions as the walkthrough film: lower third bottom-left with a two-line title, captions in an ink pill dead centre, chapter cards full ink with the number in mono, end card wordmark and one ask. The dark plate stands for footage.</div>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:10px;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div style="font:600 14px/1 'Plus Jakarta Sans',sans-serif;">Lower third + caption · landscape</div>
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; color:var(--t3); border:1px solid var(--bs); border-radius:3px; padding:5px 7px;">1920 × 1080</div>
+      </div>
+      <div id="ab-video-lower" style="width:1920px; height:1080px; background:var(--d-canvas); position:relative; overflow:hidden;">
+        <div style="position:absolute; inset:0; background-image:repeating-linear-gradient(146deg, transparent 0 22px, rgba(255,255,255,.045) 22px 26px, transparent 26px 48px);"></div>
+        <div style="position:absolute; left:96px; top:96px; font:400 20px/1 'JetBrains Mono',monospace; letter-spacing:.1em; text-transform:uppercase; color:rgba(255,255,255,.34);">footage</div>
+        <div style="position:absolute; left:96px; bottom:220px; display:flex; align-items:stretch;">
+          <div style="width:6px; background:var(--accent); flex-shrink:0;"></div>
+          <div style="background:rgba(15,19,27,.92); padding:26px 34px; display:flex; flex-direction:column; gap:10px;">
+            <div style="font:600 44px/1.22 'Archivo',sans-serif; letter-spacing:-.018em; color:var(--d-t1);">The revision nobody re-typed</div>
+            <div style="font:400 24px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--d-t2);">Chapter 2 · Order desk and TNA</div>
+          </div>
+        </div>
+        <div style="position:absolute; left:0; right:0; bottom:88px; display:flex; justify-content:center;">
+          <div style="background:rgba(15,19,27,.9); border-radius:8px; padding:20px 30px; max-width:1180px;">
+            <div style="font:500 34px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--d-t1); text-align:center; text-wrap:pretty;">Two thousand pieces of Navy large, and a date five days earlier.</div>
+          </div>
+        </div>
+        <div style="position:absolute; right:96px; top:96px;">
+          <img src="uploads/fabricxai-logo-dark.png" alt="FabricX AI" style="height:38px; width:auto; align-self:flex-start; object-fit:contain; opacity:.72;" />
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:32px; flex-wrap:wrap; align-items:flex-start;">
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="font:600 14px/1 'Plus Jakarta Sans',sans-serif;">Chapter card</div>
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; color:var(--t3); border:1px solid var(--bs); border-radius:3px; padding:5px 7px;">1920 × 1080</div>
+        </div>
+        <div id="ab-video-chapter" style="width:1920px; height:1080px; background:var(--d-surface); position:relative; overflow:hidden; display:flex; flex-direction:column; justify-content:center; padding:0 160px; gap:40px;">
+          <div style="position:absolute; right:0; top:0; bottom:0; width:760px; background-image:repeating-linear-gradient(146deg, transparent 0 22px, rgba(255,255,255,.05) 22px 26px, transparent 26px 48px);"></div>
+          <div style="position:relative; display:flex; align-items:baseline; gap:40px;">
+            <div style="font:500 190px/.86 'JetBrains Mono',monospace; letter-spacing:-.04em; color:var(--d-st);">02</div>
+            <div style="height:20px; width:200px; background:var(--accent); margin-bottom:34px;"></div>
+          </div>
+          <div style="position:relative; font:700 96px/1.1 'Archivo',sans-serif; letter-spacing:-.024em; color:var(--d-t1);">Order desk and TNA</div>
+          <div style="position:relative; font:400 34px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--d-t2); max-width:44ch; text-wrap:pretty;">One revised PO, read and approved field by field. Then the ripple, previewed before anything moves.</div>
+          <div style="position:relative; margin-top:32px;">
+            <img src="uploads/fabricxai-logo-dark.png" alt="FabricX AI" style="height:38px; width:auto; align-self:flex-start; object-fit:contain;" />
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="font:600 14px/1 'Plus Jakarta Sans',sans-serif;">End card</div>
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; color:var(--t3); border:1px solid var(--bs); border-radius:3px; padding:5px 7px;">1920 × 1080</div>
+        </div>
+        <div id="ab-video-end" style="width:1920px; height:1080px; background:var(--d-canvas); position:relative; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:44px;">
+          <div style="position:absolute; inset:0; background-image:repeating-linear-gradient(146deg, transparent 0 24px, rgba(255,255,255,.045) 24px 28px, transparent 28px 52px);"></div>
+          <img src="uploads/fabricxai-logo-dark.png" alt="FabricX AI" style="height:84px; width:auto; object-fit:contain; position:relative;" />
+          <div style="height:18px; width:200px; background-image:repeating-linear-gradient(115deg, var(--d-bd) 0 3px, transparent 3px 10px); position:relative;"></div>
+          <div style="font:600 46px/1.3 'Archivo',sans-serif; letter-spacing:-.018em; color:var(--d-t1); position:relative; text-align:center; max-width:32ch; text-wrap:pretty;">The system that runs the floor.</div>
+          <div style="display:flex; align-items:center; gap:26px; position:relative;">
+            <div style="background:var(--accent); color:var(--ink); border-radius:8px; padding:24px 34px; font:600 30px/1 'Plus Jakarta Sans',sans-serif;">Book a walkthrough</div>
+            <div style="font:400 28px/1.4 'JetBrains Mono',monospace; color:var(--d-t2);">fabricxai.com</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:32px; flex-wrap:wrap; align-items:flex-start;">
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="font:600 14px/1 'Plus Jakarta Sans',sans-serif;">Lower third + caption · vertical</div>
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; color:var(--t3); border:1px solid var(--bs); border-radius:3px; padding:5px 7px;">1080 × 1920</div>
+        </div>
+        <div id="ab-video-vertical" style="width:1080px; height:1920px; background:var(--d-canvas); position:relative; overflow:hidden;">
+          <div style="position:absolute; inset:0; background-image:repeating-linear-gradient(146deg, transparent 0 22px, rgba(255,255,255,.045) 22px 26px, transparent 26px 48px);"></div>
+          <div style="position:absolute; left:64px; top:104px; display:flex; align-items:center; gap:20px;">
+            <img src="uploads/fabricxai-logo-dark.png" alt="FabricX AI" style="height:34px; width:auto; align-self:center; object-fit:contain; opacity:.78;" />
+          </div>
+          <sc-if value="{{ guides }}" hint-placeholder-val="{{ true }}">
+            <div style="position:absolute; left:0; right:0; top:0; height:250px; border-bottom:2px dashed rgba(255,255,255,.16);"></div>
+            <div style="position:absolute; left:0; right:0; bottom:0; height:420px; border-top:2px dashed rgba(255,255,255,.16);"></div>
+            <div style="position:absolute; left:64px; bottom:432px; font:400 18px/1 'JetBrains Mono',monospace; color:rgba(255,255,255,.3);">UI-safe band · keep type between the dashes</div>
+          </sc-if>
+          <div style="position:absolute; left:64px; right:64px; bottom:560px; display:flex; align-items:stretch;">
+            <div style="width:6px; background:var(--accent); flex-shrink:0;"></div>
+            <div style="background:rgba(15,19,27,.92); padding:26px 30px; display:flex; flex-direction:column; gap:10px; flex:1; min-width:0;">
+              <div style="font:600 44px/1.2 'Archivo',sans-serif; letter-spacing:-.018em; color:var(--d-t1); text-wrap:pretty;">The revision nobody re-typed</div>
+              <div style="font:400 24px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--d-t2);">Chapter 2 · Order desk</div>
+            </div>
+          </div>
+          <div style="position:absolute; left:64px; right:64px; bottom:452px; display:flex; justify-content:center;">
+            <div style="background:rgba(15,19,27,.9); border-radius:8px; padding:18px 24px;">
+              <div style="font:500 32px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--d-t1); text-align:center; text-wrap:pretty;">Two thousand pieces of Navy large.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="font:600 14px/1 'Plus Jakarta Sans',sans-serif;">End card · vertical</div>
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; color:var(--t3); border:1px solid var(--bs); border-radius:3px; padding:5px 7px;">1080 × 1920</div>
+        </div>
+        <div id="ab-video-end-v" style="width:1080px; height:1920px; background:var(--d-canvas); position:relative; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:44px; padding:0 88px;">
+          <div style="position:absolute; inset:0; background-image:repeating-linear-gradient(146deg, transparent 0 24px, rgba(255,255,255,.045) 24px 28px, transparent 28px 52px);"></div>
+          <img src="uploads/MARBIM_logo.png" alt="MARBIM" style="width:150px; height:150px; object-fit:contain; position:relative;" />
+          <img src="uploads/fabricxai-logo-dark.png" alt="FabricX AI" style="height:64px; width:auto; object-fit:contain; position:relative;" />
+          <div style="height:18px; width:170px; background-image:repeating-linear-gradient(115deg, var(--d-bd) 0 3px, transparent 3px 10px); position:relative;"></div>
+          <div style="font:600 48px/1.3 'Archivo',sans-serif; letter-spacing:-.018em; color:var(--d-t1); position:relative; text-align:center; text-wrap:pretty;">The system that runs the floor.</div>
+          <div style="display:flex; flex-direction:column; align-items:center; gap:26px; position:relative;">
+            <div style="background:var(--accent); color:var(--ink); border-radius:8px; padding:24px 34px; font:600 30px/1 'Plus Jakarta Sans',sans-serif;">Book a walkthrough</div>
+            <div style="font:400 26px/1.4 'JetBrains Mono',monospace; color:var(--d-t2);">fabricxai.com</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 6 · YOUTUBE THUMBNAILS ═══ -->
+  <div style="display:flex; flex-direction:column; gap:24px;">
+    <div style="display:flex; align-items:baseline; gap:18px; flex-wrap:wrap;">
+      <div style="font:500 12px/1 'JetBrains Mono',monospace; letter-spacing:.09em; text-transform:uppercase; color:var(--t3);">06</div>
+      <div style="font:700 30px/1.15 'Archivo',sans-serif; letter-spacing:-.015em;">YouTube thumbnails</div>
+      <div style="font:400 15px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--t2); max-width:64ch; text-wrap:pretty;">Three jobs — a UI moment, a number, a walkthrough chapter — in light and ink. Titles stay under five words so they survive 168px wide, and each thumbnail spends its amber exactly once.</div>
+      <div style="font:500 11px/1 'JetBrains Mono',monospace; color:var(--t3); border:1px solid var(--bs); border-radius:3px; padding:5px 7px;">1280 × 720</div>
+    </div>
+    <div style="display:flex; gap:28px; flex-wrap:wrap; align-items:flex-start;">
+      <sc-for list="{{ thumbs }}" as="t" hint-placeholder-count="6">
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <div style="font:600 14px/1 'Plus Jakarta Sans',sans-serif;">{{ t.label }}</div>
+            <div style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--t3);">{{ t.mode }}</div>
+          </div>
+          <div id="{{ t.domId }}" style="{{ t.board }}">
+            <div style="{{ t.weaveStyle }}"></div>
+            <div style="position:relative; display:flex; flex-direction:column; gap:20px; flex:1; min-height:0;">
+              <div style="display:flex; align-items:center; gap:16px;">
+                <img src="{{ t.logo }}" alt="FabricX AI" style="height:26px; width:auto; align-self:center; object-fit:contain;" />
+                <div style="{{ t.eyebrowStyle }}">{{ t.eyebrow }}</div>
+              </div>
+              <sc-if value="{{ t.isNumber }}" hint-placeholder-val="{{ false }}">
+                <div style="margin-top:auto; display:flex; flex-direction:column; gap:14px;">
+                  <div style="display:flex; align-items:baseline; gap:16px;">
+                    <div style="{{ t.numStyle }}">{{ t.num }}</div>
+                    <div style="{{ t.unitStyle }}">{{ t.unit }}</div>
+                  </div>
+                  <div style="height:10px; width:220px; background:var(--accent);"></div>
+                  <div style="{{ t.titleStyle }}">{{ t.title }}</div>
+                </div>
+              </sc-if>
+              <sc-if value="{{ t.isUi }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex; align-items:center; gap:34px; flex:1; min-height:0;">
+                  <div style="width:470px; flex-shrink:0; display:flex; flex-direction:column; gap:20px;">
+                    <div style="{{ t.titleStyle }}">{{ t.title }}</div>
+                    <div style="height:10px; width:150px; background:var(--accent);"></div>
+                  </div>
+                  <div style="{{ t.cropShell }}">
+                    <div style="{{ t.cropHead }}">
+                      <div style="width:26px; height:26px; border-radius:999px; background:{{ t.cropDisc }}; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                        <img src="uploads/MARBIM_logo.png" alt="" style="width:15px; height:15px; object-fit:contain;" />
+                      </div>
+                      <div style="{{ t.cropHeadText }}">2 changes to approve</div>
+                    </div>
+                    <sc-for list="{{ t.cropRows }}" as="r" hint-placeholder-count="2">
+                      <div style="{{ r.row }}">
+                        <div style="{{ r.field }}">{{ r.fieldText }}</div>
+                        <div style="{{ r.value }}">{{ r.valueText }}</div>
+                        <div style="flex:1; height:7px; border-radius:999px; background:{{ r.track }}; overflow:hidden;"><div style="{{ r.bar }}"></div></div>
+                      </div>
+                    </sc-for>
+                    <div style="{{ t.cropFoot }}">
+                      <div style="background:var(--accent); color:var(--ink); border-radius:6px; padding:11px 15px; font:600 15px/1 'Plus Jakarta Sans',sans-serif;">Approve</div>
+                    </div>
+                  </div>
+                </div>
+              </sc-if>
+              <sc-if value="{{ t.isChapter }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex; align-items:center; gap:40px; flex:1; min-height:0;">
+                  <div style="display:flex; flex-direction:column; gap:16px; flex:1; min-width:0;">
+                    <div style="display:flex; align-items:baseline; gap:20px;">
+                      <div style="{{ t.chapNumStyle }}">{{ t.num }}</div>
+                      <div style="height:12px; width:110px; background:var(--accent); margin-bottom:14px;"></div>
+                    </div>
+                    <div style="{{ t.titleStyle }}">{{ t.title }}</div>
+                    <div style="{{ t.stepStyle }}">{{ t.step }}</div>
+                  </div>
+                  <div style="{{ t.stepShell }}">
+                    <sc-for list="{{ t.milestones }}" as="m" hint-placeholder-count="4">
+                      <div style="display:flex; align-items:center; gap:14px;">
+                        <div style="{{ m.dot }}"></div>
+                        <div style="{{ m.text }}">{{ m.label }}</div>
+                        <div style="{{ m.meta }}">{{ m.when }}</div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:16px; background:var(--surface); border:1px solid var(--bs); border-radius:8px; padding:28px 30px; box-shadow:0 1px 2px rgba(24,29,41,.06);">
+      <div style="display:flex; align-items:baseline; gap:16px; flex-wrap:wrap;">
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.09em; text-transform:uppercase; color:var(--t3);">Legibility proof · every thumbnail at 168px wide</div>
+        <div style="font:400 14px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--t2); max-width:60ch; text-wrap:pretty;">This is the size a thumbnail actually appears at in a sidebar on a phone. If a title cannot be read here it is too long, not too small.</div>
+      </div>
+      <div style="display:flex; gap:20px; flex-wrap:wrap; align-items:flex-start;">
+        <sc-for list="{{ thumbs }}" as="t" hint-placeholder-count="6">
+          <div style="display:flex; flex-direction:column; gap:7px; width:168px;">
+            <div style="width:168px; height:94.5px; overflow:hidden; position:relative; border:1px solid var(--bs);">
+              <div style="{{ t.proofScale }}">
+                <div style="{{ t.board }}">
+                  <div style="{{ t.weaveStyle }}"></div>
+                  <div style="position:relative; display:flex; flex-direction:column; gap:20px; flex:1; min-height:0;">
+                    <div style="display:flex; align-items:center; gap:16px;">
+                      <img src="{{ t.logo }}" alt="" style="height:26px; width:auto; align-self:center; object-fit:contain;" />
+                      <div style="{{ t.eyebrowStyle }}">{{ t.eyebrow }}</div>
+                    </div>
+                    <sc-if value="{{ t.isNumber }}" hint-placeholder-val="{{ false }}">
+                      <div style="margin-top:auto; display:flex; flex-direction:column; gap:14px;">
+                        <div style="display:flex; align-items:baseline; gap:16px;">
+                          <div style="{{ t.numStyle }}">{{ t.num }}</div>
+                          <div style="{{ t.unitStyle }}">{{ t.unit }}</div>
+                        </div>
+                        <div style="height:10px; width:220px; background:var(--accent);"></div>
+                        <div style="{{ t.titleStyle }}">{{ t.title }}</div>
+                      </div>
+                    </sc-if>
+                    <sc-if value="{{ t.isUi }}" hint-placeholder-val="{{ true }}">
+                      <div style="display:flex; align-items:center; gap:34px; flex:1; min-height:0;">
+                        <div style="width:470px; flex-shrink:0; display:flex; flex-direction:column; gap:20px;">
+                          <div style="{{ t.titleStyle }}">{{ t.title }}</div>
+                          <div style="height:10px; width:150px; background:var(--accent);"></div>
+                        </div>
+                        <div style="{{ t.cropShell }}">
+                          <div style="{{ t.cropHead }}">
+                            <div style="width:26px; height:26px; border-radius:999px; background:{{ t.cropDisc }}; flex-shrink:0;"></div>
+                            <div style="{{ t.cropHeadText }}">2 changes to approve</div>
+                          </div>
+                          <sc-for list="{{ t.cropRows }}" as="r" hint-placeholder-count="2">
+                            <div style="{{ r.row }}">
+                              <div style="{{ r.field }}">{{ r.fieldText }}</div>
+                              <div style="{{ r.value }}">{{ r.valueText }}</div>
+                              <div style="flex:1; height:7px; border-radius:999px; background:{{ r.track }}; overflow:hidden;"><div style="{{ r.bar }}"></div></div>
+                            </div>
+                          </sc-for>
+                          <div style="{{ t.cropFoot }}">
+                            <div style="background:var(--accent); color:var(--ink); border-radius:6px; padding:11px 15px; font:600 15px/1 'Plus Jakarta Sans',sans-serif;">Approve</div>
+                          </div>
+                        </div>
+                      </div>
+                    </sc-if>
+                    <sc-if value="{{ t.isChapter }}" hint-placeholder-val="{{ false }}">
+                      <div style="display:flex; align-items:center; gap:40px; flex:1; min-height:0;">
+                        <div style="display:flex; flex-direction:column; gap:16px; flex:1; min-width:0;">
+                          <div style="display:flex; align-items:baseline; gap:20px;">
+                            <div style="{{ t.chapNumStyle }}">{{ t.num }}</div>
+                            <div style="height:12px; width:110px; background:var(--accent); margin-bottom:14px;"></div>
+                          </div>
+                          <div style="{{ t.titleStyle }}">{{ t.title }}</div>
+                          <div style="{{ t.stepStyle }}">{{ t.step }}</div>
+                        </div>
+                        <div style="{{ t.stepShell }}">
+                          <sc-for list="{{ t.milestones }}" as="m" hint-placeholder-count="4">
+                            <div style="display:flex; align-items:center; gap:14px;">
+                              <div style="{{ m.dot }}"></div>
+                              <div style="{{ m.text }}">{{ m.label }}</div>
+                              <div style="{{ m.meta }}">{{ m.when }}</div>
+                            </div>
+                          </sc-for>
+                        </div>
+                      </div>
+                    </sc-if>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div style="font:400 11px/1.35 'JetBrains Mono',monospace; color:var(--t3);">{{ t.label }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 7 · EVENT CARD ═══ -->
+  <div style="display:flex; flex-direction:column; gap:24px;">
+    <div style="display:flex; align-items:baseline; gap:18px; flex-wrap:wrap;">
+      <div style="font:500 12px/1 'JetBrains Mono',monospace; letter-spacing:.09em; text-transform:uppercase; color:var(--t3);">07</div>
+      <div style="font:700 30px/1.15 'Archivo',sans-serif; letter-spacing:-.015em;">Event and launch card</div>
+      <div style="font:400 15px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--t2); max-width:64ch; text-wrap:pretty;">Date in mono at the top, one line about what it is, wordmark at the foot. The date is the headline because that is the only thing an announcement has to land.</div>
+      <div style="font:500 11px/1 'JetBrains Mono',monospace; color:var(--t3); border:1px solid var(--bs); border-radius:3px; padding:5px 7px;">1080 × 1080</div>
+    </div>
+    <div style="display:flex; gap:32px; flex-wrap:wrap; align-items:flex-start;">
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div style="font:600 14px/1 'Plus Jakarta Sans',sans-serif;">Event card · light</div>
+        <div id="ab-event-light" style="width:1080px; height:1080px; background:var(--canvas); border:1px solid var(--bs); position:relative; overflow:hidden; display:flex; flex-direction:column; padding:88px;">
+          <div style="position:absolute; right:-80px; bottom:-80px; width:560px; height:560px; background-image:repeating-linear-gradient(146deg, transparent 0 16px, rgba(24,29,41,.032) 16px 19px, transparent 19px 35px);"></div>
+          <div style="position:relative; display:flex; flex-direction:column; gap:22px;">
+            <div style="font:400 22px/1 'JetBrains Mono',monospace; letter-spacing:.1em; text-transform:uppercase; color:var(--t3);">Live walkthrough</div>
+            <div style="font:500 96px/1.02 'JetBrains Mono',monospace; letter-spacing:-.035em;">11 Sep</div>
+            <div style="font:400 30px/1.4 'JetBrains Mono',monospace; color:var(--t2);">15:00 Dhaka · 45 minutes</div>
+            <div style="height:12px; width:260px; background:var(--accent);"></div>
+          </div>
+          <div style="position:relative; margin-top:auto; display:flex; flex-direction:column; gap:44px;">
+            <div style="font:600 52px/1.26 'Archivo',sans-serif; letter-spacing:-.02em; max-width:22ch; text-wrap:pretty;">The five gates that stop a bad order.</div>
+            <div style="display:flex; align-items:center; gap:24px; padding-top:34px; border-top:1px solid var(--bd);">
+              <img src="uploads/fabricxai-logo-light.png" alt="FabricX AI" style="height:34px; width:auto; align-self:center; object-fit:contain;" />
+              <div style="font:400 22px/1.4 'JetBrains Mono',monospace; color:var(--t3); margin-left:auto;">fabricxai.com/live</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="width:520px; display:flex; flex-direction:column; gap:20px; background:var(--surface); border:1px solid var(--bs); border-radius:8px; padding:30px; box-shadow:0 1px 2px rgba(24,29,41,.06); clip-path:polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);">
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.09em; text-transform:uppercase; color:var(--t3);">The rules this kit does not break</div>
+        <div style="display:flex; flex-direction:column; gap:15px;">
+          <sc-for list="{{ rules }}" as="r" hint-placeholder-count="6">
+            <div style="display:flex; align-items:stretch; border:1px solid var(--bs); border-radius:4px; overflow:hidden;">
+              <div style="width:3px; flex-shrink:0; background:{{ r.c }};"></div>
+              <div style="flex:1; min-width:0; padding:14px 16px; display:flex; flex-direction:column; gap:5px;">
+                <div style="font:600 14.5px/1.35 'Plus Jakarta Sans',sans-serif;">{{ r.title }}</div>
+                <div style="font:400 13.5px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--t2); text-wrap:pretty;">{{ r.note }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;showGuides&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Export&quot;},&quot;uiFrame&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;browser&quot;,&quot;tablet&quot;],&quot;default&quot;:&quot;browser&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Templates&quot;},&quot;carouselTheme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Templates&quot;}}">
+const DRAFT_ROWS = [
+  ['Quantity', '24,000 → 26,000 pcs', 0.97],
+  ['Ex-factory', '04 Sep → 30 Aug', 0.94],
+  ['Colour split', '+2,000 Navy / L', 0.78]
+];
+
+const CAROUSEL = [
+  ['cover', 'Cover', '', '5 mistakes our gates make impossible.',
+    'Five things that cost a factory money, and the reason FabricXAI will not let any of them happen quietly.', ''],
+  ['content', '01', 'Cutting', 'Cutting before the PP sample is back.',
+    'The lay will not open. The refusal names the sample, the round it is on and the day it was sent.', ''],
+  ['content', '02', 'Store', 'Issuing bonded fabric past the UD.',
+    'Nothing is written — not even a partial issue. The card names the shortfall in yards and who can amend it.', ''],
+  ['content', '03', 'Finance', 'Paying a supplier with no GRN behind it.',
+    'The payable cannot exist. Where a delivery came short, the payment is short too, and the row says so.', ''],
+  ['content', '04', 'Procurement', 'Closing a PO line that arrived short.',
+    'Only a GRN closes a line. There is no close button, because a person deciding a line is complete is how a shortage reaches the floor as a surprise.', ''],
+  ['content', '05', 'Payroll', 'Running payroll over an open exception.',
+    'Thirty-seven unresolved punches means the run refuses to compute. A wrong number here is a real person\u2019s wage.', ''],
+  ['cta', 'CTA', '', 'Every gate, in four minutes.',
+    'One order from buyer email to bill of lading, with every refusal shown rather than described.', 'See the walkthrough']
+];
+
+const THUMBS = [
+  ['ui', 'light', 'UI moment · light', 'The draft nobody skips', '', ''],
+  ['number', 'light', 'Number-led · light', 'Email to structured RFQ', '42', 's'],
+  ['chapter', 'light', 'Chapter · light', 'Order desk', '02', ''],
+  ['ui', 'dark', 'UI moment · ink', 'The draft nobody skips', '', ''],
+  ['number', 'dark', 'Number-led · ink', 'Email to structured RFQ', '42', 's'],
+  ['chapter', 'dark', 'Chapter · ink', 'Order desk', '02', '']
+];
+
+const MILESTONES = [
+  ['PP sample approved', '08 Aug', 'bad'],
+  ['Fabric in-house', '11 Aug', 'ok'],
+  ['Cutting start', '14 Aug', 'wait'],
+  ['Sewing start', '17 Aug', 'wait']
+];
+
+const RULES = [
+  ['One amber moment', 'At most one amber fill over 24px per asset. On carousel content frames it is the active stitch, so the copy carries none.', 'var(--accent)'],
+  ['Ink on amber, always', 'White type on amber is prohibited. Every amber button in this kit has ink type on it.', 'var(--ink)'],
+  ['Amber is never a status', 'Late is danger, at-risk is warning. Amber means a person must act, and nothing else.', 'var(--warn)'],
+  ['The logo is placed, not drawn', 'Four files, three surfaces. No outline, no gradient, no duotone, no stretch — watch flex cross-axis stretch on img.', 'var(--info)'],
+  ['One decorative family', 'Thread rule and weave field, both derived from the X mark. No other ornament exists.', 'var(--st)'],
+  ['Numbers in mono', 'Every figure, PO, LC and style code sets in JetBrains Mono. Tabular is the point.', 'var(--ok)']
+];
+
+class Component extends DCLogic {
+  bar(conf, dark) {
+    return {
+      height: '100%',
+      width: Math.round(conf * 100) + '%',
+      background: conf < 0.85 ? 'var(--warn)' : dark ? '#4FA97D' : 'var(--ok)'
+    };
+  }
+
+  rows(dark) {
+    return DRAFT_ROWS.map(r => ({
+      field: r[0], value: r[1], conf: r[2].toFixed(2),
+      confColor: r[2] < 0.85 ? 'var(--warn)' : dark ? 'var(--d-t2)' : 'var(--t2)',
+      bar: this.bar(r[2], dark),
+      sel: r[2] < 0.85 ? 'var(--warn)' : dark ? '#4FA97D' : 'var(--ok)'
+    }));
+  }
+
+  renderVals() {
+    const guides = this.props.showGuides ?? true;
+    const tablet = (this.props.uiFrame ?? 'browser') === 'tablet';
+    const cDark = (this.props.carouselTheme ?? 'light') === 'dark';
+
+    const cText = cDark ? 'var(--d-t1)' : 'var(--ink)';
+    const cBody = cDark ? 'var(--d-t2)' : 'var(--t2)';
+    const cMuted = cDark ? 'var(--d-t3)' : 'var(--t3)';
+    const cStroke = cDark ? 'var(--d-bd)' : 'var(--bd)';
+
+    return {
+      guides,
+
+      frameOuter: tablet
+        ? { background: 'var(--ink)', borderRadius: '34px', padding: '22px', overflow: 'hidden' }
+        : { background: 'var(--surface)', border: '1px solid var(--bd)', borderRadius: '14px', overflow: 'hidden', boxShadow: '0 12px 32px rgba(24,29,41,.12)' },
+      frameChrome: tablet
+        ? { background: 'var(--ink)', padding: '0 8px 16px', display: 'flex', alignItems: 'center', gap: '16px', justifyContent: 'center' }
+        : { background: 'var(--sunken)', borderBottom: '1px solid var(--bs)', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '16px' },
+      framePill: tablet
+        ? { font: "400 14px/1.3 'JetBrains Mono',monospace", color: 'rgba(255,255,255,.5)', letterSpacing: '.08em', textTransform: 'uppercase' }
+        : { flex: 1, background: 'var(--surface)', border: '1px solid var(--bs)', borderRadius: '6px', padding: '9px 14px', font: "400 14px/1.3 'JetBrains Mono',monospace", color: 'var(--t3)' },
+      frameUrl: tablet ? 'FabricXAI · order desk' : 'app.fabricxai.com/orders/PO-88203',
+
+      draftRows: this.rows(false),
+      draftRowsDark: this.rows(true),
+
+      carousel: CAROUSEL.map((f, i) => {
+        const kind = f[0];
+        const isCover = kind === 'cover';
+        const isCta = kind === 'cta';
+        return {
+          domId: 'ab-carousel-' + (i + 1),
+          label: isCover ? 'Frame 1 · cover' : isCta ? 'Frame 7 · CTA' : 'Frame ' + (i + 1),
+          role: isCover ? 'the claim' : isCta ? 'the ask' : 'one idea',
+          board: {
+            width: '1080px', height: '1080px', padding: isCover ? '88px' : '80px',
+            background: cDark ? 'var(--d-canvas)' : isCover ? 'var(--canvas)' : 'var(--surface)',
+            border: cDark ? 'none' : '1px solid var(--bs)',
+            position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column'
+          },
+          weave: isCover || isCta,
+          weaveStyle: {
+            position: 'absolute', right: '0', bottom: '0', width: '640px', height: '520px',
+            backgroundImage: cDark
+              ? 'repeating-linear-gradient(146deg, transparent 0 17px, rgba(255,255,255,.05) 17px 20px, transparent 20px 37px)'
+              : 'repeating-linear-gradient(146deg, transparent 0 17px, rgba(24,29,41,.032) 17px 20px, transparent 20px 37px)'
+          },
+          logo: cDark ? 'uploads/fabricxai-logo-dark.png' : 'uploads/fabricxai-logo-light.png',
+          hasEyebrow: !isCover && !isCta,
+          eyebrow: f[2],
+          eyebrowStyle: {
+            font: "400 20px/1 'JetBrains Mono',monospace", letterSpacing: '.1em',
+            textTransform: 'uppercase', color: cMuted
+          },
+          head: f[3],
+          headStyle: {
+            font: (isCover ? "700 92px/1.14 " : "600 60px/1.22 ") + "'Archivo',sans-serif",
+            letterSpacing: isCover ? '-.028em' : '-.02em',
+            color: cText, maxWidth: isCover ? '15ch' : '21ch', textWrap: 'pretty'
+          },
+          hasBody: !!f[4],
+          body: f[4],
+          bodyStyle: {
+            font: "400 30px/1.5 'Plus Jakarta Sans',sans-serif",
+            color: cBody, maxWidth: '30ch', textWrap: 'pretty'
+          },
+          hasCta: isCta,
+          ctaLabel: f[5],
+          ctaNote: 'fabricxai.com/walkthrough',
+          ctaNoteStyle: { font: "400 22px/1.4 'JetBrains Mono',monospace", color: cMuted },
+          dots: CAROUSEL.map((_, di) => ({
+            style: {
+              width: di === i ? '4px' : '3px',
+              height: di === i ? '26px' : '18px',
+              transform: 'skewX(-34deg)',
+              flexShrink: 0,
+              background: di === i
+                ? (isCta ? cText : 'var(--accent)')
+                : cStroke
+            }
+          })),
+          page: (i + 1) + ' / 7',
+          pageStyle: { font: "400 20px/1 'JetBrains Mono',monospace", color: cMuted, marginLeft: 'auto' }
+        };
+      }),
+
+      thumbs: THUMBS.map((t, i) => {
+        const kind = t[0];
+        const dark = t[1] === 'dark';
+        const text = dark ? 'var(--d-t1)' : 'var(--ink)';
+        const muted = dark ? 'var(--d-t3)' : 'var(--t3)';
+        const body = dark ? 'var(--d-t2)' : 'var(--t2)';
+        return {
+          domId: 'ab-thumb-' + (i + 1),
+          label: t[2], mode: dark ? 'ink' : 'light',
+          board: {
+            width: '1280px', height: '720px', padding: '52px 56px',
+            background: dark ? 'var(--d-canvas)' : 'var(--canvas)',
+            border: dark ? 'none' : '1px solid var(--bs)',
+            position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column'
+          },
+          weaveStyle: {
+            position: 'absolute', right: '0', top: '0', bottom: '0', width: '420px',
+            backgroundImage: dark
+              ? 'repeating-linear-gradient(146deg, transparent 0 16px, rgba(255,255,255,.05) 16px 19px, transparent 19px 35px)'
+              : 'repeating-linear-gradient(146deg, transparent 0 16px, rgba(24,29,41,.032) 16px 19px, transparent 19px 35px)'
+          },
+          logo: dark ? 'uploads/fabricxai-logo-dark.png' : 'uploads/fabricxai-logo-light.png',
+          eyebrow: kind === 'chapter' ? 'walkthrough · chapter' : kind === 'number' ? 'measured' : 'product',
+          eyebrowStyle: {
+            font: "400 17px/1 'JetBrains Mono',monospace", letterSpacing: '.11em',
+            textTransform: 'uppercase', color: muted
+          },
+          isNumber: kind === 'number', isUi: kind === 'ui', isChapter: kind === 'chapter',
+          num: t[4], unit: t[5],
+          numStyle: { font: "500 200px/.84 'JetBrains Mono',monospace", letterSpacing: '-.045em', color: text },
+          unitStyle: { font: "600 60px/1 'Archivo',sans-serif", letterSpacing: '-.02em', color: text },
+          chapNumStyle: { font: "500 130px/1 'JetBrains Mono',monospace", letterSpacing: '-.04em', color: dark ? 'var(--d-st)' : 'var(--st)' },
+          title: t[3],
+          titleStyle: {
+            font: (kind === 'chapter' ? "700 78px/1.06 " : "700 66px/1.12 ") + "'Archivo',sans-serif",
+            letterSpacing: '-.026em', color: text, maxWidth: '13ch', textWrap: 'pretty'
+          },
+          step: 'one revised PO, approved field by field',
+          stepStyle: { font: "400 22px/1.45 'Plus Jakarta Sans',sans-serif", color: body, maxWidth: '26ch', textWrap: 'pretty' },
+
+          cropShell: {
+            flex: 1, minWidth: 0, alignSelf: 'stretch', marginTop: '4px',
+            background: dark ? 'var(--d-surface)' : 'var(--surface)',
+            border: '1px solid var(--accent)', borderRadius: '8px', overflow: 'hidden',
+            display: 'flex', flexDirection: 'column',
+            clipPath: 'polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%)',
+            boxShadow: dark ? 'none' : '0 4px 12px rgba(24,29,41,.08)'
+          },
+          cropHead: {
+            background: dark ? 'rgba(225,179,52,.14)' : 'var(--accent-sub)',
+            padding: '15px 18px', display: 'flex', alignItems: 'center', gap: '12px'
+          },
+          cropDisc: dark ? 'var(--d-canvas)' : 'var(--ink)',
+          cropHeadText: { font: "600 19px/1.3 'Plus Jakarta Sans',sans-serif", color: text },
+          cropRows: DRAFT_ROWS.slice(0, 2).map(r => ({
+            row: {
+              display: 'flex', alignItems: 'center', gap: '14px', padding: '15px 18px',
+              borderTop: '1px solid ' + (dark ? 'var(--d-bs)' : 'var(--bs)')
+            },
+            fieldText: r[0],
+            field: { font: "400 16px/1.3 'Plus Jakarta Sans',sans-serif", color: muted, width: '104px', flexShrink: 0 },
+            valueText: r[1],
+            value: { font: "500 17px/1.3 'JetBrains Mono',monospace", color: text, whiteSpace: 'nowrap' },
+            track: dark ? 'var(--d-canvas)' : 'var(--sunken)',
+            bar: this.bar(r[2], dark)
+          })),
+          cropFoot: {
+            padding: '15px 18px', display: 'flex', alignItems: 'center', gap: '12px',
+            borderTop: '1px solid ' + (dark ? 'var(--d-bs)' : 'var(--bs)'), marginTop: 'auto'
+          },
+
+          stepShell: {
+            width: '400px', flexShrink: 0, alignSelf: 'stretch', marginTop: '4px',
+            background: dark ? 'var(--d-surface)' : 'var(--surface)',
+            border: '1px solid ' + (dark ? 'var(--d-bd)' : 'var(--bs)'),
+            borderRadius: '8px', padding: '22px 20px',
+            display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '18px',
+            clipPath: 'polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%)'
+          },
+          milestones: MILESTONES.map(m => ({
+            label: m[0], when: m[1],
+            dot: {
+              width: '5px', height: '22px', transform: 'skewX(-34deg)', flexShrink: 0,
+              background: m[2] === 'bad' ? (dark ? '#E0665C' : 'var(--bad)')
+                : m[2] === 'ok' ? (dark ? '#4FA97D' : 'var(--ok)')
+                  : (dark ? 'var(--d-st)' : 'var(--st)')
+            },
+            text: { font: "500 19px/1.3 'Plus Jakarta Sans',sans-serif", color: text, whiteSpace: 'nowrap' },
+            meta: { font: "400 16px/1.3 'JetBrains Mono',monospace", color: muted, marginLeft: 'auto' }
+          })),
+
+          proofScale: { transform: 'scale(0.13125)', transformOrigin: 'top left', width: '1280px', height: '720px' }
+        };
+      }),
+
+      rules: RULES.map(r => ({ title: r[0], note: r[1], c: r[2] }))
+    };
+  }
+}
+
+</script>
+</body>
+</html>

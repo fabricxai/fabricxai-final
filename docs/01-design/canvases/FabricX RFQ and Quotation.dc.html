@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #F3F1EC; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  [data-mode="dark"] { --fx-bg-canvas:#0F131B !important; --fx-bg-surface:#181D29 !important; --fx-bg-raised:#212736 !important; --fx-bg-sunken:#0B0E15 !important; --fx-bg-hover:rgba(255,255,255,.05) !important; --fx-bg-selected:rgba(225,179,52,.17) !important; --fx-border-subtle:#252B3A !important; --fx-border-default:#343B4C !important; --fx-border-strong:#4E576B !important; --fx-text-primary:#F4F3F0 !important; --fx-text-secondary:#AEB5C4 !important; --fx-text-tertiary:#7C8497 !important; --fx-text-disabled:#565E71 !important; --fx-text-inverse:#181D29 !important; --fx-accent-hover:#EBC352 !important; --fx-accent-pressed:#F2D077 !important; --fx-accent-subtle:rgba(225,179,52,.14) !important; --fx-success:#4FA97D !important; --fx-warning:#D99A3F !important; --fx-danger:#E0665C !important; --fx-info:#6D9BE8 !important; --fx-focus:#E1B334 !important; --fx-sh1:0 0 0 1px #252B3A !important; --fx-sh2:0 0 0 1px #252B3A !important; --fx-sh3:0 0 0 1px #343B4C !important; }
+  body:has([data-mode="dark"]) { background: #0B0E15; }
+  a { color: #181D29; text-decoration: underline; text-underline-offset: 3px; }
+  a:hover { color: #B88C21; }
+  @keyframes fx-travel { 0% { transform: translate(-10%, 10%); opacity: .25; } 40% { transform: translate(0, 0); opacity: 1; } 100% { transform: translate(10%, -10%); opacity: .25; } }
+  @keyframes fx-breathe { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(calc(var(--dx) * 3.5%), calc(var(--dy) * 3.5%)); } }
+  @keyframes fx-shimmer { 0% { background-position: -180% 0; } 100% { background-position: 280% 0; } }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
+</style>
+</helmet>
+
+<div data-mode="{{ mode }}" style="--fx-bg-canvas:#FBFAF8; --fx-bg-surface:#FFFFFF; --fx-bg-sunken:#F3F1EC; --fx-bg-hover:rgba(24,29,41,.035); --fx-bg-selected:rgba(225,179,52,.12); --fx-border-subtle:#E7E4DE; --fx-border-default:#D6D2C9; --fx-border-strong:#A9A49A; --fx-text-primary:#181D29; --fx-text-secondary:#4C5364; --fx-text-tertiary:#767E90; --fx-text-disabled:#A8AEBB; --fx-text-inverse:#FBFAF8; --fx-accent:#E1B334; --fx-accent-hover:#CFA22B; --fx-accent-pressed:#B88C21; --fx-accent-subtle:#FAF1DA; --fx-accent-on:#181D29; --fx-success:#2F7D5B; --fx-warning:#B4741C; --fx-danger:#B23A32; --fx-info:#2F5FA8; --fx-focus:#181D29; --fx-sh1:0 1px 2px rgba(24,29,41,.06); --fx-sh2:0 4px 12px rgba(24,29,41,.08); --fx-sh3:0 12px 32px rgba(24,29,41,.12); font-family:'Plus Jakarta Sans',system-ui,sans-serif; color:var(--fx-text-primary); min-height:100vh; background:var(--fx-bg-sunken);">
+
+<div style="position:sticky; top:0; z-index:60; background:var(--fx-bg-surface); border-bottom:1px solid var(--fx-border-default); padding:10px 20px; display:flex; align-items:center; gap:18px; flex-wrap:wrap;">
+  <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Prototype bar — not product chrome</div>
+  <div style="display:flex; gap:2px; background:var(--fx-bg-sunken); border-radius:8px; padding:3px;">
+    <sc-for list="{{ screens }}" as="s" hint-placeholder-count="3">
+      <button onClick="{{ s.pick }}" style="{{ s.style }}">{{ s.label }}</button>
+    </sc-for>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px;">
+    <span style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">role</span>
+    <select onChange="{{ setRole }}" value="{{ role }}" style="background:var(--fx-bg-surface); color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:4px; padding:7px 9px; font:500 12px/1 'JetBrains Mono',monospace;">
+      <option value="merchandiser">merchandiser</option>
+      <option value="manager">manager</option>
+      <option value="commercial">commercial</option>
+      <option value="owner">owner</option>
+      <option value="viewer">viewer</option>
+    </select>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px;">
+    <span style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">rfq</span>
+    <select onChange="{{ setKind }}" value="{{ kind }}" style="background:var(--fx-bg-surface); color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:4px; padding:7px 9px; font:500 12px/1 'JetBrains Mono',monospace;">
+      <option value="woven">woven · shirt</option>
+      <option value="knit">knit · polo</option>
+    </select>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px;">
+    <span style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">state</span>
+    <select onChange="{{ setSt }}" value="{{ st }}" style="background:var(--fx-bg-surface); color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:4px; padding:7px 9px; font:500 12px/1 'JetBrains Mono',monospace;">
+      <sc-for list="{{ stOptions }}" as="o" hint-placeholder-count="3">
+        <option value="{{ o.v }}">{{ o.t }}</option>
+      </sc-for>
+    </select>
+  </div>
+  <div style="display:flex; align-items:center; gap:10px; margin-left:auto;">
+    <button onClick="{{ toggleMode }}" style="{{ modeBtn }}">{{ modeLabel }}</button>
+    <button onClick="{{ toggleAnnot }}" style="{{ annotBtn }}">actions {{ annotLabel }}</button>
+  </div>
+</div>
+
+<div style="display:flex; align-items:stretch; min-height:calc(100vh - 49px);">
+
+  <div style="width:236px; flex-shrink:0; background:var(--fx-bg-surface); border-right:1px solid var(--fx-border-subtle); padding:20px 14px; display:flex; flex-direction:column; gap:20px;">
+    <img src="{{ logoSrc }}" alt="FabricX AI" style="height:26px; width:auto; align-self:flex-start; max-width:100%; object-fit:contain;" />
+    <div style="display:flex; flex-direction:column; gap:2px;">
+      <sc-for list="{{ nav }}" as="n" hint-placeholder-count="4">
+        <div onClick="{{ n.pick }}" style="{{ n.style }}">
+          <div style="{{ n.marker }}"></div>{{ n.label }}
+          <sc-if value="{{ n.badge }}" hint-placeholder-val="{{ false }}">
+            <div style="{{ n.badgeStyle }}">{{ n.badge }}</div>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:8px;">
+      <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Your buyers</div>
+      <div style="font:400 13px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ buyerScope }}</div>
+    </div>
+    <div style="margin-top:auto; display:flex; flex-direction:column; gap:7px;">
+      <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Signed in</div>
+      <div style="font:500 14px/1.3 'Plus Jakarta Sans',sans-serif;">{{ userName }}</div>
+      <div style="font:400 12px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ role }} · desk density</div>
+    </div>
+  </div>
+
+  <div style="flex:1; min-width:0; background:var(--fx-bg-canvas); position:relative; padding:0 0 96px;">
+
+  <sc-if value="{{ isP1 }}" hint-placeholder-val="{{ true }}">
+    <div style="padding:26px 28px; display:flex; flex-direction:column; gap:20px; max-width:1280px;">
+      <div style="display:flex; flex-direction:column; gap:14px;">
+        <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex-wrap:wrap;">
+          <div style="display:flex; flex-direction:column; gap:5px;">
+            <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Quotation</div>
+            <div style="font:700 34px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">RFQ inbox</div>
+            <div style="font:400 15px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:64ch; text-wrap:pretty;">{{ inboxLead }}</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <div style="font:400 13px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">12 Aug 2026 · $1 = ৳119.50</div>
+            <button style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:8px; padding:11px 16px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-bg-hover)">Export</button>
+            <sc-if value="{{ canCreate }}" hint-placeholder-val="{{ true }}">
+              <button onClick="{{ goExtract }}" style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:11px 18px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-accent-hover)">New RFQ</button>
+            </sc-if>
+          </div>
+        </div>
+        <div style="height:9px; background-image:repeating-linear-gradient(115deg, var(--fx-accent) 0 2px, transparent 2px 9px);"></div>
+      </div>
+
+      <div style="display:flex; gap:16px; flex-wrap:wrap;">
+        <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4">
+          <div style="flex:1 1 190px; min-width:180px; display:flex; background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+            <div style="width:3px; flex-shrink:0; background:{{ k.sel }};"></div>
+            <div style="padding:16px 18px; display:flex; flex-direction:column; gap:6px; flex:1; min-width:0;">
+              <div style="font:400 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">{{ k.label }}</div>
+              <div style="font:600 26px/1.1 'Plus Jakarta Sans',sans-serif; letter-spacing:-.012em;">{{ k.value }}</div>
+              <div style="font:400 12px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">{{ k.note }}</div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+
+      <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">rfq.create · rfq.extractFromDocument (drop zone) · rfq.export</div>
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">merchandiser sees every RFQ, edits only their own buyers</div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isReady }}" hint-placeholder-val="{{ true }}">
+        <sc-for list="{{ groups }}" as="g" hint-placeholder-count="5">
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div style="font:600 17px/1.2 'Plus Jakarta Sans',sans-serif;">{{ g.name }}</div>
+              <div style="font:400 12.5px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ g.count }}</div>
+              <div style="flex:1; height:7px; background-image:repeating-linear-gradient(115deg, var(--fx-border-default) 0 2px, transparent 2px 9px);"></div>
+            </div>
+            <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+              <div style="overflow-x:auto;">
+              <div style="min-width:1080px;">
+                <div style="display:flex; align-items:stretch; background:var(--fx-bg-sunken); border-bottom:1px solid var(--fx-border-subtle);">
+                  <div style="width:3px; flex-shrink:0;"></div>
+                  <div style="flex:1; min-width:0; display:grid; grid-template-columns:140px 108px 1.5fr 96px 200px 152px; gap:14px; padding:11px 20px 11px 17px; font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">
+                    <div>RFQ</div><div>Buyer</div><div>Style</div><div style="text-align:right;">Qty</div><div style="text-align:right;">{{ g.priceHead }}</div><div>{{ g.timeHead }}</div>
+                  </div>
+                </div>
+                <sc-for list="{{ g.rows }}" as="r" hint-placeholder-count="3">
+                  <div onClick="{{ r.open }}" style="display:flex; align-items:stretch; border-bottom:1px solid var(--fx-border-subtle); cursor:pointer;" style-hover="background:var(--fx-bg-hover)">
+                    <div style="width:{{ r.selW }}; flex-shrink:0; background:{{ r.sel }};"></div>
+                    <div style="flex:1; min-width:0; display:grid; grid-template-columns:140px 108px 1.5fr 96px 200px 152px; gap:14px; padding:12px 20px 12px 17px; align-items:center; min-height:44px;">
+                      <div style="display:flex; flex-direction:column; gap:3px;">
+                        <div style="font:500 13px/1.3 'JetBrains Mono',monospace;">{{ r.no }}</div>
+                        <sc-if value="{{ r.notMine }}" hint-placeholder-val="{{ false }}">
+                          <div style="font:400 11px/1.2 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">not your buyer</div>
+                        </sc-if>
+                      </div>
+                      <div style="font:400 14px/1.3 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">{{ r.buyer }}</div>
+                      <div style="display:flex; flex-direction:column; gap:3px; min-width:0;">
+                        <div style="font:500 14px/1.3 'Plus Jakarta Sans',sans-serif; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ r.style }}</div>
+                        <div style="font:400 12px/1.3 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ r.desc }}</div>
+                      </div>
+                      <div style="font:400 13px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-secondary); text-align:right;">{{ r.qty }}</div>
+                      <div style="display:flex; flex-direction:column; gap:3px; align-items:flex-end;">
+                        <sc-if value="{{ redacted }}" hint-placeholder-val="{{ false }}">
+                          <div style="display:inline-flex; align-items:center; gap:6px; color:var(--fx-text-tertiary);">
+                            <span style="display:inline-flex; flex-direction:column; align-items:center; width:9px;"><span style="width:5px; height:4px; border:1.5px solid currentColor; border-bottom:none; border-radius:3px 3px 0 0;"></span><span style="width:9px; height:6px; background:currentColor; border-radius:1.5px;"></span></span>
+                            <span style="font:500 13px/1.3 'JetBrains Mono',monospace;">•••</span>
+                          </div>
+                        </sc-if>
+                        <sc-if value="{{ notRedacted }}" hint-placeholder-val="{{ true }}">
+                          <div style="display:flex; align-items:center; gap:8px;">
+                            <div style="{{ r.priceTagStyle }}">{{ r.priceTag }}</div>
+                            <div style="font:500 13px/1.3 'JetBrains Mono',monospace; color:{{ r.priceColor }};">{{ r.price }}</div>
+                            <div style="font:400 12px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ r.priceBdt }}</div>
+                          </div>
+                          <div style="font:400 11.5px/1.3 'JetBrains Mono',monospace; color:{{ r.priceColor }};">{{ r.priceNote }}</div>
+                        </sc-if>
+                      </div>
+                      <div style="display:flex; flex-direction:column; gap:3px;">
+                        <div style="font:500 13px/1.3 'JetBrains Mono',monospace; color:{{ r.timeColor }};">{{ r.time }}</div>
+                        <div style="font:400 11.5px/1.3 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">{{ r.timeNote }}</div>
+                      </div>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+              </div>
+            </div>
+          </div>
+        </sc-for>
+        <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+          <div style="font:400 12px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">target vs quoted in both currencies — the buyer negotiates in $, the floor is costed in ৳</div>
+          <sc-if value="{{ redacted }}" hint-placeholder-val="{{ false }}">
+            <div style="font:400 12px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-left:auto;">REDACTED — prices masked for viewer</div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ false }}">
+        <div style="border:1px solid var(--fx-border-subtle); border-radius:8px; padding:52px 24px; display:flex; flex-direction:column; align-items:center; gap:16px; text-align:center; background-color:var(--fx-accent-subtle); background-image:repeating-linear-gradient(146deg, transparent 0 7px, var(--fx-border-subtle) 7px 9px, transparent 9px 17px);">
+          <div style="font:600 20px/1.25 'Plus Jakarta Sans',sans-serif;">No RFQs open</div>
+          <div style="font:400 15px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:48ch; text-wrap:pretty;">Drop the buyer's enquiry — a PDF, an emailed spec sheet, even a photo of a printed one. MARBIM reads the style, quantity, target price and ship window, and hands you a draft RFQ to check before anything is created.</div>
+          <div style="border:1.5px dashed var(--fx-border-strong); border-radius:8px; padding:22px 32px; font:500 14px/1 'JetBrains Mono',monospace; color:var(--fx-text-secondary); background:rgba(255,255,255,.6);">drop the enquiry</div>
+          <sc-if value="{{ canCreate }}" hint-placeholder-val="{{ true }}">
+            <button onClick="{{ goExtract }}" style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:12px 20px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;">Choose a file</button>
+          </sc-if>
+          <div style="font:400 12px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">or enter it by hand — 9 fields</div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isLoading }}" hint-placeholder-val="{{ false }}">
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:56px 20px; display:flex; flex-direction:column; align-items:center; gap:18px; box-shadow:var(--fx-sh1);">
+          <div style="{{ loaderStage }}">
+            <sc-for list="{{ loaderSlashes }}" as="s" hint-placeholder-count="8">
+              <img src="{{ s.src }}" alt="" style="{{ s.style }}" />
+            </sc-for>
+          </div>
+          <div style="font:500 14px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">Loading your RFQs</div>
+          <div style="width:100%; max-width:520px; display:flex; flex-direction:column; gap:10px;">
+            <div style="height:12px; width:74%; border-radius:4px; background-color:var(--fx-bg-sunken); background-image:linear-gradient(90deg, transparent, var(--fx-bg-hover), transparent); background-size:200% 100%; animation:fx-shimmer 1.6s linear infinite;"></div>
+            <div style="height:12px; width:52%; border-radius:4px; background-color:var(--fx-bg-sunken); background-image:linear-gradient(90deg, transparent, var(--fx-bg-hover), transparent); background-size:200% 100%; animation:fx-shimmer 1.6s linear infinite;"></div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isError }}" hint-placeholder-val="{{ false }}">
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-danger); border-radius:8px; padding:26px; display:flex; flex-direction:column; gap:14px;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:8px; height:8px; border-radius:999px; background:var(--fx-danger);"></div>
+            <div style="font:600 17px/1.2 'Plus Jakarta Sans',sans-serif;">Couldn't load the RFQ inbox</div>
+          </div>
+          <div style="font:400 14px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:60ch; text-wrap:pretty;">Nothing was sent and no quote was changed. Two RFQs close today — if this persists, RFQ-2026-118 and RFQ-2026-121 are the ones to chase by email.</div>
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            <button style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:8px; padding:11px 16px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;">Retry</button>
+            <div style="font:400 12px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">ref err_2b81f7 · 12 Aug 2026 10:22</div>
+          </div>
+        </div>
+      </sc-if>
+
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Role access — /rfqs</div>
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden;">
+          <sc-for list="{{ access }}" as="a" hint-placeholder-count="6">
+            <div style="display:grid; grid-template-columns:1fr 96px 1.5fr; gap:16px; padding:11px 18px; align-items:center; border-bottom:1px solid var(--fx-border-subtle);">
+              <div style="font:500 13px/1.4 'JetBrains Mono',monospace;">{{ a.role }}</div>
+              <div><span style="{{ a.chip }}">{{ a.level }}</span></div>
+              <div style="font:400 13px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ a.note }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP2 }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:26px 28px; display:flex; flex-direction:column; gap:18px; max-width:1320px;">
+      <div style="display:flex; align-items:center; gap:8px; font:400 13px/1 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">
+        <span onClick="{{ goP1 }}" style="cursor:pointer;">RFQ inbox</span><span style="opacity:.5;">/</span><span style="color:var(--fx-text-primary); font-weight:500; font-family:'JetBrains Mono',monospace; font-size:12.5px;">{{ rfq.no }}</span>
+      </div>
+      <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex-wrap:wrap;">
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <div style="font:700 32px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">{{ rfq.buyer }} · {{ rfq.style }}</div>
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-secondary); border:1px solid var(--fx-border-default); border-radius:4px; padding:6px 8px;">{{ rfq.kindBadge }}</div>
+          </div>
+          <div style="font:400 15px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">{{ rfq.desc }}</div>
+        </div>
+        <div style="display:flex; gap:26px; flex-wrap:wrap;">
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <div style="font:400 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Quantity</div>
+            <div style="font:500 16px/1.2 'JetBrains Mono',monospace;">{{ rfq.qty }}</div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <div style="font:400 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Target</div>
+            <div style="font:500 16px/1.2 'JetBrains Mono',monospace;">{{ rfq.targetShown }}</div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <div style="font:400 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Reply by</div>
+            <div style="font:500 16px/1.2 'JetBrains Mono',monospace; color:{{ rfq.dueColor }};">{{ rfq.due }}</div>
+          </div>
+        </div>
+      </div>
+      <div style="height:7px; background-image:repeating-linear-gradient(115deg, var(--fx-border-default) 0 2px, transparent 2px 9px);"></div>
+
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(440px, 1fr)); gap:18px; align-items:start;">
+
+        <div style="display:flex; flex-direction:column; gap:18px;">
+          <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+            <div style="padding:16px 20px 12px; font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">What the buyer asked for</div>
+            <sc-for list="{{ facts }}" as="f" hint-placeholder-count="9">
+              <div style="display:grid; grid-template-columns:150px 1fr; gap:14px; padding:11px 20px; border-top:1px solid var(--fx-border-subtle); align-items:center; min-height:44px;">
+                <div style="font:400 13px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">{{ f.k }}</div>
+                <div style="font:500 13.5px/1.4 'JetBrains Mono',monospace; color:{{ f.c }};">{{ f.v }}</div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+            <div style="display:flex; align-items:center; gap:12px; padding:16px 20px 12px; flex-wrap:wrap;">
+              <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Attachments</div>
+              <div style="font:400 12px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-left:auto;">4 files from the buyer</div>
+            </div>
+            <sc-for list="{{ attachments }}" as="a" hint-placeholder-count="4">
+              <div onClick="{{ a.pick }}" style="{{ a.rowStyle }}">
+                <div style="width:3px; flex-shrink:0; background:{{ a.sel }};"></div>
+                <div style="flex:1; min-width:0; display:grid; grid-template-columns:1fr 96px 108px; gap:12px; padding:11px 20px 11px 17px; align-items:center; min-height:44px;">
+                  <div style="font:500 13.5px/1.35 'Plus Jakarta Sans',sans-serif; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ a.name }}</div>
+                  <div style="font:400 12px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ a.kind }}</div>
+                  <div style="font:400 12px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); text-align:right;">{{ a.when }}</div>
+                </div>
+              </div>
+            </sc-for>
+            <div style="padding:16px 20px 20px; border-top:1px solid var(--fx-border-subtle);">
+              <div style="position:relative; border:1px solid var(--fx-border-default); border-radius:4px; background:var(--fx-bg-sunken); height:220px; overflow:hidden; display:flex; align-items:center; justify-content:center;">
+                <div style="font:400 12.5px/1.7 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); text-align:center; padding:20px;">placeholder — {{ activeAttachment }}<br />page 1 of {{ attachmentPages }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:18px;">
+          <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+            <div style="display:flex; align-items:center; gap:12px; padding:16px 20px 12px; flex-wrap:wrap;">
+              <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Clarifications</div>
+              <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:{{ clarifyColor }}; margin-left:auto;">{{ clarifyState }}</div>
+            </div>
+            <sc-for list="{{ thread }}" as="t" hint-placeholder-count="4">
+              <div style="display:flex; align-items:stretch; border-top:1px solid var(--fx-border-subtle);">
+                <div style="width:3px; flex-shrink:0; background:{{ t.sel }};"></div>
+                <div style="flex:1; min-width:0; padding:14px 20px 14px 17px; display:flex; flex-direction:column; gap:6px;">
+                  <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">
+                    <div style="font:500 13px/1.3 'Plus Jakarta Sans',sans-serif;">{{ t.who }}</div>
+                    <div style="font:400 11.5px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ t.when }}</div>
+                    <div style="font:500 10.5px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary); border:1px solid var(--fx-border-subtle); border-radius:3px; padding:4px 6px; margin-left:auto;">{{ t.via }}</div>
+                  </div>
+                  <div style="font:400 13.5px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ t.body }}</div>
+                </div>
+              </div>
+            </sc-for>
+            <sc-if value="{{ canEdit }}" hint-placeholder-val="{{ true }}">
+              <div style="padding:14px 20px; border-top:1px solid var(--fx-border-subtle); display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <button onClick="{{ ask }}" style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-strong); border-radius:8px; padding:11px 16px; font:600 13.5px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-bg-hover)">Ask the buyer</button>
+                <button onClick="{{ record }}" style="background:transparent; color:var(--fx-text-secondary); border:1px solid var(--fx-border-default); border-radius:8px; padding:11px 16px; font:600 13.5px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;">Record an answer</button>
+                <div style="font:400 12px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-left:auto;">answers by phone get logged here too</div>
+              </div>
+            </sc-if>
+          </div>
+
+          <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+            <div style="display:flex; align-items:center; gap:12px; padding:16px 20px 12px; flex-wrap:wrap;">
+              <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Quote versions</div>
+              <div style="font:400 12px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-left:auto;">{{ costSheetNote }}</div>
+            </div>
+            <sc-for list="{{ versions }}" as="v" hint-placeholder-count="3">
+              <div style="display:flex; align-items:stretch; border-top:1px solid var(--fx-border-subtle);">
+                <div style="width:{{ v.selW }}; flex-shrink:0; background:{{ v.sel }};"></div>
+                <div style="flex:1; min-width:0; padding:16px 20px; display:flex; flex-direction:column; gap:14px;">
+                  <button onClick="{{ v.toggle }}" style="{{ v.headStyle }}">
+                    <div style="font:500 12px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ v.chev }}</div>
+                    <div style="font:600 17px/1.2 'Plus Jakarta Sans',sans-serif;">{{ v.name }}</div>
+                    <div style="font:500 10.5px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:{{ v.tagColor }}; border:1px solid {{ v.tagColor }}; border-radius:3px; padding:5px 7px;">{{ v.tag }}</div>
+                    <div style="font:400 12px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-left:auto;">{{ v.when }}</div>
+                  </button>
+                  <sc-if value="{{ v.open }}" hint-placeholder-val="{{ true }}">
+                    <div style="display:flex; flex-direction:column; gap:2px;">
+                      <sc-for list="{{ v.rows }}" as="b" hint-placeholder-count="8">
+                        <div style="{{ b.rowStyle }}">
+                          <div style="font:400 13px/1.4 'Plus Jakarta Sans',sans-serif; color:{{ b.labelColor }};">{{ b.label }}</div>
+                          <div style="font:400 12px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); text-align:right;">{{ b.basis }}</div>
+                          <div style="font:{{ b.weight }} 13.5px/1.3 'JetBrains Mono',monospace; text-align:right; color:{{ b.valueColor }};">{{ b.value }}</div>
+                          <div style="font:500 12px/1.3 'JetBrains Mono',monospace; text-align:right; color:{{ b.diffColor }};">{{ b.diff }}</div>
+                        </div>
+                      </sc-for>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; padding-top:2px;">
+                      <div style="display:flex; flex-direction:column; gap:3px;">
+                        <div style="font:400 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">CM</div>
+                        <div style="font:500 14px/1.2 'JetBrains Mono',monospace;">{{ v.cmBdt }}</div>
+                      </div>
+                      <div style="display:flex; flex-direction:column; gap:3px;">
+                        <div style="font:400 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">Margin</div>
+                        <div style="font:500 14px/1.2 'JetBrains Mono',monospace; color:{{ v.marginColor }};">{{ v.margin }}</div>
+                      </div>
+                      <div style="display:flex; flex-direction:column; gap:3px;">
+                        <div style="font:400 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">vs target</div>
+                        <div style="font:500 14px/1.2 'JetBrains Mono',monospace; color:{{ v.vsTargetColor }};">{{ v.vsTarget }}</div>
+                      </div>
+                    </div>
+                  </sc-if>
+                </div>
+              </div>
+            </sc-for>
+
+            <div style="padding:16px 20px; border-top:1px solid var(--fx-border-subtle); display:flex; flex-direction:column; gap:12px;">
+              <sc-if value="{{ canQuote }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                  <button onClick="{{ send }}" style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:12px 18px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-accent-hover)">{{ sendLabel }}</button>
+                  <button onClick="{{ draft }}" style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-strong); border-radius:8px; padding:11px 16px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-bg-hover)">Draft v4</button>
+                  <button onClick="{{ won }}" style="background:transparent; color:var(--fx-text-secondary); border:1px solid var(--fx-border-default); border-radius:8px; padding:11px 16px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;">Won</button>
+                  <button onClick="{{ openLost }}" style="background:transparent; color:var(--fx-text-secondary); border:1px solid var(--fx-border-default); border-radius:8px; padding:11px 16px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;">Lost</button>
+                </div>
+                <div style="font:400 12.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ sendNote }}</div>
+              </sc-if>
+
+              <sc-if value="{{ blockedQuote }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex; align-items:flex-start; gap:12px; border:1px solid var(--fx-border-default); border-radius:8px; padding:16px;">
+                  <div style="width:8px; height:8px; border-radius:999px; background:var(--fx-warning); margin-top:6px; flex-shrink:0;"></div>
+                  <div style="display:flex; flex-direction:column; gap:9px; min-width:0;">
+                    <div style="font:600 14.5px/1.35 'Plus Jakarta Sans',sans-serif;">You can't draft a quote yet — the cost sheet is not approved</div>
+                    <div style="font:400 13.5px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ blockedReason }}</div>
+                    <button style="align-self:flex-start; background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-strong); border-radius:8px; padding:11px 16px; font:600 13.5px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-bg-hover)">Open the cost sheet</button>
+                  </div>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ readOnlyQuote }}" hint-placeholder-val="{{ false }}">
+                <div style="font:500 13.5px/1.5 'JetBrains Mono',monospace; color:var(--fx-text-secondary);">{{ readOnlyNote }}</div>
+              </sc-if>
+
+              <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                  <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">rfq.draftQuote — needs an approved cost sheet</div>
+                  <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">{{ sendAnnot }}</div>
+                  <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">rfq.markWon · rfq.markLost (reason required)</div>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP3 }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:26px 28px; display:flex; flex-direction:column; gap:18px; max-width:1320px;">
+      <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex-wrap:wrap;">
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Quotation · extraction review</div>
+          <div style="font:700 32px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">Check what MARBIM read</div>
+          <div style="font:400 15px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:66ch; text-wrap:pretty;">Nine fields from the buyer's enquiry. Click a field to see the line it came from — approve and the RFQ is created, reject and only the file is kept.</div>
+        </div>
+        <div style="font:400 13px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ extractFile }}</div>
+      </div>
+      <div style="height:9px; background-image:repeating-linear-gradient(115deg, var(--fx-accent) 0 2px, transparent 2px 9px);"></div>
+
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(420px, 1fr)); gap:18px; align-items:start;">
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+          <div style="display:flex; align-items:center; gap:12px; padding:16px 20px; border-bottom:1px solid var(--fx-border-subtle); flex-wrap:wrap;">
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Source</div>
+            <div style="font:400 12px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-secondary); margin-left:auto;">{{ srcPage }}</div>
+          </div>
+          <div style="padding:20px;">
+            <div style="position:relative; border:1px solid var(--fx-border-default); border-radius:4px; background:var(--fx-bg-sunken); height:420px; overflow:hidden;">
+              <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font:400 12.5px/1.7 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); text-align:center; padding:20px;">placeholder — rendered enquiry page<br />{{ srcPage }}</div>
+              <div style="{{ srcHighlight }}"></div>
+            </div>
+          </div>
+          <div style="padding:0 20px 20px; display:flex; flex-direction:column; gap:6px;">
+            <div style="font:500 13.5px/1.35 'Plus Jakarta Sans',sans-serif;">{{ srcLabel }}</div>
+            <div style="font:400 13px/1.5 'JetBrains Mono',monospace; color:var(--fx-text-secondary); text-wrap:pretty;">{{ srcQuote }}</div>
+            <div style="font:400 12px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ srcLoc }}</div>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:18px;">
+          <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+            <div style="display:flex; align-items:center; gap:12px; padding:15px 20px; border-bottom:1px solid var(--fx-border-subtle); flex-wrap:wrap;">
+              <div style="width:24px; height:24px; border-radius:999px; background:#181D29; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <img src="uploads/MARBIM_logo.png" alt="" style="width:13px; height:13px;" />
+              </div>
+              <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">9 fields · 2 flagged</div>
+              <div style="font:400 12px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-left:auto;">click a row to see the source</div>
+            </div>
+            <sc-for list="{{ extractFields }}" as="f" hint-placeholder-count="9">
+              <div onClick="{{ f.pick }}" style="{{ f.rowStyle }}">
+                <div style="width:3px; flex-shrink:0; background:{{ f.sel }};"></div>
+                <div style="flex:1; min-width:0; display:grid; grid-template-columns:140px 1fr 116px; gap:12px; padding:12px 20px 12px 17px; align-items:center; min-height:44px;">
+                  <div style="font:400 12.5px/1.35 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">{{ f.label }}</div>
+                  <div style="font:500 13.5px/1.35 'JetBrains Mono',monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ f.value }}</div>
+                  <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-end;">
+                    <div style="font:500 12px/1 'JetBrains Mono',monospace; color:{{ f.confColor }};">{{ f.conf }}</div>
+                    <div style="display:flex; gap:3px; align-items:center;">
+                      <sc-for list="{{ f.ticks }}" as="t" hint-placeholder-count="10">
+                        <div style="width:2px; height:11px; transform:skewX(-34deg); flex-shrink:0; background:{{ t.c }};"></div>
+                      </sc-for>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:20px; display:flex; flex-direction:column; gap:14px; box-shadow:var(--fx-sh1);">
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Your decision</div>
+            <sc-if value="{{ canEdit }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <button onClick="{{ approveExtract }}" style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:12px 18px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-accent-hover)">Approve and create the RFQ</button>
+                <button onClick="{{ editExtract }}" style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-strong); border-radius:8px; padding:11px 16px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;">Edit the flagged two</button>
+                <button onClick="{{ rejectExtract }}" style="background:transparent; color:var(--fx-text-secondary); border:1px solid var(--fx-border-default); border-radius:8px; padding:11px 16px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;">Reject</button>
+              </div>
+              <div style="font:400 12.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">Target price and the size ratio came in under 0.90 — both are worth a look before this becomes a quote. Approving writes all nine at once.</div>
+            </sc-if>
+            <sc-if value="{{ readOnlyQuote }}" hint-placeholder-val="{{ false }}">
+              <div style="font:500 13.5px/1.5 'JetBrains Mono',monospace; color:var(--fx-text-secondary);">{{ readOnlyNote }}</div>
+            </sc-if>
+            <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+              <div style="font:400 11px/1.4 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:6px 8px;">pending.approve · pending.edit · pending.reject</div>
+            </sc-if>
+          </div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <div style="position:absolute; right:22px; bottom:22px; display:flex; align-items:center; gap:11px;">
+    <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ markLabel }}</div>
+    <div role="img" aria-label="MARBIM" style="{{ markStage }}">
+      <sc-for list="{{ markSlashes }}" as="s" hint-placeholder-count="8">
+        <img src="{{ s.src }}" alt="" style="{{ s.style }}" />
+      </sc-for>
+    </div>
+  </div>
+
+  </div>
+</div>
+
+<sc-if value="{{ handoff }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed; inset:0; z-index:80; display:flex; align-items:center; justify-content:center; padding:24px; background-color:rgba(24,29,41,.55); background-image:repeating-linear-gradient(146deg, transparent 0 7px, rgba(255,255,255,.06) 7px 9px, transparent 9px 17px);">
+    <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:14px; box-shadow:var(--fx-sh3); width:620px; max-width:100%; max-height:88vh; overflow-y:auto; clip-path:polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);">
+      <div style="padding:26px 28px 16px; display:flex; flex-direction:column; gap:8px;">
+        <div style="font:400 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Before you mark it won</div>
+        <div style="font:600 22px/1.25 'Plus Jakarta Sans',sans-serif;">This becomes an order</div>
+        <div style="font:400 14px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">Marking won hands the RFQ to the order desk. Here is exactly what carries over and what it still needs.</div>
+      </div>
+      <div style="padding:0 28px 18px;">
+        <div style="border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden;">
+          <sc-for list="{{ handoffRows }}" as="h" hint-placeholder-count="6">
+            <div style="display:flex; align-items:stretch; border-bottom:1px solid var(--fx-border-subtle);">
+              <div style="width:3px; flex-shrink:0; background:{{ h.sel }};"></div>
+              <div style="flex:1; min-width:0; display:grid; grid-template-columns:150px 1fr 132px; gap:12px; padding:12px 16px; align-items:center; min-height:44px;">
+                <div style="font:400 12.5px/1.35 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">{{ h.k }}</div>
+                <div style="font:500 13px/1.35 'JetBrains Mono',monospace;">{{ h.v }}</div>
+                <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:{{ h.sel }}; text-align:right;">{{ h.state }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="padding:0 28px 20px; font:400 13.5px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">The TNA is generated from the woven shirt template with the wash steps, back-dated from the ship window. Nothing is booked until the buyer's PO arrives.</div>
+      <div style="padding:16px 28px 24px; display:flex; gap:10px; justify-content:flex-end; border-top:1px solid var(--fx-border-subtle); align-items:center; flex-wrap:wrap;">
+        <div style="font:400 12px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-right:auto;">rfq.markWon → orders.createFromRfq</div>
+        <button onClick="{{ closeHandoff }}" style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:8px; padding:11px 18px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;">Not yet</button>
+        <button onClick="{{ confirmWon }}" style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:11px 18px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-accent-hover)">Mark won and hand over</button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ lost }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed; inset:0; z-index:80; display:flex; align-items:center; justify-content:center; padding:24px; background-color:rgba(24,29,41,.55); background-image:repeating-linear-gradient(146deg, transparent 0 7px, rgba(255,255,255,.06) 7px 9px, transparent 9px 17px);">
+    <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:14px; box-shadow:var(--fx-sh3); width:560px; max-width:100%; clip-path:polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%); display:flex; flex-direction:column;">
+      <div style="padding:26px 28px 14px; display:flex; flex-direction:column; gap:8px;">
+        <div style="font:600 22px/1.25 'Plus Jakarta Sans',sans-serif;">Why did we lose it?</div>
+        <div style="font:400 14px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">This is the only number that improves the next quote. A reason is required — win-rate without a why is decoration.</div>
+      </div>
+      <div style="padding:0 28px 16px; display:flex; flex-direction:column; gap:2px;">
+        <sc-for list="{{ lostReasons }}" as="r" hint-placeholder-count="5">
+          <div onClick="{{ r.pick }}" style="{{ r.style }}">
+            <span style="{{ r.radio }}"></span>
+            <div style="display:flex; flex-direction:column; gap:3px; min-width:0;">
+              <div style="font:500 14px/1.35 'Plus Jakarta Sans',sans-serif;">{{ r.label }}</div>
+              <div style="font:400 12.5px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">{{ r.hint }}</div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="padding:16px 28px 24px; display:flex; gap:10px; justify-content:flex-end; border-top:1px solid var(--fx-border-subtle); align-items:center; flex-wrap:wrap;">
+        <div style="font:400 12px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-right:auto;">rfq.markLost</div>
+        <button onClick="{{ closeLost }}" style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:8px; padding:11px 18px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;">Cancel</button>
+        <button onClick="{{ confirmLost }}" style="{{ lostBtn }}">Mark lost</button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed; left:50%; bottom:28px; transform:translateX(-50%); z-index:90; background:var(--fx-text-primary); color:var(--fx-text-inverse); border-radius:8px; box-shadow:var(--fx-sh3); padding:14px 18px; display:flex; align-items:center; gap:14px; max-width:92vw;">
+    <div style="font:500 13.5px/1.4 'Plus Jakarta Sans',sans-serif;">{{ toast }}</div>
+    <button onClick="{{ clearToast }}" style="background:transparent; border:none; color:var(--fx-accent); font:600 12px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer;">Dismiss</button>
+  </div>
+</sc-if>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;role&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;merchandiser&quot;,&quot;manager&quot;,&quot;commercial&quot;,&quot;owner&quot;,&quot;viewer&quot;],&quot;default&quot;:&quot;merchandiser&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Access&quot;},&quot;rfqKind&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;woven&quot;,&quot;knit&quot;],&quot;default&quot;:&quot;woven&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Content&quot;},&quot;showActionNames&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Annotation&quot;}}">
+const SLASH_VEC = [
+  { dx: -0.896, dy: 0.444 }, { dx: -0.271, dy: 0.963 }, { dx: -0.97, dy: -0.243 }, { dx: 0.415, dy: 0.91 },
+  { dx: -0.512, dy: -0.859 }, { dx: 0.936, dy: 0.352 }, { dx: 0.282, dy: -0.96 }, { dx: 0.908, dy: -0.419 }
+];
+
+const FX = 119.5;
+const USERS = {
+  merchandiser: 'Nabila Rahman', manager: 'Shafiq Alam', commercial: 'Tanvir Hasan',
+  owner: 'M. A. Chowdhury', viewer: 'Audit (external)'
+};
+const OWN_BUYERS = ['H&M', 'Primark'];
+
+const usd = v => '$' + v.toFixed(2);
+const bdt = v => '৳' + Math.round(v * FX);
+
+// group, no, buyer, style, desc, qty, target, quoted (0 = none), days (± deadline / age), kind
+const RFQS = [
+  ['Open', 'RFQ-2026-118', 'H&M', 'Shirt · SH-4471', "men's shirt · 40s poplin, garment wash", '24,000', 4.10, 4.24, 2, 'woven'],
+  ['Open', 'RFQ-2026-121', 'Bestseller', 'Polo · PL-2210', 'polo 180gsm pique · embroidery left chest', '42,000', 4.28, 4.35, 6, 'knit'],
+  ['Open', 'RFQ-2026-124', 'C&A', 'Denim · DN-3310', '5-pocket denim · 11oz, stone wash', '18,000', 9.40, 0, 10, 'woven'],
+  ['Clarifying', 'RFQ-2026-112', 'Primark', 'Tee · TE-1180', 'basic tee 150gsm · single jersey', '60,000', 2.35, 0, -3, 'knit', 'buyer'],
+  ['Clarifying', 'RFQ-2026-109', 'H&M', 'Shirt · SH-4488', 'shirt · 50s twill, no wash', '12,000', 5.05, 0, -1, 'woven', 'us'],
+  ['Quoted', 'RFQ-2026-104', 'Bestseller', 'Sweatshirt · SW-3320', 'sweatshirt 320gsm · brushed back', '15,000', 8.40, 8.90, 6, 'knit'],
+  ['Quoted', 'RFQ-2026-101', 'Primark', 'Polo · PL-2280', 'polo 200gsm · pique, tipped collar', '30,000', 4.55, 4.62, 9, 'knit'],
+  ['Won', 'RFQ-2026-096', 'H&M', 'Shirt · SH-4471', 'became PO-88203 · 24,000 pcs', '24,000', 5.30, 5.35, 21, 'woven'],
+  ['Lost', 'RFQ-2026-092', 'C&A', 'Chino · CH-2040', 'lost on price · we were 7% over', '22,000', 6.80, 7.28, 28, 'woven']
+];
+
+const GROUP_ORDER = ['Open', 'Clarifying', 'Quoted', 'Won', 'Lost'];
+
+const RFQ_DETAIL = {
+  woven: {
+    no: 'RFQ-2026-118', buyer: 'H&M', style: 'SH-4471', kindBadge: 'woven',
+    desc: "men's long-sleeve shirt · 40s poplin, garment wash · 24,000 pcs",
+    qty: '24,000 pcs', target: 4.10, due: '14 Aug · 2 days', dueColor: 'var(--fx-danger)',
+    facts: [
+      ['Fabric', '40s × 40s poplin, 133 × 72, 100% cotton', ''],
+      ['Consumption', '1.55 m per piece · 3% wastage allowed', ''],
+      ['Wash', 'Garment wash · soft hand feel required', 'var(--fx-warning)'],
+      ['Trims', 'Horn-look 18L buttons, woven main label, care label', ''],
+      ['Size ratio', 'S 10 / M 25 / L 30 / XL 25 / XXL 10', ''],
+      ['Colours', 'Navy, White, Sky — 3 shades', ''],
+      ['Incoterm', 'FOB Chattogram', ''],
+      ['Payment', '90 days sight LC · Eastern Bank acceptable', ''],
+      ['Ship window', '01 Nov – 15 Nov 2026', ''],
+      ['Sample', 'Fit sample in 12 days, 2 sets', 'var(--fx-warning)']
+    ],
+    attachments: [
+      ['H&M-enquiry-SH4471.pdf', 'enquiry', '08 Aug', 3],
+      ['SH-4471-techpack-v2.pdf', 'tech pack', '08 Aug', 14],
+      ['SH-4471-measurement.xlsx', 'size spec', '08 Aug', 1],
+      ['reference-shirt-photo.jpg', 'buyer image', '09 Aug', 1]
+    ],
+    build: [
+      ['Fabric', '1.55 m × $1.045/m', 1.62],
+      ['Trims', 'buttons, labels, polybag', 0.34],
+      ['CM', '৳125/pc · 18.4 min SMV', 1.05],
+      ['Garment wash', 'outside wash house', 0.22],
+      ['Testing & inspection', 'buyer nominated lab', 0.06],
+      ['Bank & commercial', 'LC charges, doc costs', 0.08],
+      ['Buying commission', '3% of FOB', 0.12]
+    ],
+    cm: 125, fobV2: 4.30, fobV1: 4.38,
+    deltas: { v2: { 0: 0.04, 2: -0.03 }, v1: { 0: 0.09, 2: -0.03, 6: 0.02 } }
+  },
+  knit: {
+    no: 'RFQ-2026-121', buyer: 'Bestseller', style: 'PL-2210', kindBadge: 'knit',
+    desc: 'polo 180gsm pique · embroidery left chest · 42,000 pcs',
+    qty: '42,000 pcs', target: 4.28, due: '18 Aug · 6 days', dueColor: 'var(--fx-warning)',
+    facts: [
+      ['Fabric', '180gsm single pique, 100% combed cotton', ''],
+      ['Consumption', '0.32 kg per piece · 5% process loss', ''],
+      ['Dyeing', 'Reactive, in-house · 4 shades', ''],
+      ['Trims', 'Rib collar and cuff, 3 pearl buttons, twill tape', ''],
+      ['Embroidery', 'Left chest logo · 4,200 stitches', 'var(--fx-warning)'],
+      ['Size ratio', 'S 15 / M 30 / L 30 / XL 20 / XXL 5', ''],
+      ['Incoterm', 'FOB Chattogram', ''],
+      ['Payment', '60 days sight LC', ''],
+      ['Ship window', '20 Oct – 05 Nov 2026', ''],
+      ['Sample', 'PP sample in 10 days, 3 sets', '']
+    ],
+    attachments: [
+      ['BS-enquiry-PL2210.pdf', 'enquiry', '09 Aug', 2],
+      ['PL-2210-techpack.pdf', 'tech pack', '09 Aug', 11],
+      ['PL-2210-embroidery.ai', 'artwork', '09 Aug', 1],
+      ['shade-band-navy.jpg', 'shade band', '10 Aug', 1]
+    ],
+    build: [
+      ['Yarn & knitting', '0.32 kg × $4.10/kg', 1.31],
+      ['Dyeing & finishing', 'in-house · ৳66/pc', 0.55],
+      ['Trims', 'rib, buttons, tape', 0.28],
+      ['CM', '৳112/pc · 15.2 min SMV', 0.94],
+      ['Embroidery', '4,200 stitches', 0.13],
+      ['Testing & inspection', 'buyer nominated lab', 0.05],
+      ['Bank & commercial', 'LC charges, doc costs', 0.07],
+      ['Buying commission', '3% of FOB', 0.13]
+    ],
+    cm: 112, fobV2: 4.42, fobV1: 4.50,
+    deltas: { v2: { 0: 0.06, 3: -0.02 }, v1: { 0: 0.12, 3: -0.02, 7: 0.02 } }
+  }
+};
+
+const THREAD = {
+  woven: [
+    ['H&M · Anika Sen', '08 Aug 11:20', 'email', 'Please quote FOB Chattogram for 24,000 pcs, ship window 01–15 Nov. Target is $4.10. Confirm whether the wash can be done in-house.', 'var(--fx-border-strong)'],
+    ['Nabila Rahman', '09 Aug 09:40', 'email', 'Wash is outsourced to a nominated wash house 14 km away — 3 days added to the TNA. Asked whether they will accept a 2% quantity tolerance.', 'var(--fx-border-strong)'],
+    ['H&M · Anika Sen', '10 Aug 16:05', 'email', 'Outside wash is fine if the lab dips pass. Tolerance accepted at 2%.', 'var(--fx-success)'],
+    ['Nabila Rahman', '11 Aug 14:30', 'phone', 'Asked if XXL can be dropped — the ratio makes the marker inefficient. Waiting on their merchandiser, promised an answer by 13 Aug.', 'var(--fx-warning)']
+  ],
+  knit: [
+    ['Bestseller · Lars Hoeg', '09 Aug 10:15', 'email', 'Polo 180gsm, 42,000 pcs, four shades. Target $4.28 FOB. We need the embroidery stitched in-house, not subcontracted.', 'var(--fx-border-strong)'],
+    ['Nabila Rahman', '10 Aug 12:00', 'email', 'Embroidery is in-house, 12 heads. Asked whether the tipped collar is the same yarn dye as the body.', 'var(--fx-border-strong)'],
+    ['Bestseller · Lars Hoeg', '11 Aug 09:22', 'email', 'Same dye lot for collar and body — that is a shade-band requirement, not a preference.', 'var(--fx-success)']
+  ]
+};
+
+const EXTRACT = [
+  ['Buyer', 'H&M Hennes and Mauritz GBC', 0.98, 'p.1 letterhead', '"H&M HENNES & MAURITZ GBC AB"', 10],
+  ['Style', "Men's shirt · SH-4471", 0.96, 'p.1 line 4', '"Style: SH-4471 men\'s LS shirt"', 22],
+  ['Quantity', '24,000 pcs', 0.97, 'p.1 line 6', '"Qty 24,000 pcs (+/− 2%)"', 31],
+  ['Target price', '$4.10 FOB', 0.86, 'p.2 price note', '"target FOB 4.10 usd"', 44],
+  ['Fabric', '40s poplin 133 × 72', 0.94, 'p.2 spec table', '"40x40/133x72 poplin"', 53],
+  ['Wash', 'Garment wash', 0.92, 'p.2 finish row', '"garment wash, soft feel"', 62],
+  ['Size ratio', 'S10 / M25 / L30 / XL25 / XXL10', 0.84, 'p.3 ratio row', '"10-25-30-25-10"', 71],
+  ['Ship window', '01 Nov – 15 Nov 2026', 0.95, 'p.1 line 9', '"shipment 01.11–15.11.2026"', 38],
+  ['Incoterm', 'FOB Chattogram', 0.99, 'p.2 terms', '"FOB Chittagong"', 80]
+];
+
+const LOST_REASONS = [
+  ['Price', 'We were over the target and would not go lower.'],
+  ['Lead time', 'The ship window needed capacity we had already sold.'],
+  ['Capacity', 'We declined — no line free in the window.'],
+  ['Compliance or audit', 'Buyer required an audit we do not hold.'],
+  ['Buyer cancelled the programme', 'Nothing to do with us.']
+];
+
+const HANDOFF_ROWS = [
+  ['Buyer and style', 'H&M · SH-4471', 'carried', 'var(--fx-success)'],
+  ['Quantity', '24,000 pcs · ±2% tolerance', 'carried', 'var(--fx-success)'],
+  ['Price', '$4.24 FOB Chattogram', 'carried', 'var(--fx-success)'],
+  ['Size and colour breakdown', '3 colours × 5 sizes from the ratio', 'carried', 'var(--fx-success)'],
+  ['TNA', 'Woven shirt EU (wash) · 12 milestones', 'generated', 'var(--fx-warning)'],
+  ['Buyer PO number', 'not received yet', 'needed', 'var(--fx-warning)'],
+  ['LC', 'not opened · commercial to link', 'needed', 'var(--fx-warning)']
+];
+
+const ACCESS = [
+  ['merchandiser', 'edit', 'Edits RFQs and quotes for their own buyers. Other buyers are visible, read-only.'],
+  ['manager', 'approve', 'Edits every RFQ and approves quotes that sit under the margin floor for their department.'],
+  ['commercial', 'view', 'Reads the terms — incoterm, payment, LC acceptability — and comments. No quote edit.'],
+  ['owner', 'approve', 'Reads everything and is the approver when a quote goes below the margin floor.'],
+  ['viewer', 'view', 'REDACTED — target, quoted and every build-up line masked.'],
+  ['planner · storekeeper · supervisor · qc · hr', 'none', 'HIDDEN — quotation is absent from nav.']
+];
+
+class Component extends DCLogic {
+  state = {
+    screen: 'p1', role: 'merchandiser', kind: 'woven', st: 'costed', annot: true,
+    att: 0, srcIdx: 0, openVer: 'v3', lost: false, lostReason: -1, handoff: false, toast: '', mark: 'rest'
+  };
+
+  componentWillUnmount() { clearTimeout(this._t); }
+
+  flash(msg) {
+    clearTimeout(this._t);
+    this.setState({ toast: msg, mark: 'resolve' });
+    this._t = setTimeout(() => this.setState({ toast: '', mark: 'rest' }), 4400);
+  }
+
+  pill(active) {
+    return {
+      background: active ? 'var(--fx-bg-surface)' : 'transparent',
+      color: active ? 'var(--fx-text-primary)' : 'var(--fx-text-secondary)',
+      border: '1px solid ' + (active ? 'var(--fx-border-default)' : 'transparent'),
+      borderRadius: '6px', padding: '9px 12px', cursor: 'pointer',
+      font: "600 12.5px/1 'Plus Jakarta Sans',sans-serif", whiteSpace: 'nowrap'
+    };
+  }
+
+  ghost(on) {
+    return {
+      background: on ? 'var(--fx-text-primary)' : 'transparent',
+      color: on ? 'var(--fx-text-inverse)' : 'var(--fx-text-secondary)',
+      border: '1px solid ' + (on ? 'var(--fx-text-primary)' : 'var(--fx-border-default)'),
+      borderRadius: '8px', padding: '10px 13px', cursor: 'pointer', minHeight: '44px',
+      font: "500 12px/1 'JetBrains Mono',monospace", whiteSpace: 'nowrap'
+    };
+  }
+
+  chip(level) {
+    const base = {
+      font: "500 11px/1 'JetBrains Mono',monospace", letterSpacing: '.05em', textTransform: 'uppercase',
+      borderRadius: '4px', padding: '6px 8px', display: 'inline-block', whiteSpace: 'nowrap'
+    };
+    if (level === 'none') return { ...base, color: 'var(--fx-text-tertiary)', border: '1px solid var(--fx-border-subtle)' };
+    if (level === 'view') return { ...base, color: 'var(--fx-text-secondary)', background: 'var(--fx-bg-sunken)', border: '1px solid transparent' };
+    if (level === 'edit') return { ...base, color: 'var(--fx-text-primary)', border: '1px solid var(--fx-border-strong)' };
+    return { ...base, color: 'var(--fx-text-primary)', border: '1px solid var(--fx-text-primary)', boxShadow: 'inset 3px 0 0 var(--fx-accent)', paddingLeft: '12px' };
+  }
+
+  ticks(v) {
+    const n = Math.round(v * 10);
+    const c = v < 0.9 ? 'var(--fx-warning)' : 'var(--fx-accent)';
+    return Array.from({ length: 10 }, (_, i) => ({ c: i < n ? c : 'var(--fx-border-default)' }));
+  }
+
+  renderVals() {
+    const s = this.state;
+    const mode = s.mode || 'light';
+    const role = s.role, kind = s.kind, screen = s.screen;
+    const isViewer = role === 'viewer';
+    const d = RFQ_DETAIL[kind];
+    const mine = OWN_BUYERS.indexOf(d.buyer) > -1;
+    const canEditAll = role === 'manager';
+    const canEdit = canEditAll || (role === 'merchandiser' && mine);
+    const readOnly = !canEdit;
+
+    const p1States = [{ v: 'ready', t: 'ready' }, { v: 'empty', t: 'empty' }, { v: 'loading', t: 'loading' }, { v: 'error', t: 'error' }];
+    const p2States = [
+      { v: 'costed', t: 'cost sheet approved' },
+      { v: 'uncosted', t: 'no cost sheet' },
+      { v: 'below', t: 'margin below floor' }
+    ];
+    const stOptions = screen === 'p2' ? p2States : screen === 'p3' ? [{ v: 'ready', t: 'ready' }] : p1States;
+    const validSt = stOptions.some(o => o.v === s.st) ? s.st : stOptions[0].v;
+
+    // one source of truth: cost comes from the build-up, FOB from the target margin ratio,
+    // and the floor verdict from the FOB that results. Nothing about price is hand-entered twice.
+    const RATIO = validSt === 'below' ? 0.14 : 0.178;
+    const costOf = k => RFQ_DETAIL[k].build.reduce((a, b) => a + b[2], 0);
+    const fobOf = k => Number((costOf(k) / (1 - RATIO)).toFixed(2));
+    const cost = costOf(kind);
+    const fob = fobOf(kind);
+    const marginVal = fob - cost;
+    const marginPct = marginVal / fob * 100;
+    const belowFloor = marginPct < 15;
+    const vsTarget = (fob - d.target) / d.target * 100;
+
+    const cellStyle = last => ({
+      display: 'grid', gridTemplateColumns: '1fr 132px 84px 72px', gap: '10px', alignItems: 'center',
+      padding: last ? '11px 0 3px' : '9px 0',
+      borderBottom: last ? 'none' : '1px solid var(--fx-border-subtle)'
+    });
+
+    const buildRows = (verKey, fobVal, prevFobVal) => {
+      const delta = verKey === 'v3' ? {} : d.deltas[verKey];
+      const rows = d.build.map((b, i) => {
+        const v = b[2] + (delta[i] || 0);
+        const moved = verKey === 'v3' && d.deltas.v2[i];
+        return {
+          label: b[0], basis: b[1], value: isViewer ? '•••' : usd(v),
+          weight: '400', labelColor: 'var(--fx-text-primary)', valueColor: 'var(--fx-text-secondary)',
+          diff: moved && !isViewer ? (-d.deltas.v2[i] > 0 ? '+' : '−') + Math.abs(d.deltas.v2[i]).toFixed(2) : '',
+          diffColor: -d.deltas.v2[i] > 0 ? 'var(--fx-warning)' : 'var(--fx-success)',
+          rowStyle: cellStyle(false)
+        };
+      });
+      const verCost = d.build.reduce((a, b, i) => a + b[2] + (delta[i] || 0), 0);
+      rows.push({
+        label: 'Cost', basis: 'sum of the rows above', value: isViewer ? '•••' : usd(verCost),
+        weight: '500', labelColor: 'var(--fx-text-secondary)', valueColor: 'var(--fx-text-primary)',
+        diff: '', diffColor: 'var(--fx-text-tertiary)', rowStyle: cellStyle(false)
+      });
+      rows.push({
+        label: 'FOB offered', basis: 'per piece, Chattogram', value: isViewer ? '•••' : usd(fobVal),
+        weight: '600', labelColor: 'var(--fx-text-primary)', valueColor: 'var(--fx-text-primary)',
+        diff: prevFobVal && !isViewer ? (fobVal - prevFobVal >= 0 ? '+' : '−') + Math.abs(fobVal - prevFobVal).toFixed(2) : '',
+        diffColor: fobVal - prevFobVal > 0 ? 'var(--fx-warning)' : 'var(--fx-success)',
+        rowStyle: cellStyle(true)
+      });
+      return rows;
+    };
+
+    const verMeta = [
+      ['v3', belowFloor ? 'draft · below floor' : 'draft · ready to send', belowFloor ? 'var(--fx-danger)' : 'var(--fx-accent-pressed)', 'built 12 Aug 09:50', fob, d.fobV2, belowFloor ? 'var(--fx-danger)' : 'var(--fx-accent)', '5px'],
+      ['v2', 'sent 10 Aug', 'var(--fx-text-tertiary)', 'buyer countered', d.fobV2, d.fobV1, 'var(--fx-border-strong)', '3px'],
+      ['v1', 'sent 09 Aug', 'var(--fx-text-tertiary)', 'first offer', d.fobV1, 0, 'var(--fx-border-subtle)', '3px']
+    ];
+
+    const versions = verMeta.map(v => {
+      const isOpen = s.openVer === v[0];
+      const vCost = d.build.reduce((a, b, i) => a + b[2] + ((v[0] === 'v3' ? {} : d.deltas[v[0]])[i] || 0), 0);
+      const vMarginPct = (v[4] - vCost) / v[4] * 100;
+      const vVs = (v[4] - d.target) / d.target * 100;
+      return {
+        name: v[0], tag: v[1], tagColor: v[2], when: v[3],
+        open: isOpen, sel: v[6], selW: v[7],
+        chev: isOpen ? '▾' : '▸',
+        toggle: () => this.setState(x => ({ openVer: x.openVer === v[0] ? '' : v[0] })),
+        headStyle: {
+          display: 'flex', alignItems: 'baseline', gap: '12px', flexWrap: 'wrap', cursor: 'pointer',
+          background: 'transparent', border: 'none', padding: 0, width: '100%', textAlign: 'left',
+          color: 'var(--fx-text-primary)'
+        },
+        rows: isOpen ? buildRows(v[0], v[4], v[5]) : [],
+        cmBdt: isViewer ? '•••' : '৳' + d.cm + '/pc',
+        margin: isViewer ? '•••' : usd(v[4] - vCost) + ' · ' + vMarginPct.toFixed(1) + '%',
+        marginColor: vMarginPct < 15 ? 'var(--fx-danger)' : 'var(--fx-success)',
+        vsTarget: isViewer ? '•••' : (vVs >= 0 ? '+' : '−') + Math.abs(vVs).toFixed(1) + '%',
+        vsTargetColor: vVs > 0 ? 'var(--fx-warning)' : 'var(--fx-success)'
+      };
+    });
+
+    const groups = GROUP_ORDER.map(g => {
+      const rows = RFQS.filter(r => r[0] === g);
+      const quotedGroup = g === 'Quoted' || g === 'Won' || g === 'Lost';
+      const anyDraft = rows.some(r => r[1] === 'RFQ-2026-118' || r[1] === 'RFQ-2026-121');
+      return {
+        name: g, count: rows.length + (rows.length === 1 ? ' rfq' : ' rfqs'),
+        priceHead: quotedGroup ? 'quoted vs target' : anyDraft ? 'draft vs target' : 'target',
+        timeHead: g === 'Clarifying' ? 'waiting' : quotedGroup ? 'sent' : 'reply by',
+        rows: rows.map(r => {
+          const linked = r[1] === 'RFQ-2026-118' ? 'woven' : r[1] === 'RFQ-2026-121' ? 'knit' : '';
+          const q = linked ? fobOf(linked) : r[7];
+          const has = q > 0;
+          const delta = has ? (q - r[6]) / r[6] * 100 : 0;
+          const late = r[8] >= 0 && r[8] <= 2;
+          const days = Math.abs(r[8]);
+          return {
+            no: r[1], buyer: r[2], style: r[3], desc: r[4], qty: r[5],
+            notMine: role === 'merchandiser' && OWN_BUYERS.indexOf(r[2]) === -1,
+            price: has ? usd(q) : usd(r[6]),
+            priceBdt: has ? bdt(q) : bdt(r[6]),
+            priceTag: quotedGroup ? 'quoted' : has ? 'our draft' : 'buyer target',
+            priceTagStyle: {
+              font: "500 10px/1 'JetBrains Mono',monospace", letterSpacing: '.05em', textTransform: 'uppercase',
+              color: has && !quotedGroup ? 'var(--fx-accent-pressed)' : 'var(--fx-text-tertiary)',
+              border: '1px solid ' + (has && !quotedGroup ? 'var(--fx-accent-pressed)' : 'var(--fx-border-subtle)'),
+              borderRadius: '3px', padding: '4px 5px', whiteSpace: 'nowrap'
+            },
+            priceNote: has ? 'target ' + usd(r[6]) + ' · ' + (delta >= 0 ? '+' : '−') + Math.abs(delta).toFixed(1) + '%' : 'buyer target',
+            priceColor: has ? (delta > 3 ? 'var(--fx-warning)' : 'var(--fx-success)') : 'var(--fx-text-primary)',
+            time: days + (days === 1 ? ' day' : ' days'),
+            timeNote: r[0] === 'Clarifying' ? (r[10] === 'us' ? 'awaiting us' : 'awaiting buyer')
+              : quotedGroup ? 'since sent' : late ? 'closes soon' : 'to deadline',
+            timeColor: r[0] === 'Clarifying' ? (r[10] === 'us' ? 'var(--fx-danger)' : 'var(--fx-warning)') : late ? 'var(--fx-danger)' : 'var(--fx-text-primary)',
+            sel: r[0] === 'Won' ? 'var(--fx-success)' : r[0] === 'Lost' ? 'var(--fx-border-strong)'
+              : late ? 'var(--fx-danger)' : r[0] === 'Clarifying' ? 'var(--fx-warning)' : 'var(--fx-border-subtle)',
+            selW: late ? '5px' : '3px',
+            open: () => this.setState({ screen: 'p2', kind: r[9] === 'knit' ? 'knit' : 'woven', st: 'costed' })
+          };
+        })
+      };
+    }).filter(g => g.rows.length > 0);
+
+    const srcRow = EXTRACT[Math.min(s.srcIdx, EXTRACT.length - 1)];
+    const anim = { rest: () => 'none', resolve: i => 'fx-breathe 2.4s ease-in-out ' + (-i * 150) + 'ms infinite' }[s.mark] || (() => 'none');
+
+    return {
+      screens: [['p1', 'P1 inbox'], ['p2', 'P2 rfq detail'], ['p3', 'P3 extraction review']].map(x => ({
+        label: x[1], pick: () => this.setState({ screen: x[0], st: x[0] === 'p2' ? 'costed' : 'ready' }), style: this.pill(screen === x[0])
+      })),
+      role, userName: USERS[role],
+      setRole: (e) => this.setState({ role: e.target.value }),
+      kind, setKind: (e) => this.setState({ kind: e.target.value }),
+      st: validSt, stOptions, setSt: (e) => this.setState({ st: e.target.value }),
+      annot: s.annot, annotLabel: s.annot ? 'on' : 'off', annotBtn: this.ghost(s.annot),
+      mode, modeLabel: mode === 'dark' ? 'dark' : 'light', modeBtn: this.ghost(mode === 'dark'),
+      logoSrc: 'uploads/fabricxai-logo-' + (mode === 'dark' ? 'dark' : 'light') + '.png',
+      toggleMode: () => this.setState(x => ({ mode: x.mode === 'dark' ? 'light' : 'dark' })),
+      toggleAnnot: () => this.setState(x => ({ annot: !x.annot })),
+
+      nav: [['p1', 'RFQ inbox', '3'], ['p2', 'Quotes', ''], ['p3', 'Extraction review', '1']].map(n => ({
+        label: n[1], pick: () => this.setState({ screen: n[0], st: n[0] === 'p2' ? 'costed' : 'ready' }),
+        style: {
+          display: 'flex', alignItems: 'center', gap: '11px', padding: '11px 12px', borderRadius: '8px', cursor: 'pointer',
+          minHeight: '44px', font: "500 14px/1 'Plus Jakarta Sans',sans-serif",
+          background: screen === n[0] ? 'var(--fx-bg-selected)' : 'transparent',
+          color: screen === n[0] ? 'var(--fx-text-primary)' : 'var(--fx-text-secondary)'
+        },
+        marker: { width: '2px', height: '15px', transform: 'skewX(-34deg)', background: screen === n[0] ? 'var(--fx-accent)' : 'transparent', flexShrink: 0 },
+        badge: n[2],
+        badgeStyle: {
+          marginLeft: 'auto', font: "500 11px/1 'JetBrains Mono',monospace", color: 'var(--fx-text-primary)',
+          background: 'var(--fx-bg-surface)', border: '1px solid var(--fx-border-default)', borderRadius: '999px', padding: '4px 7px'
+        }
+      })),
+      buyerScope: role === 'merchandiser'
+        ? 'H&M and Primark are yours. Bestseller and C&A show read-only — you can read the quote, not change it.'
+        : role === 'manager' ? 'Every buyer in merchandising. You are also the approver under the margin floor.'
+          : 'Read access to every buyer.',
+
+      isP1: screen === 'p1', isP2: screen === 'p2', isP3: screen === 'p3',
+      goP1: () => this.setState({ screen: 'p1', st: 'ready' }),
+      goExtract: () => this.setState({ screen: 'p3', st: 'ready' }),
+      isReady: validSt === 'ready', isEmpty: validSt === 'empty',
+      isLoading: validSt === 'loading', isError: validSt === 'error',
+      canCreate: canEdit,
+      redacted: isViewer, notRedacted: !isViewer,
+
+      inboxLead: role === 'merchandiser'
+        ? 'Grouped by what you have to do next. Two close within 48 hours — those are the ones with a thick red edge.'
+        : 'Every RFQ in merchandising, grouped by status. Win-rate only means something next to the reason we lost.',
+      kpis: [
+        { label: 'Open', value: '3', note: '2 close within 48h', sel: 'var(--fx-danger)' },
+        { label: 'Awaiting an answer', value: '2', note: '1 from us, 1 from the buyer', sel: 'var(--fx-warning)' },
+        { label: 'Win rate · 90 days', value: '38%', note: '8 won of 21 quoted', sel: 'var(--fx-border-strong)' },
+        { label: 'Avg response', value: '2.4 days', note: 'enquiry to quote sent', sel: 'var(--fx-success)' }
+      ],
+      groups,
+
+      rfq: {
+        no: d.no, buyer: d.buyer, style: d.style, desc: d.desc, qty: d.qty,
+        kindBadge: d.kindBadge, due: d.due, dueColor: d.dueColor,
+        targetShown: isViewer ? '•••' : usd(d.target) + ' · ' + bdt(d.target)
+      },
+      facts: d.facts.map(f => ({ k: f[0], v: f[1], c: f[2] || 'var(--fx-text-primary)' })),
+      attachments: d.attachments.map((a, i) => ({
+        name: a[0], kind: a[1], when: a[2],
+        pick: () => this.setState({ att: i }),
+        sel: i === s.att ? 'var(--fx-accent)' : 'transparent',
+        rowStyle: {
+          display: 'flex', alignItems: 'stretch', borderTop: '1px solid var(--fx-border-subtle)', cursor: 'pointer',
+          background: i === s.att ? 'var(--fx-bg-hover)' : 'transparent'
+        }
+      })),
+      activeAttachment: d.attachments[Math.min(s.att, d.attachments.length - 1)][0],
+      attachmentPages: String(d.attachments[Math.min(s.att, d.attachments.length - 1)][3]),
+
+      thread: THREAD[kind].map(t => ({ who: t[0], when: t[1], via: t[2], body: t[3], sel: t[4] })),
+      clarifyState: kind === 'woven' ? '1 open question' : 'all answered',
+      clarifyColor: kind === 'woven' ? 'var(--fx-warning)' : 'var(--fx-success)',
+      ask: () => this.flash('Question sent to ' + d.buyer + ' · logged on the thread'),
+      record: () => this.flash('Answer recorded · phone call with ' + d.buyer + ' logged 12 Aug'),
+      canEdit,
+
+      versions,
+      costSheetNote: validSt === 'uncosted' ? 'cost sheet v2 · pending approval' : 'cost sheet v2 · approved 11 Aug by Shafiq Alam',
+      canQuote: canEdit && validSt !== 'uncosted',
+      blockedQuote: canEdit && validSt === 'uncosted',
+      blockedReason: 'Cost sheet v2 is waiting for the manager. It carries a new fabric price from Well Group, so quoting on the old one would be a guess dressed up as a number. Approval usually comes the same day.',
+      readOnlyQuote: readOnly,
+      readOnlyNote: isViewer
+        ? 'read-only · every price on this page is masked for your role'
+        : role === 'commercial'
+          ? 'read-only · you own the terms, not the price. Comment on the thread instead.'
+          : role === 'owner'
+            ? 'read-only · you sign quotes that fall under the margin floor, you do not build them'
+            : 'read-only · ' + d.buyer + ' is not one of your buyers',
+      sendLabel: belowFloor ? 'Send for approval' : 'Send quote to ' + d.buyer,
+      sendNote: belowFloor
+        ? 'Margin is ' + marginPct.toFixed(1) + '% against a 15% floor, so this does not go to the buyer — it goes to the owner with the build-up attached. If they sign, it sends itself.'
+        : 'Margin is ' + marginPct.toFixed(1) + '%, above the 15% floor, so this sends straight to the buyer with the FOB build-up as a PDF.',
+      sendAnnot: belowFloor
+        ? 'quotes.send → Approve inbox (approver: owner) — margin under floor'
+        : 'quotes.send — direct, margin above floor',
+      send: () => this.flash(belowFloor
+        ? 'Sent to the approve inbox · approver: owner (M. A. Chowdhury) · margin ' + marginPct.toFixed(1) + '%'
+        : 'Quote v3 sent to ' + d.buyer + ' · ' + usd(fob) + ' FOB · build-up attached'),
+      draft: () => this.flash('v4 drafted from v3 · cost sheet v2 · nothing sent'),
+      won: () => this.setState({ handoff: true }),
+      handoff: s.handoff,
+      closeHandoff: () => this.setState({ handoff: false }),
+      confirmWon: () => { this.setState({ handoff: false }); this.flash('Marked won · order created on the desk, awaiting the buyer PO'); },
+      handoffRows: HANDOFF_ROWS.map(h => ({ k: h[0], v: h[1], state: h[2], sel: h[3] })),
+      openLost: () => this.setState({ lost: true, lostReason: -1 }),
+      lost: s.lost,
+      closeLost: () => this.setState({ lost: false, lostReason: -1 }),
+      lostReasons: LOST_REASONS.map((r, i) => ({
+        label: r[0], hint: r[1], pick: () => this.setState({ lostReason: i }),
+        style: {
+          display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '13px 13px', borderRadius: '4px', cursor: 'pointer',
+          minHeight: '48px', background: s.lostReason === i ? 'var(--fx-bg-sunken)' : 'transparent'
+        },
+        radio: {
+          width: '16px', height: '16px', borderRadius: '999px', flexShrink: 0, marginTop: '3px',
+          border: '1px solid ' + (s.lostReason === i ? 'var(--fx-text-primary)' : 'var(--fx-border-strong)'),
+          boxShadow: s.lostReason === i ? 'inset 0 0 0 3px var(--fx-bg-surface), inset 0 0 0 9px var(--fx-text-primary)' : 'none'
+        }
+      })),
+      lostBtn: s.lostReason < 0
+        ? { background: 'var(--fx-bg-sunken)', color: 'var(--fx-text-disabled)', border: '1px solid var(--fx-border-subtle)', borderRadius: '8px', padding: '11px 18px', font: "600 14px/1 'Plus Jakarta Sans',sans-serif", cursor: 'not-allowed', minHeight: '44px' }
+        : { background: 'var(--fx-danger)', color: '#FFFFFF', border: 'none', borderRadius: '8px', padding: '11px 18px', font: "600 14px/1 'Plus Jakarta Sans',sans-serif", cursor: 'pointer', minHeight: '44px' },
+      confirmLost: () => {
+        if (this.state.lostReason < 0) { this.flash('Pick a reason — a lost RFQ without one teaches nobody anything'); return; }
+        const r = LOST_REASONS[this.state.lostReason][0];
+        this.setState({ lost: false, lostReason: -1 });
+        this.flash('Marked lost · reason: ' + r + ' · counted in the 90-day win rate');
+      },
+
+      extractFile: 'H&M-enquiry-SH4471.pdf · 3 pages · read 12 Aug 10:04',
+      extractFields: EXTRACT.map((f, i) => ({
+        label: f[0], value: f[1], conf: f[2].toFixed(2),
+        confColor: f[2] < 0.9 ? 'var(--fx-warning)' : 'var(--fx-text-primary)',
+        ticks: this.ticks(f[2]),
+        sel: i === s.srcIdx ? 'var(--fx-accent)' : f[2] < 0.9 ? 'var(--fx-warning)' : 'transparent',
+        pick: () => this.setState({ srcIdx: i }),
+        rowStyle: {
+          display: 'flex', alignItems: 'stretch', borderTop: '1px solid var(--fx-border-subtle)', cursor: 'pointer',
+          background: i === s.srcIdx ? 'var(--fx-bg-hover)' : 'transparent'
+        }
+      })),
+      srcPage: srcRow[3], srcLabel: srcRow[0], srcQuote: srcRow[4],
+      srcLoc: srcRow[3] + ' · confidence ' + srcRow[2].toFixed(2),
+      srcHighlight: {
+        position: 'absolute', left: '9%', right: '9%', top: srcRow[5] + '%', height: '7%',
+        border: '2px solid var(--fx-accent)', background: 'var(--fx-accent-subtle)',
+        borderRadius: '2px', transition: 'top 180ms cubic-bezier(.2,.8,.2,1)'
+      },
+      approveExtract: () => this.flash('RFQ-2026-125 created from 9 fields · you are the owner'),
+      editExtract: () => this.flash('Editing target price and size ratio · the rest stay as read'),
+      rejectExtract: () => this.flash('Draft rejected · the file stays in the buyer folder'),
+
+      access: ACCESS.map(a => ({ role: a[0], level: a[1], note: a[2], chip: this.chip(a[1]) })),
+      toast: s.toast, clearToast: () => this.setState({ toast: '' }),
+
+      markLabel: s.mark === 'resolve' ? 'MARBIM · listening' : 'MARBIM · rest',
+      markStage: { position: 'relative', width: '32px', height: '32px', flexShrink: 0 },
+      markSlashes: SLASH_VEC.map((v, i) => ({
+        src: 'assets/mark/' + (mode === 'dark' ? 'w-' : 'i-') + (i + 1) + '.png',
+        style: { position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', '--dx': v.dx, '--dy': v.dy, transformOrigin: 'center', animation: anim(i) }
+      })),
+      loaderStage: { position: 'relative', width: '64px', height: '64px', flexShrink: 0 },
+      loaderSlashes: SLASH_VEC.map((v, i) => ({
+        src: 'assets/mark/' + (mode === 'dark' ? 'w-' : 'i-') + (i + 1) + '.png',
+        style: {
+          position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block',
+          '--dx': v.dx, '--dy': v.dy, transformOrigin: 'center',
+          animation: 'fx-travel .8s ease-in-out ' + (-i * 90) + 'ms infinite'
+        }
+      }))
+    };
+  }
+}
+
+</script>
+</body>
+</html>

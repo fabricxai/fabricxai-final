@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #F3F1EC; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  [data-mode="dark"] { --fx-bg-canvas:#0F131B !important; --fx-bg-surface:#181D29 !important; --fx-bg-raised:#212736 !important; --fx-bg-sunken:#0B0E15 !important; --fx-bg-hover:rgba(255,255,255,.05) !important; --fx-bg-selected:rgba(225,179,52,.17) !important; --fx-border-subtle:#252B3A !important; --fx-border-default:#343B4C !important; --fx-border-strong:#4E576B !important; --fx-text-primary:#F4F3F0 !important; --fx-text-secondary:#AEB5C4 !important; --fx-text-tertiary:#7C8497 !important; --fx-text-disabled:#565E71 !important; --fx-text-inverse:#181D29 !important; --fx-accent-hover:#EBC352 !important; --fx-accent-pressed:#F2D077 !important; --fx-accent-subtle:rgba(225,179,52,.14) !important; --fx-success:#4FA97D !important; --fx-warning:#D99A3F !important; --fx-danger:#E0665C !important; --fx-info:#6D9BE8 !important; --fx-focus:#E1B334 !important; --fx-sh1:0 0 0 1px #252B3A !important; --fx-sh2:0 0 0 1px #252B3A !important; --fx-sh3:0 0 0 1px #343B4C !important; }
+  body:has([data-mode="dark"]) { background: #0B0E15; }
+  a { color: #181D29; text-decoration: underline; text-underline-offset: 3px; }
+  a:hover { color: #B88C21; }
+  @keyframes fx-breathe { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(calc(var(--dx) * 3.5%), calc(var(--dy) * 3.5%)); } }
+  @keyframes fx-slide-in { from { transform: translateX(28px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
+</style>
+</helmet>
+
+<div data-mode="{{ mode }}" style="--fx-bg-canvas:#FBFAF8; --fx-bg-surface:#FFFFFF; --fx-bg-sunken:#F3F1EC; --fx-bg-hover:rgba(24,29,41,.035); --fx-bg-selected:rgba(225,179,52,.12); --fx-border-subtle:#E7E4DE; --fx-border-default:#D6D2C9; --fx-border-strong:#A9A49A; --fx-text-primary:#181D29; --fx-text-secondary:#4C5364; --fx-text-tertiary:#767E90; --fx-text-disabled:#A8AEBB; --fx-text-inverse:#FBFAF8; --fx-accent:#E1B334; --fx-accent-hover:#CFA22B; --fx-accent-pressed:#B88C21; --fx-accent-subtle:#FAF1DA; --fx-accent-on:#181D29; --fx-success:#2F7D5B; --fx-warning:#B4741C; --fx-danger:#B23A32; --fx-info:#2F5FA8; --fx-focus:#181D29; --fx-sh1:0 1px 2px rgba(24,29,41,.06); --fx-sh2:0 4px 12px rgba(24,29,41,.08); --fx-sh3:0 12px 32px rgba(24,29,41,.12); font-family:'Plus Jakarta Sans',system-ui,sans-serif; color:var(--fx-text-primary); min-height:100vh; background:var(--fx-bg-sunken);">
+
+<div style="position:sticky; top:0; z-index:60; background:var(--fx-bg-surface); border-bottom:1px solid var(--fx-border-default); padding:10px 20px; display:flex; align-items:center; gap:18px; flex-wrap:wrap;">
+  <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Prototype bar — not product chrome</div>
+  <div style="display:flex; gap:2px; background:var(--fx-bg-sunken); border-radius:8px; padding:3px;">
+    <sc-for list="{{ screens }}" as="s" hint-placeholder-count="4">
+      <button onClick="{{ s.pick }}" style="{{ s.style }}">{{ s.label }}</button>
+    </sc-for>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px;">
+    <span style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">role</span>
+    <select onChange="{{ setRole }}" value="{{ role }}" style="background:var(--fx-bg-surface); color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:4px; padding:7px 9px; font:500 12px/1 'JetBrains Mono',monospace;">
+      <option value="planner">planner</option>
+      <option value="manager">manager</option>
+      <option value="merchandiser">merchandiser</option>
+      <option value="owner">owner</option>
+      <option value="supervisor">supervisor</option>
+      <option value="viewer">viewer</option>
+    </select>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px;">
+    <span style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">factory</span>
+    <select onChange="{{ setFtype }}" value="{{ ftype }}" style="background:var(--fx-bg-surface); color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:4px; padding:7px 9px; font:500 12px/1 'JetBrains Mono',monospace;">
+      <option value="woven">woven</option>
+      <option value="knit">knit</option>
+      <option value="knit-composite">knit-composite</option>
+    </select>
+  </div>
+  <div style="display:flex; align-items:center; gap:10px; margin-left:auto;">
+    <button onClick="{{ toggleMode }}" style="{{ modeBtn }}">{{ modeLabel }}</button>
+    <button onClick="{{ toggleAnnot }}" style="{{ annotBtn }}">actions {{ annotLabel }}</button>
+  </div>
+</div>
+
+<div style="{{ shellStyle }}">
+<div style="display:flex; align-items:stretch; min-height:calc(100vh - 49px);">
+
+  <div style="width:230px; flex-shrink:0; background:var(--fx-bg-surface); border-right:1px solid var(--fx-border-subtle); padding:20px 14px; display:flex; flex-direction:column; gap:20px;">
+    <img src="{{ logoSrc }}" alt="FabricX AI" style="height:26px; width:auto; align-self:flex-start; max-width:100%; object-fit:contain;" />
+    <div style="display:flex; flex-direction:column; gap:2px;">
+      <sc-for list="{{ nav }}" as="n" hint-placeholder-count="4">
+        <div onClick="{{ n.pick }}" style="{{ n.style }}">
+          <div style="{{ n.marker }}"></div>{{ n.label }}
+        </div>
+      </sc-for>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:8px;">
+      <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Your scope</div>
+      <div style="font:400 13px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ scopeNote }}</div>
+    </div>
+    <div style="margin-top:auto; display:flex; flex-direction:column; gap:7px;">
+      <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Signed in</div>
+      <div style="font:500 14px/1.3 'Plus Jakarta Sans',sans-serif;">{{ userName }}</div>
+      <div style="font:400 12px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ role }} · desk density</div>
+    </div>
+  </div>
+
+  <div style="flex:1; min-width:0; position:relative; padding:0 0 80px;">
+
+  <sc-if value="{{ scenario }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute; inset:0; pointer-events:none; z-index:1; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+      <div style="font:700 120px/1 'Plus Jakarta Sans',sans-serif; letter-spacing:.06em; color:rgba(24,29,41,.045); transform:rotate(-24deg); white-space:nowrap;">SCENARIO</div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP1 }}" hint-placeholder-val="{{ true }}">
+    <div style="position:relative; z-index:2; padding:24px 26px; display:flex; flex-direction:column; gap:16px;">
+      <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:20px; flex-wrap:wrap;">
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Planning · board</div>
+          <div style="display:flex; align-items:center; gap:11px; flex-wrap:wrap;">
+            <div style="font:700 30px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">{{ boardTitle }}</div>
+            <sc-if value="{{ scenario }}" hint-placeholder-val="{{ false }}">
+              <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-accent-pressed); border:1px solid var(--fx-accent-pressed); border-radius:4px; padding:6px 8px;">scenario · not live</div>
+            </sc-if>
+          </div>
+          <div style="font:400 14px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:70ch; text-wrap:pretty;">{{ boardLead }}</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <sc-if value="{{ canEdit }}" hint-placeholder-val="{{ true }}">
+            <button onClick="{{ toggleScenario }}" style="{{ forkBtn }}">{{ forkLabel }}</button>
+          </sc-if>
+          <sc-if value="{{ scenario }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ openCompare }}" style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-strong); border-radius:8px; padding:11px 16px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-bg-hover)">Compare · {{ deltaCount }}</button>
+          </sc-if>
+        </div>
+      </div>
+      <div style="height:9px; background-image:repeating-linear-gradient(115deg, var(--fx-accent) 0 2px, transparent 2px 9px);"></div>
+
+      <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+        <sc-for list="{{ legend }}" as="l" hint-placeholder-count="4">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <div style="{{ l.swatch }}"></div>
+            <div style="font:400 12px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ l.label }}</div>
+          </div>
+        </sc-for>
+        <div style="font:400 12px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-left:auto;">{{ dragHint }}</div>
+      </div>
+
+      <div onMouseUp="{{ dropEnd }}" style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+        <div style="overflow-x:auto;">
+        <div style="min-width:1120px;">
+          <div style="display:grid; grid-template-columns:172px repeat(8, 1fr); background:var(--fx-bg-sunken); border-bottom:1px solid var(--fx-border-subtle);">
+            <div style="padding:11px 16px; font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Line</div>
+            <sc-for list="{{ weeks }}" as="w" hint-placeholder-count="8">
+              <div style="{{ w.headStyle }}">
+                <div style="font:500 12px/1.2 'JetBrains Mono',monospace; color:{{ w.color }};">{{ w.no }}</div>
+                <div style="font:400 11px/1.2 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ w.date }}</div>
+              </div>
+            </sc-for>
+          </div>
+
+          <sc-for list="{{ groups }}" as="g" hint-placeholder-count="3">
+            <div style="{{ g.headStyle }}">
+              <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.07em; text-transform:uppercase; color:var(--fx-text-secondary);">{{ g.name }}</div>
+              <div style="font:400 11.5px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ g.meta }}</div>
+              <sc-if value="{{ g.flow }}" hint-placeholder-val="{{ false }}">
+                <div style="font:400 11.5px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); margin-left:auto;">{{ g.flow }}</div>
+              </sc-if>
+            </div>
+            <sc-for list="{{ g.rows }}" as="r" hint-placeholder-count="2">
+              <div style="{{ r.rowStyle }}">
+                <div style="padding:12px 16px; display:flex; flex-direction:column; gap:3px; border-right:1px solid var(--fx-border-subtle);">
+                  <div style="font:500 13.5px/1.2 'Plus Jakarta Sans',sans-serif; color:{{ r.nameColor }};">{{ r.name }}</div>
+                  <div style="font:400 11.5px/1.2 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ r.cap }}</div>
+                </div>
+                <sc-for list="{{ r.cells }}" as="c" hint-placeholder-count="8">
+                  <div onMouseEnter="{{ c.enter }}" style="{{ c.style }}"></div>
+                </sc-for>
+                <sc-for list="{{ r.blocks }}" as="b" hint-placeholder-count="2">
+                  <div onMouseDown="{{ b.grab }}" style="{{ b.style }}">
+                    <div style="font:600 12.5px/1.2 'JetBrains Mono',monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ b.po }}</div>
+                    <div style="font:400 11.5px/1.25 'Plus Jakarta Sans',sans-serif; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; opacity:.85;">{{ b.label }}</div>
+                    <sc-if value="{{ b.warn }}" hint-placeholder-val="{{ false }}">
+                      <div style="font:500 10.5px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase;">{{ b.warn }}</div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-for>
+          </sc-for>
+        </div>
+        </div>
+        <div style="padding:13px 18px; display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+          <div style="font:400 12px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">the gradient inside each block is the efficiency ramp — pale where the line is still learning the style</div>
+          <div style="font:400 12px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-left:auto;">{{ overloadNote }}</div>
+        </div>
+      </div>
+
+      <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">planning.allocate · planning.splitAllocation</div>
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">planning.moveAllocation — drag opens the ripple preview, never writes on drop</div>
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">planning.forkScenario · applyScenario → Approve inbox (approver: manager) · discardScenario</div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP2 }}" hint-placeholder-val="{{ false }}">
+    <div style="position:relative; z-index:2; padding:24px 26px; display:flex; flex-direction:column; gap:18px; max-width:1180px;">
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Planning · capacity</div>
+        <div style="font:700 30px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">Can we take it?</div>
+        <div style="font:400 14.5px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:68ch; text-wrap:pretty;">The question a buyer asks on the phone. The answer is one card with every assumption on it, so it can be screenshotted into a WhatsApp thread and still be honest a week later.</div>
+        <div style="height:9px; background-image:repeating-linear-gradient(115deg, var(--fx-accent) 0 2px, transparent 2px 9px);"></div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(360px, 1fr)); gap:18px; align-items:start;">
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:20px; display:flex; flex-direction:column; gap:16px; box-shadow:var(--fx-sh1);">
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">What they asked</div>
+          <div style="display:flex; flex-direction:column; gap:7px;">
+            <label style="font:500 13px/1 'Plus Jakarta Sans',sans-serif;">Product type</label>
+            <select onChange="{{ setProduct }}" value="{{ product }}" style="background:var(--fx-bg-surface); color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:4px; padding:12px 13px; font:400 14.5px/1.2 'Plus Jakarta Sans',sans-serif; min-height:48px; width:100%;">
+              <sc-for list="{{ products }}" as="p" hint-placeholder-count="4">
+                <option value="{{ p.v }}">{{ p.t }}</option>
+              </sc-for>
+            </select>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+            <div style="display:flex; flex-direction:column; gap:7px;">
+              <label style="font:500 13px/1 'Plus Jakarta Sans',sans-serif;">Quantity</label>
+              <input value="{{ qty }}" onChange="{{ setQty }}" style="background:var(--fx-bg-surface); color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:4px; padding:12px 13px; font:500 16px/1.2 'JetBrains Mono',monospace; min-height:48px; width:100%;" />
+            </div>
+            <div style="display:flex; flex-direction:column; gap:7px;">
+              <label style="font:500 13px/1 'Plus Jakarta Sans',sans-serif;">Ship month</label>
+              <select onChange="{{ setMonth }}" value="{{ month }}" style="background:var(--fx-bg-surface); color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:4px; padding:12px 13px; font:400 14.5px/1.2 'Plus Jakarta Sans',sans-serif; min-height:48px; width:100%;">
+                <option value="Sep">September</option>
+                <option value="Oct">October</option>
+                <option value="Nov">November</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:11px; padding-top:4px;">
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Assumptions — change any of them</div>
+            <sc-for list="{{ assumptions }}" as="a" hint-placeholder-count="3">
+              <div style="display:flex; align-items:center; gap:12px; border:1px solid var(--fx-border-subtle); border-radius:4px; padding:10px 12px;">
+                <div style="display:flex; flex-direction:column; gap:2px; min-width:0;">
+                  <div style="font:500 13px/1.3 'Plus Jakarta Sans',sans-serif;">{{ a.label }}</div>
+                  <div style="font:400 11.5px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ a.basis }}</div>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px; margin-left:auto; flex-shrink:0;">
+                  <button onClick="{{ a.dec }}" style="width:36px; height:36px; border-radius:6px; background:transparent; border:1px solid var(--fx-border-default); font:600 16px/1 'JetBrains Mono',monospace; color:var(--fx-text-primary); cursor:pointer;">−</button>
+                  <div style="font:600 15px/1 'JetBrains Mono',monospace; min-width:56px; text-align:center;">{{ a.value }}</div>
+                  <button onClick="{{ a.inc }}" style="width:36px; height:36px; border-radius:6px; background:transparent; border:1px solid var(--fx-border-default); font:600 16px/1 'JetBrains Mono',monospace; color:var(--fx-text-primary); cursor:pointer;">＋</button>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:14px;">
+          <div style="background:var(--fx-bg-surface); border:1px solid {{ answer.border }}; border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh2); clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);">
+            <div style="padding:20px 22px 16px; display:flex; flex-direction:column; gap:10px;">
+              <div style="display:flex; align-items:center; gap:11px; flex-wrap:wrap;">
+                <div style="width:9px; height:9px; border-radius:999px; background:{{ answer.border }}; flex-shrink:0;"></div>
+                <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:{{ answer.border }};">{{ answer.verdict }}</div>
+                <div style="font:400 11.5px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-left:auto;">planning.capacityQuery</div>
+              </div>
+              <div style="font:600 21px/1.35 'Plus Jakarta Sans',sans-serif; text-wrap:pretty;">{{ answer.headline }}</div>
+              <div style="font:400 14.5px/1.6 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ answer.body }}</div>
+            </div>
+            <div style="padding:0 22px 18px; display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:14px;">
+              <sc-for list="{{ answer.figures }}" as="f" hint-placeholder-count="4">
+                <div style="display:flex; flex-direction:column; gap:4px;">
+                  <div style="font:400 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">{{ f.k }}</div>
+                  <div style="font:600 19px/1.1 'JetBrains Mono',monospace; color:{{ f.c }};">{{ f.v }}</div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="padding:14px 22px; border-top:1px solid var(--fx-border-subtle); display:flex; flex-direction:column; gap:8px;">
+              <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">On these assumptions</div>
+              <div style="font:400 13px/1.6 'JetBrains Mono',monospace; color:var(--fx-text-secondary); text-wrap:pretty;">{{ answer.stamp }}</div>
+            </div>
+            <div style="padding:14px 22px 20px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+              <sc-if value="{{ canEdit }}" hint-placeholder-val="{{ true }}">
+                <button onClick="{{ hold }}" style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:12px 18px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-accent-hover)">Hold this capacity for 5 days</button>
+              </sc-if>
+              <button onClick="{{ shot }}" style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:8px; padding:11px 16px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-bg-hover)">Copy as image</button>
+            </div>
+          </div>
+          <div style="font:400 12.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">Every figure above moves when you change an assumption on the left. That is deliberate — a capacity answer with hidden assumptions is how a factory promises a date it cannot keep.</div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP4 }}" hint-placeholder-val="{{ false }}">
+    <div style="position:relative; z-index:2; padding:24px 26px; display:flex; flex-direction:column; gap:18px; max-width:1280px;">
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Planning · actuals</div>
+        <div style="font:700 30px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">Plan against what happened</div>
+        <div style="font:400 14.5px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:68ch; text-wrap:pretty;">Week 32, closed. Click a line to see the stoppages behind its variance — a plan that misses without a reason teaches the next plan nothing.</div>
+        <div style="height:9px; background-image:repeating-linear-gradient(115deg, var(--fx-accent) 0 2px, transparent 2px 9px);"></div>
+      </div>
+
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+        <div style="overflow-x:auto;">
+        <div style="min-width:1020px;">
+          <div style="display:flex; align-items:stretch; background:var(--fx-bg-sunken); border-bottom:1px solid var(--fx-border-subtle);">
+            <div style="width:3px; flex-shrink:0;"></div>
+            <div style="flex:1; min-width:0; display:grid; grid-template-columns:132px 1.3fr 116px 116px 128px 1fr; gap:14px; padding:11px 20px 11px 17px; font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">
+              <div>Line</div><div>Order</div><div style="text-align:right;">Planned</div><div style="text-align:right;">Actual</div><div style="text-align:right;">Variance</div><div>Why</div>
+            </div>
+          </div>
+          <sc-for list="{{ actuals }}" as="a" hint-placeholder-count="6">
+            <div>
+              <div onClick="{{ a.toggle }}" style="{{ a.rowStyle }}">
+                <div style="width:{{ a.selW }}; flex-shrink:0; background:{{ a.sel }};"></div>
+                <div style="flex:1; min-width:0; display:grid; grid-template-columns:132px 1.3fr 116px 116px 128px 1fr; gap:14px; padding:12px 20px 12px 17px; align-items:center; min-height:44px;">
+                  <div style="display:flex; align-items:center; gap:9px;">
+                    <div style="font:500 12px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ a.chev }}</div>
+                    <div style="font:500 13.5px/1.3 'Plus Jakarta Sans',sans-serif;">{{ a.line }}</div>
+                  </div>
+                  <div style="font:400 13px/1.35 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ a.order }}</div>
+                  <div style="font:400 13px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); text-align:right;">{{ a.planned }}</div>
+                  <div style="font:600 13.5px/1.3 'JetBrains Mono',monospace; text-align:right;">{{ a.actual }}</div>
+                  <div style="display:flex; justify-content:flex-end;"><span style="{{ a.chip }}">{{ a.variance }}</span></div>
+                  <div style="font:400 12.5px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ a.why }}</div>
+                </div>
+              </div>
+              <sc-if value="{{ a.open }}" hint-placeholder-val="{{ false }}">
+                <div style="background:var(--fx-bg-sunken); border-bottom:1px solid var(--fx-border-subtle); padding:14px 20px 16px 34px; display:flex; flex-direction:column; gap:10px;">
+                  <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Stoppages · week 32</div>
+                  <sc-for list="{{ a.downtime }}" as="d" hint-placeholder-count="3">
+                    <div style="display:flex; align-items:stretch; background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:4px; overflow:hidden;">
+                      <div style="width:3px; flex-shrink:0; background:{{ d.c }};"></div>
+                      <div style="flex:1; min-width:0; display:grid; grid-template-columns:128px 1fr 96px 108px; gap:12px; padding:11px 14px; align-items:center; min-height:44px;">
+                        <div style="font:500 12.5px/1.3 'JetBrains Mono',monospace;">{{ d.when }}</div>
+                        <div style="font:400 13px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">{{ d.what }}</div>
+                        <div style="font:500 12.5px/1.3 'JetBrains Mono',monospace; color:{{ d.c }}; text-align:right;">{{ d.mins }}</div>
+                        <div style="font:400 12px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); text-align:right;">{{ d.ticket }}</div>
+                      </div>
+                    </div>
+                  </sc-for>
+                  <div style="font:400 12.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ a.lesson }}</div>
+                </div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+        </div>
+        <div style="padding:14px 20px; display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+          <div style="font:400 12px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-secondary);">week 32 · planned 41,600 pcs · actual 38,240 pcs · 92%</div>
+          <div style="font:400 12px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-left:auto;">variance under 5% is not chased — it is the noise a plan should absorb</div>
+        </div>
+      </div>
+
+      <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+        <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px; align-self:flex-start;">read-only · the numbers come from production.enterHourly, the reasons from production.logDowntime</div>
+      </sc-if>
+
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Role access — planning</div>
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden;">
+          <sc-for list="{{ access }}" as="a" hint-placeholder-count="6">
+            <div style="display:grid; grid-template-columns:1fr 96px 1.5fr; gap:16px; padding:11px 18px; align-items:center; border-bottom:1px solid var(--fx-border-subtle);">
+              <div style="font:500 13px/1.4 'JetBrains Mono',monospace;">{{ a.role }}</div>
+              <div><span style="{{ a.chip }}">{{ a.level }}</span></div>
+              <div style="font:400 13px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ a.note }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <div style="position:absolute; right:22px; bottom:22px; z-index:3; display:flex; align-items:center; gap:11px;">
+    <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ markLabel }}</div>
+    <div role="img" aria-label="MARBIM" style="{{ markStage }}">
+      <sc-for list="{{ markSlashes }}" as="s" hint-placeholder-count="8">
+        <img src="{{ s.src }}" alt="" style="{{ s.style }}" />
+      </sc-for>
+    </div>
+  </div>
+
+  </div>
+</div>
+</div>
+
+<sc-if value="{{ ripple }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed; inset:0; z-index:80; display:flex; align-items:center; justify-content:center; padding:24px; background-color:rgba(24,29,41,.55); background-image:repeating-linear-gradient(146deg, transparent 0 7px, rgba(255,255,255,.06) 7px 9px, transparent 9px 17px);">
+    <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:14px; box-shadow:var(--fx-sh3); width:660px; max-width:100%; max-height:88vh; overflow-y:auto; clip-path:polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);">
+      <div style="padding:26px 28px 16px; display:flex; flex-direction:column; gap:9px;">
+        <div style="font:400 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Preview before it is written</div>
+        <div style="font:600 22px/1.25 'Plus Jakarta Sans',sans-serif;">{{ rippleTitle }}</div>
+        <div style="font:400 14px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ rippleLead }}</div>
+      </div>
+      <div style="padding:0 28px 18px;">
+        <div style="border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden;">
+          <div style="display:grid; grid-template-columns:1.4fr 96px 96px 1fr; gap:12px; padding:10px 16px; background:var(--fx-bg-sunken); font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">
+            <div>What moves</div><div>Now</div><div>After</div><div>Effect</div>
+          </div>
+          <sc-for list="{{ rippleRows }}" as="r" hint-placeholder-count="4">
+            <div style="display:grid; grid-template-columns:1.4fr 96px 96px 1fr; gap:12px; padding:11px 16px; align-items:center; border-top:1px solid var(--fx-border-subtle);">
+              <div style="font:500 13.5px/1.35 'Plus Jakarta Sans',sans-serif;">{{ r.name }}</div>
+              <div style="font:400 12.5px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); text-decoration:line-through;">{{ r.from }}</div>
+              <div style="font:500 12.5px/1.3 'JetBrains Mono',monospace; color:{{ r.c }};">{{ r.to }}</div>
+              <div style="font:400 12px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">{{ r.effect }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="padding:0 28px 20px; display:flex; align-items:flex-start; gap:12px;">
+        <div style="width:8px; height:8px; border-radius:999px; background:{{ rippleVerdictColor }}; margin-top:6px; flex-shrink:0;"></div>
+        <div style="font:400 14px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ rippleVerdict }}</div>
+      </div>
+      <div style="padding:16px 28px 24px; display:flex; gap:10px; justify-content:flex-end; border-top:1px solid var(--fx-border-subtle); align-items:center; flex-wrap:wrap;">
+        <div style="font:400 12px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-right:auto;">planning.moveAllocation</div>
+        <button onClick="{{ closeRipple }}" style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:8px; padding:11px 18px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;">Put it back</button>
+        <button onClick="{{ confirmRipple }}" style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:11px 18px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-accent-hover)">{{ rippleCta }}</button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ compare }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closeCompare }}" style="position:fixed; inset:0; z-index:80; display:flex; justify-content:flex-end; background-color:rgba(24,29,41,.5); background-image:repeating-linear-gradient(146deg, transparent 0 7px, rgba(255,255,255,.06) 7px 9px, transparent 9px 17px);">
+    <div style="width:560px; max-width:100%; background:var(--fx-bg-surface); border-left:1px solid var(--fx-border-subtle); box-shadow:var(--fx-sh3); display:flex; flex-direction:column; animation:fx-slide-in 260ms cubic-bezier(.2,.8,.2,1) both;">
+      <div style="padding:22px 24px 16px; border-bottom:1px solid var(--fx-border-subtle); display:flex; flex-direction:column; gap:8px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="font:400 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Scenario vs live</div>
+          <button onClick="{{ closeCompare }}" style="margin-left:auto; background:transparent; border:1px solid var(--fx-border-default); border-radius:8px; padding:9px 12px; font:600 12.5px/1 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); cursor:pointer; min-height:44px;">Close</button>
+        </div>
+        <div style="font:600 20px/1.25 'Plus Jakarta Sans',sans-serif;">{{ deltaCount }} across 4 orders</div>
+        <div style="font:400 13.5px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">Applying this rewrites the live board and every affected TNA. It goes to the manager first, with this list attached.</div>
+      </div>
+      <div style="flex:1; overflow-y:auto;">
+        <sc-for list="{{ deltas }}" as="d" hint-placeholder-count="4">
+          <div style="display:flex; align-items:stretch; border-bottom:1px solid var(--fx-border-subtle);">
+            <div style="width:3px; flex-shrink:0; background:{{ d.c }};"></div>
+            <div style="flex:1; min-width:0; padding:14px 24px 14px 21px; display:flex; flex-direction:column; gap:7px;">
+              <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">
+                <div style="font:500 13px/1.2 'JetBrains Mono',monospace;">{{ d.po }}</div>
+                <div style="font:400 12.5px/1.3 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">{{ d.buyer }}</div>
+                <div style="font:500 12.5px/1.3 'JetBrains Mono',monospace; color:{{ d.c }}; margin-left:auto;">{{ d.headline }}</div>
+              </div>
+              <div style="font:400 13px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ d.detail }}</div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="padding:16px 24px 20px; border-top:1px solid var(--fx-border-subtle); display:flex; flex-direction:column; gap:10px;">
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <sc-if value="{{ canApply }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ applyScenario }}" style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:12px 18px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-accent-hover)">{{ applyLabel }}</button>
+          </sc-if>
+          <sc-if value="{{ cannotApply }}" hint-placeholder-val="{{ true }}">
+            <button onClick="{{ submitScenario }}" style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:12px 18px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-accent-hover)">Send to the manager</button>
+          </sc-if>
+          <button onClick="{{ discardScenario }}" style="background:transparent; color:var(--fx-text-secondary); border:1px solid var(--fx-border-default); border-radius:8px; padding:11px 16px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;">Discard</button>
+        </div>
+        <div style="font:400 12px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">planning.applyScenario → Approve inbox (approver: manager) · planning.discardScenario</div>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed; left:50%; bottom:28px; transform:translateX(-50%); z-index:90; background:var(--fx-text-primary); color:var(--fx-text-inverse); border-radius:8px; box-shadow:var(--fx-sh3); padding:14px 18px; display:flex; align-items:center; gap:14px; max-width:92vw;">
+    <div style="font:500 13.5px/1.4 'Plus Jakarta Sans',sans-serif;">{{ toast }}</div>
+    <button onClick="{{ clearToast }}" style="background:transparent; border:none; color:var(--fx-accent); font:600 12px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer;">Dismiss</button>
+  </div>
+</sc-if>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;role&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;planner&quot;,&quot;manager&quot;,&quot;merchandiser&quot;,&quot;owner&quot;,&quot;supervisor&quot;,&quot;viewer&quot;],&quot;default&quot;:&quot;planner&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Access&quot;},&quot;factoryType&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;woven&quot;,&quot;knit&quot;,&quot;knit-composite&quot;],&quot;default&quot;:&quot;woven&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Access&quot;},&quot;showActionNames&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Annotation&quot;}}">
+const SLASH_VEC = [
+  { dx: -0.896, dy: 0.444 }, { dx: -0.271, dy: 0.963 }, { dx: -0.97, dy: -0.243 }, { dx: 0.415, dy: 0.91 },
+  { dx: -0.512, dy: -0.859 }, { dx: 0.936, dy: 0.352 }, { dx: 0.282, dy: -0.96 }, { dx: 0.908, dy: -0.419 }
+];
+
+const USERS = {
+  planner: 'Rumana Akter', manager: 'Shafiq Alam', merchandiser: 'Nabila Rahman',
+  owner: 'M. A. Chowdhury', supervisor: 'Aminul Haque', viewer: 'Audit (external)'
+};
+
+const WEEKS = [
+  ['W33', '10 Aug'], ['W34', '17 Aug'], ['W35', '24 Aug'], ['W36', '31 Aug'],
+  ['W37', '07 Sep'], ['W38', '14 Sep'], ['W39', '21 Sep'], ['W40', '28 Sep']
+];
+
+// line, capacity, [po, buyer, label, startWeek(1-based), span, tone, warn]
+const SEW = [
+  ['Floor 2', '2 lines · 320 pcs/h each', [
+    ['L1', '38 operators · 320/h', [
+      ['PO-88214', 'Primark', 'basic tee 150gsm · 30,000', 1, 3, 'ok', ''],
+      ['PO-88240', 'Primark', 'basic tee 150gsm · 19,200', 4, 3, 'plan', '']
+    ]],
+    ['L2', '38 operators · 320/h', [
+      ['PO-88214', 'Primark', 'basic tee · 30,000 (split)', 1, 3, 'ok', ''],
+      ['PO-88231', 'H&M', 'shirt 50s twill · 18,000', 4, 4, 'plan', '']
+    ]]
+  ]],
+  ['Floor 3', '2 lines · 210 pcs/h each', [
+    ['L3', '42 operators · 210/h', [
+      ['PO-88203', 'H&M', 'shirt 40s poplin · 13,000', 1, 4, 'cp', '']
+    ]],
+    ['L4', '42 operators · 210/h', [
+      ['PO-88203', 'H&M', 'shirt · 13,000 (split)', 1, 3, 'cp', ''],
+      ['PO-88219', 'Bestseller', 'polo · overflow 8,000', 3, 2, 'over', '118% of capacity']
+    ]]
+  ]],
+  ['Floor 4', '2 lines · 260 pcs/h each', [
+    ['L5', '36 operators · 260/h', [
+      ['PO-88219', 'Bestseller', 'polo 180gsm · 34,000', 1, 3, 'ok', '']
+    ]],
+    ['L6', '36 operators · 260/h', [
+      ['PO-88231', 'H&M', 'shirt 50s twill · 12,000', 2, 4, 'plan', '']
+    ]]
+  ]]
+];
+
+const KNIT_GROUP = ['Knitting section', '8 machines · planned in kg/day', [
+  ['KN-01…02', '30 in · 24G · 240 kg/day', [
+    ['YL-2274', 'greige', '480 kg/day · pique 180gsm', 1, 2, 'ok', '']
+  ]],
+  ['KN-03…04', '30 in · 24G · 240 kg/day', [
+    ['YL-2274', 'greige', '480 kg/day · pique 180gsm', 1, 2, 'ok', ''],
+    ['YL-2288', 'greige', '460 kg/day · jersey 160gsm', 3, 2, 'plan', '']
+  ]],
+  ['KN-05…06', '34 in · 28G · 260 kg/day', [
+    ['YL-2261', 'greige', '520 kg/day · pique 180gsm', 1, 3, 'over', 'dyeing is the bottleneck']
+  ]],
+  ['KN-07…08', '36 in · 28G · 260 kg/day', [
+    ['—', 'idle', 'no lot loaded · 2 machines free', 1, 2, 'free', '']
+  ]]
+]];
+
+const TONE = {
+  ok: ['var(--fx-success)', 'rgba(47,125,91,.16)', 'rgba(47,125,91,.42)'],
+  cp: ['var(--fx-text-primary)', 'rgba(24,29,41,.10)', 'rgba(24,29,41,.30)'],
+  plan: ['var(--fx-border-strong)', 'rgba(169,164,154,.16)', 'rgba(169,164,154,.40)'],
+  over: ['var(--fx-danger)', 'rgba(178,58,50,.14)', 'rgba(178,58,50,.36)'],
+  free: ['var(--fx-text-tertiary)', 'rgba(118,126,144,.08)', 'rgba(118,126,144,.18)']
+};
+
+const RIPPLE = [
+  ['PO-88219 on L4', 'W35', 'W37', 'two weeks later on this line'],
+  ['PO-88219 ex-factory', '28 Aug', '04 Sep', 'past the LC last shipment of 10 Sep, still legal'],
+  ['L4 load in W35', '118%', '96%', 'the overload clears'],
+  ['PO-88231 on L6', 'W34', 'W34', 'unaffected']
+];
+
+const DELTAS = [
+  ['PO-88219', 'Bestseller', 'ex-factory +7 days', 'Moving the overflow to W37 pushes the ship date to 04 Sep. The buyer has a 5-day window, so this is a phone call, not a crisis.', 'var(--fx-warning)'],
+  ['PO-88203', 'H&M', 'unchanged', 'Stays on L3 and L4 through W36. This is the order the plan protects.', 'var(--fx-success)'],
+  ['PO-88240', 'Primark', 'starts 1 week earlier', 'L1 frees up in W35 once the tee split closes, so this pulls forward and finishes inside September.', 'var(--fx-success)'],
+  ['PO-88231', 'H&M', 'L2 → L6 only', 'Consolidating onto one line costs 4 days but removes a changeover from L2 entirely.', 'var(--fx-warning)']
+];
+
+const ACTUALS = [
+  ['L1', 'PO-88214 · Primark tee', '17,600', '16,940', -3.8, 'Two short stoppages, nothing structural', 'var(--fx-warning)', [
+    ['Mon 10:38', 'No feed · bundle 12 late from cutting', '6 min', '—', 'var(--fx-warning)'],
+    ['Wed 14:02', 'Power · generator changeover', '9 min', '—', 'var(--fx-warning)']
+  ], 'Under 5% and both causes were outside the line. The plan absorbed it — no action.'],
+  ['L2', 'PO-88214 · Primark tee', '17,600', '17,820', 1.3, 'Ran ahead once the operators settled', 'var(--fx-success)', [], 'Ahead of plan. The learning curve on this style is now 4 days, not 6 — worth updating the ramp assumption.'],
+  ['L3', 'PO-88203 · H&M shirt', '11,550', '11,270', -2.4, 'Lab dip re-check held the lay half a day', 'var(--fx-warning)', [
+    ['Tue 09:14', 'Quality hold · shade check on bundle 51', '11 min', '—', 'var(--fx-warning)']
+  ], 'Inside tolerance. The shade check is the cost of laying two shade groups on one order.'],
+  ['L4', 'PO-88203 · H&M shirt', '11,550', '8,940', -22.6, 'Needle bar failure, 34 minutes, plus the ramp back up', 'var(--fx-danger)', [
+    ['Thu 14:07', 'Machine · needle bar, SNL-04-118', '34 min', 'MT-2026-0417', 'var(--fx-danger)'],
+    ['Thu 15:10', 'Manpower · two operators moved to L3', '48 min', '—', 'var(--fx-warning)'],
+    ['Fri 11:20', 'Machine · same head, second failure', '26 min', 'MT-2026-0421', 'var(--fx-danger)']
+  ], 'Two failures on the same head in two days. The machine went for a bearing change on Saturday — this is why the plan for W33 carries a 6% buffer on L4 and none on L3.'],
+  ['L5', 'PO-88219 · Bestseller polo', '14,300', '14,010', -2.0, 'Clean week', 'var(--fx-success)', [], 'Nothing to learn. A clean week is worth recording as clean.'],
+  ['L6', 'PO-88231 · H&M shirt', '10,450', '8,260', -21.0, 'Style changeover took 2 days, planned for 1', 'var(--fx-danger)', [
+    ['Mon–Tue', 'Style change · SH-4488 collar set', '2 days', '—', 'var(--fx-danger)']
+  ], 'The changeover assumption is 1.5 days in the template and 2 days in reality on collar styles. Fix the template, not the line.']
+];
+
+const PRODUCTS = [
+  ['polo', 'Polo · 180gsm pique', 15.2, 0.68],
+  ['tee', 'Basic tee · 150gsm jersey', 9.4, 0.74],
+  ['shirt', "Men's shirt · woven poplin", 18.4, 0.62],
+  ['denim', 'Denim 5-pocket · 11oz', 24.6, 0.55]
+];
+
+const ACCESS = [
+  ['planner', 'edit', 'Allocates, moves and splits. Every move previews its ripple before it writes.'],
+  ['manager', 'approve', 'Reads the board and approves a scenario before it becomes the live plan.'],
+  ['merchandiser', 'view', 'Reads the board to answer buyers. Cannot move a block.'],
+  ['owner', 'view', 'Reads the capacity answer card. The board itself is detail they do not need.'],
+  ['supervisor', 'view', 'Their own line rows only — what is coming to their line and when.'],
+  ['viewer · storekeeper · qc', 'view', 'Read-only board, no scenario tools, no capacity holds.']
+];
+
+class Component extends DCLogic {
+  state = {
+    screen: 'p1', role: 'planner', ftype: 'woven', annot: true, scenario: false,
+    dragId: '', hoverWeek: 0, ripple: false, compare: false, openRow: -1,
+    product: 'polo', qty: '42,000', month: 'Oct', lines: 2, eff: 68, days: 6,
+    toast: '', mark: 'rest'
+  };
+
+  componentWillUnmount() { clearTimeout(this._t); }
+
+  flash(msg) {
+    clearTimeout(this._t);
+    this.setState({ toast: msg });
+    this._t = setTimeout(() => this.setState({ toast: '' }), 4400);
+  }
+
+  pill(active) {
+    return {
+      background: active ? 'var(--fx-bg-surface)' : 'transparent',
+      color: active ? 'var(--fx-text-primary)' : 'var(--fx-text-secondary)',
+      border: '1px solid ' + (active ? 'var(--fx-border-default)' : 'transparent'),
+      borderRadius: '6px', padding: '9px 12px', cursor: 'pointer',
+      font: "600 12.5px/1 'Plus Jakarta Sans',sans-serif", whiteSpace: 'nowrap'
+    };
+  }
+
+  ghost(on) {
+    return {
+      background: on ? 'var(--fx-text-primary)' : 'transparent',
+      color: on ? 'var(--fx-text-inverse)' : 'var(--fx-text-secondary)',
+      border: '1px solid ' + (on ? 'var(--fx-text-primary)' : 'var(--fx-border-default)'),
+      borderRadius: '8px', padding: '11px 15px', cursor: 'pointer', minHeight: '44px',
+      font: "500 12.5px/1 'JetBrains Mono',monospace", whiteSpace: 'nowrap'
+    };
+  }
+
+  chip(level) {
+    const base = {
+      font: "500 11px/1 'JetBrains Mono',monospace", letterSpacing: '.05em', textTransform: 'uppercase',
+      borderRadius: '4px', padding: '6px 8px', display: 'inline-block', whiteSpace: 'nowrap'
+    };
+    if (level === 'view') return { ...base, color: 'var(--fx-text-secondary)', background: 'var(--fx-bg-sunken)', border: '1px solid transparent' };
+    if (level === 'edit') return { ...base, color: 'var(--fx-text-primary)', border: '1px solid var(--fx-border-strong)' };
+    return { ...base, color: 'var(--fx-text-primary)', border: '1px solid var(--fx-text-primary)', boxShadow: 'inset 3px 0 0 var(--fx-accent)', paddingLeft: '12px' };
+  }
+
+  renderVals() {
+    const s = this.state;
+    const mode = s.mode || 'light';
+    const role = s.role, ft = s.ftype, screen = s.screen;
+    const isComposite = ft === 'knit-composite';
+    const canEdit = role === 'planner';
+    const canApply = role === 'manager';
+    const ownLines = role === 'supervisor' ? ['L3', 'L4'] : null;
+
+    const groupSrc = isComposite ? [KNIT_GROUP].concat(SEW) : SEW;
+    const groups = groupSrc.map((g, gi) => ({
+      name: g[0], meta: g[1],
+      flow: gi === 0 && isComposite ? 'greige → dyeing → store, 2 days behind knitting' : '',
+      headStyle: {
+        display: 'flex', alignItems: 'center', gap: '14px', padding: '10px 16px',
+        background: gi === 0 && isComposite ? 'var(--fx-accent-subtle)' : 'var(--fx-bg-sunken)',
+        borderBottom: '1px solid var(--fx-border-subtle)', borderTop: gi === 0 ? 'none' : '1px solid var(--fx-border-default)'
+      },
+      rows: g[2].filter(r => !ownLines || ownLines.indexOf(r[0]) > -1 || isComposite).map(r => {
+        const dim = ownLines && ownLines.indexOf(r[0]) === -1;
+        return {
+          name: r[0], cap: r[1],
+          nameColor: dim ? 'var(--fx-text-tertiary)' : 'var(--fx-text-primary)',
+          rowStyle: {
+            display: 'grid', gridTemplateColumns: '172px repeat(8, 1fr)', gridTemplateRows: '1fr',
+            borderBottom: '1px solid var(--fx-border-subtle)', minHeight: '68px', position: 'relative'
+          },
+          cells: WEEKS.map((w, wi) => ({
+            enter: () => { if (s.dragId) this.setState({ hoverWeek: wi + 1 }); },
+            style: {
+              gridColumn: (wi + 2) + ' / span 1', gridRow: 1,
+              borderRight: wi === 7 ? 'none' : '1px solid var(--fx-border-subtle)',
+              background: wi === 0 ? 'rgba(225,179,52,.05)' : 'transparent'
+            }
+          })),
+          blocks: r[2].map(b => {
+            const t = TONE[b[5]];
+            const isDrag = s.dragId === r[0] + b[0] + b[3];
+            const over = b[5] === 'over';
+            return {
+              po: b[0], label: b[2], warn: b[6],
+              grab: () => { if (canEdit) this.setState({ dragId: r[0] + b[0] + b[3], hoverWeek: 0 }); },
+              style: {
+                gridColumn: (b[3] + 1) + ' / span ' + b[4], gridRow: 1,
+                margin: '8px 5px', borderRadius: '6px', padding: '9px 11px',
+                display: 'flex', flexDirection: 'column', gap: '3px', justifyContent: 'center',
+                cursor: canEdit ? 'grab' : 'default', overflow: 'hidden', position: 'relative',
+                color: b[5] === 'free' ? 'var(--fx-text-tertiary)' : 'var(--fx-text-primary)',
+                border: '1px solid ' + t[0],
+                boxShadow: isDrag ? '0 6px 16px rgba(24,29,41,.18)' : 'none',
+                opacity: isDrag ? 0.75 : 1,
+                background: over
+                  ? 'repeating-linear-gradient(146deg, ' + t[1] + ' 0 7px, ' + t[2] + ' 7px 11px)'
+                  : 'linear-gradient(90deg, ' + t[1] + ' 0%, ' + t[2] + ' 62%, ' + t[2] + ' 100%)'
+              }
+            };
+          })
+        };
+      })
+    }));
+
+    const p = PRODUCTS.find(x => x[0] === s.product) || PRODUCTS[0];
+    const qtyNum = Number(String(s.qty).replace(/[^0-9]/g, '')) || 0;
+    const opsPerLine = 38;
+    const dailyPerLine = Math.round(opsPerLine * 600 * (s.eff / 100) / p[2]);
+    const daily = dailyPerLine * s.lines;
+    const daysNeeded = daily ? Math.ceil(qtyNum / daily) : 0;
+    const weeksNeeded = daily ? Math.ceil(daysNeeded / s.days) : 0;
+    const freeFrom = s.month === 'Sep' ? 'W37 · 07 Sep' : s.month === 'Oct' ? 'W41 · 05 Oct' : 'W45 · 02 Nov';
+    const roomWeeks = s.month === 'Sep' ? 3 : s.month === 'Oct' ? 5 : 6;
+    const fits = weeksNeeded <= roomWeeks;
+    const tight = weeksNeeded === roomWeeks;
+
+    const actuals = ACTUALS.filter(a => !ownLines || ownLines.indexOf(a[0]) > -1).map((a, i) => ({
+      line: a[0], order: a[1], planned: a[2], actual: a[3],
+      variance: (a[4] >= 0 ? '+' : '−') + Math.abs(a[4]).toFixed(1) + '%',
+      why: a[5], sel: a[6], selW: Math.abs(a[4]) > 15 ? '5px' : '3px',
+      chip: {
+        font: "500 11.5px/1 'JetBrains Mono',monospace", letterSpacing: '.04em',
+        color: a[6], border: '1px solid ' + a[6], borderRadius: '4px', padding: '6px 8px',
+        display: 'inline-block', whiteSpace: 'nowrap'
+      },
+      open: s.openRow === i, chev: s.openRow === i ? '▾' : '▸',
+      toggle: () => this.setState(x => ({ openRow: x.openRow === i ? -1 : i })),
+      downtime: a[7].map(d => ({ when: d[0], what: d[1], mins: d[2], ticket: d[3], c: d[4] })),
+      lesson: a[8],
+      rowStyle: {
+        display: 'flex', alignItems: 'stretch', borderBottom: '1px solid var(--fx-border-subtle)', cursor: 'pointer',
+        background: s.openRow === i ? 'var(--fx-bg-hover)' : 'transparent'
+      }
+    }));
+
+    const anim = { rest: () => 'none' }[s.mark] || (() => 'none');
+
+    return {
+      screens: [['p1', 'P1 board'], ['p2', 'P2 capacity answer'], ['p4', 'P4 actuals']].map(x => ({
+        label: x[1], pick: () => this.setState({ screen: x[0] }), style: this.pill(screen === x[0])
+      })),
+      role, userName: USERS[role],
+      setRole: (e) => this.setState({ role: e.target.value, dragId: '' }),
+      ftype: ft, setFtype: (e) => this.setState({ ftype: e.target.value }),
+      annot: s.annot, annotLabel: s.annot ? 'on' : 'off', annotBtn: this.ghost(s.annot),
+      mode, modeLabel: mode === 'dark' ? 'dark' : 'light', modeBtn: this.ghost(mode === 'dark'),
+      logoSrc: 'uploads/fabricxai-logo-' + (mode === 'dark' ? 'dark' : 'light') + '.png',
+      toggleMode: () => this.setState(x => ({ mode: x.mode === 'dark' ? 'light' : 'dark' })),
+      toggleAnnot: () => this.setState(x => ({ annot: !x.annot })),
+
+      shellStyle: s.scenario
+        ? { background: 'var(--fx-bg-sunken)', boxShadow: 'inset 0 0 0 3px var(--fx-accent-pressed)' }
+        : { background: 'var(--fx-bg-canvas)' },
+      scenario: s.scenario,
+
+      nav: [['p1', 'Board'], ['p2', 'Capacity'], ['p4', 'Plan vs actual']].map(n => ({
+        label: n[1], pick: () => this.setState({ screen: n[0] }),
+        style: {
+          display: 'flex', alignItems: 'center', gap: '11px', padding: '11px 12px', borderRadius: '8px', cursor: 'pointer',
+          minHeight: '44px', font: "500 14px/1 'Plus Jakarta Sans',sans-serif",
+          background: screen === n[0] ? 'var(--fx-bg-selected)' : 'transparent',
+          color: screen === n[0] ? 'var(--fx-text-primary)' : 'var(--fx-text-secondary)'
+        },
+        marker: { width: '2px', height: '15px', transform: 'skewX(-34deg)', background: screen === n[0] ? 'var(--fx-accent)' : 'transparent', flexShrink: 0 }
+      })),
+      scopeNote: ownLines
+        ? 'L3 and L4 only. You see what is coming to your lines, not the whole factory.'
+        : canEdit ? 'Every floor. You are the only role that can move a block.'
+          : 'Read the whole board. Moves belong to the planner.',
+
+      isP1: screen === 'p1', isP2: screen === 'p2', isP4: screen === 'p4',
+      canEdit, canApply, cannotApply: !canApply,
+
+      boardTitle: isComposite ? 'Knitting and sewing · 8 weeks' : 'Sewing floors · 8 weeks',
+      boardLead: isComposite
+        ? 'Knitting is planned in kilos a day and sits above the sewing floors because it feeds them. Greige leaves knitting, spends two days in dyeing, and only then can a sewing line be loaded against it.'
+        : 'Weeks across, lines down, grouped by floor. Drag a block and nothing is written until you have read what it moves.',
+      weeks: WEEKS.map((w, i) => ({
+        no: w[0], date: w[1],
+        color: i === 0 ? 'var(--fx-accent-pressed)' : 'var(--fx-text-primary)',
+        headStyle: {
+          padding: '11px 10px', display: 'flex', flexDirection: 'column', gap: '3px',
+          borderLeft: '1px solid var(--fx-border-subtle)',
+          background: i === 0 ? 'rgba(225,179,52,.10)' : 'transparent',
+          boxShadow: i === 0 ? 'inset 2px 0 0 var(--fx-accent)' : 'none'
+        }
+      })),
+      groups,
+      legend: [
+        { label: 'on plan', swatch: { width: '22px', height: '11px', borderRadius: '3px', border: '1px solid var(--fx-success)', background: 'linear-gradient(90deg, rgba(47,125,91,.16), rgba(47,125,91,.42))' } },
+        { label: 'critical path', swatch: { width: '22px', height: '11px', borderRadius: '3px', border: '1px solid var(--fx-text-primary)', background: 'linear-gradient(90deg, rgba(24,29,41,.10), rgba(24,29,41,.30))' } },
+        { label: 'overloaded', swatch: { width: '22px', height: '11px', borderRadius: '3px', border: '1px solid var(--fx-danger)', background: 'repeating-linear-gradient(146deg, rgba(178,58,50,.14) 0 6px, rgba(178,58,50,.36) 6px 10px)' } },
+        { label: 'this week', swatch: { width: '3px', height: '14px', background: 'var(--fx-accent)' } }
+      ],
+      dragHint: canEdit
+        ? (s.dragId ? 'drop it on a week to preview the move' : 'drag a block sideways to move it')
+        : 'read-only for ' + role,
+      overloadNote: isComposite
+        ? 'KN-05…06 is hatched because dyeing cannot take 520 kg/day — knitting is not the bottleneck, the dye house is'
+        : 'L4 in W35 is hatched at 118% — the overflow has to move or the order splits again',
+
+      dropEnd: () => {
+        if (!s.dragId) return;
+        if (s.hoverWeek && s.hoverWeek > 1) this.setState({ ripple: true, dragId: '' });
+        else this.setState({ dragId: '', hoverWeek: 0 });
+      },
+      ripple: s.ripple,
+      closeRipple: () => this.setState({ ripple: false, hoverWeek: 0 }),
+      confirmRipple: () => {
+        this.setState({ ripple: false, hoverWeek: 0 });
+        this.flash(s.scenario
+          ? 'Moved in the scenario · 4 deltas waiting in compare'
+          : 'Moved · PO-88219 overflow now W37 · 3 TNAs rescheduled');
+      },
+      rippleTitle: 'Move PO-88219 overflow from W35 to W37 on L4',
+      rippleLead: 'The overload clears, but the ship date moves. Nothing is written until you confirm.',
+      rippleRows: RIPPLE.map(r => ({
+        name: r[0], from: r[1], to: r[2], effect: r[3],
+        c: r[1] === r[2] ? 'var(--fx-success)' : 'var(--fx-warning)'
+      })),
+      rippleVerdict: 'Ex-factory goes to 04 Sep, six days before the LC last shipment. Bestseller has a 5-day tolerance in the PO, so this is a call to their merchandiser rather than an amendment.',
+      rippleVerdictColor: 'var(--fx-warning)',
+      rippleCta: s.scenario ? 'Keep it in the scenario' : 'Write the move',
+
+      forkBtn: this.ghost(s.scenario),
+      forkLabel: s.scenario ? 'scenario · on' : 'fork a scenario',
+      toggleScenario: () => {
+        const on = !s.scenario;
+        this.setState({ scenario: on, compare: false });
+        this.flash(on ? 'Scenario forked from the live plan · nothing you do here is live' : 'Scenario discarded · the live plan is untouched');
+      },
+      deltaCount: DELTAS.length + ' changes',
+      deltas: DELTAS.map(d => ({ po: d[0], buyer: d[1], headline: d[2], detail: d[3], c: d[4] })),
+      compare: s.compare,
+      openCompare: () => this.setState({ compare: true }),
+      closeCompare: () => this.setState({ compare: false }),
+      applyLabel: 'Apply to the live plan',
+      applyScenario: () => { this.setState({ compare: false, scenario: false }); this.flash('Scenario applied · live board rewritten · 4 TNAs regenerated'); },
+      submitScenario: () => { this.setState({ compare: false }); this.flash('Sent to the approve inbox · approver: manager (Shafiq Alam)'); },
+      discardScenario: () => { this.setState({ compare: false, scenario: false }); this.flash('Scenario discarded · nothing was written'); },
+
+      products: PRODUCTS.map(x => ({ v: x[0], t: x[1] })),
+      product: s.product, setProduct: (e) => this.setState({ product: e.target.value }),
+      qty: s.qty, setQty: (e) => this.setState({ qty: e.target.value }),
+      month: s.month, setMonth: (e) => this.setState({ month: e.target.value }),
+      assumptions: [
+        {
+          label: 'Lines available', basis: 'from ' + freeFrom, value: s.lines + (s.lines === 1 ? ' line' : ' lines'),
+          dec: () => this.setState(x => ({ lines: Math.max(1, x.lines - 1) })),
+          inc: () => this.setState(x => ({ lines: Math.min(4, x.lines + 1) }))
+        },
+        {
+          label: 'Efficiency held', basis: p[1] + ' · last 3 orders averaged ' + Math.round(p[3] * 100) + '%', value: s.eff + '%',
+          dec: () => this.setState(x => ({ eff: Math.max(40, x.eff - 2) })),
+          inc: () => this.setState(x => ({ eff: Math.min(85, x.eff + 2) }))
+        },
+        {
+          label: 'Working days a week', basis: 'Friday off, no second shift', value: s.days + ' days',
+          dec: () => this.setState(x => ({ days: Math.max(5, x.days - 1) })),
+          inc: () => this.setState(x => ({ days: Math.min(7, x.days + 1) }))
+        }
+      ],
+      answer: {
+        verdict: fits ? (tight ? 'yes, but it is tight' : 'yes') : 'not in that month',
+        border: fits ? (tight ? 'var(--fx-warning)' : 'var(--fx-success)') : 'var(--fx-danger)',
+        headline: fits
+          ? qtyNum.toLocaleString('en-US') + ' ' + p[1].split(' · ')[0].toLowerCase() + ' can ship in ' + s.month + ', starting ' + freeFrom
+          : qtyNum.toLocaleString('en-US') + ' needs ' + weeksNeeded + ' weeks and only ' + roomWeeks + ' are free before the ' + s.month + ' cut-off',
+        body: fits
+          ? 'On ' + s.lines + (s.lines === 1 ? ' line' : ' lines') + ' at ' + s.eff + '% we make ' + daily.toLocaleString('en-US') + ' a day, so it takes ' + daysNeeded + ' working days. ' + (tight ? 'That uses every free week — one machine failure and it slips.' : 'That leaves ' + (roomWeeks - weeksNeeded) + ' weeks of slack for sampling and fabric.')
+          : 'Either move ' + (weeksNeeded - roomWeeks) + ' weeks of it into the following month, or add a line — a third line brings it inside the window at the same efficiency.',
+        figures: [
+          { k: 'Per day', v: daily.toLocaleString('en-US') + ' pcs', c: 'var(--fx-text-primary)' },
+          { k: 'Working days', v: String(daysNeeded), c: 'var(--fx-text-primary)' },
+          { k: 'Weeks needed', v: weeksNeeded + ' of ' + roomWeeks, c: fits ? 'var(--fx-text-primary)' : 'var(--fx-danger)' },
+          { k: 'Earliest start', v: freeFrom, c: 'var(--fx-text-primary)' }
+        ],
+        stamp: s.lines + ' lines · ' + opsPerLine + ' operators each · SMV ' + p[2] + ' · ' + s.eff + '% efficiency · ' + s.days + '-day week · 600 min/day · no second shift · asked by ' + USERS[role] + ' on 12 Aug 2026'
+      },
+      hold: () => this.flash('Capacity held to 17 Aug · ' + freeFrom + ' · the board shows it as reserved, not allocated'),
+      shot: () => this.flash('Card copied as an image · assumptions and date are baked in'),
+
+      actuals,
+      access: ACCESS.map(a => ({ role: a[0], level: a[1], note: a[2], chip: this.chip(a[1]) })),
+      toast: s.toast, clearToast: () => this.setState({ toast: '' }),
+      markLabel: 'MARBIM · rest',
+      markStage: { position: 'relative', width: '32px', height: '32px', flexShrink: 0 },
+      markSlashes: SLASH_VEC.map((v, i) => ({
+        src: 'assets/mark/' + (mode === 'dark' ? 'w-' : 'i-') + (i + 1) + '.png',
+        style: { position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', '--dx': v.dx, '--dy': v.dy, transformOrigin: 'center', animation: anim(i) }
+      }))
+    };
+  }
+}
+
+</script>
+</body>
+</html>

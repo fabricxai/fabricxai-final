@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Anek+Bangla:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #F3F1EC; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  [data-mode="dark"] { --fx-bg-canvas:#0F131B !important; --fx-bg-surface:#181D29 !important; --fx-bg-raised:#212736 !important; --fx-bg-sunken:#0B0E15 !important; --fx-bg-hover:rgba(255,255,255,.05) !important; --fx-bg-selected:rgba(225,179,52,.17) !important; --fx-border-subtle:#252B3A !important; --fx-border-default:#343B4C !important; --fx-border-strong:#4E576B !important; --fx-text-primary:#F4F3F0 !important; --fx-text-secondary:#AEB5C4 !important; --fx-text-tertiary:#7C8497 !important; --fx-text-disabled:#565E71 !important; --fx-text-inverse:#181D29 !important; --fx-accent-hover:#EBC352 !important; --fx-accent-pressed:#F2D077 !important; --fx-accent-subtle:rgba(225,179,52,.14) !important; --fx-success:#4FA97D !important; --fx-warning:#D99A3F !important; --fx-danger:#E0665C !important; --fx-info:#6D9BE8 !important; --fx-focus:#E1B334 !important; --fx-sh1:0 0 0 1px #252B3A !important; --fx-sh2:0 0 0 1px #252B3A !important; --fx-sh3:0 0 0 1px #343B4C !important; }
+  body:has([data-mode="dark"]) { background: #0B0E15; }
+  a { color: #181D29; text-decoration: underline; text-underline-offset: 3px; }
+  a:hover { color: #B88C21; }
+  @keyframes fx-orbit { 0%, 100% { transform: rotate(-13deg); opacity: .45; } 50% { transform: rotate(13deg); opacity: 1; } }
+  @keyframes fx-breathe { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(calc(var(--dx) * 3.5%), calc(var(--dy) * 3.5%)); } }
+  @keyframes fx-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
+</style>
+</helmet>
+
+<div data-mode="{{ mode }}" style="--fx-bg-canvas:#FBFAF8; --fx-bg-surface:#FFFFFF; --fx-bg-sunken:#F3F1EC; --fx-bg-hover:rgba(24,29,41,.035); --fx-bg-selected:rgba(225,179,52,.12); --fx-border-subtle:#E7E4DE; --fx-border-default:#D6D2C9; --fx-border-strong:#A9A49A; --fx-text-primary:#181D29; --fx-text-secondary:#4C5364; --fx-text-tertiary:#767E90; --fx-text-disabled:#A8AEBB; --fx-text-inverse:#FBFAF8; --fx-accent:#E1B334; --fx-accent-hover:#CFA22B; --fx-accent-pressed:#B88C21; --fx-accent-subtle:#FAF1DA; --fx-accent-on:#181D29; --fx-success:#2F7D5B; --fx-warning:#B4741C; --fx-danger:#B23A32; --fx-info:#2F5FA8; --fx-focus:#181D29; --fx-sh1:0 1px 2px rgba(24,29,41,.06); --fx-sh2:0 4px 12px rgba(24,29,41,.08); --fx-sh3:0 12px 32px rgba(24,29,41,.12); font-family:'Plus Jakarta Sans',system-ui,sans-serif; color:var(--fx-text-primary); min-height:100vh; background:var(--fx-bg-sunken);">
+
+<div style="position:sticky; top:0; z-index:60; background:var(--fx-bg-surface); border-bottom:1px solid var(--fx-border-default); padding:10px 20px; display:flex; align-items:center; gap:18px; flex-wrap:wrap;">
+  <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Prototype bar — not product chrome</div>
+  <div style="display:flex; gap:2px; background:var(--fx-bg-sunken); border-radius:8px; padding:3px;">
+    <sc-for list="{{ screens }}" as="s" hint-placeholder-count="5">
+      <button onClick="{{ s.pick }}" style="{{ s.style }}">{{ s.label }}</button>
+    </sc-for>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px;">
+    <span style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">role</span>
+    <select onChange="{{ setRole }}" value="{{ role }}" style="background:var(--fx-bg-surface); color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:4px; padding:7px 9px; font:500 12px/1 'JetBrains Mono',monospace;">
+      <option value="supervisor">supervisor</option>
+      <option value="manager">manager</option>
+      <option value="planner">planner</option>
+      <option value="merchandiser">merchandiser</option>
+      <option value="owner">owner</option>
+      <option value="mechanic">mechanic</option>
+    </select>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px;">
+    <span style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">factory</span>
+    <select onChange="{{ setFtype }}" value="{{ ftype }}" style="background:var(--fx-bg-surface); color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:4px; padding:7px 9px; font:500 12px/1 'JetBrains Mono',monospace;">
+      <option value="woven">woven</option>
+      <option value="knit">knit</option>
+      <option value="knit-composite">knit-composite</option>
+    </select>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px;">
+    <span style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">state</span>
+    <select onChange="{{ setSt }}" value="{{ st }}" style="background:var(--fx-bg-surface); color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:4px; padding:7px 9px; font:500 12px/1 'JetBrains Mono',monospace;">
+      <sc-for list="{{ stOptions }}" as="o" hint-placeholder-count="3">
+        <option value="{{ o.v }}">{{ o.t }}</option>
+      </sc-for>
+    </select>
+  </div>
+  <div style="display:flex; align-items:center; gap:10px; margin-left:auto;">
+    <button onClick="{{ toggleMode }}" style="{{ modeBtn }}">{{ modeLabel }}</button>
+    <button onClick="{{ toggleAnnot }}" style="{{ annotBtn }}">actions {{ annotLabel }}</button>
+  </div>
+</div>
+
+<sc-if value="{{ isP2 }}" hint-placeholder-val="{{ false }}">
+  <div style="--fx-bg-canvas:#0F131B; --fx-bg-surface:#181D29; --fx-bg-raised:#212736; --fx-bg-sunken:#0B0E15; --fx-border-subtle:#252B3A; --fx-border-default:#343B4C; --fx-border-strong:#4E576B; --fx-text-primary:#F4F3F0; --fx-text-secondary:#AEB5C4; --fx-text-tertiary:#7C8497; --fx-accent:#E1B334; --fx-success:#4FA97D; --fx-warning:#D99A3F; --fx-danger:#E0665C; background:var(--fx-bg-canvas); min-height:calc(100vh - 49px); padding:32px 36px 40px; display:flex; flex-direction:column; gap:28px;">
+    <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:32px; flex-wrap:wrap;">
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <div style="display:flex; align-items:center; gap:14px;">
+          <div style="width:11px; height:11px; border-radius:999px; background:var(--fx-accent); animation:fx-pulse 2s ease-in-out infinite;"></div>
+          <div style="font:500 20px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">live · hour 14–15</div>
+        </div>
+        <div style="font:700 52px/1.1 'Plus Jakarta Sans',sans-serif; letter-spacing:-.022em; color:var(--fx-text-primary);">Sewing floor</div>
+        <div style="font:600 30px/1.35 'Anek Bangla','Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">সিউইং ফ্লোর · ১২ অগাস্ট ২০২৬</div>
+      </div>
+      <div style="display:flex; gap:44px; flex-wrap:wrap;">
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div style="font:600 22px/1.35 'Anek Bangla','Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">মোট লক্ষ্য</div>
+          <div style="font:600 46px/1.05 'JetBrains Mono',monospace; color:var(--fx-text-secondary);">8,305</div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div style="font:600 22px/1.35 'Anek Bangla','Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">মোট উৎপাদন</div>
+          <div style="font:600 46px/1.05 'JetBrains Mono',monospace; color:var(--fx-text-primary);">7,541</div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div style="font:600 22px/1.35 'Anek Bangla','Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">দক্ষতা</div>
+          <div style="font:600 46px/1.05 'JetBrains Mono',monospace; color:var(--fx-warning);">91%</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="height:12px; background-image:repeating-linear-gradient(115deg, var(--fx-border-default) 0 2px, transparent 2px 11px);"></div>
+
+    <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:20px;">
+      <sc-for list="{{ board }}" as="b" hint-placeholder-count="6">
+        <div style="display:flex; background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden;">
+          <div style="width:8px; flex-shrink:0; background:{{ b.sel }};"></div>
+          <div style="padding:22px 24px; display:flex; flex-direction:column; gap:16px; flex:1; min-width:0;">
+            <div style="display:flex; align-items:flex-start; gap:16px;">
+              <div style="display:flex; flex-direction:column; gap:2px; min-width:0;">
+                <div style="font:700 44px/1 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em; color:var(--fx-text-primary);">{{ b.line }}</div>
+                <div style="font:500 19px/1.35 'Anek Bangla','Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">লাইন</div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:4px; margin-left:auto; align-items:flex-end; min-width:0;">
+                <div style="font:500 20px/1.2 'JetBrains Mono',monospace; color:var(--fx-text-secondary);">{{ b.po }}</div>
+                <div style="font:400 18px/1.3 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">{{ b.buyer }}</div>
+              </div>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:11px;">
+              <div style="display:flex; align-items:baseline; gap:12px;">
+                <div style="font:500 19px/1.35 'Anek Bangla','Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary); width:96px; flex-shrink:0;">লক্ষ্য</div>
+                <div style="font:600 30px/1.05 'JetBrains Mono',monospace; color:var(--fx-text-secondary);">{{ b.target }}</div>
+              </div>
+              <div style="height:14px; border-radius:999px; background:var(--fx-bg-sunken); overflow:hidden;"><div style="height:100%; width:100%; background:var(--fx-border-strong);"></div></div>
+              <div style="display:flex; align-items:baseline; gap:12px;">
+                <div style="font:500 19px/1.35 'Anek Bangla','Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary); width:96px; flex-shrink:0;">উৎপাদন</div>
+                <div style="font:600 30px/1.05 'JetBrains Mono',monospace; color:var(--fx-text-primary);">{{ b.actual }}</div>
+              </div>
+              <div style="height:14px; border-radius:999px; background:var(--fx-bg-sunken); overflow:hidden;"><div style="height:100%; width:{{ b.pct }}; background:{{ b.sel }};"></div></div>
+            </div>
+
+            <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+              <div style="display:flex; align-items:baseline; gap:10px;">
+                <div style="font:600 40px/1 'JetBrains Mono',monospace; color:{{ b.sel }};">{{ b.eff }}</div>
+                <div style="font:500 19px/1.35 'Anek Bangla','Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">দক্ষতা</div>
+              </div>
+              <sc-if value="{{ b.down }}" hint-placeholder-val="{{ false }}">
+                <div style="{{ b.downStyle }}">
+                  <div style="width:9px; height:9px; border-radius:999px; background:{{ b.downDot }}; flex-shrink:0;"></div>
+                  <div style="font:600 18px/1.3 'Anek Bangla','Plus Jakarta Sans',sans-serif;">{{ b.down }}</div>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap; padding-top:4px;">
+      <div style="font:500 17px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">updated 14:41 · refreshes every hour on the hour</div>
+      <div style="font:500 18px/1.4 'Anek Bangla','Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary); margin-left:auto;">এই বোর্ডে কিছু চাপা যায় না — শুধু দেখার জন্য</div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ notBoard }}" hint-placeholder-val="{{ true }}">
+<div style="{{ densityVars }}">
+<div style="display:flex; align-items:stretch; min-height:calc(100vh - 49px);">
+
+  <div style="width:250px; flex-shrink:0; background:var(--fx-bg-surface); border-right:1px solid var(--fx-border-subtle); padding:20px 14px; display:flex; flex-direction:column; gap:20px;">
+    <img src="{{ logoSrc }}" alt="FabricX AI" style="height:26px; width:auto; align-self:flex-start; max-width:100%; object-fit:contain;" />
+    <div style="display:flex; flex-direction:column; gap:2px;">
+      <sc-for list="{{ nav }}" as="n" hint-placeholder-count="4">
+        <div onClick="{{ n.pick }}" style="{{ n.style }}">
+          <div style="{{ n.marker }}"></div>{{ n.label }}
+        </div>
+      </sc-for>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:8px;">
+      <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Your lines</div>
+      <div style="font:400 13px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ scopeNote }}</div>
+    </div>
+    <div style="margin-top:auto; display:flex; flex-direction:column; gap:7px;">
+      <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Signed in</div>
+      <div style="font:500 14px/1.3 'Plus Jakarta Sans',sans-serif;">{{ userName }}</div>
+      <div style="font:400 12px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ role }} · {{ densityLabel }}</div>
+    </div>
+  </div>
+
+  <div style="flex:1; min-width:0; background:var(--fx-bg-canvas); position:relative; padding:0 0 120px;">
+
+  <sc-if value="{{ isP1 }}" hint-placeholder-val="{{ true }}">
+    <div style="padding:24px 26px; display:flex; flex-direction:column; gap:var(--lt-gap); max-width:1180px;">
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
+          <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Floor · hourly</div>
+          <div style="font:500 12px/1 'JetBrains Mono',monospace; color:var(--fx-text-secondary); margin-left:auto;">12 Aug 2026 · shift 08:00–20:00 · now 14:41</div>
+        </div>
+        <div style="font:700 var(--lt-h1)/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">Hourly output</div>
+        <div style="display:flex; gap:3px; background:var(--fx-bg-sunken); border-radius:8px; padding:4px; flex-wrap:wrap;">
+          <sc-for list="{{ lineTabs }}" as="t" hint-placeholder-count="2">
+            <button onClick="{{ t.pick }}" style="{{ t.style }}">{{ t.label }}</button>
+          </sc-for>
+        </div>
+        <div style="font:400 13px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ switcherNote }}</div>
+      </div>
+
+      <sc-if value="{{ mechanicView }}" hint-placeholder-val="{{ false }}">
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:20px; display:flex; flex-direction:column; gap:10px; box-shadow:var(--fx-sh1);">
+          <div style="font:600 var(--lt-h3)/1.3 'Plus Jakarta Sans',sans-serif;">Mechanic view — downtime only</div>
+          <div style="font:400 var(--lt-sm)/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">You see stoppages and the machines behind them across every line. Hourly counts belong to the supervisor, so those rows are not shown to you at all.</div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ downtimeOpen }}" hint-placeholder-val="{{ false }}">
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-danger); border-radius:8px; padding:20px; display:flex; flex-direction:column; gap:14px;">
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            <div style="width:10px; height:10px; border-radius:999px; background:var(--fx-danger); flex-shrink:0; animation:fx-pulse 2s ease-in-out infinite;"></div>
+            <div style="font:600 var(--lt-h3)/1.25 'Plus Jakarta Sans',sans-serif;">Line 4 stopped — 34 minutes</div>
+            <div style="font:500 12px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-danger); margin-left:auto;">open</div>
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:16px;">
+            <div style="display:flex; flex-direction:column; gap:4px;">
+              <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">Reason</div>
+              <div style="font:600 var(--lt-body)/1.3 'Plus Jakarta Sans',sans-serif;">Machine · needle bar</div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:4px;">
+              <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">Machine</div>
+              <div style="font:500 var(--lt-body)/1.3 'JetBrains Mono',monospace;">SNL-04-118</div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:4px;">
+              <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">Ticket</div>
+              <div style="font:500 var(--lt-body)/1.3 'JetBrains Mono',monospace; color:var(--fx-info);">MT-2026-0417</div>
+            </div>
+          </div>
+          <div style="font:400 var(--lt-sm)/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">Logging a machine reason opened a maintenance ticket by itself and paged Rafiq (mechanic, floor 3). 34 minutes at 210 pcs/hour is about 119 pieces — the hour's target is already unreachable.</div>
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <sc-if value="{{ canEnter }}" hint-placeholder-val="{{ true }}">
+              <button onClick="{{ resolveDowntime }}" style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:15px 22px; font:600 var(--lt-body)/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:var(--lt-target);" style-hover="background:var(--fx-accent-hover)">Running again</button>
+            </sc-if>
+            <button style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:8px; padding:14px 18px; font:600 var(--lt-sm)/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:var(--lt-target);">Add a note</button>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showHours }}" hint-placeholder-val="{{ true }}">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(460px, 1fr)); gap:var(--lt-gap); align-items:start;">
+          <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+            <div style="display:flex; align-items:center; gap:12px; padding:14px 18px; border-bottom:1px solid var(--fx-border-subtle); flex-wrap:wrap;">
+              <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">{{ line.label }} · {{ line.po }} · {{ line.style }}</div>
+              <div style="font:500 var(--lt-sm)/1.3 'JetBrains Mono',monospace; color:{{ line.effColor }}; margin-left:auto;">{{ line.eff }} to target</div>
+            </div>
+            <div style="overflow-x:auto;">
+            <div style="min-width:540px;">
+              <div style="display:flex; align-items:stretch; background:var(--fx-bg-sunken); border-bottom:1px solid var(--fx-border-subtle);">
+                <div style="width:5px; flex-shrink:0;"></div>
+                <div style="flex:1; min-width:0; display:grid; grid-template-columns:104px 1fr 1fr 1fr 92px; gap:12px; padding:11px 18px 11px 15px; font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">
+                  <div>Hour</div><div style="text-align:right;">Target</div><div style="text-align:right;">Actual</div><div style="text-align:right;">Cum</div><div style="text-align:right;">±</div>
+                </div>
+              </div>
+              <sc-for list="{{ hours }}" as="h" hint-placeholder-count="12">
+                <div style="{{ h.rowStyle }}">
+                  <div style="width:{{ h.selW }}; flex-shrink:0; background:{{ h.sel }};"></div>
+                  <div style="flex:1; min-width:0; display:grid; grid-template-columns:104px 1fr 1fr 1fr 92px; gap:12px; padding:12px 18px 12px 15px; align-items:center; min-height:var(--lt-row);">
+                    <div style="display:flex; flex-direction:column; gap:3px;">
+                      <div style="font:500 var(--lt-sm)/1.2 'JetBrains Mono',monospace; color:{{ h.labelColor }};">{{ h.hour }}</div>
+                      <sc-if value="{{ h.tag }}" hint-placeholder-val="{{ false }}">
+                        <div style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ h.tag }}</div>
+                      </sc-if>
+                    </div>
+                    <div style="font:400 var(--lt-sm)/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); text-align:right;">{{ h.target }}</div>
+                    <div style="font:{{ h.actualWeight }} var(--lt-num)/1.05 'JetBrains Mono',monospace; color:{{ h.actualColor }}; text-align:right;">{{ h.actual }}</div>
+                    <div style="font:400 var(--lt-sm)/1.3 'JetBrains Mono',monospace; color:var(--fx-text-secondary); text-align:right;">{{ h.cum }}</div>
+                    <div style="font:500 var(--lt-sm)/1.3 'JetBrains Mono',monospace; color:{{ h.varColor }}; text-align:right;">{{ h.variance }}</div>
+                  </div>
+                </div>
+              </sc-for>
+              <div style="display:flex; align-items:center; gap:14px; padding:15px 18px; background:var(--fx-bg-sunken); border-top:1px solid var(--fx-border-subtle); flex-wrap:wrap;">
+                <div style="font:500 var(--lt-sm)/1.3 'JetBrains Mono',monospace; color:var(--fx-text-secondary);">Day so far</div>
+                <div style="font:600 var(--lt-num)/1.05 'JetBrains Mono',monospace; margin-left:auto;">{{ line.cumActual }}</div>
+                <div style="font:400 var(--lt-sm)/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">of {{ line.cumTarget }}</div>
+              </div>
+            </div>
+            </div>
+          </div>
+
+          <sc-if value="{{ canEnter }}" hint-placeholder-val="{{ true }}">
+            <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:20px; display:flex; flex-direction:column; gap:16px; box-shadow:var(--fx-sh2);">
+              <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
+                <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Hour 14–15</div>
+                <div style="font:400 12px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-left:auto;">target 210</div>
+              </div>
+              <div style="border:1px solid var(--fx-border-strong); border-radius:8px; padding:18px 20px; display:flex; align-items:baseline; gap:12px; background:var(--fx-bg-sunken);">
+                <div style="{{ bufStyle }}">{{ bufDisplay }}</div>
+                <div style="font:500 var(--lt-sm)/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-left:auto;">pcs</div>
+              </div>
+              <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:10px;">
+                <sc-for list="{{ keys }}" as="k" hint-placeholder-count="12">
+                  <button onClick="{{ k.press }}" style="{{ k.style }}">{{ k.label }}</button>
+                </sc-for>
+              </div>
+              <button onClick="{{ saveHour }}" style="{{ saveStyle }}">{{ saveLabel }}</button>
+              <div style="font:400 12.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">Twelve taps a shift, one line at a time. Entering an hour twice writes once — the same hour and line is one record, so a double tap on a bad connection cannot double the output.</div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ viewOnly }}" hint-placeholder-val="{{ false }}">
+            <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:20px; display:flex; flex-direction:column; gap:12px; box-shadow:var(--fx-sh1);">
+              <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Read-only for {{ role }}</div>
+              <div style="font:400 var(--lt-sm)/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ viewNote }}</div>
+              <div style="display:flex; flex-direction:column; gap:9px; padding-top:4px;">
+                <sc-for list="{{ lineSummary }}" as="l" hint-placeholder-count="6">
+                  <div style="display:flex; align-items:center; gap:12px;">
+                    <div style="font:500 13px/1.3 'JetBrains Mono',monospace; width:34px; flex-shrink:0;">{{ l.line }}</div>
+                    <div style="flex:1; height:8px; border-radius:999px; background:var(--fx-bg-sunken); overflow:hidden;"><div style="height:100%; width:{{ l.pct }}; background:{{ l.c }};"></div></div>
+                    <div style="font:500 13px/1.3 'JetBrains Mono',monospace; color:{{ l.c }}; width:46px; text-align:right; flex-shrink:0;">{{ l.eff }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:20px; display:flex; flex-direction:column; gap:16px; box-shadow:var(--fx-sh1);">
+        <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Stopped? one tap</div>
+          <div style="font:400 12.5px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-left:auto;">the clock starts on the tap, not when you finish typing</div>
+        </div>
+        <sc-if value="{{ canEnter }}" hint-placeholder-val="{{ true }}">
+          <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(168px, 1fr)); gap:12px;">
+            <sc-for list="{{ reasons }}" as="r" hint-placeholder-count="6">
+              <button onClick="{{ r.press }}" style="{{ r.style }}">
+                <div style="font:500 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; color:var(--fx-text-tertiary);">{{ r.code }}</div>
+                <div style="font:600 var(--lt-body)/1.25 'Plus Jakarta Sans',sans-serif; text-align:left;">{{ r.label }}</div>
+                <div style="font:500 15px/1.35 'Anek Bangla','Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary); text-align:left;">{{ r.bn }}</div>
+              </button>
+            </sc-for>
+          </div>
+        </sc-if>
+        <div style="display:flex; flex-direction:column; gap:9px;">
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Today's stoppages · {{ line.label }}</div>
+          <sc-for list="{{ downtimeLog }}" as="d" hint-placeholder-count="3">
+            <div style="display:flex; align-items:stretch; border:1px solid var(--fx-border-subtle); border-radius:4px; overflow:hidden;">
+              <div style="width:3px; flex-shrink:0; background:{{ d.sel }};"></div>
+              <div style="flex:1; min-width:0; display:grid; grid-template-columns:120px 1fr 132px 96px; gap:12px; padding:12px 14px; align-items:center; min-height:44px;">
+                <div style="font:500 13px/1.3 'JetBrains Mono',monospace;">{{ d.when }}</div>
+                <div style="font:400 13.5px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">{{ d.what }}</div>
+                <div style="font:400 12.5px/1.3 'JetBrains Mono',monospace; color:var(--fx-info);">{{ d.ticket }}</div>
+                <div style="font:500 13px/1.3 'JetBrains Mono',monospace; color:{{ d.sel }}; text-align:right;">{{ d.mins }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">production.enterHourly — batched, offline-idempotent on (line, hour)</div>
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">production.logDowntime — machine reason opens the machine picker and auto-creates maintenance.ticket</div>
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">production.resolveDowntime</div>
+        </div>
+      </sc-if>
+    </div>
+
+    <div style="position:sticky; bottom:0; z-index:20; background:var(--fx-bg-surface); border-top:1px solid var(--fx-border-default); box-shadow:0 -4px 12px rgba(24,29,41,.06); padding:14px 26px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+      <div style="{{ syncPill }}">
+        <div style="{{ syncDot }}"></div>
+        <div style="font:500 13px/1.3 'JetBrains Mono',monospace;">{{ syncText }}</div>
+      </div>
+      <div style="font:400 13px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); flex:1 1 260px; min-width:0; text-wrap:pretty;">{{ syncNote }}</div>
+      <div style="font:400 12.5px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ shiftNote }}</div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP3 }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:24px 26px; display:flex; flex-direction:column; gap:var(--lt-gap); max-width:940px;">
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Floor · endline</div>
+        <div style="font:700 var(--lt-h1)/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">Endline count · {{ line.label }}</div>
+        <div style="font:400 var(--lt-sm)/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:66ch; text-wrap:pretty;">Four counters, one record. QC writes to the same row from their tablet — whoever saves last wins and both entries stay in the audit line, so nobody quietly overwrites the other.</div>
+        <div style="height:9px; background-image:repeating-linear-gradient(115deg, var(--fx-accent) 0 2px, transparent 2px 9px);"></div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:var(--lt-gap);">
+        <sc-for list="{{ counters }}" as="c" hint-placeholder-count="4">
+          <div style="display:flex; background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+            <div style="width:5px; flex-shrink:0; background:{{ c.sel }};"></div>
+            <div style="padding:18px 20px; display:flex; flex-direction:column; gap:14px; flex:1; min-width:0;">
+              <div style="display:flex; flex-direction:column; gap:3px;">
+                <div style="font:600 var(--lt-h3)/1.25 'Plus Jakarta Sans',sans-serif;">{{ c.label }}</div>
+                <div style="font:500 15px/1.35 'Anek Bangla','Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">{{ c.bn }}</div>
+              </div>
+              <div style="display:flex; align-items:center; gap:14px;">
+                <sc-if value="{{ canEnter }}" hint-placeholder-val="{{ true }}">
+                  <button onClick="{{ c.dec }}" style="width:56px; height:56px; border-radius:8px; background:transparent; border:1px solid var(--fx-border-strong); font:600 24px/1 'JetBrains Mono',monospace; color:var(--fx-text-primary); cursor:pointer; flex-shrink:0;" style-hover="background:var(--fx-bg-hover)">−</button>
+                </sc-if>
+                <div style="font:600 40px/1.05 'JetBrains Mono',monospace; flex:1; text-align:center; min-width:0;">{{ c.value }}</div>
+                <sc-if value="{{ canEnter }}" hint-placeholder-val="{{ true }}">
+                  <button onClick="{{ c.inc }}" style="width:56px; height:56px; border-radius:8px; background:transparent; border:1px solid var(--fx-border-strong); font:600 24px/1 'JetBrains Mono',monospace; color:var(--fx-text-primary); cursor:pointer; flex-shrink:0;" style-hover="background:var(--fx-bg-hover)">＋</button>
+                </sc-if>
+              </div>
+              <div style="font:400 12.5px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ c.note }}</div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--lt-gap);">
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:20px; display:flex; flex-direction:column; gap:14px; box-shadow:var(--fx-sh1);">
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Derived</div>
+          <div style="display:flex; gap:26px; flex-wrap:wrap;">
+            <div style="display:flex; flex-direction:column; gap:4px;">
+              <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">Pass rate</div>
+              <div style="font:600 var(--lt-num)/1.05 'JetBrains Mono',monospace; color:var(--fx-success);">{{ passRate }}</div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:4px;">
+              <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">DHU</div>
+              <div style="font:600 var(--lt-num)/1.05 'JetBrains Mono',monospace; color:{{ dhuColor }};">{{ dhu }}</div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:4px;">
+              <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">Rework queue</div>
+              <div style="font:600 var(--lt-num)/1.05 'JetBrains Mono',monospace; color:var(--fx-warning);">{{ reworkOpen }}</div>
+            </div>
+          </div>
+          <div style="font:400 12.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">DHU above 4% on this style has always meant a machine setting, not an operator. Check the needle and the thread tension before you talk to anyone.</div>
+        </div>
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:20px; display:flex; flex-direction:column; gap:12px; box-shadow:var(--fx-sh1);">
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Top defects today</div>
+          <sc-for list="{{ defects }}" as="d" hint-placeholder-count="4">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div style="font:400 13.5px/1.4 'Plus Jakarta Sans',sans-serif; width:130px; flex-shrink:0;">{{ d.name }}</div>
+              <div style="flex:1; height:8px; border-radius:999px; background:var(--fx-bg-sunken); overflow:hidden;"><div style="height:100%; width:{{ d.pct }}; background:{{ d.c }};"></div></div>
+              <div style="font:500 13px/1.3 'JetBrains Mono',monospace; width:34px; text-align:right; flex-shrink:0;">{{ d.n }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+        <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px; align-self:flex-start;">production.enterEndline — shared write with qc.recordInspection on the same (line, hour, style) row</div>
+      </sc-if>
+    </div>
+
+    <div style="position:sticky; bottom:0; z-index:20; background:var(--fx-bg-surface); border-top:1px solid var(--fx-border-default); box-shadow:0 -4px 12px rgba(24,29,41,.06); padding:14px 26px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+      <div style="{{ syncPill }}">
+        <div style="{{ syncDot }}"></div>
+        <div style="font:500 13px/1.3 'JetBrains Mono',monospace;">{{ syncText }}</div>
+      </div>
+      <div style="font:400 13px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); flex:1 1 240px; min-width:0;">QC last wrote 14:12 · Rina Begum</div>
+      <sc-if value="{{ canEnter }}" hint-placeholder-val="{{ true }}">
+        <button onClick="{{ saveEndline }}" style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:16px 26px; font:600 var(--lt-body)/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:56px;" style-hover="background:var(--fx-accent-hover)">Save count</button>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP4 }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:26px 28px; display:flex; flex-direction:column; gap:20px; max-width:1180px;">
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Run rate · embedded on the order page</div>
+        <div style="font:700 32px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">{{ runTitle }}</div>
+        <div style="font:400 15px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:68ch; text-wrap:pretty;">{{ runLead }}</div>
+        <div style="height:9px; background-image:repeating-linear-gradient(115deg, var(--fx-accent) 0 2px, transparent 2px 9px);"></div>
+      </div>
+
+      <sc-if value="{{ isOwner }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex; background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+          <div style="width:5px; flex-shrink:0; background:var(--fx-danger);"></div>
+          <div style="padding:18px 20px; display:flex; align-items:center; gap:32px; flex:1; min-width:0; flex-wrap:wrap;">
+            <div style="display:flex; flex-direction:column; gap:4px;">
+              <div style="font:400 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">Digest · 12 Aug</div>
+              <div style="font:600 20px/1.25 'Plus Jakarta Sans',sans-serif;">One order will miss its date</div>
+            </div>
+            <div style="display:flex; gap:26px; flex-wrap:wrap;">
+              <div style="display:flex; flex-direction:column; gap:3px;">
+                <div style="font:400 11px/1 'JetBrains Mono',monospace; text-transform:uppercase; color:var(--fx-text-tertiary);">At risk</div>
+                <div style="font:600 22px/1.05 'JetBrains Mono',monospace; color:var(--fx-danger);">$128,400</div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:3px;">
+                <div style="font:400 11px/1 'JetBrains Mono',monospace; text-transform:uppercase; color:var(--fx-text-tertiary);">Floor efficiency</div>
+                <div style="font:600 22px/1.05 'JetBrains Mono',monospace; color:var(--fx-warning);">91%</div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:3px;">
+                <div style="font:400 11px/1 'JetBrains Mono',monospace; text-transform:uppercase; color:var(--fx-text-tertiary);">Lost to stoppages</div>
+                <div style="font:600 22px/1.05 'JetBrains Mono',monospace;">68 min</div>
+              </div>
+            </div>
+            <div style="font:400 13px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); margin-left:auto; max-width:32ch; text-wrap:pretty;">Owner digest — three numbers, no line detail. The cards below are what the merchandiser sees.</div>
+          </div>
+        </div>
+      </sc-if>
+
+      <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(340px, 1fr)); gap:20px;">
+        <sc-for list="{{ runCards }}" as="c" hint-placeholder-count="3">
+          <div style="display:flex; background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+            <div style="width:{{ c.selW }}; flex-shrink:0; background:{{ c.sel }};"></div>
+            <div style="padding:20px 22px; display:flex; flex-direction:column; gap:16px; flex:1; min-width:0;">
+              <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">
+                <div style="font:500 13px/1.2 'JetBrains Mono',monospace;">{{ c.po }}</div>
+                <div style="font:400 13px/1.3 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">{{ c.buyer }}</div>
+                <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:{{ c.sel }}; margin-left:auto;">{{ c.tag }}</div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:11px;">
+                <sc-for list="{{ c.bars }}" as="b" hint-placeholder-count="3">
+                  <div style="display:flex; flex-direction:column; gap:5px;">
+                    <div style="display:flex; align-items:baseline; gap:10px;">
+                      <div style="font:400 12.5px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary); width:64px; flex-shrink:0;">{{ b.label }}</div>
+                      <div style="font:500 14px/1.2 'JetBrains Mono',monospace;">{{ b.value }}</div>
+                      <div style="font:400 12.5px/1.2 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-left:auto;">{{ b.pctLabel }}</div>
+                    </div>
+                    <div style="height:8px; border-radius:999px; background:var(--fx-bg-sunken); overflow:hidden;"><div style="height:100%; width:{{ b.pct }}; background:{{ b.c }};"></div></div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:6px; padding-top:2px; border-top:1px solid var(--fx-border-subtle);">
+                <div style="display:flex; align-items:baseline; gap:10px; padding-top:12px; flex-wrap:wrap;">
+                  <div style="font:400 12.5px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">Completes</div>
+                  <div style="font:600 20px/1.1 'JetBrains Mono',monospace; color:{{ c.sel }};">{{ c.completes }}</div>
+                  <div style="font:400 12.5px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-left:auto;">ex-factory {{ c.exf }}</div>
+                </div>
+                <div style="font:400 12px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ c.math }}</div>
+                <div style="font:400 12.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ c.assumption }}</div>
+              </div>
+              <sc-if value="{{ c.risk }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex; align-items:flex-start; gap:10px; border:1px solid var(--fx-danger); border-radius:4px; padding:12px 14px;">
+                  <div style="width:7px; height:7px; border-radius:999px; background:var(--fx-danger); margin-top:6px; flex-shrink:0;"></div>
+                  <div style="font:400 13px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ c.risk }}</div>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+
+      <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">read-only card — no actions, it is a window into production from the order page</div>
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">the projected date is never shown without the assumption that produced it</div>
+        </div>
+      </sc-if>
+
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Role access — line tracking</div>
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden;">
+          <sc-for list="{{ access }}" as="a" hint-placeholder-count="7">
+            <div style="display:grid; grid-template-columns:1fr 96px 1.5fr; gap:16px; padding:11px 18px; align-items:center; border-bottom:1px solid var(--fx-border-subtle);">
+              <div style="font:500 13px/1.4 'JetBrains Mono',monospace;">{{ a.role }}</div>
+              <div><span style="{{ a.chip }}">{{ a.level }}</span></div>
+              <div style="font:400 13px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ a.note }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP5 }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:24px 26px; display:flex; flex-direction:column; gap:var(--lt-gap); max-width:1180px;">
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+          <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Knitting · daily</div>
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary); border:1px solid var(--fx-border-default); border-radius:4px; padding:6px 8px;">knit-composite only</div>
+        </div>
+        <div style="font:700 var(--lt-h1)/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">Knitting output · 12 Aug</div>
+        <div style="font:400 var(--lt-sm)/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:66ch; text-wrap:pretty;">Kilos a day per machine, against the yarn lot they are eating. A woven unit never sees this page — Settings decides, not the code.</div>
+        <div style="height:9px; background-image:repeating-linear-gradient(115deg, var(--fx-accent) 0 2px, transparent 2px 9px);"></div>
+      </div>
+
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+        <div style="display:flex; align-items:center; gap:12px; padding:14px 18px; border-bottom:1px solid var(--fx-border-subtle); flex-wrap:wrap;">
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">8 machines · 6 running</div>
+          <div style="font:500 var(--lt-sm)/1.3 'JetBrains Mono',monospace; color:var(--fx-text-secondary); margin-left:auto;">{{ knitTotal }}</div>
+        </div>
+        <div style="overflow-x:auto;">
+        <div style="min-width:880px;">
+          <div style="display:flex; align-items:stretch; background:var(--fx-bg-sunken); border-bottom:1px solid var(--fx-border-subtle);">
+            <div style="width:5px; flex-shrink:0;"></div>
+            <div style="flex:1; min-width:0; display:grid; grid-template-columns:132px 1fr 108px 108px 132px 108px; gap:12px; padding:11px 18px 11px 15px; font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">
+              <div>Machine</div><div>Yarn lot</div><div style="text-align:right;">Target</div><div style="text-align:right;">Actual</div><div>Greige out</div><div style="text-align:right;">±</div>
+            </div>
+          </div>
+          <sc-for list="{{ machines }}" as="m" hint-placeholder-count="8">
+            <div style="display:flex; align-items:stretch; border-bottom:1px solid var(--fx-border-subtle);" style-hover="background:var(--fx-bg-hover)">
+              <div style="width:{{ m.selW }}; flex-shrink:0; background:{{ m.sel }};"></div>
+              <div style="flex:1; min-width:0; display:grid; grid-template-columns:132px 1fr 108px 108px 132px 108px; gap:12px; padding:12px 18px 12px 15px; align-items:center; min-height:var(--lt-row);">
+                <div style="display:flex; flex-direction:column; gap:3px;">
+                  <div style="font:500 var(--lt-sm)/1.2 'JetBrains Mono',monospace;">{{ m.no }}</div>
+                  <div style="font:400 11.5px/1.2 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ m.spec }}</div>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:3px; min-width:0;">
+                  <div style="font:400 var(--lt-sm)/1.3 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">{{ m.lot }}</div>
+                  <div style="font:400 11.5px/1.2 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ m.fabric }}</div>
+                </div>
+                <div style="font:400 var(--lt-sm)/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); text-align:right;">{{ m.target }}</div>
+                <div style="font:600 var(--lt-num)/1.05 'JetBrains Mono',monospace; text-align:right; color:{{ m.actualColor }};">{{ m.actual }}</div>
+                <div style="font:400 12.5px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-secondary);">{{ m.greige }}</div>
+                <div style="font:500 var(--lt-sm)/1.3 'JetBrains Mono',monospace; color:{{ m.varColor }}; text-align:right;">{{ m.variance }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        </div>
+        <sc-if value="{{ canEnterKnit }}" hint-placeholder-val="{{ true }}">
+          <div style="padding:16px 18px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <button onClick="{{ saveKnit }}" style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:15px 22px; font:600 var(--lt-sm)/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:var(--lt-target);" style-hover="background:var(--fx-accent-hover)">Save today's output</button>
+            <div style="font:400 12.5px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-left:auto;">weighed at the machine, not estimated from rolls</div>
+          </div>
+        </sc-if>
+      </div>
+
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+        <div style="display:flex; align-items:center; gap:12px; padding:16px 18px 14px; flex-wrap:wrap;">
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Ready to hand over to store</div>
+          <div style="font:400 12.5px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-left:auto;">greige leaves knitting, arrives as a store intake</div>
+        </div>
+        <sc-for list="{{ handoff }}" as="h" hint-placeholder-count="3">
+          <div style="display:flex; align-items:stretch; border-top:1px solid var(--fx-border-subtle);">
+            <div style="width:3px; flex-shrink:0; background:{{ h.sel }};"></div>
+            <div style="flex:1; min-width:0; display:grid; grid-template-columns:132px 1fr 108px 132px; gap:14px; padding:13px 18px; align-items:center; min-height:var(--lt-row);">
+              <div style="font:500 var(--lt-sm)/1.3 'JetBrains Mono',monospace;">{{ h.no }}</div>
+              <div style="font:400 var(--lt-sm)/1.35 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">{{ h.what }}</div>
+              <div style="font:500 var(--lt-sm)/1.3 'JetBrains Mono',monospace; text-align:right;">{{ h.kg }}</div>
+              <div style="font:400 12.5px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ h.machine }}</div>
+            </div>
+          </div>
+        </sc-for>
+        <sc-if value="{{ canEnterKnit }}" hint-placeholder-val="{{ true }}">
+          <div style="padding:16px 18px; display:flex; align-items:center; gap:12px; border-top:1px solid var(--fx-border-subtle); flex-wrap:wrap;">
+            <button onClick="{{ transferGreige }}" style="background:var(--fx-text-primary); color:var(--fx-text-inverse); border:none; border-radius:8px; padding:15px 22px; font:600 var(--lt-sm)/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:var(--lt-target);">{{ transferLabel }}</button>
+            <div style="font:400 12.5px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); flex:1 1 280px; min-width:0; text-wrap:pretty;">The storekeeper gets an intake to confirm by weight. Until they do, the greige belongs to knitting — one handover, two signatures.</div>
+          </div>
+        </sc-if>
+      </div>
+
+      <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">knitting.enterOutput — per machine, per lot, per day</div>
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">knitting.transferGreige — creates a store intake awaiting the storekeeper's weight confirmation</div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <div style="position:absolute; right:22px; bottom:{{ markBottom }}; display:flex; align-items:center; gap:11px;">
+    <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ markLabel }}</div>
+    <div role="img" aria-label="MARBIM" style="{{ markStage }}">
+      <sc-for list="{{ markSlashes }}" as="s" hint-placeholder-count="8">
+        <img src="{{ s.src }}" alt="" style="{{ s.style }}" />
+      </sc-for>
+    </div>
+  </div>
+
+  </div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ machinePicker }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed; inset:0; z-index:80; display:flex; align-items:center; justify-content:center; padding:24px; background-color:rgba(24,29,41,.55); background-image:repeating-linear-gradient(146deg, transparent 0 7px, rgba(255,255,255,.06) 7px 9px, transparent 9px 17px);">
+    <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:14px; box-shadow:var(--fx-sh3); width:560px; max-width:100%; max-height:86vh; display:flex; flex-direction:column; clip-path:polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);">
+      <div style="padding:24px 26px 14px; display:flex; flex-direction:column; gap:7px;">
+        <div style="font:600 22px/1.25 'Plus Jakarta Sans',sans-serif;">Which machine stopped?</div>
+        <div style="font:400 14px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">The clock is already running. Picking the machine opens a maintenance ticket and pages the mechanic on this floor.</div>
+      </div>
+      <div style="flex:1; overflow-y:auto; padding:0 26px 8px; display:flex; flex-direction:column; gap:8px;">
+        <sc-for list="{{ machineList }}" as="m" hint-placeholder-count="6">
+          <button onClick="{{ m.pick }}" style="{{ m.style }}">
+            <div style="display:flex; flex-direction:column; gap:3px; min-width:0; text-align:left;">
+              <div style="font:500 15px/1.2 'JetBrains Mono',monospace;">{{ m.no }}</div>
+              <div style="font:400 13px/1.35 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">{{ m.what }}</div>
+            </div>
+            <div style="font:400 12px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-left:auto; white-space:nowrap;">{{ m.last }}</div>
+          </button>
+        </sc-for>
+      </div>
+      <div style="padding:16px 26px 22px; display:flex; gap:10px; justify-content:flex-end; border-top:1px solid var(--fx-border-subtle); align-items:center; flex-wrap:wrap;">
+        <div style="font:400 12px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-right:auto;">production.logDowntime → maintenance.ticket</div>
+        <button onClick="{{ closePicker }}" style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:8px; padding:12px 18px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:48px;">Not a machine</button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed; left:50%; bottom:96px; transform:translateX(-50%); z-index:90; background:var(--fx-text-primary); color:var(--fx-text-inverse); border-radius:8px; box-shadow:var(--fx-sh3); padding:14px 18px; display:flex; align-items:center; gap:14px; max-width:92vw;">
+    <div style="font:500 13.5px/1.4 'Plus Jakarta Sans',sans-serif;">{{ toast }}</div>
+    <button onClick="{{ clearToast }}" style="background:transparent; border:none; color:var(--fx-accent); font:600 12px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer;">Dismiss</button>
+  </div>
+</sc-if>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;role&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;supervisor&quot;,&quot;manager&quot;,&quot;planner&quot;,&quot;merchandiser&quot;,&quot;owner&quot;,&quot;mechanic&quot;],&quot;default&quot;:&quot;supervisor&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Access&quot;},&quot;factoryType&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;woven&quot;,&quot;knit&quot;,&quot;knit-composite&quot;],&quot;default&quot;:&quot;woven&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Access&quot;},&quot;showActionNames&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Annotation&quot;}}">
+const SLASH_VEC = [
+  { dx: -0.896, dy: 0.444 }, { dx: -0.271, dy: 0.963 }, { dx: -0.97, dy: -0.243 }, { dx: 0.415, dy: 0.91 },
+  { dx: -0.512, dy: -0.859 }, { dx: 0.936, dy: 0.352 }, { dx: 0.282, dy: -0.96 }, { dx: 0.908, dy: -0.419 }
+];
+
+const FLOOR_VARS = {
+  '--lt-row': '56px', '--lt-target': '48px', '--lt-body': '18px', '--lt-sm': '15px',
+  '--lt-h1': '32px', '--lt-h3': '22px', '--lt-num': '24px', '--lt-gap': '18px'
+};
+const DESK_VARS = {
+  '--lt-row': '44px', '--lt-target': '44px', '--lt-body': '16px', '--lt-sm': '14px',
+  '--lt-h1': '30px', '--lt-h3': '20px', '--lt-num': '20px', '--lt-gap': '16px'
+};
+
+const USERS = {
+  supervisor: 'Aminul Haque', manager: 'Shafiq Alam', planner: 'Rumana Akter',
+  merchandiser: 'Nabila Rahman', owner: 'M. A. Chowdhury', mechanic: 'Rafiq Mia'
+};
+
+// line, po, buyer, style, target/h, cumTarget, cumActual, downtime label bn, downtime kind
+const LINES = [
+  ['L1', 'PO-88214', 'Primark', 'TE-1180 tee', 320, 1760, 1684, '', ''],
+  ['L2', 'PO-88214', 'Primark', 'TE-1180 tee', 320, 1760, 1584, '১২ মিনিট বন্ধ', 'warning'],
+  ['L3', 'PO-88203', 'H&M', 'SH-4471 shirt', 210, 1155, 1125, '', ''],
+  ['L4', 'PO-88203', 'H&M', 'SH-4471 shirt', 210, 1155, 924, '৩৪ মিনিট বন্ধ', 'danger'],
+  ['L5', 'PO-88219', 'Bestseller', 'PL-2210 polo', 260, 1430, 1398, '', ''],
+  ['L6', 'PO-88231', 'H&M', 'SH-4488 shirt', 190, 1045, 826, '২২ মিনিট বন্ধ', 'warning']
+];
+
+const OWN_LINES = { supervisor: ['L3', 'L4'], merchandiser: ['L3', 'L4'] };
+
+// hour, target, actual ('' = not yet), tag
+const HOURS = [
+  ['08–09', 210, 186, ''],
+  ['09–10', 210, 204, ''],
+  ['10–11', 210, 212, ''],
+  ['11–12', 210, 198, ''],
+  ['12–13', 105, 120, 'lunch 30 min'],
+  ['13–14', 210, 205, ''],
+  ['14–15', 210, null, 'now'],
+  ['15–16', 210, null, ''],
+  ['16–17', 210, null, ''],
+  ['17–18', 210, null, ''],
+  ['18–19', 210, null, 'overtime'],
+  ['19–20', 210, null, 'overtime']
+];
+
+const REASONS = [
+  ['MC', 'Machine', 'মেশিন', true],
+  ['NF', 'No feed', 'কাজ নেই', false],
+  ['PW', 'Power', 'বিদ্যুৎ', false],
+  ['QC', 'Quality hold', 'কোয়ালিটি', false],
+  ['MP', 'Manpower', 'লোক নেই', false],
+  ['SC', 'Style change', 'স্টাইল বদল', false]
+];
+
+const MACHINES = [
+  ['SNL-04-118', 'single needle lock · station 12', 'serviced 21 Jul'],
+  ['SNL-04-121', 'single needle lock · station 15', 'serviced 21 Jul'],
+  ['OL-04-032', 'overlock 4-thread · station 18', 'serviced 04 Aug'],
+  ['FL-04-009', 'flatlock · station 22', 'serviced 12 Jun'],
+  ['BH-04-002', 'buttonhole · station 26', 'serviced 30 Jul'],
+  ['BS-04-003', 'button stitch · station 27', 'serviced 30 Jul']
+];
+
+const DOWNTIME_LOG = {
+  L1: [['10:38 – 10:44', 'No feed · bundle 12 late from cutting', '—', '6 min', 'var(--fx-warning)', false]],
+  L2: [['09:50 – 10:02', 'Manpower · two operators at the clinic', '—', '12 min', 'var(--fx-warning)', false]],
+  L3: [
+    ['09:14 – 09:26', 'No feed · cutting was late with bundle 44', '—', '12 min', 'var(--fx-warning)', false],
+    ['11:02 – 11:09', 'Power · generator changeover', '—', '7 min', 'var(--fx-warning)', false]
+  ],
+  L4: [
+    ['11:02 – 11:09', 'Power · generator changeover', '—', '7 min', 'var(--fx-warning)', false],
+    ['13:20 – 13:31', 'Quality hold · shade check on bundle 51', '—', '11 min', 'var(--fx-warning)', false],
+    ['14:07 – open', 'Machine · needle bar, SNL-04-118', 'MT-2026-0417', '34 min', 'var(--fx-danger)', true]
+  ],
+  L5: [['11:02 – 11:09', 'Power · generator changeover', '—', '7 min', 'var(--fx-warning)', false]],
+  L6: [
+    ['11:02 – 11:09', 'Power · generator changeover', '—', '7 min', 'var(--fx-warning)', false],
+    ['12:44 – 12:59', 'Style change · SH-4488 collar set', '—', '15 min', 'var(--fx-warning)', false]
+  ]
+};
+
+const COUNTERS = [
+  ['Checked', 'পরীক্ষিত', 1240, 'var(--fx-border-strong)', 'Everything that reached the endline table.'],
+  ['Passed', 'পাস', 1178, 'var(--fx-success)', 'Straight to finishing, no touch.'],
+  ['Defective', 'ত্রুটিপূর্ণ', 62, 'var(--fx-danger)', 'Held. Not counted as output until reworked.'],
+  ['Rework done', 'রিওয়ার্ক হয়েছে', 48, 'var(--fx-warning)', 'Repaired and re-checked today.']
+];
+
+const DEFECTS = [
+  ['Broken stitch', 21, '34%', 'var(--fx-danger)'],
+  ['Skip stitch', 16, '26%', 'var(--fx-warning)'],
+  ['Measurement', 14, '23%', 'var(--fx-warning)'],
+  ['Oil spot', 11, '18%', 'var(--fx-text-primary)']
+];
+
+// rate = pieces a day through finishing and packing, which is the real constraint —
+// the projected date is computed from (qty − finished) / rate, never typed in.
+const RUN_CARDS = [
+  {
+    po: 'PO-88203', buyer: 'H&M', qty: 26000, cut: 14200, sewn: 9600, fin: 8100,
+    rate: 850, exf: '04 Sep', exfM: 8, exfD: 4,
+    risk: 'Finishing is the constraint, not the sewing lines. Packing is split across four orders and this one gets about a fifth of it — a second packing table from 17 Aug pulls the date back inside 04 Sep.',
+    assumption: 'Assumes 850 pcs a day through finishing — this order\u2019s share of packing over the last 5 working days, with no second table and Friday off.'
+  },
+  {
+    po: 'PO-88219', buyer: 'Bestseller', qty: 42000, cut: 38400, sewn: 31200, fin: 27600,
+    rate: 1600, exf: '28 Aug', exfM: 7, exfD: 28,
+    risk: '',
+    assumption: 'Assumes 1,600 pcs a day through finishing — the last 5 working days, holding line 5 at 98% and Friday off.'
+  },
+  {
+    po: 'PO-88214', buyer: 'Primark', qty: 60000, cut: 52000, sewn: 44800, fin: 41000,
+    rate: 2400, exf: '22 Aug', exfM: 7, exfD: 22,
+    risk: '',
+    assumption: 'Assumes 2,400 pcs a day through finishing — the last 5 working days on the tee packing line, Friday off.'
+  }
+];
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+// walks working days from 13 Aug 2026, Friday off — the factory's own week
+function projectFinish(remaining, rate) {
+  const need = Math.ceil(remaining / rate);
+  const d = new Date(2026, 7, 12);
+  let counted = 0;
+  while (counted < need) {
+    d.setDate(d.getDate() + 1);
+    if (d.getDay() !== 5) counted += 1;
+  }
+  return { label: '~' + String(d.getDate()).padStart(2, '0') + ' ' + MONTHS[d.getMonth()], days: need, date: d };
+}
+
+const MACHINES_KNIT = [
+  ['KN-01', '30 in · 24G', 'YL-2274', '180gsm pique', 240, 246, 'GR-0446 · 246 kg', 'var(--fx-success)'],
+  ['KN-02', '30 in · 24G', 'YL-2274', '180gsm pique', 240, 238, 'GR-0447 · 238 kg', 'var(--fx-success)'],
+  ['KN-03', '30 in · 24G', 'YL-2274', '180gsm pique', 240, 214, 'GR-0438 · 214 kg', 'var(--fx-warning)'],
+  ['KN-04', '32 in · 24G', 'YL-2261', '180gsm pique', 240, 240, 'GR-0442 · 240 kg', 'var(--fx-success)'],
+  ['KN-05', '34 in · 28G', 'YL-2261', '160gsm jersey', 240, 252, 'GR-0443 · 252 kg', 'var(--fx-success)'],
+  ['KN-06', '34 in · 28G', 'YL-2261', '180gsm pique', 240, 252, 'GR-0441 · 252 kg', 'var(--fx-success)'],
+  ['KN-07', '34 in · 28G', '—', 'needle change', 240, 0, '—', 'var(--fx-danger)'],
+  ['KN-08', '36 in · 28G', '—', 'idle · no lot loaded', 240, 12, '—', 'var(--fx-danger)']
+];
+
+const HANDOFF = [
+  ['GR-0441', '180gsm pique greige · 34 in tube · weighed at machine', '252 kg', 'KN-06', 'var(--fx-success)'],
+  ['GR-0442', '180gsm pique greige · 32 in tube · weighed at machine', '240 kg', 'KN-04', 'var(--fx-success)'],
+  ['GR-0443', '160gsm jersey greige · 34 in tube · weighed at machine', '252 kg', 'KN-05', 'var(--fx-success)']
+];
+
+const ACCESS = [
+  ['supervisor', 'edit', 'Enters hourly and endline counts on assigned lines only, logs and resolves downtime there.'],
+  ['manager', 'view', 'Every line, every shift. Reads, does not enter — the count belongs to whoever stood at the line.'],
+  ['planner', 'view', 'Reads run rates to load the next order. No entry.'],
+  ['merchandiser', 'view', 'Run-rate cards for their own orders only, embedded on the order page.'],
+  ['owner', 'view', 'The digest — at-risk value, floor efficiency, minutes lost. No line detail.'],
+  ['mechanic', 'view', 'Downtime and machines across all lines, plus their maintenance tickets. No production counts.'],
+  ['qc', 'edit', 'Writes to the same endline record as the supervisor. Both writes are kept.'],
+  ['viewer · storekeeper · commercial · hr', 'none', 'HIDDEN — the floor board is public on the wall, the entry screens are not.']
+];
+
+class Component extends DCLogic {
+  state = {
+    screen: 'p1', role: 'supervisor', ftype: 'woven', st: 'ready', annot: true,
+    line: 'L3', buf: '', counters: [1240, 1178, 62, 48], machinePicker: false, toast: '', mark: 'rest'
+  };
+
+  componentWillUnmount() { clearTimeout(this._t); }
+
+  flash(msg) {
+    clearTimeout(this._t);
+    this.setState({ toast: msg, mark: 'resolve' });
+    this._t = setTimeout(() => this.setState({ toast: '', mark: 'rest' }), 4200);
+  }
+
+  pill(active) {
+    return {
+      background: active ? 'var(--fx-bg-surface)' : 'transparent',
+      color: active ? 'var(--fx-text-primary)' : 'var(--fx-text-secondary)',
+      border: '1px solid ' + (active ? 'var(--fx-border-default)' : 'transparent'),
+      borderRadius: '6px', padding: '9px 12px', cursor: 'pointer',
+      font: "600 12.5px/1 'Plus Jakarta Sans',sans-serif", whiteSpace: 'nowrap'
+    };
+  }
+
+  ghost(on) {
+    return {
+      background: on ? 'var(--fx-text-primary)' : 'transparent',
+      color: on ? 'var(--fx-text-inverse)' : 'var(--fx-text-secondary)',
+      border: '1px solid ' + (on ? 'var(--fx-text-primary)' : 'var(--fx-border-default)'),
+      borderRadius: '8px', padding: '10px 13px', cursor: 'pointer', minHeight: '44px',
+      font: "500 12px/1 'JetBrains Mono',monospace", whiteSpace: 'nowrap'
+    };
+  }
+
+  chip(level) {
+    const base = {
+      font: "500 11px/1 'JetBrains Mono',monospace", letterSpacing: '.05em', textTransform: 'uppercase',
+      borderRadius: '4px', padding: '6px 8px', display: 'inline-block', whiteSpace: 'nowrap'
+    };
+    if (level === 'none') return { ...base, color: 'var(--fx-text-tertiary)', border: '1px solid var(--fx-border-subtle)' };
+    if (level === 'view') return { ...base, color: 'var(--fx-text-secondary)', background: 'var(--fx-bg-sunken)', border: '1px solid transparent' };
+    return { ...base, color: 'var(--fx-text-primary)', border: '1px solid var(--fx-border-strong)' };
+  }
+
+  renderVals() {
+    const s = this.state;
+    const mode = s.mode || 'light';
+    const role = s.role, ft = s.ftype;
+    const isComposite = ft === 'knit-composite';
+    let screen = s.screen;
+    if (screen === 'p5' && !isComposite) screen = 'p1';
+
+    const canEnter = role === 'supervisor';
+    const isMechanic = role === 'mechanic';
+    const isOwner = role === 'owner';
+    const floor = (canEnter || isMechanic) && screen !== 'p4';
+    const own = OWN_LINES[role];
+    const visibleLines = own ? LINES.filter(l => own.indexOf(l[0]) > -1) : LINES;
+    const activeLine = visibleLines.find(l => l[0] === s.line) || visibleLines[0];
+
+    const p1States = [{ v: 'ready', t: 'as it stands' }, { v: 'running', t: 'all running' }, { v: 'offline', t: 'offline queued' }];
+    const p3States = [{ v: 'ready', t: 'ready' }, { v: 'offline', t: 'offline queued' }];
+    const p4States = [{ v: 'ready', t: 'ready' }];
+    const stOptions = screen === 'p3' ? p3States : screen === 'p4' || screen === 'p5' ? p4States : p1States;
+    const validSt = stOptions.some(o => o.v === s.st) ? s.st : stOptions[0].v;
+    const offline = validSt === 'offline';
+    const lineLog = validSt === 'running'
+      ? (DOWNTIME_LOG[activeLine[0]] || []).filter(d => !d[5])
+      : (DOWNTIME_LOG[activeLine[0]] || []);
+    const downtimeOpen = screen === 'p1' && lineLog.some(d => d[5]);
+
+    const cumT = HOURS.reduce((a, h, i) => (h[2] !== null || i < 6 ? a + h[1] : a), 0);
+    let running = 0;
+    const hours = HOURS.map((h, i) => {
+      const isNow = h[3] === 'now';
+      const done = h[2] !== null;
+      if (done) running += h[2];
+      const cumTarget = HOURS.slice(0, i + 1).reduce((a, x) => a + x[1], 0);
+      const v = done ? running - cumTarget : null;
+      return {
+        hour: h[0], tag: h[3] === 'now' ? '' : h[3],
+        target: h[1], actual: done ? h[2].toLocaleString('en-US') : isNow ? '—' : '',
+        cum: done ? running.toLocaleString('en-US') : '',
+        variance: done ? (v >= 0 ? '+' : '−') + Math.abs(v) : '',
+        varColor: !done ? 'var(--fx-text-tertiary)' : v >= 0 ? 'var(--fx-success)' : 'var(--fx-danger)',
+        actualColor: !done ? 'var(--fx-text-tertiary)' : h[2] >= h[1] ? 'var(--fx-text-primary)' : 'var(--fx-danger)',
+        actualWeight: done ? '600' : '400',
+        labelColor: isNow ? 'var(--fx-text-primary)' : 'var(--fx-text-secondary)',
+        sel: !done ? 'var(--fx-border-subtle)' : h[2] >= h[1] ? 'var(--fx-success)' : 'var(--fx-warning)',
+        selW: isNow ? '5px' : '3px',
+        rowStyle: {
+          display: 'flex', alignItems: 'stretch', borderBottom: '1px solid var(--fx-border-subtle)',
+          background: isNow ? 'var(--fx-bg-surface)' : 'transparent',
+          boxShadow: isNow ? 'inset 0 0 0 2px var(--fx-focus)' : 'none'
+        }
+      };
+    });
+
+    const keys = ['7', '8', '9', '4', '5', '6', '1', '2', '3', 'clear', '0', '00'].map(k => ({
+      label: k === 'clear' ? 'C' : k,
+      press: () => this.setState(x => ({
+        buf: k === 'clear' ? '' : (x.buf + (k === '00' ? '00' : k)).slice(0, 4)
+      })),
+      style: {
+        minHeight: '58px', borderRadius: '8px', cursor: 'pointer',
+        background: k === 'clear' ? 'var(--fx-bg-sunken)' : 'var(--fx-bg-surface)',
+        border: '1px solid ' + (k === 'clear' ? 'var(--fx-border-default)' : 'var(--fx-border-strong)'),
+        color: 'var(--fx-text-primary)', font: "600 24px/1 'JetBrains Mono',monospace"
+      }
+    }));
+
+    const cnt = s.counters;
+    const dhuVal = cnt[0] ? (cnt[2] / cnt[0] * 100) : 0;
+
+    const boardLines = LINES.map(l => {
+      const eff = Math.round(l[6] / l[5] * 100);
+      const c = eff >= 95 ? 'var(--fx-success)' : eff >= 85 ? 'var(--fx-warning)' : 'var(--fx-danger)';
+      return {
+        line: l[0], po: l[1], buyer: l[2],
+        target: l[5].toLocaleString('en-US'), actual: l[6].toLocaleString('en-US'),
+        pct: Math.min(100, Math.round(l[6] / l[5] * 100)) + '%',
+        eff: eff + '%', sel: c, down: l[7],
+        downDot: l[8] === 'danger' ? 'var(--fx-danger)' : 'var(--fx-warning)',
+        downStyle: {
+          display: 'flex', alignItems: 'center', gap: '10px', borderRadius: '999px', padding: '9px 14px',
+          border: '1px solid ' + (l[8] === 'danger' ? 'var(--fx-danger)' : 'var(--fx-warning)'),
+          color: l[8] === 'danger' ? 'var(--fx-danger)' : 'var(--fx-warning)'
+        }
+      };
+    });
+
+    const knitActual = MACHINES_KNIT.reduce((a, m) => a + m[5], 0);
+    const knitTarget = MACHINES_KNIT.reduce((a, m) => a + m[4], 0);
+    const handoffKg = HANDOFF.reduce((a, h) => a + Number(h[2].replace(/[^0-9]/g, '')), 0);
+    const lineEff = Math.round(activeLine[6] / activeLine[5] * 100);
+    const anim = { rest: () => 'none', resolve: i => 'fx-breathe 2.4s ease-in-out ' + (-i * 150) + 'ms infinite' }[s.mark] || (() => 'none');
+
+    const navList = [['p1', 'Hourly output'], ['p3', 'Endline count'], ['p2', 'Floor board'], ['p4', 'Run rate']]
+      .concat(isComposite ? [['p5', 'Knitting daily']] : []);
+
+    return {
+      screens: [['p1', 'P1 hourly'], ['p3', 'P3 endline'], ['p2', 'P2 TV board'], ['p4', 'P4 run rate'], ['p5', 'P5 knitting']].map(x => ({
+        label: x[1],
+        pick: () => this.setState({ screen: x[0], st: 'ready' }),
+        style: this.pill(screen === x[0])
+      })),
+      role, userName: USERS[role],
+      setRole: (e) => this.setState({ role: e.target.value, line: (OWN_LINES[e.target.value] || ['L3'])[0] }),
+      ftype: ft, setFtype: (e) => this.setState({ ftype: e.target.value }),
+      st: validSt, stOptions, setSt: (e) => this.setState({ st: e.target.value }),
+      annot: s.annot, annotLabel: s.annot ? 'on' : 'off', annotBtn: this.ghost(s.annot),
+      mode, modeLabel: mode === 'dark' ? 'dark' : 'light', modeBtn: this.ghost(mode === 'dark'),
+      logoSrc: 'uploads/fabricxai-logo-' + (mode === 'dark' ? 'dark' : 'light') + '.png',
+      toggleMode: () => this.setState(x => ({ mode: x.mode === 'dark' ? 'light' : 'dark' })),
+      toggleAnnot: () => this.setState(x => ({ annot: !x.annot })),
+
+      densityVars: floor ? FLOOR_VARS : DESK_VARS,
+      densityLabel: floor ? 'floor density · 56px rows' : 'desk density · 44px rows',
+      notBoard: screen !== 'p2',
+      isP1: screen === 'p1', isP2: screen === 'p2', isP3: screen === 'p3',
+      isP4: screen === 'p4', isP5: screen === 'p5' && isComposite,
+      canEnter, canEnterKnit: canEnter, isOwner, mechanicView: isMechanic,
+      viewOnly: !canEnter && !isMechanic,
+      showHours: !isMechanic,
+
+      nav: navList.map(n => ({
+        label: n[1],
+        pick: () => this.setState({ screen: n[0], st: 'ready' }),
+        style: {
+          display: 'flex', alignItems: 'center', gap: '11px', padding: '12px 12px', borderRadius: '8px', cursor: 'pointer',
+          minHeight: '48px', font: "500 14.5px/1 'Plus Jakarta Sans',sans-serif",
+          background: screen === n[0] ? 'var(--fx-bg-selected)' : 'transparent',
+          color: screen === n[0] ? 'var(--fx-text-primary)' : 'var(--fx-text-secondary)'
+        },
+        marker: { width: '2px', height: '15px', transform: 'skewX(-34deg)', background: screen === n[0] ? 'var(--fx-accent)' : 'transparent', flexShrink: 0 }
+      })),
+      scopeNote: own
+        ? own.join(' and ') + ' only — assigned to you in Settings. Other lines are not in the switcher at all.'
+        : 'All six lines. You read them, you do not enter them.',
+
+      lineTabs: visibleLines.map(l => ({
+        label: l[0] + ' · ' + l[1],
+        pick: () => this.setState({ line: l[0], buf: '' }),
+        style: this.pill(activeLine[0] === l[0])
+      })),
+      switcherNote: own
+        ? 'A supervisor gets two tabs, not six. Fewer taps, and no chance of entering line 5\u2019s output against line 3.'
+        : 'A manager gets every line in the switcher — same screen, same layout, read-only.',
+
+      line: {
+        label: activeLine[0], po: activeLine[1], style: activeLine[3],
+        eff: lineEff + '%',
+        effColor: lineEff >= 95 ? 'var(--fx-success)' : lineEff >= 85 ? 'var(--fx-warning)' : 'var(--fx-danger)',
+        cumActual: activeLine[6].toLocaleString('en-US'),
+        cumTarget: activeLine[5].toLocaleString('en-US')
+      },
+      hours,
+      keys,
+      bufDisplay: s.buf || '0',
+      bufStyle: {
+        font: "600 44px/1 'JetBrains Mono',monospace",
+        color: s.buf ? 'var(--fx-text-primary)' : 'var(--fx-text-disabled)'
+      },
+      saveLabel: s.buf ? 'Save ' + s.buf + ' pcs for 14–15' : 'Enter the count',
+      saveStyle: downtimeOpen || !s.buf
+        ? { background: 'transparent', color: 'var(--fx-text-primary)', border: '1px solid var(--fx-border-strong)', borderRadius: '8px', padding: '16px 20px', font: "600 16px/1 'Plus Jakarta Sans',sans-serif", cursor: 'pointer', minHeight: '56px' }
+        : { background: 'var(--fx-accent)', color: 'var(--fx-accent-on)', border: 'none', borderRadius: '8px', padding: '16px 20px', font: "600 16px/1 'Plus Jakarta Sans',sans-serif", cursor: 'pointer', minHeight: '56px' },
+      saveHour: () => {
+        if (!s.buf) { this.flash('Tap the numbers first — 12 taps a shift, that is the whole job'); return; }
+        this.setState({ buf: '' });
+        this.flash(offline
+          ? 'Queued on this device · ' + activeLine[0] + ' 14–15 · ' + s.buf + ' pcs'
+          : activeLine[0] + ' 14–15 saved · ' + s.buf + ' pcs · same hour twice writes once');
+      },
+
+      viewNote: isOwner
+        ? 'You see the digest, not the entry. Six lines, one efficiency number each.'
+        : 'Entry belongs to the supervisor standing at the line. You read every line at once instead.',
+      lineSummary: LINES.map(l => {
+        const eff = Math.round(l[6] / l[5] * 100);
+        return {
+          line: l[0], eff: eff + '%', pct: Math.min(100, eff) + '%',
+          c: eff >= 95 ? 'var(--fx-success)' : eff >= 85 ? 'var(--fx-warning)' : 'var(--fx-danger)'
+        };
+      }),
+
+      downtimeOpen,
+      resolveDowntime: () => this.flash('Line 4 running again · 41 min logged · MT-2026-0417 stays open for the mechanic'),
+      reasons: REASONS.map(r => ({
+        code: r[0], label: r[1], bn: r[2],
+        press: () => (r[3]
+          ? this.setState({ machinePicker: true })
+          : this.flash('Stopped · ' + r[1] + ' · clock started 14:41')),
+        style: {
+          display: 'flex', flexDirection: 'column', gap: '7px', alignItems: 'flex-start',
+          padding: '16px 16px', borderRadius: '8px', cursor: 'pointer', minHeight: '92px',
+          background: 'var(--fx-bg-surface)', border: '1px solid var(--fx-border-strong)',
+          color: 'var(--fx-text-primary)'
+        }
+      })),
+      downtimeLog: lineLog.map(d => ({ when: d[0], what: d[1], ticket: d[2], mins: d[3], sel: d[4] })),
+      machinePicker: s.machinePicker,
+      closePicker: () => this.setState({ machinePicker: false }),
+      machineList: MACHINES.map(m => ({
+        no: m[0], what: m[1], last: m[2],
+        pick: () => { this.setState({ machinePicker: false }); this.flash('Stopped · machine ' + m[0] + ' · MT-2026-0418 opened, Rafiq paged'); },
+        style: {
+          display: 'flex', alignItems: 'center', gap: '14px', padding: '15px 16px', borderRadius: '8px', cursor: 'pointer',
+          background: 'var(--fx-bg-surface)', border: '1px solid var(--fx-border-default)', minHeight: '56px', width: '100%'
+        }
+      })),
+
+      counters: COUNTERS.map((c, i) => ({
+        label: c[0], bn: c[1], value: cnt[i].toLocaleString('en-US'), sel: c[3], note: c[4],
+        inc: () => this.setState(x => ({ counters: x.counters.map((v, j) => (j === i ? v + 1 : v)) })),
+        dec: () => this.setState(x => ({ counters: x.counters.map((v, j) => (j === i ? Math.max(0, v - 1) : v)) }))
+      })),
+      passRate: cnt[0] ? (cnt[1] / cnt[0] * 100).toFixed(1) + '%' : '—',
+      dhu: dhuVal.toFixed(1) + '%',
+      dhuColor: dhuVal > 4 ? 'var(--fx-danger)' : 'var(--fx-warning)',
+      reworkOpen: (cnt[2] - cnt[3]).toLocaleString('en-US'),
+      defects: DEFECTS.map(d => ({ name: d[0], n: d[1], pct: d[2], c: d[3] })),
+      saveEndline: () => this.flash('Endline saved · ' + cnt[0].toLocaleString('en-US') + ' checked · QC sees it immediately'),
+
+      board: boardLines,
+
+      runTitle: isOwner ? 'Production digest' : 'Will these orders finish in time?',
+      runLead: isOwner
+        ? 'Three numbers for the morning. The run-rate cards below are the same ones merchandising works from.'
+        : 'The card that sits on the order page. Cut, sewn and finished against the order, with the projected finish and the assumption it rests on — never a date on its own.',
+      runCards: RUN_CARDS.map(c => {
+        const proj = projectFinish(c.qty - c.fin, c.rate);
+        const slack = Math.round((new Date(2026, c.exfM, c.exfD) - proj.date) / 86400000);
+        const tag = slack < 0 ? 'at risk' : slack <= 2 ? 'tight' : 'on track';
+        const risky = tag === 'at risk';
+        const col = risky ? 'var(--fx-danger)' : tag === 'tight' ? 'var(--fx-warning)' : 'var(--fx-success)';
+        const bar = (label, v) => ({
+          label, value: v.toLocaleString('en-US') + ' / ' + c.qty.toLocaleString('en-US'),
+          pct: Math.round(v / c.qty * 100) + '%', pctLabel: Math.round(v / c.qty * 100) + '%',
+          c: label === 'finished' ? 'var(--fx-success)' : label === 'sewn' ? col : 'var(--fx-border-strong)'
+        });
+        return {
+          po: c.po, buyer: c.buyer, tag: tag, sel: col, selW: risky ? '5px' : '3px',
+          bars: [bar('cut', c.cut), bar('sewn', c.sewn), bar('finished', c.fin)],
+          completes: proj.label, exf: c.exf, assumption: c.assumption,
+          risk: risky ? c.risk : '',
+          math: (c.qty - c.fin).toLocaleString('en-US') + ' left ÷ ' + c.rate.toLocaleString('en-US') + '/day = ' + proj.days + ' working days'
+        };
+      }),
+
+      machines: MACHINES_KNIT.map(m => {
+        const v = m[5] - m[4];
+        return {
+          no: m[0], spec: m[1], lot: m[2] === '—' ? m[3] : 'lot ' + m[2], fabric: m[2] === '—' ? '' : m[3],
+          target: m[4] + ' kg', actual: m[5] + ' kg', greige: m[6],
+          variance: (v >= 0 ? '+' : '−') + Math.abs(v),
+          varColor: v >= 0 ? 'var(--fx-success)' : 'var(--fx-danger)',
+          actualColor: m[7], sel: m[7], selW: m[7] === 'var(--fx-danger)' ? '5px' : '3px'
+        };
+      }),
+      handoff: HANDOFF.map(h => ({ no: h[0], what: h[1], kg: h[2], machine: h[3], sel: h[4] })),
+      knitTotal: knitActual.toLocaleString('en-US') + ' kg of ' + knitTarget.toLocaleString('en-US') + ' kg',
+      saveKnit: () => this.flash('Knitting output saved · ' + knitActual.toLocaleString('en-US') + ' kg across 6 running machines'),
+      transferLabel: 'Transfer ' + HANDOFF.length + ' rolls to store',
+      transferGreige: () => this.flash(HANDOFF.length + ' rolls · ' + handoffKg.toLocaleString('en-US') + ' kg sent to store as an intake · awaiting the storekeeper\u2019s weight'),
+
+      syncPill: {
+        display: 'flex', alignItems: 'center', gap: '10px', borderRadius: '999px', padding: '10px 14px', flexShrink: 0,
+        border: '1px solid ' + (offline ? 'var(--fx-info)' : 'var(--fx-border-default)'),
+        background: offline ? 'var(--fx-bg-sunken)' : 'transparent',
+        color: offline ? 'var(--fx-info)' : 'var(--fx-text-secondary)'
+      },
+      syncDot: { width: '9px', height: '9px', borderRadius: '999px', flexShrink: 0, background: offline ? 'var(--fx-info)' : 'var(--fx-success)' },
+      syncText: offline ? 'offline · 2 hours queued' : 'synced 14:41',
+      syncNote: offline
+        ? 'The floor wifi drops near the cutting room. Hours are held here and go up in order when it returns — an hour already sent is never doubled.'
+        : 'Each hour writes on save. If the same hour is sent twice the second one replaces the first, it does not add to it.',
+      shiftNote: 'hour 7 of 12 · ' + activeLine[0],
+
+      access: ACCESS.map(a => ({ role: a[0], level: a[1], note: a[2], chip: this.chip(a[1]) })),
+
+      toast: s.toast, clearToast: () => this.setState({ toast: '' }),
+      markBottom: screen === 'p4' ? '22px' : '96px',
+      markLabel: s.mark === 'resolve' ? 'MARBIM · listening' : 'MARBIM · rest',
+      markStage: { position: 'relative', width: '32px', height: '32px', flexShrink: 0 },
+      markSlashes: SLASH_VEC.map((v, i) => ({
+        src: 'assets/mark/' + (mode === 'dark' ? 'w-' : 'i-') + (i + 1) + '.png',
+        style: { position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', '--dx': v.dx, '--dy': v.dy, transformOrigin: 'center', animation: anim(i) }
+      }))
+    };
+  }
+}
+
+</script>
+</body>
+</html>

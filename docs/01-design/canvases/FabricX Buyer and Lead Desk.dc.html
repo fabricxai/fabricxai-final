@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #F3F1EC; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  [data-mode="dark"] { --fx-bg-canvas:#0F131B !important; --fx-bg-surface:#181D29 !important; --fx-bg-raised:#212736 !important; --fx-bg-sunken:#0B0E15 !important; --fx-bg-hover:rgba(255,255,255,.05) !important; --fx-bg-selected:rgba(225,179,52,.17) !important; --fx-border-subtle:#252B3A !important; --fx-border-default:#343B4C !important; --fx-border-strong:#4E576B !important; --fx-text-primary:#F4F3F0 !important; --fx-text-secondary:#AEB5C4 !important; --fx-text-tertiary:#7C8497 !important; --fx-text-disabled:#565E71 !important; --fx-text-inverse:#181D29 !important; --fx-accent-hover:#EBC352 !important; --fx-accent-pressed:#F2D077 !important; --fx-accent-subtle:rgba(225,179,52,.14) !important; --fx-success:#4FA97D !important; --fx-warning:#D99A3F !important; --fx-danger:#E0665C !important; --fx-info:#6D9BE8 !important; --fx-focus:#E1B334 !important; --fx-sh1:0 0 0 1px #252B3A !important; --fx-sh2:0 0 0 1px #252B3A !important; --fx-sh3:0 0 0 1px #343B4C !important; }
+  body:has([data-mode="dark"]) { background: #0B0E15; }
+  a { color: #181D29; text-decoration: underline; text-underline-offset: 3px; }
+  a:hover { color: #B88C21; }
+  @keyframes fx-slide-in { from { transform: translateX(28px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: .01ms !important; } }
+</style>
+</helmet>
+
+<div data-mode="{{ mode }}" style="--fx-bg-canvas:#FBFAF8; --fx-bg-surface:#FFFFFF; --fx-bg-sunken:#F3F1EC; --fx-bg-hover:rgba(24,29,41,.035); --fx-bg-selected:rgba(225,179,52,.12); --fx-border-subtle:#E7E4DE; --fx-border-default:#D6D2C9; --fx-border-strong:#A9A49A; --fx-text-primary:#181D29; --fx-text-secondary:#4C5364; --fx-text-tertiary:#767E90; --fx-text-disabled:#A8AEBB; --fx-text-inverse:#FBFAF8; --fx-accent:#E1B334; --fx-accent-hover:#CFA22B; --fx-accent-pressed:#B88C21; --fx-accent-subtle:#FAF1DA; --fx-accent-on:#181D29; --fx-success:#2F7D5B; --fx-warning:#B4741C; --fx-danger:#B23A32; --fx-info:#2F5FA8; --fx-focus:#181D29; --fx-sh1:0 1px 2px rgba(24,29,41,.06); --fx-sh2:0 4px 12px rgba(24,29,41,.08); --fx-sh3:0 12px 32px rgba(24,29,41,.12); font-family:'Plus Jakarta Sans',system-ui,sans-serif; color:var(--fx-text-primary); min-height:100vh; background:var(--fx-bg-sunken);">
+
+<div style="position:sticky; top:0; z-index:60; background:var(--fx-bg-surface); border-bottom:1px solid var(--fx-border-default); padding:10px 20px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+  <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Prototype bar</div>
+  <div style="display:flex; gap:2px; background:var(--fx-bg-sunken); border-radius:8px; padding:3px; flex-wrap:wrap;">
+    <sc-for list="{{ screens }}" as="s" hint-placeholder-count="3">
+      <button onClick="{{ s.pick }}" style="{{ s.style }}">{{ s.label }}</button>
+    </sc-for>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px;">
+    <span style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">role</span>
+    <select onChange="{{ setRole }}" value="{{ role }}" style="background:var(--fx-bg-surface); color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:4px; padding:7px 9px; font:500 12px/1 'JetBrains Mono',monospace;">
+      <option value="merchandiser">merchandiser</option>
+      <option value="manager">manager</option>
+      <option value="owner">owner</option>
+      <option value="commercial">commercial</option>
+      <option value="viewer">viewer</option>
+      <option value="planner">planner</option>
+    </select>
+  </div>
+  <div style="display:flex; align-items:center; gap:10px; margin-left:auto;">
+    <button onClick="{{ toggleMode }}" style="{{ modeBtn }}">{{ modeLabel }}</button>
+    <button onClick="{{ toggleAnnot }}" style="{{ annotBtn }}">actions {{ annotLabel }}</button>
+  </div>
+</div>
+
+<div style="display:flex; align-items:stretch; min-height:calc(100vh - 49px);">
+
+  <div style="width:236px; flex-shrink:0; background:var(--fx-bg-surface); border-right:1px solid var(--fx-border-subtle); padding:20px 14px; display:flex; flex-direction:column; gap:20px;">
+    <img src="{{ logoSrc }}" alt="FabricX AI" style="height:26px; width:auto; align-self:flex-start; max-width:100%; object-fit:contain;" />
+    <sc-if value="{{ hasNav }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex; flex-direction:column; gap:2px;">
+        <sc-for list="{{ nav }}" as="n" hint-placeholder-count="2">
+          <div onClick="{{ n.pick }}" style="{{ n.style }}">
+            <div style="{{ n.marker }}"></div>{{ n.label }}
+            <sc-if value="{{ n.badge }}" hint-placeholder-val="{{ false }}">
+              <div style="{{ n.badgeStyle }}">{{ n.count }}</div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:9px;">
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Your book</div>
+        <div style="font:400 12.5px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ scopeNote }}</div>
+        <sc-for list="{{ pulse }}" as="p" hint-placeholder-count="2">
+          <div style="display:flex; flex-direction:column; gap:3px; padding-bottom:9px; border-bottom:1px solid var(--fx-border-subtle);">
+            <div style="font:400 11.5px/1.3 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">{{ p.k }}</div>
+            <div style="font:600 16px/1.15 'JetBrains Mono',monospace; color:{{ p.c }};">{{ p.v }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+    <sc-if value="{{ noNav }}" hint-placeholder-val="{{ false }}">
+      <div style="font:400 12.5px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary); text-wrap:pretty;">The buyer desk does not appear in your navigation.</div>
+    </sc-if>
+    <div style="margin-top:auto; display:flex; flex-direction:column; gap:7px;">
+      <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Signed in</div>
+      <div style="font:500 14px/1.3 'Plus Jakarta Sans',sans-serif;">{{ userName }}</div>
+      <div style="font:400 12px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ role }} · 31 Jul 2026</div>
+    </div>
+  </div>
+
+  <div style="flex:1; min-width:0; background:var(--fx-bg-canvas); position:relative; padding:0 0 90px;">
+
+  <sc-if value="{{ locked }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:26px 28px; display:flex; flex-direction:column; gap:16px; max-width:560px;">
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:32px; display:flex; flex-direction:column; gap:14px; box-shadow:var(--fx-sh1);">
+        <div style="font:600 22px/1.25 'Plus Jakarta Sans',sans-serif;">You don't have access to the buyer desk</div>
+        <div style="font:400 15px/1.6 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">Buyer terms and agent commissions live here. The orders those buyers place are on your own screens with everything you need to plan them.</div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP1 }}" hint-placeholder-val="{{ true }}">
+    <div style="padding:26px 28px; display:flex; flex-direction:column; gap:20px;">
+      <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex-wrap:wrap; max-width:1320px;">
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Leads · pipeline</div>
+          <div style="font:700 34px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">{{ pipeTitle }}</div>
+          <div style="font:400 15px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:68ch; text-wrap:pretty;">{{ pipeLead }}</div>
+        </div>
+        <sc-if value="{{ canEdit }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <button onClick="{{ pasteInquiry }}" style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-strong); border-radius:8px; padding:11px 16px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-bg-hover)">Paste an inquiry</button>
+            <button onClick="{{ createLead }}" style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:11px 18px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-accent-hover)">Add a lead</button>
+          </div>
+        </sc-if>
+      </div>
+      <div style="height:9px; background-image:repeating-linear-gradient(115deg, var(--fx-accent) 0 2px, transparent 2px 9px); max-width:1320px;"></div>
+
+      <sc-if value="{{ showDraft }}" hint-placeholder-val="{{ false }}">
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-accent); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh2); clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%); max-width:820px;">
+          <div style="display:flex; align-items:center; gap:12px; padding:15px 20px; background:var(--fx-accent-subtle); flex-wrap:wrap;">
+            <div style="width:26px; height:26px; border-radius:999px; background:#181D29; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+              <img src="uploads/MARBIM_logo.png" alt="" style="width:14px; height:14px;" />
+            </div>
+            <div style="font:600 15px/1.3 'Plus Jakarta Sans',sans-serif;">Lead drafted from the pasted email</div>
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-accent-pressed); border:1px solid var(--fx-accent-pressed); border-radius:4px; padding:5px 7px;">draft</div>
+            <div style="font:400 12px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-secondary); margin-left:auto;">{{ draft.source }}</div>
+          </div>
+          <sc-for list="{{ draft.rows }}" as="r" hint-placeholder-count="6">
+            <div style="display:flex; align-items:stretch; border-bottom:1px solid var(--fx-border-subtle);">
+              <div style="width:3px; flex-shrink:0; background:{{ r.sel }};"></div>
+              <div style="flex:1; min-width:0; display:grid; grid-template-columns:170px 1fr 80px; gap:14px; padding:12px 20px 12px 17px; align-items:center; min-height:44px;">
+                <div style="font:400 13px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">{{ r.k }}</div>
+                <div style="font:500 13.5px/1.4 'JetBrains Mono',monospace;">{{ r.v }}</div>
+                <div style="font:500 12px/1.3 'JetBrains Mono',monospace; color:{{ r.confColor }}; text-align:right;">{{ r.conf }}</div>
+              </div>
+            </div>
+          </sc-for>
+          <div style="padding:16px 20px; display:flex; flex-direction:column; gap:13px;">
+            <div style="font:400 13px/1.6 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ draft.caveat }}</div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <button onClick="{{ acceptDraft }}" style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:12px 18px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-accent-hover)">Add to New</button>
+              <button onClick="{{ dropDraft }}" style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:8px; padding:11px 16px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;">Discard</button>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <div style="overflow-x:auto; padding-bottom:6px;">
+        <div style="display:grid; grid-template-columns:repeat(5, minmax(272px, 1fr)); gap:16px; min-width:1400px; align-items:start;">
+          <sc-for list="{{ columns }}" as="col" hint-placeholder-count="5">
+            <div style="display:flex; flex-direction:column; gap:12px;">
+              <div style="display:flex; align-items:center; gap:10px; padding:0 2px;">
+                <div style="{{ col.marker }}"></div>
+                <div style="font:600 14px/1.2 'Plus Jakarta Sans',sans-serif;">{{ col.name }}</div>
+                <div style="font:500 12px/1.2 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ col.count }}</div>
+                <div style="font:500 12.5px/1.2 'JetBrains Mono',monospace; color:{{ col.valueColor }}; margin-left:auto;">{{ col.value }}</div>
+              </div>
+              <div style="{{ col.wellStyle }}">
+                <sc-for list="{{ col.cards }}" as="c" hint-placeholder-count="2">
+                  <div style="display:flex; background:var(--fx-bg-surface); border:1px solid {{ c.border }}; border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+                    <div style="width:{{ c.selW }}; flex-shrink:0; background:{{ c.sel }};"></div>
+                    <div style="flex:1; min-width:0; padding:14px 15px; display:flex; flex-direction:column; gap:11px;">
+                      <div style="display:flex; flex-direction:column; gap:3px; min-width:0;">
+                        <div style="font:600 15px/1.3 'Plus Jakarta Sans',sans-serif; text-wrap:pretty;">{{ c.company }}</div>
+                        <div style="font:400 12px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ c.country }}</div>
+                      </div>
+                      <div style="font:400 13px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ c.want }}</div>
+                      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                        <sc-if value="{{ c.hasAgent }}" hint-placeholder-val="{{ true }}">
+                          <div style="{{ c.agentChip }}">{{ c.agent }}</div>
+                        </sc-if>
+                        <sc-if value="{{ c.direct }}" hint-placeholder-val="{{ false }}">
+                          <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.04em; text-transform:uppercase; color:var(--fx-success); border:1px solid var(--fx-success); border-radius:3px; padding:5px 6px;">direct</div>
+                        </sc-if>
+                      </div>
+                      <div style="display:flex; align-items:center; gap:10px; padding-top:9px; border-top:1px solid var(--fx-border-subtle); flex-wrap:wrap;">
+                        <div style="font:400 12px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ c.value }}</div>
+                        <div style="font:500 12px/1.3 'JetBrains Mono',monospace; color:{{ c.quietColor }}; margin-left:auto;">{{ c.quiet }}</div>
+                      </div>
+                      <sc-if value="{{ c.stale }}" hint-placeholder-val="{{ false }}">
+                        <div style="font:400 12.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-danger); text-wrap:pretty;">{{ c.staleNote }}</div>
+                      </sc-if>
+                      <sc-if value="{{ c.canAct }}" hint-placeholder-val="{{ true }}">
+                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                          <button onClick="{{ c.primary }}" style="{{ c.primaryStyle }}">{{ c.primaryLabel }}</button>
+                          <button onClick="{{ c.log }}" style="background:transparent; color:var(--fx-text-secondary); border:1px solid var(--fx-border-default); border-radius:8px; padding:11px 13px; font:600 12.5px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;">Log</button>
+                        </div>
+                      </sc-if>
+                      <sc-if value="{{ c.readOnly }}" hint-placeholder-val="{{ false }}">
+                        <div style="font:400 12px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ c.readOnlyNote }}</div>
+                      </sc-if>
+                    </div>
+                  </div>
+                </sc-for>
+                <sc-if value="{{ col.empty }}" hint-placeholder-val="{{ false }}">
+                  <div style="border:1px dashed var(--fx-border-default); border-radius:8px; padding:20px 16px; font:400 13px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary); text-wrap:pretty;">{{ col.emptyNote }}</div>
+                </sc-if>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <sc-if value="{{ convertOpen }}" hint-placeholder-val="{{ false }}">
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-default); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh2); max-width:820px;">
+          <div style="display:flex; align-items:center; gap:12px; padding:16px 20px; border-bottom:1px solid var(--fx-border-subtle); flex-wrap:wrap;">
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Convert to a buyer · step {{ convert.step }} of 2</div>
+            <button onClick="{{ closeConvert }}" style="margin-left:auto; background:transparent; border:1px solid var(--fx-border-default); border-radius:8px; padding:9px 12px; font:600 12.5px/1 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); cursor:pointer; min-height:44px;">Cancel</button>
+          </div>
+          <div style="padding:18px 20px; display:flex; flex-direction:column; gap:16px;">
+            <div style="font:600 19px/1.3 'Plus Jakarta Sans',sans-serif;">{{ convert.title }}</div>
+            <div style="font:400 14px/1.6 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:70ch; text-wrap:pretty;">{{ convert.lead }}</div>
+            <div style="background:var(--fx-bg-sunken); border-radius:8px; padding:16px 18px; display:flex; flex-direction:column; gap:11px;">
+              <sc-for list="{{ convert.rows }}" as="r" hint-placeholder-count="6">
+                <div style="display:grid; grid-template-columns:190px 1fr 108px; gap:14px; align-items:baseline;">
+                  <div style="font:400 12.5px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">{{ r.k }}</div>
+                  <div style="font:500 13.5px/1.4 'JetBrains Mono',monospace; color:{{ r.c }};">{{ r.v }}</div>
+                  <div style="font:400 11.5px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); text-align:right;">{{ r.from }}</div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+              <button onClick="{{ convert.next }}" style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:14px 20px; font:600 14.5px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:48px;" style-hover="background:var(--fx-accent-hover)">{{ convert.cta }}</button>
+              <div style="font:400 12.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); flex:1 1 280px; min-width:0; text-wrap:pretty;">{{ convert.note }}</div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ lostOpen }}" hint-placeholder-val="{{ false }}">
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-default); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh2); max-width:640px;">
+          <div style="display:flex; align-items:center; gap:12px; padding:16px 20px; border-bottom:1px solid var(--fx-border-subtle);">
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Marking {{ lost.company }} lost</div>
+            <button onClick="{{ closeLost }}" style="margin-left:auto; background:transparent; border:1px solid var(--fx-border-default); border-radius:8px; padding:9px 12px; font:600 12.5px/1 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); cursor:pointer; min-height:44px;">Cancel</button>
+          </div>
+          <div style="padding:18px 20px; display:flex; flex-direction:column; gap:14px;">
+            <div style="font:400 14px/1.6 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">A reason is required, and it is the only thing that makes the lost column worth reading in six months. Price and lead time lose differently.</div>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <sc-for list="{{ lost.reasons }}" as="r" hint-placeholder-count="5">
+                <div onClick="{{ r.pick }}" style="{{ r.style }}">
+                  <div style="{{ r.dot }}"></div>
+                  <div style="display:flex; flex-direction:column; gap:2px; min-width:0;">
+                    <div style="font:500 14px/1.3 'Plus Jakarta Sans',sans-serif;">{{ r.label }}</div>
+                    <div style="font:400 12.5px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary); text-wrap:pretty;">{{ r.note }}</div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+            <button onClick="{{ lost.confirm }}" style="{{ lost.confirmStyle }}">{{ lost.confirmLabel }}</button>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; gap:8px; flex-wrap:wrap; max-width:1320px;">
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">leads.create · leads.moveStage (drag) · leads.logActivity</div>
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">leads.convertToBuyer · leads.markLost (reason required)</div>
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">days-quiet is computed from the last logged activity, not from the stage change</div>
+        </div>
+      </sc-if>
+
+      <div style="display:flex; flex-direction:column; gap:12px; max-width:1320px;">
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Role access — buyer and lead desk</div>
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden;">
+          <sc-for list="{{ access }}" as="a" hint-placeholder-count="6">
+            <div style="display:grid; grid-template-columns:1fr 128px 1.5fr; gap:16px; padding:11px 18px; align-items:center; border-bottom:1px solid var(--fx-border-subtle);">
+              <div style="font:500 13px/1.4 'JetBrains Mono',monospace;">{{ a.role }}</div>
+              <div><span style="{{ a.chip }}">{{ a.level }}</span></div>
+              <div style="font:400 13px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ a.note }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP2 }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:26px 28px; display:flex; flex-direction:column; gap:18px; max-width:1340px;">
+      <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex-wrap:wrap;">
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Buyers</div>
+          <div style="font:700 30px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">{{ buyerTitle }}</div>
+          <div style="font:400 14.5px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:68ch; text-wrap:pretty;">Payment behaviour is measured, not remembered — the chip on each row is what their bank actually did on the last twelve realizations.</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <button onClick="{{ exportBuyers }}" style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:8px; padding:11px 16px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-bg-hover)">Export</button>
+          <sc-if value="{{ canEdit }}" hint-placeholder-val="{{ true }}">
+            <button onClick="{{ createBuyer }}" style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:11px 18px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-accent-hover)">Add a buyer</button>
+          </sc-if>
+        </div>
+      </div>
+      <div style="height:9px; background-image:repeating-linear-gradient(115deg, var(--fx-accent) 0 2px, transparent 2px 9px);"></div>
+
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+        <div style="display:flex; align-items:center; gap:12px; padding:14px 20px; border-bottom:1px solid var(--fx-border-subtle); flex-wrap:wrap;">
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">{{ buyerCount }}</div>
+          <div style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-left:auto;">tap a row for terms, contacts and requirements</div>
+        </div>
+        <div style="overflow-x:auto;">
+        <div style="min-width:1120px;">
+          <div style="display:grid; grid-template-columns:1fr 132px 116px 148px 148px 188px; gap:14px; padding:11px 20px; background:var(--fx-bg-sunken); border-bottom:1px solid var(--fx-border-subtle); font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">
+            <div>Buyer</div><div>Country</div><div style="text-align:right;">Active</div><div style="text-align:right;">YTD value</div><div>Last shipment</div><div style="text-align:right;">Payment behaviour</div>
+          </div>
+          <sc-for list="{{ buyers }}" as="b" hint-placeholder-count="5">
+            <div onClick="{{ b.open }}" style="display:flex; align-items:stretch; border-bottom:1px solid var(--fx-border-subtle); cursor:pointer;" style-hover="background:var(--fx-bg-hover)">
+              <div style="width:{{ b.selW }}; flex-shrink:0; background:{{ b.sel }};"></div>
+              <div style="flex:1; min-width:0; display:grid; grid-template-columns:1fr 132px 116px 148px 148px 188px; gap:14px; padding:13px 20px 13px 17px; align-items:center; min-height:44px;">
+                <div style="display:flex; flex-direction:column; gap:3px; min-width:0;">
+                  <div style="font:600 14.5px/1.3 'Plus Jakarta Sans',sans-serif;">{{ b.name }}</div>
+                  <div style="font:400 11.5px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ b.entity }}</div>
+                </div>
+                <div style="font:400 13px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">{{ b.country }}</div>
+                <div style="font:500 13px/1.3 'JetBrains Mono',monospace; text-align:right;">{{ b.active }}</div>
+                <div style="font:500 13px/1.3 'JetBrains Mono',monospace; text-align:right; color:{{ b.valueColor }};">{{ b.ytd }}</div>
+                <div style="display:flex; flex-direction:column; gap:3px;">
+                  <div style="font:400 12.5px/1.3 'JetBrains Mono',monospace;">{{ b.lastShip }}</div>
+                  <div style="font:400 11.5px/1.2 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ b.lastAgo }}</div>
+                </div>
+                <div style="display:flex; justify-content:flex-end;">
+                  <div style="{{ b.payChip }}">{{ b.pay }}</div>
+                </div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        </div>
+        <div style="padding:14px 20px; font:400 12px/1.45 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ buyerFoot }}</div>
+      </div>
+
+      <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">buyers.create · buyers.export</div>
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">viewer sees the roster with every value masked</div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <div style="position:absolute; right:22px; bottom:22px; display:flex; align-items:center; gap:11px;">
+    <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">MARBIM · rest</div>
+    <div role="img" aria-label="MARBIM" style="{{ markStage }}">
+      <sc-for list="{{ markSlashes }}" as="s" hint-placeholder-count="8">
+        <img src="{{ s.src }}" alt="" style="{{ s.style }}" />
+      </sc-for>
+    </div>
+  </div>
+
+  </div>
+</div>
+
+<sc-if value="{{ drawerOpen }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closeDrawer }}" style="position:fixed; inset:0; z-index:80; display:flex; justify-content:flex-end; background-color:rgba(24,29,41,.5); background-image:repeating-linear-gradient(146deg, transparent 0 7px, rgba(255,255,255,.06) 7px 9px, transparent 9px 17px);">
+    <div onClick="{{ stopClick }}" style="width:720px; max-width:100%; background:var(--fx-bg-surface); border-left:1px solid var(--fx-border-subtle); box-shadow:var(--fx-sh3); display:flex; flex-direction:column; animation:fx-slide-in 260ms cubic-bezier(.2,.8,.2,1) both;">
+      <div style="padding:22px 24px 0; display:flex; flex-direction:column; gap:14px; border-bottom:1px solid var(--fx-border-subtle);">
+        <div style="display:flex; align-items:flex-start; gap:14px; flex-wrap:wrap;">
+          <div style="display:flex; flex-direction:column; gap:4px; min-width:0;">
+            <div style="font:700 24px/1.2 'Plus Jakarta Sans',sans-serif; letter-spacing:-.015em;">{{ drawer.name }}</div>
+            <div style="font:400 13px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ drawer.entity }}</div>
+          </div>
+          <button onClick="{{ closeDrawer }}" style="margin-left:auto; background:transparent; border:1px solid var(--fx-border-default); border-radius:8px; padding:10px 13px; font:600 12.5px/1 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); cursor:pointer; min-height:44px;">Close</button>
+        </div>
+        <div style="display:flex; gap:2px; flex-wrap:wrap;">
+          <sc-for list="{{ drawer.tabs }}" as="t" hint-placeholder-count="5">
+            <button onClick="{{ t.pick }}" style="{{ t.style }}">{{ t.label }}</button>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="flex:1; overflow-y:auto; padding:22px 24px 28px; display:flex; flex-direction:column; gap:18px;">
+        <sc-if value="{{ drawer.isOverview }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex; flex-direction:column; gap:14px;">
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Terms</div>
+            <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden;">
+              <sc-for list="{{ drawer.terms }}" as="t" hint-placeholder-count="7">
+                <div style="display:grid; grid-template-columns:190px 1fr; gap:14px; padding:12px 18px; align-items:baseline; border-bottom:1px solid var(--fx-border-subtle);">
+                  <div style="font:400 12.5px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">{{ t.k }}</div>
+                  <div style="font:500 13.5px/1.45 'JetBrains Mono',monospace; color:{{ t.c }};">{{ t.v }}</div>
+                </div>
+              </sc-for>
+            </div>
+            <sc-if value="{{ drawer.canPropose }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                <button onClick="{{ drawer.updateTerms }}" style="{{ drawer.termsBtnStyle }}">{{ drawer.termsBtnLabel }}</button>
+                <div style="font:400 12.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); flex:1 1 240px; min-width:0; text-wrap:pretty;">{{ drawer.termsRoute }}</div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ drawer.termsReadOnly }}" hint-placeholder-val="{{ false }}">
+              <div style="font:500 12.5px/1.45 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ drawer.termsRoute }}</div>
+            </sc-if>
+            <div style="display:flex; gap:14px; flex-wrap:wrap; padding-top:4px;">
+              <sc-for list="{{ drawer.stats }}" as="st" hint-placeholder-count="3">
+                <div style="flex:1 1 180px; min-width:170px; display:flex; background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden;">
+                  <div style="width:3px; flex-shrink:0; background:{{ st.c }};"></div>
+                  <div style="padding:14px 16px; display:flex; flex-direction:column; gap:5px; flex:1; min-width:0;">
+                    <div style="font:400 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">{{ st.k }}</div>
+                    <div style="font:600 20px/1.05 'JetBrains Mono',monospace; color:{{ st.c }};">{{ st.v }}</div>
+                    <div style="font:400 12px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ st.note }}</div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ drawer.isContacts }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex; flex-direction:column; gap:13px;">
+            <sc-for list="{{ drawer.contacts }}" as="c" hint-placeholder-count="3">
+              <div style="display:flex; background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden;">
+                <div style="width:3px; flex-shrink:0; background:{{ c.c }};"></div>
+                <div style="flex:1; min-width:0; padding:15px 17px; display:flex; flex-direction:column; gap:7px;">
+                  <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">
+                    <div style="font:600 15px/1.3 'Plus Jakarta Sans',sans-serif;">{{ c.name }}</div>
+                    <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.04em; text-transform:uppercase; color:{{ c.c }}; border:1px solid {{ c.c }}; border-radius:3px; padding:5px 6px;">{{ c.tag }}</div>
+                    <div style="font:400 12px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-left:auto;">{{ c.tz }}</div>
+                  </div>
+                  <div style="font:400 13px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">{{ c.role }}</div>
+                  <div style="font:400 12.5px/1.5 'JetBrains Mono',monospace; color:var(--fx-text-secondary);">{{ c.email }}</div>
+                  <div style="font:400 12.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary); text-wrap:pretty;">{{ c.note }}</div>
+                </div>
+              </div>
+            </sc-for>
+            <sc-if value="{{ drawer.canEditBuyer }}" hint-placeholder-val="{{ true }}">
+              <button onClick="{{ drawer.addContact }}" style="align-self:flex-start; background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-strong); border-radius:8px; padding:12px 17px; font:600 13.5px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-bg-hover)">Add a contact</button>
+            </sc-if>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ drawer.isReqs }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex; flex-direction:column; gap:14px;">
+            <sc-if value="{{ drawer.showReqDraft }}" hint-placeholder-val="{{ false }}">
+              <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-accent); border-radius:8px; overflow:hidden; clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);">
+                <div style="display:flex; align-items:center; gap:11px; padding:14px 18px; background:var(--fx-accent-subtle); flex-wrap:wrap;">
+                  <div style="width:24px; height:24px; border-radius:999px; background:#181D29; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                    <img src="uploads/MARBIM_logo.png" alt="" style="width:13px; height:13px;" />
+                  </div>
+                  <div style="font:600 14px/1.3 'Plus Jakarta Sans',sans-serif;">{{ drawer.reqDraft.headline }}</div>
+                  <div style="font:400 11.5px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-secondary); margin-left:auto;">{{ drawer.reqDraft.file }}</div>
+                </div>
+                <div style="padding:15px 18px; display:flex; flex-direction:column; gap:11px;">
+                  <div style="font:400 13px/1.6 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ drawer.reqDraft.note }}</div>
+                  <div style="display:flex; gap:9px; flex-wrap:wrap;">
+                    <button onClick="{{ drawer.acceptReqs }}" style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:12px 17px; font:600 13.5px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;">Add {{ drawer.reqDraft.count }} to the checklist</button>
+                    <button onClick="{{ drawer.dropReqs }}" style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:8px; padding:11px 15px; font:600 13.5px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;">Dismiss</button>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
+            <sc-for list="{{ drawer.requirements }}" as="r" hint-placeholder-count="5">
+              <div style="display:flex; background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden;">
+                <div style="width:3px; flex-shrink:0; background:{{ r.c }};"></div>
+                <div style="flex:1; min-width:0; padding:14px 16px; display:flex; flex-direction:column; gap:6px;">
+                  <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">
+                    <div style="font:500 14px/1.35 'Plus Jakarta Sans',sans-serif; text-wrap:pretty;">{{ r.what }}</div>
+                    <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.04em; text-transform:uppercase; color:{{ r.c }}; border:1px solid {{ r.c }}; border-radius:3px; padding:5px 6px; margin-left:auto; white-space:nowrap;">{{ r.kind }}</div>
+                  </div>
+                  <div style="font:400 12.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ r.detail }}</div>
+                  <button onClick="{{ r.source }}" style="align-self:flex-start; background:transparent; border:none; padding:0; font:500 12px/1.4 'JetBrains Mono',monospace; color:var(--fx-info); cursor:pointer; text-decoration:underline; text-underline-offset:3px;">{{ r.sourceLabel }}</button>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ drawer.isDocs }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            <sc-for list="{{ drawer.documents }}" as="d" hint-placeholder-count="4">
+              <div style="display:flex; background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden;">
+                <div style="width:3px; flex-shrink:0; background:{{ d.c }};"></div>
+                <div style="flex:1; min-width:0; padding:14px 16px; display:grid; grid-template-columns:1fr 148px 132px; gap:14px; align-items:center;">
+                  <div style="display:flex; flex-direction:column; gap:3px; min-width:0;">
+                    <div style="font:500 13.5px/1.35 'Plus Jakarta Sans',sans-serif;">{{ d.name }}</div>
+                    <div style="font:400 11.5px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ d.file }}</div>
+                  </div>
+                  <div style="font:400 12.5px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-secondary);">{{ d.added }}</div>
+                  <div style="font:500 12.5px/1.3 'JetBrains Mono',monospace; color:{{ d.c }}; text-align:right;">{{ d.state }}</div>
+                </div>
+              </div>
+            </sc-for>
+            <sc-if value="{{ drawer.canEditBuyer }}" hint-placeholder-val="{{ true }}">
+              <button onClick="{{ drawer.upload }}" style="align-self:flex-start; background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-strong); border-radius:8px; padding:12px 17px; font:600 13.5px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-bg-hover)">Upload a document</button>
+            </sc-if>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ drawer.isHistory }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex; flex-direction:column; gap:2px;">
+            <sc-for list="{{ drawer.history }}" as="h" hint-placeholder-count="5">
+              <div style="display:flex; align-items:flex-start; gap:13px;">
+                <div style="display:flex; flex-direction:column; align-items:center; gap:2px; flex-shrink:0;">
+                  <div style="{{ h.dot }}"></div>
+                  <div style="{{ h.line }}"></div>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:3px; min-width:0; padding-bottom:16px;">
+                  <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">
+                    <div style="font:500 14px/1.35 'Plus Jakarta Sans',sans-serif;">{{ h.what }}</div>
+                    <div style="font:400 11.5px/1.2 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ h.when }}</div>
+                  </div>
+                  <div style="font:400 12.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ h.note }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">buyers.updateTerms → Approve inbox · approver: manager</div>
+            <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">buyers.addContact · buyers.uploadDocument · marbim.extractRequirements</div>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed; left:50%; bottom:28px; transform:translateX(-50%); z-index:90; background:var(--fx-text-primary); color:var(--fx-text-inverse); border-radius:8px; box-shadow:var(--fx-sh3); padding:14px 18px; display:flex; align-items:center; gap:14px; max-width:92vw;">
+    <div style="font:500 13.5px/1.4 'Plus Jakarta Sans',sans-serif;">{{ toast }}</div>
+    <button onClick="{{ clearToast }}" style="background:transparent; border:none; color:var(--fx-accent); font:600 12px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer;">Dismiss</button>
+  </div>
+</sc-if>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;role&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;merchandiser&quot;,&quot;manager&quot;,&quot;owner&quot;,&quot;commercial&quot;,&quot;viewer&quot;,&quot;planner&quot;],&quot;default&quot;:&quot;merchandiser&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Access&quot;},&quot;showActionNames&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Annotation&quot;}}">
+const SLASH_VEC = [
+  { dx: -0.896, dy: 0.444 }, { dx: -0.271, dy: 0.963 }, { dx: -0.97, dy: -0.243 }, { dx: 0.415, dy: 0.91 },
+  { dx: -0.512, dy: -0.859 }, { dx: 0.936, dy: 0.352 }, { dx: 0.282, dy: -0.96 }, { dx: 0.908, dy: -0.419 }
+];
+
+const USERS = {
+  merchandiser: 'Nabila Rahman', manager: 'Shafiq Alam', owner: 'M. A. Chowdhury',
+  commercial: 'Tanvir Hasan', viewer: 'Audit (external)', planner: 'Ruhul Amin'
+};
+
+const usd0 = v => '$' + v.toLocaleString('en-US');
+
+const STAGES = ['New', 'Contacted', 'Sampling talk', 'Negotiation', 'Won / Lost'];
+const STAGE_COLOR = {
+  New: 'var(--fx-border-strong)', Contacted: 'var(--fx-info)',
+  'Sampling talk': 'var(--fx-info)', Negotiation: 'var(--fx-warning)', 'Won / Lost': 'var(--fx-success)'
+};
+
+// company, country, stage, want, agent, commission, daysQuiet, value, owner, staleNote
+const LEADS = [
+  ['Kappahl AB', 'Sweden', 'New', 'Men\u2019s poplin shirts, 40s, 30,000 pcs for SS27. Found us through the Dhaka Apparel Summit list.',
+    '', 0, 2, 138000, 'Nabila Rahman', ''],
+  ['Zeeman Textiel', 'Netherlands', 'New', 'Basic tees, 180 gsm, repeat programme. Asked for a capability deck first, not a price.',
+    'Rahman Sourcing', 3.5, 6, 96000, 'Nabila Rahman', ''],
+  ['Lindex', 'Sweden', 'Contacted', 'Ladies\u2019 blouses, viscose. Two calls, wants to see the compliance file before anything else.',
+    'Nordic Apparel Link', 4, 9, 172000, 'Nabila Rahman', ''],
+  ['Jack & Jones · Bestseller DK', 'Denmark', 'Contacted', 'Second division of an existing buyer. Denim shirts, wants to use the same LC structure.',
+    '', 0, 21, 210000, 'Shafiq Alam',
+    'Twenty-one days since the last logged activity, on a division of a buyer we already ship to. This is the easiest order on the board and nobody has touched it in three weeks.'],
+  ['Takko Fashion', 'Germany', 'Sampling talk', 'Polo 180 gsm piqué. Proto approved, fit sample requested in three colours.',
+    'Rahman Sourcing', 3.5, 4, 184000, 'Nabila Rahman', ''],
+  ['NKD Group', 'Germany', 'Sampling talk', 'Kids\u2019 tees, high volume, low price. Proto sent 12 Jul, no response to the follow-up.',
+    '', 0, 16, 74000, 'Nabila Rahman',
+    'Sixteen days quiet after a proto went out. Either the price landed badly or it went to someone else — worth one call before the sample cost is written off.'],
+  ['Kiabi', 'France', 'Negotiation', 'Woven shirt programme, 45,000 pcs. Two rounds on FOB, they are 4% below our floor.',
+    'Nordic Apparel Link', 4, 3, 268000, 'Shafiq Alam', ''],
+  ['Ovs SpA', 'Italy', 'Won / Lost', 'Ladies\u2019 knit top, 22,000 pcs. Won 18 Jul, first PO issued as PO-88251.',
+    'Rahman Sourcing', 3.5, 13, 118000, 'Nabila Rahman', '']
+];
+
+// name, entity, country, activeOrders, ytd, lastShip, lastAgo, payBand, payNote
+const BUYERS = [
+  ['H&M', 'H&M Hennes & Mauritz GBC AB', 'Sweden', 3, 486000, '06 Jul 2026', '25 days ago', 'fast', '9 d average, 14 realizations'],
+  ['Bestseller', 'Bestseller A/S', 'Denmark', 2, 392000, '11 Jul 2026', '20 days ago', 'steady', '14 d on top of 90 d sight'],
+  ['Primark', 'Primark Stores Ltd', 'Ireland', 4, 318000, '18 Jul 2026', '13 days ago', 'steady', '12 d, never varies'],
+  ['C&A', 'C&A Buying GmbH', 'Germany', 1, 214000, '02 Jun 2026', '59 days ago', 'slow', '31 d average, 6 realizations'],
+  ['Ovs', 'Ovs SpA', 'Italy', 1, 0, 'none yet', 'won 18 Jul', 'new', 'no history — first order in production']
+];
+
+const PAY_COLOR = { fast: 'var(--fx-success)', steady: 'var(--fx-text-primary)', slow: 'var(--fx-danger)', new: 'var(--fx-text-tertiary)' };
+
+const BUYER_DETAIL = {
+  'H&M': {
+    terms: [
+      ['Payment', 'LC at sight', ''],
+      ['Presentation period', '21 days from shipment', ''],
+      ['Incoterm', 'FOB Chattogram', ''],
+      ['Tolerance', '± 5% on quantity and value', ''],
+      ['Nominated forwarder', 'Kuehne + Nagel Dhaka', ''],
+      ['Claims window', '30 days from receipt at the DC', ''],
+      ['Price validity', '90 days from quotation', ''],
+      ['Agent', 'direct — no commission', 'var(--fx-success)']
+    ],
+    stats: [
+      ['Margin', '16.8%', 'after claims, three orders', 'var(--fx-success)'],
+      ['Claims', '0.4%', 'one shade claim in three years', 'var(--fx-success)'],
+      ['Payment lag', '9 d', 'presentation to credit', 'var(--fx-success)']
+    ],
+    contacts: [
+      ['Anna Lindqvist', 'buyer', 'Production Merchandiser · Shirts', 'anna.lindqvist@hm.com', 'Stockholm · UTC+2',
+        'Answers within a day. Wants the weekly TNA update on Monday morning her time, which is Monday afternoon here.'],
+      ['Md. Sohel Rana', 'liaison', 'H&M Dhaka Liaison Office · Quality', 'sohel.rana@hm.com', 'Dhaka · UTC+6',
+        'Visits the floor unannounced. He is the one who raises the CAP, so a finding he sees is a finding on file.'],
+      ['Karin Öberg', 'technical', 'Technical Services · Fit', 'karin.oberg@hm.com', 'Stockholm · UTC+2',
+        'Only involved at fit approval. Copying her on commercial mail slows everything down.']
+    ],
+    requirements: [
+      ['Restricted substance list · AFIRM v9', 'chemical', 'Every wet-processed component tested at an approved lab. Certificates travel with the shipment, not after it.', 'H&M Supplier Manual 2026 · p. 41'],
+      ['Recycled polyester in all polybags', 'packaging', 'Minimum 80% PCR, printed with the recycling mark. Our current supplier meets this; the alternative one does not.', 'H&M Packaging Standard · p. 12'],
+      ['Care label in 6 languages', 'labelling', 'Swedish, English, German, French, Dutch, Polish. Wrong language order is a rejection, not a correction.', 'H&M Labelling Guide · p. 7'],
+      ['Photo of first carton before packing starts', 'inspection', 'One photo per colour to the liaison office. Approval usually the same day.', 'H&M Supplier Manual 2026 · p. 88'],
+      ['No subcontracting without written approval', 'compliance', 'Applies to wash and embroidery as well as sewing. Unapproved subcontracting ends the relationship.', 'H&M Sustainability Commitment · p. 3']
+    ],
+    documents: [
+      ['Supplier agreement 2026', 'HM-SA-2026-signed.pdf', 'signed 14 Jan 2026', 'current', 'var(--fx-success)'],
+      ['Supplier manual 2026', 'HM-Supplier-Manual-2026.pdf', 'added 14 Jan 2026', 'current', 'var(--fx-success)'],
+      ['Packaging standard', 'HM-Packaging-2025.pdf', 'added 02 Mar 2025', 'superseded Mar 2026', 'var(--fx-warning)'],
+      ['Price agreement · shirts SS26', 'HM-Price-SS26.pdf', 'signed 08 Feb 2026', 'expires 08 Aug', 'var(--fx-warning)']
+    ],
+    history: [
+      ['PO-88231 confirmed', '04 Jul 2026', '18,000 pcs of SH-4488 for November. Fabric ordered the same week.', 'good'],
+      ['Shipment SH-4460 on board', '06 Jul 2026', '22,400 pcs on PO-88160, two days ahead of the ex-factory date. SH-4471 is the follow-on body and ships 04 Sep.', 'good'],
+      ['Terms changed · presentation period', '12 Apr 2026', 'Raised from 15 to 21 days at our request. Approved by Shafiq Alam.', 'neutral'],
+      ['Shade claim · PO-88144', '22 Nov 2025', '$4,200 settled. Their lab and ours disagreed and we paid rather than argue over a repeat buyer.', 'bad'],
+      ['First order', '09 Mar 2019', 'PO-84012 · 8,000 pcs. Seven years and eleven orders ago.', 'neutral']
+    ]
+  }
+};
+
+const LOST_REASONS = [
+  ['Price', 'We were above what they could pay. Record the gap in the note — a 3% loss and a 22% loss are different problems.'],
+  ['Lead time', 'We could not reach the date. This one is a planning answer, not a commercial one.'],
+  ['Capacity', 'We turned it down or could not book it. Not a loss at all if the capacity went somewhere better.'],
+  ['Compliance or audit', 'They needed a certification or a score we do not have. This is the reason worth escalating.'],
+  ['Went quiet', 'No decision, no answer. Honest, and the most common one — do not dress it as price.']
+];
+
+const ACCESS = [
+  ['merchandiser', 'edit own', 'Full edit on their own accounts and leads. Cannot see another merchandiser\u2019s pipeline.'],
+  ['manager', 'edit + approve', 'Every account, and the only approver on a terms change.'],
+  ['owner · admin', 'view + approve', 'Read everything, approve terms when the manager is the one proposing them.'],
+  ['commercial', 'view', 'Reads terms and payment behaviour because it writes the LC against them.'],
+  ['viewer', 'view · redacted', 'REDACTED — the roster and the stages, with every value and commission masked.'],
+  ['planner · qc · storekeeper · hr · accounts', 'none', 'HIDDEN — the orders reach them, the negotiation does not.']
+];
+
+class Component extends DCLogic {
+  state = {
+    screen: 'p1', role: 'merchandiser', annot: true,
+    drawer: '', tab: 'overview', showDraft: false, convertStep: 0, convertId: '',
+    lostId: '', lostReason: '', showReqDraft: true, toast: ''
+  };
+
+  componentWillUnmount() { clearTimeout(this._t); }
+
+  flash(msg) {
+    clearTimeout(this._t);
+    this.setState({ toast: msg });
+    this._t = setTimeout(() => this.setState({ toast: '' }), 4400);
+  }
+
+  pill(active) {
+    return {
+      background: active ? 'var(--fx-bg-surface)' : 'transparent',
+      color: active ? 'var(--fx-text-primary)' : 'var(--fx-text-secondary)',
+      border: '1px solid ' + (active ? 'var(--fx-border-default)' : 'transparent'),
+      borderRadius: '6px', padding: '9px 12px', cursor: 'pointer',
+      font: "600 12.5px/1 'Plus Jakarta Sans',sans-serif", whiteSpace: 'nowrap'
+    };
+  }
+
+  ghost(on) {
+    return {
+      background: on ? 'var(--fx-text-primary)' : 'transparent',
+      color: on ? 'var(--fx-text-inverse)' : 'var(--fx-text-secondary)',
+      border: '1px solid ' + (on ? 'var(--fx-text-primary)' : 'var(--fx-border-default)'),
+      borderRadius: '8px', padding: '10px 13px', cursor: 'pointer', minHeight: '44px',
+      font: "500 12px/1 'JetBrains Mono',monospace", whiteSpace: 'nowrap'
+    };
+  }
+
+  chip(level) {
+    const base = {
+      font: "500 11px/1 'JetBrains Mono',monospace", letterSpacing: '.05em', textTransform: 'uppercase',
+      borderRadius: '4px', padding: '6px 8px', display: 'inline-block', whiteSpace: 'nowrap'
+    };
+    if (level === 'none') return { ...base, color: 'var(--fx-text-tertiary)', border: '1px solid var(--fx-border-subtle)' };
+    if (level === 'view' || level === 'view · redacted') return { ...base, color: 'var(--fx-text-secondary)', background: 'var(--fx-bg-sunken)', border: '1px solid transparent' };
+    if (level === 'edit own') return { ...base, color: 'var(--fx-text-primary)', border: '1px solid var(--fx-border-strong)' };
+    return { ...base, color: 'var(--fx-text-primary)', border: '1px solid var(--fx-text-primary)', boxShadow: 'inset 3px 0 0 var(--fx-accent)', paddingLeft: '12px' };
+  }
+
+  renderVals() {
+    const s = this.state;
+    const mode = s.mode || 'light';
+    const role = s.role, screen = s.screen;
+    const isMerch = role === 'merchandiser';
+    const isManager = role === 'manager';
+    const isOwner = role === 'owner';
+    const isViewer = role === 'viewer';
+    const locked = role === 'planner';
+    const allowed = !locked;
+    const canEdit = isMerch || isManager;
+    const canApprove = isManager || isOwner;
+    const redacted = isViewer;
+    const money = v => (redacted ? '•••' : v);
+
+    // merchandiser sees only their own accounts
+    const mine = LEADS.filter(l => !isMerch || l[8] === USERS.merchandiser);
+    const quietThreshold = 14;
+    const stale = mine.filter(l => l[6] >= quietThreshold && l[2] !== 'Won / Lost');
+    const pipeValue = mine.filter(l => l[2] !== 'Won / Lost').reduce((a, l) => a + l[7], 0);
+
+    const columns = STAGES.map(st => {
+      const cards = mine.filter(l => l[2] === st);
+      const val = cards.reduce((a, c) => a + c[7], 0);
+      return {
+        name: st, count: String(cards.length),
+        value: money(usd0(val)),
+        valueColor: redacted ? 'var(--fx-text-tertiary)' : 'var(--fx-text-secondary)',
+        marker: { width: '3px', height: '15px', transform: 'skewX(-34deg)', background: STAGE_COLOR[st], flexShrink: 0 },
+        wellStyle: {
+          display: 'flex', flexDirection: 'column', gap: '12px',
+          background: 'var(--fx-bg-sunken)', borderRadius: '8px', padding: '12px', minHeight: '120px'
+        },
+        empty: cards.length === 0,
+        emptyNote: st === 'New'
+          ? 'Nothing new this week. Paste an inquiry email or a business-card photo and MARBIM drafts the card.'
+          : 'Nothing at this stage.',
+        cards: cards.map(l => {
+          const isStale = l[6] >= quietThreshold && st !== 'Won / Lost';
+          const won = st === 'Won / Lost';
+          return {
+            company: l[0], country: l[1], want: l[3],
+            hasAgent: !!l[4], direct: !l[4],
+            agent: redacted ? l[4] + ' · •••' : l[4] + ' · ' + l[5] + '%',
+            agentChip: {
+              font: "500 11px/1 'JetBrains Mono',monospace", letterSpacing: '.04em',
+              color: 'var(--fx-text-secondary)', border: '1px solid var(--fx-border-default)',
+              borderRadius: '3px', padding: '5px 7px', whiteSpace: 'nowrap'
+            },
+            value: money(usd0(l[7])),
+            quiet: won ? 'won 18 Jul' : l[6] + ' d quiet',
+            quietColor: isStale ? 'var(--fx-danger)' : won ? 'var(--fx-success)' : 'var(--fx-text-tertiary)',
+            stale: isStale, staleNote: l[9],
+            sel: isStale ? 'var(--fx-danger)' : won ? 'var(--fx-success)' : STAGE_COLOR[st],
+            selW: isStale ? '5px' : '3px',
+            border: isStale ? 'var(--fx-danger)' : 'var(--fx-border-subtle)',
+            canAct: canEdit && !won,
+            readOnly: !canEdit || won,
+            readOnlyNote: won ? 'converted · PO-88251 on the order book' : 'read-only · the account merchandiser moves this',
+            primaryLabel: st === 'Negotiation' ? 'Convert to buyer' : isStale ? 'Mark lost' : 'Move on',
+            primaryStyle: st === 'Negotiation'
+              ? { background: 'var(--fx-accent)', color: 'var(--fx-accent-on)', border: 'none', borderRadius: '8px', padding: '12px 15px', font: "600 13px/1 'Plus Jakarta Sans',sans-serif", cursor: 'pointer', minHeight: '44px', flex: '1 1 auto' }
+              : { background: 'transparent', color: 'var(--fx-text-primary)', border: '1px solid var(--fx-border-strong)', borderRadius: '8px', padding: '12px 15px', font: "600 13px/1 'Plus Jakarta Sans',sans-serif", cursor: 'pointer', minHeight: '44px', flex: '1 1 auto' },
+            primary: () => st === 'Negotiation'
+              ? this.setState({ convertStep: 1, convertId: l[0] })
+              : isStale
+                ? this.setState({ lostId: l[0], lostReason: '' })
+                : this.flash(l[0] + ' moved to ' + STAGES[STAGES.indexOf(st) + 1] + ' · drag does the same thing'),
+            log: () => this.flash('Activity logged on ' + l[0] + ' · the quiet counter resets from this, not from the stage')
+          };
+        })
+      };
+    });
+
+    const conv = LEADS.find(l => l[0] === s.convertId);
+    const lostLead = LEADS.find(l => l[0] === s.lostId);
+
+    const buyers = BUYERS.map(b => ({
+      name: b[0], entity: b[1], country: b[2],
+      active: b[3] ? String(b[3]) : '—',
+      ytd: b[4] ? money(usd0(b[4])) : '—',
+      valueColor: redacted ? 'var(--fx-text-tertiary)' : b[4] ? 'var(--fx-text-primary)' : 'var(--fx-text-disabled)',
+      lastShip: b[5], lastAgo: b[6],
+      pay: b[7], 
+      payChip: {
+        display: 'flex', flexDirection: 'column', gap: '3px', alignItems: 'flex-end',
+        font: "500 12px/1.2 'JetBrains Mono',monospace", color: PAY_COLOR[b[7]],
+        border: '1px solid ' + PAY_COLOR[b[7]], borderRadius: '4px', padding: '7px 9px', whiteSpace: 'nowrap'
+      },
+      sel: b[7] === 'slow' ? 'var(--fx-danger)' : b[7] === 'new' ? 'var(--fx-info)' : 'var(--fx-border-subtle)',
+      selW: b[7] === 'slow' ? '5px' : '3px',
+      open: () => this.setState({ drawer: b[0], tab: 'overview' })
+    }));
+
+    const d = BUYER_DETAIL[s.drawer] || BUYER_DETAIL['H&M'];
+    const drawerBuyer = BUYERS.find(b => b[0] === s.drawer) || BUYERS[0];
+
+    return {
+      screens: [['p1', 'P1 leads'], ['p2', 'P2 buyers'], ['p2d', 'P3 buyer drawer']].map(x => ({
+        label: x[1],
+        pick: () => x[0] === 'p2d'
+          ? this.setState({ screen: 'p2', drawer: 'H&M', tab: 'overview' })
+          : this.setState({ screen: x[0], drawer: '' }),
+        style: this.pill(x[0] === 'p2d' ? !!s.drawer : screen === x[0] && !s.drawer)
+      })),
+      role, userName: USERS[role],
+      setRole: (e) => this.setState({ role: e.target.value, convertStep: 0, lostId: '' }),
+      annot: s.annot, annotLabel: s.annot ? 'on' : 'off', annotBtn: this.ghost(s.annot),
+      mode, modeLabel: mode === 'dark' ? 'dark' : 'light', modeBtn: this.ghost(mode === 'dark'),
+      logoSrc: 'uploads/fabricxai-logo-' + (mode === 'dark' ? 'dark' : 'light') + '.png',
+      toggleMode: () => this.setState(x => ({ mode: x.mode === 'dark' ? 'light' : 'dark' })),
+      toggleAnnot: () => this.setState(x => ({ annot: !x.annot })),
+
+      locked, hasNav: allowed, noNav: !allowed,
+      isP1: allowed && screen === 'p1', isP2: allowed && screen === 'p2',
+      canEdit: canEdit,
+
+      nav: [['p1', 'Leads'], ['p2', 'Buyers']].map(x => ({
+        label: x[1], pick: () => this.setState({ screen: x[0], drawer: '' }),
+        badge: x[0] === 'p1' && stale.length > 0, count: String(stale.length),
+        badgeStyle: {
+          marginLeft: 'auto', font: "600 11px/1 'JetBrains Mono',monospace",
+          color: 'var(--fx-text-inverse)', background: 'var(--fx-danger)',
+          borderRadius: '999px', padding: '5px 7px', minWidth: '20px', textAlign: 'center'
+        },
+        style: {
+          display: 'flex', alignItems: 'center', gap: '11px', padding: '11px 12px', borderRadius: '8px', cursor: 'pointer',
+          minHeight: '44px', font: "500 14px/1 'Plus Jakarta Sans',sans-serif",
+          background: screen === x[0] ? 'var(--fx-bg-selected)' : 'transparent',
+          color: screen === x[0] ? 'var(--fx-text-primary)' : 'var(--fx-text-secondary)'
+        },
+        marker: { width: '2px', height: '15px', transform: 'skewX(-34deg)', background: screen === x[0] ? 'var(--fx-accent)' : 'transparent', flexShrink: 0 }
+      })),
+      scopeNote: isMerch
+        ? 'Your accounts only. Another merchandiser\u2019s pipeline is not hidden behind a filter — it is not loaded.'
+        : isViewer ? 'Every account, every value masked.'
+          : isManager ? 'Every account, and every terms change comes to you.' : 'Read across every account.',
+      pulse: [
+        { k: 'In the pipeline', v: money(usd0(pipeValue)), c: 'var(--fx-text-primary)' },
+        { k: 'Quiet 14 days or more', v: String(stale.length), c: stale.length ? 'var(--fx-danger)' : 'var(--fx-success)' }
+      ],
+
+      pipeTitle: stale.length
+        ? stale.length + (stale.length === 1 ? ' lead has gone quiet' : ' leads have gone quiet')
+        : mine.filter(l => l[2] !== 'Won / Lost').length + ' leads in play',
+      pipeLead: stale.length
+        ? 'The quiet counter measures the last logged activity, not the last stage change — a lead can sit in Negotiation looking healthy for three weeks. '
+          + (stale.length === 1 ? 'One here is' : stale.length + ' here are') + ' past fourteen days.'
+        : 'Nothing has been left more than a fortnight. Ranked left to right by stage, with the days-quiet counter on every card.',
+      columns,
+
+      pasteInquiry: () => this.setState({ showDraft: true }),
+      showDraft: s.showDraft && canEdit,
+      draft: {
+        source: 'pasted email · 340 words · sv-SE and en',
+        rows: [
+          ['Company', 'Kappahl AB', 0.97],
+          ['Country', 'Sweden', 0.98],
+          ['Contact', 'Elin Persson · Sourcing Manager', 0.94],
+          ['Product', 'Men\u2019s poplin shirt, 40s, long sleeve', 0.92],
+          ['Quantity', '30,000 pcs for SS27', 0.88],
+          ['Agent', 'none mentioned', 0.62]
+        ].map(r => ({
+          k: r[0], v: r[1], conf: r[2].toFixed(2),
+          confColor: r[2] < 0.85 ? 'var(--fx-warning)' : 'var(--fx-text-primary)',
+          sel: r[2] < 0.85 ? 'var(--fx-warning)' : 'var(--fx-success)'
+        })),
+        caveat: 'The product and quantity are stated plainly. The agent I have marked as none because the email does not mention one — but it came from a gmail address rather than a Kappahl domain, which usually means an agent is involved and has not said so yet. Worth asking before a price goes out.'
+      },
+      acceptDraft: () => { this.setState({ showDraft: false }); this.flash('Kappahl AB added to New · the pasted email is attached as the first activity'); },
+      dropDraft: () => this.setState({ showDraft: false }),
+      createLead: () => this.flash('New lead · company and country are the only required fields'),
+
+      convertOpen: s.convertStep > 0 && !!conv,
+      convert: conv ? {
+        step: String(s.convertStep),
+        title: s.convertStep === 1 ? 'What carries over from the lead' : 'What the buyer record still needs',
+        lead: s.convertStep === 1
+          ? 'Everything below already exists on the lead and moves across untouched. Nothing is retyped, and the lead stays in the pipeline as the won record rather than disappearing.'
+          : 'These are the fields an order cannot be raised without. Terms start from the negotiated position and go to the manager for approval, not straight onto the buyer.',
+        rows: s.convertStep === 1
+          ? [
+            { k: 'Company', v: conv[0], from: 'from lead', c: 'var(--fx-text-primary)' },
+            { k: 'Country', v: conv[1], from: 'from lead', c: 'var(--fx-text-primary)' },
+            { k: 'Agent', v: conv[4] ? conv[4] + ' · ' + conv[5] + '%' : 'direct', from: 'from lead', c: 'var(--fx-text-primary)' },
+            { k: 'Indicative value', v: money(usd0(conv[7])), from: 'from lead', c: 'var(--fx-text-primary)' },
+            { k: 'Account merchandiser', v: conv[8], from: 'from lead', c: 'var(--fx-text-primary)' },
+            { k: 'Activity history', v: '11 entries since 04 May', from: 'from lead', c: 'var(--fx-text-secondary)' }
+          ]
+          : [
+            { k: 'Legal entity name', v: 'Kiabi SAS', from: 'needs entry', c: 'var(--fx-text-primary)' },
+            { k: 'Payment', v: 'LC at sight', from: 'from negotiation', c: 'var(--fx-text-primary)' },
+            { k: 'Incoterm', v: 'FOB Chattogram', from: 'from negotiation', c: 'var(--fx-text-primary)' },
+            { k: 'Agreed FOB', v: money('$5.96 / pc'), from: 'from negotiation', c: 'var(--fx-warning)' },
+            { k: 'Tolerance', v: '± 5%', from: 'default', c: 'var(--fx-text-secondary)' },
+            { k: 'Terms approval', v: 'goes to Shafiq Alam', from: 'routing', c: 'var(--fx-text-primary)' }
+          ],
+        cta: s.convertStep === 1 ? 'Looks right, continue' : 'Create the buyer',
+        note: s.convertStep === 1
+          ? 'If any of this is wrong, fix it on the lead first — correcting it here would leave the two records disagreeing.'
+          : 'The agreed FOB is 4% under our floor, so the terms will sit in the manager\u2019s inbox before the first order can be raised against them.',
+        next: () => s.convertStep === 1
+          ? this.setState({ convertStep: 2 })
+          : (this.setState({ convertStep: 0, convertId: '' }), this.flash('Kiabi created · terms sent to Shafiq Alam · approver: manager'))
+      } : null,
+      closeConvert: () => this.setState({ convertStep: 0, convertId: '' }),
+
+      lostOpen: !!lostLead,
+      lost: lostLead ? {
+        company: lostLead[0],
+        reasons: LOST_REASONS.map(r => ({
+          label: r[0], note: r[1],
+          pick: () => this.setState({ lostReason: r[0] }),
+          style: {
+            display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '13px 15px', borderRadius: '8px',
+            cursor: 'pointer', minHeight: '44px',
+            border: '1px solid ' + (s.lostReason === r[0] ? 'var(--fx-text-primary)' : 'var(--fx-border-subtle)'),
+            background: s.lostReason === r[0] ? 'var(--fx-bg-selected)' : 'transparent'
+          },
+          dot: {
+            width: '14px', height: '14px', borderRadius: '999px', flexShrink: 0, marginTop: '3px',
+            border: '2px solid ' + (s.lostReason === r[0] ? 'var(--fx-text-primary)' : 'var(--fx-border-strong)'),
+            background: s.lostReason === r[0] ? 'var(--fx-text-primary)' : 'transparent',
+            boxShadow: s.lostReason === r[0] ? 'inset 0 0 0 2px var(--fx-bg-surface)' : 'none'
+          }
+        })),
+        confirmLabel: s.lostReason ? 'Mark lost · ' + s.lostReason.toLowerCase() : 'Pick a reason first',
+        confirmStyle: s.lostReason
+          ? { alignSelf: 'flex-start', background: 'var(--fx-text-primary)', color: 'var(--fx-text-inverse)', border: 'none', borderRadius: '8px', padding: '13px 19px', font: "600 14px/1 'Plus Jakarta Sans',sans-serif", cursor: 'pointer', minHeight: '48px' }
+          : { alignSelf: 'flex-start', background: 'transparent', color: 'var(--fx-text-disabled)', border: '1px solid var(--fx-border-subtle)', borderRadius: '8px', padding: '13px 19px', font: "600 14px/1 'Plus Jakarta Sans',sans-serif", cursor: 'not-allowed', minHeight: '48px' },
+        confirm: () => {
+          if (!s.lostReason) return;
+          this.setState({ lostId: '', lostReason: '' });
+          this.flash(lostLead[0] + ' marked lost · ' + s.lostReason.toLowerCase());
+        }
+      } : null,
+      closeLost: () => this.setState({ lostId: '', lostReason: '' }),
+
+      buyerTitle: BUYERS.filter(b => b[3] > 0).length + ' buyers with work on the floor',
+      buyerCount: BUYERS.length + ' buyers · ' + BUYERS.reduce((a, b) => a + b[3], 0) + ' active orders',
+      buyerFoot: redacted
+        ? 'values masked for your role · the roster and the payment behaviour are not'
+        : money(usd0(BUYERS.reduce((a, b) => a + b[4], 0))) + ' shipped year to date across these buyers',
+      buyers,
+      createBuyer: () => this.flash('New buyer · normally this comes from converting a lead, which carries the history with it'),
+      exportBuyers: () => this.flash('Exported · one row per buyer, terms in a second sheet'),
+
+      drawerOpen: !!s.drawer,
+      closeDrawer: () => this.setState({ drawer: '' }),
+      stopClick: (e) => e.stopPropagation(),
+      drawer: {
+        name: drawerBuyer[0], entity: drawerBuyer[1],
+        tabs: [['overview', 'Overview'], ['contacts', 'Contacts'], ['reqs', 'Requirements'], ['docs', 'Documents'], ['history', 'History']].map(t => ({
+          label: t[1], pick: () => this.setState({ tab: t[0] }),
+          style: {
+            background: 'transparent', border: 'none', borderBottom: '2px solid ' + (s.tab === t[0] ? 'var(--fx-text-primary)' : 'transparent'),
+            padding: '11px 13px', cursor: 'pointer', minHeight: '44px',
+            font: "600 13.5px/1 'Plus Jakarta Sans',sans-serif",
+            color: s.tab === t[0] ? 'var(--fx-text-primary)' : 'var(--fx-text-tertiary)'
+          }
+        })),
+        isOverview: s.tab === 'overview', isContacts: s.tab === 'contacts',
+        isReqs: s.tab === 'reqs', isDocs: s.tab === 'docs', isHistory: s.tab === 'history',
+        terms: d.terms.map(t => ({
+          k: t[0],
+          v: redacted && (t[0] === 'Payment' || t[0] === 'Tolerance' || t[0] === 'Price validity') ? '•••' : t[1],
+          c: t[2] || 'var(--fx-text-primary)'
+        })),
+        stats: d.stats.map(x => ({ k: x[0], v: redacted ? '•••' : x[1], note: x[2], c: redacted ? 'var(--fx-text-tertiary)' : x[3] })),
+        canPropose: canEdit,
+        termsReadOnly: !canEdit,
+        termsBtnLabel: canApprove ? 'Change the terms' : 'Propose a terms change',
+        termsBtnStyle: canApprove
+          ? { background: 'var(--fx-accent)', color: 'var(--fx-accent-on)', border: 'none', borderRadius: '8px', padding: '13px 18px', font: "600 14px/1 'Plus Jakarta Sans',sans-serif", cursor: 'pointer', minHeight: '48px' }
+          : { background: 'transparent', color: 'var(--fx-text-primary)', border: '1px solid var(--fx-border-strong)', borderRadius: '8px', padding: '13px 18px', font: "600 14px/1 'Plus Jakarta Sans',sans-serif", cursor: 'pointer', minHeight: '48px' },
+        termsRoute: canApprove
+          ? 'You approve terms, so a change you make commits directly — and lands in the audit trail under your name.'
+          : canEdit
+            ? 'A terms change goes to Shafiq Alam before it takes effect. Orders already raised keep the terms they were raised under.'
+            : isViewer ? 'Terms are masked for your role.' : 'Read-only · the account merchandiser proposes, the manager approves.',
+        updateTerms: () => this.flash(canApprove
+          ? 'Terms updated on ' + drawerBuyer[0] + ' · committed and logged under ' + USERS[role]
+          : 'Terms change sent · approver: manager (Shafiq Alam)'),
+        contacts: d.contacts.map(c => ({
+          name: c[0], tag: c[1], role: c[2], email: c[3], tz: c[4], note: c[5],
+          c: c[1] === 'buyer' ? 'var(--fx-text-primary)' : c[1] === 'liaison' ? 'var(--fx-warning)' : 'var(--fx-info)'
+        })),
+        canEditBuyer: canEdit,
+        addContact: () => this.flash('Contact added to ' + drawerBuyer[0]),
+        showReqDraft: s.showReqDraft && canEdit,
+        reqDraft: {
+          headline: 'Five requirements read from the supplier manual',
+          file: 'HM-Supplier-Manual-2026.pdf · 132 pages',
+          count: '5',
+          note: 'Each one keeps its page number, so when a merchandiser argues about a care label in eleven months there is a page to open rather than a memory to trust. Two clauses about subcontracting I have merged into one — read that one first if you disagree.'
+        },
+        acceptReqs: () => { this.setState({ showReqDraft: false }); this.flash('5 requirements added · each linked to its page in the manual'); },
+        dropReqs: () => this.setState({ showReqDraft: false }),
+        requirements: d.requirements.map(r => ({
+          what: r[0], kind: r[1], detail: r[2], sourceLabel: r[3],
+          c: r[1] === 'compliance' ? 'var(--fx-danger)' : r[1] === 'chemical' ? 'var(--fx-warning)' : 'var(--fx-info)',
+          source: () => this.flash('Opening ' + r[3])
+        })),
+        documents: d.documents.map(x => ({ name: x[0], file: x[1], added: x[2], state: x[3], c: x[4] })),
+        upload: () => this.flash('Document uploaded to ' + drawerBuyer[0] + ' · MARBIM offers to read requirements out of it'),
+        history: d.history.map((h, i, arr) => ({
+          what: h[0], when: h[1], note: h[2],
+          dot: {
+            width: '11px', height: '11px', borderRadius: '999px', flexShrink: 0, marginTop: '4px',
+            background: h[3] === 'good' ? 'var(--fx-success)' : h[3] === 'bad' ? 'var(--fx-danger)' : 'var(--fx-border-strong)'
+          },
+          line: {
+            width: '2px', flex: 1, minHeight: i === arr.length - 1 ? '0' : '26px',
+            background: i === arr.length - 1 ? 'transparent' : 'var(--fx-border-default)'
+          }
+        }))
+      },
+
+      access: ACCESS.map(a => ({ role: a[0], level: a[1], note: a[2], chip: this.chip(a[1]) })),
+      toast: s.toast, clearToast: () => this.setState({ toast: '' }),
+      markStage: { position: 'relative', width: '32px', height: '32px', flexShrink: 0 },
+      markSlashes: SLASH_VEC.map((v, i) => ({
+        src: 'assets/mark/' + (mode === 'dark' ? 'w-' : 'i-') + (i + 1) + '.png',
+        style: { position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', transformOrigin: 'center' }
+      }))
+    };
+  }
+}
+
+</script>
+</body>
+</html>

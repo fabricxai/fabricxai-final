@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Archivo:wght@500;600;700&family=Anek+Bangla:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #F3F1EC; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: #181D29; text-decoration: underline; text-underline-offset: 3px; }
+  a:hover { color: #B88C21; }
+</style>
+</helmet>
+
+<div style="--ink:#181D29; --canvas:#FBFAF8; --surface:#FFFFFF; --sunken:#F3F1EC; --t2:#4C5364; --t3:#767E90; --bs:#E7E4DE; --bd:#D6D2C9; --st:#A9A49A; --accent:#E1B334; --accent-sub:#FAF1DA; --accent-press:#B88C21; --ok:#2F7D5B; --warn:#B4741C; --bad:#B23A32; --info:#2F5FA8; --d-canvas:#0F131B; --d-surface:#181D29; --d-raised:#212736; --d-bs:#252B3A; --d-bd:#343B4C; --d-st:#4E576B; --d-t1:#F4F3F0; --d-t2:#AEB5C4; --d-t3:#7C8497; font-family:'Plus Jakarta Sans',system-ui,sans-serif; color:var(--ink); background:var(--sunken); width:2600px; padding:56px 60px 120px; display:flex; flex-direction:column; gap:60px;">
+
+  <div style="display:flex; align-items:flex-end; gap:48px; flex-wrap:wrap; padding-bottom:30px; border-bottom:1px solid var(--bd);">
+    <div style="display:flex; flex-direction:column; gap:14px; max-width:72ch;">
+      <img src="uploads/fabricxai-logo-light.png" alt="FabricX AI" style="height:36px; width:auto; align-self:flex-start; object-fit:contain;" />
+      <div style="font:700 44px/1.12 'Archivo',sans-serif; letter-spacing:-.02em;">LinkedIn product &amp; services catalog</div>
+      <div style="height:14px; width:96px; background-image:repeating-linear-gradient(115deg, var(--bd) 0 2px, transparent 2px 6px);"></div>
+      <div style="font:400 17px/1.6 'Plus Jakarta Sans',sans-serif; color:var(--t2); text-wrap:pretty;">Every field LinkedIn asks for, written to its character limit, plus the media gallery at export size. Each gallery card is a real screen from the locked product — the order book, the MARBIM draft, the BTB refusal, the hourly floor board, the owner's night feed — never an illustration of one.</div>
+    </div>
+    <div style="margin-left:auto; display:flex; flex-direction:column; gap:11px; background:var(--surface); border:1px solid var(--bs); border-radius:8px; padding:22px 24px; box-shadow:0 1px 2px rgba(24,29,41,.06); clip-path:polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);">
+      <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.09em; text-transform:uppercase; color:var(--t3);">Caption language</div>
+      <div style="display:flex; gap:8px;">
+        <sc-for list="{{ langs }}" as="l" hint-placeholder-count="2">
+          <button onClick="{{ l.pick }}" style="{{ l.style }}">{{ l.label }}</button>
+        </sc-for>
+      </div>
+      <div style="font:400 13px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--t2); max-width:34ch; text-wrap:pretty;">{{ langNote }}</div>
+    </div>
+  </div>
+
+  <!-- ══════ COPY PANEL ══════ -->
+  <div style="display:flex; flex-direction:column; gap:22px;">
+    <div style="display:flex; align-items:baseline; gap:18px; flex-wrap:wrap;">
+      <div style="font:500 12px/1 'JetBrains Mono',monospace; letter-spacing:.09em; text-transform:uppercase; color:var(--t3);">Paste panel</div>
+      <div style="font:700 30px/1.15 'Archivo',sans-serif; letter-spacing:-.015em;">Copy blocks, field by field</div>
+      <div style="font:400 15px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--t2); max-width:62ch; text-wrap:pretty;">Character counts are live against LinkedIn's ceiling for each field. Plain text, nothing to strip out.</div>
+    </div>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:26px; align-items:start;">
+
+      <div style="display:flex; flex-direction:column; gap:20px;">
+        <sc-for list="{{ copyBlocks }}" as="b" hint-placeholder-count="4">
+          <div style="display:flex; background:var(--surface); border:1px solid var(--bs); border-radius:8px; overflow:hidden; box-shadow:0 1px 2px rgba(24,29,41,.06);">
+            <div style="width:3px; flex-shrink:0; background:{{ b.sel }};"></div>
+            <div style="flex:1; min-width:0; padding:22px 24px; display:flex; flex-direction:column; gap:14px;">
+              <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
+                <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.09em; text-transform:uppercase; color:var(--t3);">{{ b.field }}</div>
+                <div style="font:500 11.5px/1 'JetBrains Mono',monospace; color:{{ b.countColor }}; margin-left:auto;">{{ b.count }}</div>
+              </div>
+              <div style="{{ b.textStyle }}">{{ b.text }}</div>
+              <sc-if value="{{ b.hasNote }}" hint-placeholder-val="{{ false }}">
+                <div style="font:400 13px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--t3); padding-top:11px; border-top:1px solid var(--bs); text-wrap:pretty;">{{ b.note }}</div>
+              </sc-if>
+            </div>
+          </div>
+        </sc-for>
+
+        <div style="display:flex; background:var(--surface); border:1px solid var(--bs); border-radius:8px; overflow:hidden; box-shadow:0 1px 2px rgba(24,29,41,.06);">
+          <div style="width:3px; flex-shrink:0; background:var(--accent);"></div>
+          <div style="flex:1; min-width:0; padding:22px 24px; display:flex; flex-direction:column; gap:16px;">
+            <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
+              <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.09em; text-transform:uppercase; color:var(--t3);">Call to action</div>
+              <div style="font:500 11.5px/1 'JetBrains Mono',monospace; color:var(--t3); margin-left:auto;">button label + target</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:18px; flex-wrap:wrap;">
+              <div style="background:var(--accent); color:var(--ink); border-radius:8px; padding:14px 20px; font:600 16px/1 'Plus Jakarta Sans',sans-serif;">Request a demo</div>
+              <div style="font:500 15px/1.4 'JetBrains Mono',monospace; color:var(--t2);">fabricxai.com/demo</div>
+            </div>
+            <div style="font:400 13px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--t3); padding-top:12px; border-top:1px solid var(--bs); text-wrap:pretty;">LinkedIn offers "Request demo", "Learn more", "Try now", "Contact us", "Sign up", "Get started" and "Download". Request demo is the honest one — an ERP for a 1,200-worker factory is not something anyone tries in a browser tab.</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:20px;">
+        <div style="display:flex; background:var(--surface); border:1px solid var(--bs); border-radius:8px; overflow:hidden; box-shadow:0 1px 2px rgba(24,29,41,.06);">
+          <div style="width:3px; flex-shrink:0; background:var(--info);"></div>
+          <div style="flex:1; min-width:0; padding:22px 24px; display:flex; flex-direction:column; gap:15px;">
+            <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
+              <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.09em; text-transform:uppercase; color:var(--t3);">Key features · 10 entries</div>
+              <div style="font:500 11.5px/1 'JetBrains Mono',monospace; color:var(--t3); margin-left:auto;">each ≤ 60 chars</div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:0;">
+              <sc-for list="{{ features }}" as="f" hint-placeholder-count="10">
+                <div style="display:grid; grid-template-columns:26px 1fr 62px; gap:14px; padding:12px 0; border-bottom:1px solid var(--bs); align-items:baseline;">
+                  <div style="font:400 13px/1.4 'JetBrains Mono',monospace; color:var(--t3);">{{ f.n }}</div>
+                  <div style="font:500 16px/1.45 'Plus Jakarta Sans',sans-serif; text-wrap:pretty;">{{ f.text }}</div>
+                  <div style="font:400 12.5px/1.4 'JetBrains Mono',monospace; color:{{ f.c }}; text-align:right;">{{ f.len }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex; background:var(--surface); border:1px solid var(--bs); border-radius:8px; overflow:hidden; box-shadow:0 1px 2px rgba(24,29,41,.06);">
+          <div style="width:3px; flex-shrink:0; background:var(--ok);"></div>
+          <div style="flex:1; min-width:0; padding:22px 24px; display:flex; flex-direction:column; gap:15px;">
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.09em; text-transform:uppercase; color:var(--t3);">Who uses it · LinkedIn segment list</div>
+            <div style="display:flex; flex-direction:column; gap:12px;">
+              <sc-for list="{{ segments }}" as="s" hint-placeholder-count="4">
+                <div style="display:flex; align-items:flex-start; gap:14px; padding-bottom:12px; border-bottom:1px solid var(--bs);">
+                  <div style="width:4px; height:20px; transform:skewX(-34deg); background:var(--st); flex-shrink:0; margin-top:3px;"></div>
+                  <div style="display:flex; flex-direction:column; gap:4px; min-width:0;">
+                    <div style="font:600 16px/1.35 'Plus Jakarta Sans',sans-serif;">{{ s.name }}</div>
+                    <div style="font:400 13.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--t2); text-wrap:pretty;">{{ s.note }}</div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="font:400 13px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--t3); text-wrap:pretty;">Deliberately four. Naming every role that touches FabricXAI would list sixteen and say nothing about who signs.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════ PART 1 ══════ -->
+  <div style="display:flex; align-items:center; gap:22px; padding-top:8px;">
+    <div style="font:700 34px/1.1 'Archivo',sans-serif; letter-spacing:-.02em;">Part 1 · the product page</div>
+    <div style="flex:1; height:16px; background-image:repeating-linear-gradient(115deg, var(--bd) 0 3px, transparent 3px 10px);"></div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:16px;">
+    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+      <div style="font:600 15px/1 'Plus Jakarta Sans',sans-serif;">Hero product image</div>
+      <div style="font:500 11px/1 'JetBrains Mono',monospace; color:var(--t3); border:1px solid var(--bs); border-radius:3px; padding:5px 7px;">1200 × 627</div>
+      <div style="font:400 12px/1 'JetBrains Mono',monospace; color:var(--t3);">first frame of the gallery · the only one most visitors see</div>
+    </div>
+    <div id="ab-hero" style="width:1200px; height:627px; background:var(--canvas); border:1px solid var(--bs); position:relative; overflow:hidden; display:flex; align-items:stretch;">
+      <div style="position:absolute; right:0; top:0; bottom:0; width:520px; background-image:repeating-linear-gradient(146deg, transparent 0 14px, rgba(24,29,41,.03) 14px 16px, transparent 16px 30px);"></div>
+      <div style="width:470px; flex-shrink:0; padding:56px 34px 48px 56px; display:flex; flex-direction:column; gap:24px; position:relative;">
+        <img src="uploads/fabricxai-logo-light.png" alt="FabricX AI" style="height:38px; width:auto; align-self:flex-start; object-fit:contain;" />
+        <div style="height:14px; width:112px; background-image:repeating-linear-gradient(115deg, var(--bd) 0 2px, transparent 2px 7px);"></div>
+        <div style="font:700 52px/1.14 'Archivo',sans-serif; letter-spacing:-.024em; text-wrap:pretty;">The system that runs the floor.</div>
+        <div style="font:400 19px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--t2); text-wrap:pretty;">An ERP built for Bangladeshi garment export — woven and knit, LC to bill of lading.</div>
+        <div style="margin-top:auto; display:flex; align-items:center; gap:16px;">
+          <div style="background:var(--accent); color:var(--ink); border-radius:8px; padding:14px 20px; font:600 16px/1 'Plus Jakarta Sans',sans-serif;">Request a demo</div>
+        </div>
+      </div>
+      <div style="flex:1; min-width:0; position:relative; display:flex; align-items:center; overflow:hidden;">
+        <div style="position:relative; width:860px; margin-left:-34px; background:var(--surface); border:1px solid var(--bd); border-radius:12px; overflow:hidden; box-shadow:0 12px 32px rgba(24,29,41,.12);">
+          <div style="background:var(--sunken); border-bottom:1px solid var(--bs); padding:13px 16px; display:flex; align-items:center; gap:14px;">
+            <div style="display:flex; gap:7px;">
+              <div style="width:10px; height:10px; border-radius:999px; background:var(--bd);"></div>
+              <div style="width:10px; height:10px; border-radius:999px; background:var(--bd);"></div>
+              <div style="width:10px; height:10px; border-radius:999px; background:var(--bd);"></div>
+            </div>
+            <div style="flex:1; background:var(--surface); border:1px solid var(--bs); border-radius:5px; padding:7px 11px; font:400 12px/1.3 'JetBrains Mono',monospace; color:var(--t3);">app.fabricxai.com/orders</div>
+          </div>
+          <div style="padding:18px 20px 20px; display:flex; flex-direction:column; gap:14px;">
+            <div style="display:flex; align-items:baseline; gap:12px;">
+              <div style="font:700 24px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.015em;">Order book</div>
+              <div style="font:400 13px/1.3 'JetBrains Mono',monospace; color:var(--t3); margin-left:auto;">11 orders · $1.42m</div>
+            </div>
+            <div style="display:grid; grid-template-columns:112px 1fr 92px 104px 104px; gap:12px; padding:9px 0; border-bottom:1px solid var(--bs); font:500 10.5px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--t3);">
+              <div>PO</div><div>Buyer · style</div><div style="text-align:right;">Qty</div><div style="text-align:right;">Ex-factory</div><div style="text-align:right;">LC</div>
+            </div>
+            <sc-for list="{{ bookRows }}" as="r" hint-placeholder-count="4">
+              <div style="display:flex; align-items:stretch;">
+                <div style="width:3px; flex-shrink:0; background:{{ r.sel }};"></div>
+                <div style="flex:1; min-width:0; display:grid; grid-template-columns:112px 1fr 92px 104px 104px; gap:12px; padding:10px 0 10px 11px; align-items:center;">
+                  <div style="font:500 13px/1.3 'JetBrains Mono',monospace;">{{ r.po }}</div>
+                  <div style="font:400 13.5px/1.35 'Plus Jakarta Sans',sans-serif; color:var(--t2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ r.buyer }}</div>
+                  <div style="font:400 12.5px/1.3 'JetBrains Mono',monospace; text-align:right; color:var(--t2);">{{ r.qty }}</div>
+                  <div style="font:400 12.5px/1.3 'JetBrains Mono',monospace; text-align:right; color:var(--t2);">{{ r.exf }}</div>
+                  <div style="font:500 12.5px/1.3 'JetBrains Mono',monospace; text-align:right; color:{{ r.lcColor }};">{{ r.lc }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:20px;">
+    <div style="display:flex; align-items:baseline; gap:18px; flex-wrap:wrap;">
+      <div style="font:700 24px/1.15 'Archivo',sans-serif; letter-spacing:-.015em;">Gallery · six stories</div>
+      <div style="font:500 11px/1 'JetBrains Mono',monospace; color:var(--t3); border:1px solid var(--bs); border-radius:3px; padding:5px 7px;">1200 × 627 × 6</div>
+      <div style="font:400 15px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--t2); max-width:62ch; text-wrap:pretty;">One screen, one sentence, one accent each. In order they walk a visitor from the first extraction to the money arriving.</div>
+    </div>
+
+    <!-- a · MARBIM draft -->
+    <div style="display:flex; flex-direction:column; gap:12px;">
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+        <div style="font:600 15px/1 'Plus Jakarta Sans',sans-serif;">a · The AI drafts. You decide.</div>
+        <div style="font:400 12px/1 'JetBrains Mono',monospace; color:var(--t3);">MARBIM draft card · Order desk</div>
+      </div>
+      <div id="ab-gal-a" style="{{ galBoard }}">
+        <div style="{{ galWeave }}"></div>
+        <div style="{{ galText }}">
+          <img src="uploads/fabricxai-logo-light.png" alt="FabricX AI" style="height:26px; width:auto; align-self:flex-start; object-fit:contain;" />
+          <div style="height:12px; width:88px; background-image:repeating-linear-gradient(115deg, var(--bd) 0 2px, transparent 2px 7px);"></div>
+          <div style="{{ capA }}">{{ capAText }}</div>
+          <div style="{{ galSub }}">Extraction takes seconds. Approval is a person, field by field, with the source page one tap away.</div>
+        </div>
+        <div style="{{ galStage }}">
+          <div style="{{ galFrame }}">
+            <div style="{{ galChrome }}">
+              <div style="display:flex; gap:7px;">
+                <div style="width:10px; height:10px; border-radius:999px; background:var(--bd);"></div>
+                <div style="width:10px; height:10px; border-radius:999px; background:var(--bd);"></div>
+                <div style="width:10px; height:10px; border-radius:999px; background:var(--bd);"></div>
+              </div>
+              <div style="{{ galPill }}">app.fabricxai.com/orders/PO-88203</div>
+            </div>
+            <div style="background:var(--canvas); padding:20px;">
+              <div style="background:var(--surface); border:1px solid var(--accent); border-radius:8px; overflow:hidden; clip-path:polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);">
+                <div style="background:var(--accent-sub); padding:14px 17px; display:flex; align-items:center; gap:12px;">
+                  <div style="width:28px; height:28px; border-radius:999px; background:var(--ink); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                    <img src="uploads/MARBIM_logo.png" alt="" style="width:15px; height:15px; object-fit:contain;" />
+                  </div>
+                  <div style="font:600 16px/1.3 'Plus Jakarta Sans',sans-serif;">MARBIM read the revised PO — 2 changes to approve</div>
+                  <div style="font:500 10.5px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--accent-press); border:1px solid var(--accent-press); border-radius:4px; padding:6px 7px; margin-left:auto; flex-shrink:0;">draft</div>
+                </div>
+                <sc-for list="{{ draftRows }}" as="r" hint-placeholder-count="3">
+                  <div style="display:flex; align-items:stretch; border-bottom:1px solid var(--bs);">
+                    <div style="width:3px; flex-shrink:0; background:{{ r.sel }};"></div>
+                    <div style="flex:1; min-width:0; display:grid; grid-template-columns:132px 1fr 136px; gap:14px; padding:13px 17px 13px 14px; align-items:center;">
+                      <div style="font:400 13.5px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--t3);">{{ r.field }}</div>
+                      <div style="font:500 15px/1.4 'JetBrains Mono',monospace;">{{ r.value }}</div>
+                      <div style="display:flex; align-items:center; gap:10px;">
+                        <div style="flex:1; height:7px; border-radius:999px; background:var(--sunken); overflow:hidden;"><div style="{{ r.bar }}"></div></div>
+                        <div style="font:500 12.5px/1 'JetBrains Mono',monospace; color:{{ r.confColor }}; width:34px; text-align:right;">{{ r.conf }}</div>
+                      </div>
+                    </div>
+                  </div>
+                </sc-for>
+                <div style="padding:15px 17px; display:flex; align-items:center; gap:12px;">
+                  <div style="background:var(--accent); color:var(--ink); border-radius:8px; padding:12px 17px; font:600 15px/1 'Plus Jakarta Sans',sans-serif;">Approve both</div>
+                  <div style="border:1px solid var(--bd); color:var(--t2); border-radius:8px; padding:11px 15px; font:600 15px/1 'Plus Jakarta Sans',sans-serif;">Reject</div>
+                  <div style="font:400 13px/1.4 'JetBrains Mono',monospace; color:var(--t3); margin-left:auto;">PO-88203-rev2.pdf</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- b · TNA + LC float -->
+    <div style="display:flex; flex-direction:column; gap:12px;">
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+        <div style="font:600 15px/1 'Plus Jakarta Sans',sans-serif;">b · Every date knows the LC deadline.</div>
+        <div style="font:400 12px/1 'JetBrains Mono',monospace; color:var(--t3);">TNA timeline · Order desk</div>
+      </div>
+      <div id="ab-gal-b" style="{{ galBoard }}">
+        <div style="{{ galWeave }}"></div>
+        <div style="{{ galText }}">
+          <img src="uploads/fabricxai-logo-light.png" alt="FabricX AI" style="height:26px; width:auto; align-self:flex-start; object-fit:contain;" />
+          <div style="height:12px; width:88px; background-image:repeating-linear-gradient(115deg, var(--bd) 0 2px, transparent 2px 7px);"></div>
+          <div style="{{ capA }}">{{ capBText }}</div>
+          <div style="{{ galSub }}">Move a milestone and the float against the latest shipment date recalculates before you commit.</div>
+        </div>
+        <div style="{{ galStage }}">
+          <div style="{{ galFrame }}">
+            <div style="{{ galChrome }}">
+              <div style="display:flex; gap:7px;">
+                <div style="width:10px; height:10px; border-radius:999px; background:var(--bd);"></div>
+                <div style="width:10px; height:10px; border-radius:999px; background:var(--bd);"></div>
+                <div style="width:10px; height:10px; border-radius:999px; background:var(--bd);"></div>
+              </div>
+              <div style="{{ galPill }}">app.fabricxai.com/orders/PO-88203 · TNA</div>
+            </div>
+            <div style="background:var(--surface); padding:18px 20px 20px; display:flex; flex-direction:column; gap:13px;">
+              <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                <div style="font:600 17px/1.2 'Plus Jakarta Sans',sans-serif;">Time and action</div>
+                <div style="display:flex; align-items:center; gap:9px; border:1px solid var(--bad); border-radius:999px; padding:7px 12px; margin-left:auto;">
+                  <div style="width:7px; height:7px; border-radius:999px; background:var(--bad);"></div>
+                  <div style="font:500 12.5px/1 'JetBrains Mono',monospace; color:var(--bad);">LC float −3 d</div>
+                </div>
+              </div>
+              <sc-for list="{{ tnaRows }}" as="m" hint-placeholder-count="6">
+                <div style="display:flex; align-items:stretch; border:1px solid var(--bs); border-radius:4px; overflow:hidden;">
+                  <div style="width:{{ m.selW }}; flex-shrink:0; background:{{ m.sel }};"></div>
+                  <div style="flex:1; min-width:0; display:grid; grid-template-columns:1fr 92px 92px 128px; gap:12px; padding:11px 14px; align-items:center;">
+                    <div style="display:flex; align-items:center; gap:10px; min-width:0;">
+                      <div style="font:500 14px/1.35 'Plus Jakarta Sans',sans-serif; white-space:nowrap;">{{ m.name }}</div>
+                      <sc-if value="{{ m.cp }}" hint-placeholder-val="{{ false }}">
+                        <div style="font:500 9.5px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--t3); border:1px solid var(--bs); border-radius:3px; padding:4px 5px;">critical</div>
+                      </sc-if>
+                    </div>
+                    <div style="font:400 12.5px/1.3 'JetBrains Mono',monospace; color:var(--t3); text-align:right;">{{ m.plan }}</div>
+                    <div style="font:500 12.5px/1.3 'JetBrains Mono',monospace; text-align:right; color:{{ m.actColor }};">{{ m.act }}</div>
+                    <div style="font:400 12px/1.3 'JetBrains Mono',monospace; text-align:right; color:{{ m.actColor }};">{{ m.state }}</div>
+                  </div>
+                </div>
+              </sc-for>
+              <div style="display:flex; align-items:center; gap:12px; padding-top:4px;">
+                <div style="font:400 12.5px/1.4 'JetBrains Mono',monospace; color:var(--t3);">latest shipment 16 Nov · presentation 21 d</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- c · blocked BTB gate -->
+    <div style="display:flex; flex-direction:column; gap:12px;">
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+        <div style="font:600 15px/1 'Plus Jakarta Sans',sans-serif;">c · Expensive mistakes, made impossible.</div>
+        <div style="font:400 12px/1 'JetBrains Mono',monospace; color:var(--t3);">BTB gate refusal · Procurement</div>
+      </div>
+      <div id="ab-gal-c" style="{{ galBoard }}">
+        <div style="{{ galWeave }}"></div>
+        <div style="{{ galText }}">
+          <img src="uploads/fabricxai-logo-light.png" alt="FabricX AI" style="height:26px; width:auto; align-self:flex-start; object-fit:contain;" />
+          <div style="height:12px; width:88px; background-image:repeating-linear-gradient(115deg, var(--bd) 0 2px, transparent 2px 7px);"></div>
+          <div style="{{ capA }}">{{ capCText }}</div>
+          <div style="{{ galSub }}">Four gates refuse outright. Each one names the shortfall, writes nothing, and offers the way out.</div>
+        </div>
+        <div style="{{ galStage }}">
+          <div style="{{ galFrame }}">
+            <div style="{{ galChrome }}">
+              <div style="display:flex; gap:7px;">
+                <div style="width:10px; height:10px; border-radius:999px; background:var(--bd);"></div>
+                <div style="width:10px; height:10px; border-radius:999px; background:var(--bd);"></div>
+                <div style="width:10px; height:10px; border-radius:999px; background:var(--bd);"></div>
+              </div>
+              <div style="{{ galPill }}">app.fabricxai.com/procurement/po/new</div>
+            </div>
+            <div style="background:var(--canvas); padding:20px;">
+              <div style="background:var(--surface); border:1px solid var(--bad); border-radius:8px; overflow:hidden;">
+                <div style="padding:17px 19px; display:flex; flex-direction:column; gap:13px;">
+                  <div style="display:flex; align-items:center; gap:11px; flex-wrap:wrap;">
+                    <div style="width:9px; height:9px; border-radius:999px; background:var(--bad); flex-shrink:0;"></div>
+                    <div style="font:600 18px/1.3 'Plus Jakarta Sans',sans-serif;">This PO cannot be issued yet</div>
+                    <div style="font:500 10.5px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--bad); margin-left:auto;">nothing written</div>
+                  </div>
+                  <div style="font:400 14px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--t2); text-wrap:pretty;">An import PO is paid from back-to-back credit, not from cash. The step will not advance until an LC is on it.</div>
+                  <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
+                    <div style="font:400 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--t3);">Headroom on BTB-0231-1205</div>
+                    <div style="font:600 20px/1.05 'JetBrains Mono',monospace; color:var(--bad); margin-left:auto;">$41,500</div>
+                  </div>
+                  <div style="height:9px; border-radius:999px; background:var(--sunken); overflow:hidden; display:flex;">
+                    <div style="height:100%; width:58%; background:var(--ink);"></div>
+                    <div style="height:100%; width:42%; background:var(--bad);"></div>
+                  </div>
+                  <div style="background:var(--sunken); border-radius:4px; padding:12px 14px; font:400 12.5px/1.7 'JetBrains Mono',monospace; color:var(--t2); white-space:pre-line;">$54,000 needed
+$41,500 headroom on BTB-0231-1205
+$12,500 short</div>
+                  <div style="display:flex; align-items:center; gap:11px; flex-wrap:wrap;">
+                    <div style="border:1px solid var(--st); color:var(--ink); border-radius:8px; padding:11px 15px; font:600 14px/1 'Plus Jakarta Sans',sans-serif;">Link a different LC</div>
+                    <div style="border:1px solid var(--bd); color:var(--t2); border-radius:8px; padding:11px 15px; font:600 14px/1 'Plus Jakarta Sans',sans-serif;">Ask the buyer to raise the master LC</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- d · hourly floor, Bengali -->
+    <div style="display:flex; flex-direction:column; gap:12px;">
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+        <div style="font:600 15px/1 'Plus Jakarta Sans',sans-serif;">d · The floor's truth, hourly.</div>
+        <div style="font:400 12px/1 'JetBrains Mono',monospace; color:var(--t3);">Hourly output board · Line tracking · Bengali labels</div>
+      </div>
+      <div id="ab-gal-d" style="{{ galBoard }}">
+        <div style="{{ galWeave }}"></div>
+        <div style="{{ galText }}">
+          <img src="uploads/fabricxai-logo-light.png" alt="FabricX AI" style="height:26px; width:auto; align-self:flex-start; object-fit:contain;" />
+          <div style="height:12px; width:88px; background-image:repeating-linear-gradient(115deg, var(--bd) 0 2px, transparent 2px 7px);"></div>
+          <div style="{{ capA }}">{{ capDText }}</div>
+          <div style="{{ galSub }}">Bengali on every floor screen, 56px rows, and it keeps working when the hall loses signal.</div>
+        </div>
+        <div style="{{ galStage }}">
+          <div style="{{ galFrame }}">
+            <div style="{{ galChrome }}">
+              <div style="display:flex; gap:7px;">
+                <div style="width:10px; height:10px; border-radius:999px; background:var(--bd);"></div>
+                <div style="width:10px; height:10px; border-radius:999px; background:var(--bd);"></div>
+                <div style="width:10px; height:10px; border-radius:999px; background:var(--bd);"></div>
+              </div>
+              <div style="{{ galPill }}">লাইন ৩ · ঘণ্টাভিত্তিক আউটপুট</div>
+            </div>
+            <div style="background:var(--surface); padding:16px 18px 18px; display:flex; flex-direction:column; gap:12px;">
+              <div style="display:flex; align-items:baseline; gap:14px; flex-wrap:wrap;">
+                <div style="font:600 18px/1.25 'Anek Bangla','Plus Jakarta Sans',sans-serif;">লাইন ৩ · আজকের আউটপুট</div>
+                <div style="display:flex; align-items:baseline; gap:8px; margin-left:auto;">
+                  <div style="font:500 30px/1 'JetBrains Mono',monospace;">৭১%</div>
+                  <div style="font:500 13px/1.3 'Anek Bangla','Plus Jakarta Sans',sans-serif; color:var(--t3);">দক্ষতা</div>
+                </div>
+              </div>
+              <div style="display:flex; align-items:flex-end; gap:9px; height:132px; padding-bottom:2px; border-bottom:1px solid var(--st);">
+                <sc-for list="{{ hours }}" as="h" hint-placeholder-count="8">
+                  <div style="flex:1; display:flex; flex-direction:column; justify-content:flex-end; gap:6px; height:100%;">
+                    <div style="font:500 12px/1 'JetBrains Mono',monospace; color:{{ h.c }}; text-align:center;">{{ h.v }}</div>
+                    <div style="{{ h.bar }}"></div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display:flex; gap:9px;">
+                <sc-for list="{{ hours }}" as="h" hint-placeholder-count="8">
+                  <div style="flex:1; font:400 11.5px/1.3 'JetBrains Mono',monospace; color:var(--t3); text-align:center;">{{ h.t }}</div>
+                </sc-for>
+              </div>
+              <div style="display:flex; align-items:center; gap:11px; padding-top:6px; border-top:1px solid var(--bs); flex-wrap:wrap;">
+                <div style="font:500 14px/1.4 'Anek Bangla','Plus Jakarta Sans',sans-serif; color:var(--bad);">১১টায় ৪০ মিনিট মেশিন বন্ধ ছিল</div>
+                <div style="font:400 12px/1.3 'JetBrains Mono',monospace; color:var(--t3); margin-left:auto;">লক্ষ্য ৮৫০ / ঘণ্টা</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- e · owner phone, dark -->
+    <div style="display:flex; flex-direction:column; gap:12px;">
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+        <div style="font:600 15px/1 'Plus Jakarta Sans',sans-serif;">e · The factory in your pocket.</div>
+        <div style="font:400 12px/1 'JetBrains Mono',monospace; color:var(--t3);">Owner exceptions feed · night view · ink variant</div>
+      </div>
+      <div id="ab-gal-e" style="width:1200px; height:627px; background:var(--d-canvas); position:relative; overflow:hidden; display:flex; align-items:stretch;">
+        <div style="position:absolute; right:0; top:0; bottom:0; width:560px; background-image:repeating-linear-gradient(146deg, transparent 0 16px, rgba(255,255,255,.05) 16px 19px, transparent 19px 35px);"></div>
+        <div style="width:520px; flex-shrink:0; padding:52px 34px 46px 56px; display:flex; flex-direction:column; gap:20px; position:relative;">
+          <img src="uploads/fabricxai-logo-dark.png" alt="FabricX AI" style="height:26px; width:auto; align-self:flex-start; object-fit:contain;" />
+          <div style="height:12px; width:88px; background-image:repeating-linear-gradient(115deg, var(--d-bd) 0 2px, transparent 2px 7px);"></div>
+          <div style="font:700 42px/1.16 'Archivo',sans-serif; letter-spacing:-.022em; color:var(--d-t1); text-wrap:pretty;">{{ capEText }}</div>
+          <div style="font:400 17px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--d-t2); text-wrap:pretty;">Ranked by what it costs to leave until Monday. Two of them can be settled from this screen.</div>
+        </div>
+        <div style="flex:1; min-width:0; position:relative; display:flex; align-items:flex-start; justify-content:center; padding-top:44px;">
+          <div style="width:344px; background:var(--d-canvas); border:8px solid var(--d-bd); border-radius:36px; overflow:hidden; box-shadow:0 12px 32px rgba(0,0,0,.4);">
+            <div style="background:var(--d-surface); padding:12px 18px 11px; display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--d-bs);">
+              <img src="uploads/fabricxai-logo-dark.png" alt="" style="height:15px; width:auto; align-self:center; object-fit:contain;" />
+              <div style="font:400 10px/1.2 'JetBrains Mono',monospace; color:var(--d-t3); margin-left:auto;">Sat · 07:40</div>
+            </div>
+            <div style="padding:16px; display:flex; flex-direction:column; gap:12px;">
+              <div style="font:700 22px/1.2 'Archivo',sans-serif; letter-spacing:-.018em; color:var(--d-t1);">5 things need you</div>
+              <sc-for list="{{ ownerFeed }}" as="e" hint-placeholder-count="3">
+                <div style="display:flex; background:var(--d-surface); border:1px solid {{ e.border }}; border-radius:8px; overflow:hidden;">
+                  <div style="width:{{ e.selW }}; flex-shrink:0; background:{{ e.sel }};"></div>
+                  <div style="flex:1; min-width:0; padding:12px 13px; display:flex; flex-direction:column; gap:8px;">
+                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                      <div style="font:500 8.5px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:{{ e.sel }}; border:1px solid {{ e.sel }}; border-radius:3px; padding:4px 5px;">{{ e.kind }}</div>
+                      <div style="font:400 9.5px/1.2 'JetBrains Mono',monospace; color:{{ e.ageColor }}; margin-left:auto;">{{ e.age }}</div>
+                    </div>
+                    <div style="font:600 13.5px/1.35 'Plus Jakarta Sans',sans-serif; color:var(--d-t1); text-wrap:pretty;">{{ e.truth }}</div>
+                    <sc-if value="{{ e.act }}" hint-placeholder-val="{{ false }}">
+                      <div style="background:var(--accent); color:var(--ink); border-radius:6px; padding:11px 13px; font:600 12.5px/1 'Plus Jakarta Sans',sans-serif; text-align:center;">{{ e.actLabel }}</div>
+                    </sc-if>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- f · profitability + memory -->
+    <div style="display:flex; flex-direction:column; gap:12px;">
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+        <div style="font:600 15px/1 'Plus Jakarta Sans',sans-serif;">f · Every order teaches the next one.</div>
+        <div style="font:400 12px/1 'JetBrains Mono',monospace; color:var(--t3);">Variance waterfall + order memory · Finance</div>
+      </div>
+      <div id="ab-gal-f" style="{{ galBoard }}">
+        <div style="{{ galWeave }}"></div>
+        <div style="{{ galText }}">
+          <img src="uploads/fabricxai-logo-light.png" alt="FabricX AI" style="height:26px; width:auto; align-self:flex-start; object-fit:contain;" />
+          <div style="height:12px; width:88px; background-image:repeating-linear-gradient(115deg, var(--bd) 0 2px, transparent 2px 7px);"></div>
+          <div style="{{ capA }}">{{ capFText }}</div>
+          <div style="{{ galSub }}">Quoted against realised, attributed to fabric, CM and commercial — then offered back when you cost the next one.</div>
+        </div>
+        <div style="{{ galStage }}">
+          <div style="{{ galFrame }}">
+            <div style="{{ galChrome }}">
+              <div style="display:flex; gap:7px;">
+                <div style="width:10px; height:10px; border-radius:999px; background:var(--bd);"></div>
+                <div style="width:10px; height:10px; border-radius:999px; background:var(--bd);"></div>
+                <div style="width:10px; height:10px; border-radius:999px; background:var(--bd);"></div>
+              </div>
+              <div style="{{ galPill }}">app.fabricxai.com/finance/profitability</div>
+            </div>
+            <div style="background:var(--surface); padding:16px 20px 20px; display:flex; flex-direction:column; gap:14px;">
+              <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
+                <div style="font:600 17px/1.2 'Plus Jakarta Sans',sans-serif;">PO-88190 · C&amp;A denim jacket</div>
+                <div style="font:500 13px/1.3 'JetBrains Mono',monospace; color:var(--bad); margin-left:auto;">−4.9 pts vs quote</div>
+              </div>
+              <div style="display:flex; align-items:flex-end; gap:12px; height:124px; padding-bottom:2px; border-bottom:1px solid var(--st);">
+                <sc-for list="{{ waterfall }}" as="w" hint-placeholder-count="5">
+                  <div style="flex:1; display:flex; flex-direction:column; justify-content:flex-end; gap:6px; height:100%;">
+                    <div style="font:600 12px/1.2 'JetBrains Mono',monospace; color:{{ w.c }}; text-align:center;">{{ w.v }}</div>
+                    <div style="{{ w.bar }}"></div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display:flex; gap:12px;">
+                <sc-for list="{{ waterfall }}" as="w" hint-placeholder-count="5">
+                  <div style="flex:1; font:500 11.5px/1.3 'Plus Jakarta Sans',sans-serif; color:var(--t2); text-align:center;">{{ w.label }}</div>
+                </sc-for>
+              </div>
+              <div style="display:flex; align-items:stretch; border:1px solid var(--bs); border-radius:4px; overflow:hidden;">
+                <div style="width:3px; flex-shrink:0; background:var(--info);"></div>
+                <div style="flex:1; min-width:0; padding:12px 14px; display:flex; flex-direction:column; gap:4px;">
+                  <div style="font:500 13.5px/1.35 'Plus Jakarta Sans',sans-serif;">Order memory · matched 87% to PO-88096</div>
+                  <div style="font:400 12.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--t2); text-wrap:pretty;">Denim template was 137 days stale and drifted 7.4%. Refresh it before the next quote.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- video storyboard -->
+  <div style="display:flex; flex-direction:column; gap:20px;">
+    <div style="display:flex; align-items:baseline; gap:18px; flex-wrap:wrap;">
+      <div style="font:700 24px/1.15 'Archivo',sans-serif; letter-spacing:-.015em;">Product video · 30-second storyboard</div>
+      <div style="font:500 11px/1 'JetBrains Mono',monospace; color:var(--t3); border:1px solid var(--bs); border-radius:3px; padding:5px 7px;">1920 × 1080 · 8 beats</div>
+      <div style="font:400 15px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--t2); max-width:60ch; text-wrap:pretty;">One order, start to paid. Cuts on 180ms enters and 120ms state changes, the mark as the only spinner, no parallax.</div>
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:26px;">
+      <sc-for list="{{ beats }}" as="b" hint-placeholder-count="8">
+        <div style="display:flex; flex-direction:column; gap:11px;">
+          <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
+            <div style="font:500 12px/1 'JetBrains Mono',monospace; color:var(--t3);">{{ b.n }}</div>
+            <div style="font:600 15px/1.2 'Plus Jakarta Sans',sans-serif;">{{ b.title }}</div>
+            <div style="font:400 12px/1 'JetBrains Mono',monospace; color:var(--t3); margin-left:auto;">{{ b.time }}</div>
+          </div>
+          <div style="{{ b.board }}">
+            <div style="{{ b.weave }}"></div>
+            <sc-if value="{{ b.isEnd }}" hint-placeholder-val="{{ false }}">
+              <div style="position:relative; margin:auto; display:flex; flex-direction:column; align-items:center; gap:26px;">
+                <img src="uploads/fabricxai-logo-dark.png" alt="FabricX AI" style="height:60px; width:auto; object-fit:contain;" />
+                <div style="height:14px; width:150px; background-image:repeating-linear-gradient(115deg, var(--d-bd) 0 3px, transparent 3px 10px);"></div>
+                <div style="font:600 32px/1.3 'Archivo',sans-serif; letter-spacing:-.018em; color:var(--d-t1); text-align:center;">The system that runs the floor.</div>
+                <div style="display:flex; align-items:center; gap:20px;">
+                  <div style="background:var(--accent); color:var(--ink); border-radius:8px; padding:17px 24px; font:600 21px/1 'Plus Jakarta Sans',sans-serif;">Request a demo</div>
+                  <div style="font:400 19px/1.4 'JetBrains Mono',monospace; color:var(--d-t2);">fabricxai.com/demo</div>
+                </div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ b.isShot }}" hint-placeholder-val="{{ true }}">
+              <div style="position:relative; display:flex; flex-direction:column; height:100%; padding:48px 52px;">
+                <div style="display:flex; align-items:center; gap:16px;">
+                  <div style="{{ b.chipStyle }}">{{ b.chip }}</div>
+                  <div style="font:400 17px/1 'JetBrains Mono',monospace; letter-spacing:.09em; text-transform:uppercase; color:{{ b.muted }}; margin-left:auto;">{{ b.module }}</div>
+                </div>
+                <div style="margin-top:auto; display:flex; flex-direction:column; gap:20px;">
+                  <div style="{{ b.shotStyle }}">{{ b.shot }}</div>
+                  <div style="display:flex; align-items:stretch;">
+                    <div style="width:5px; background:{{ b.accentBar }}; flex-shrink:0;"></div>
+                    <div style="{{ b.subStyle }}">{{ b.sub }}</div>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <!-- ══════ PART 2 ══════ -->
+  <div style="display:flex; align-items:center; gap:22px; padding-top:8px;">
+    <div style="font:700 34px/1.1 'Archivo',sans-serif; letter-spacing:-.02em;">Part 2 · services showcase</div>
+    <div style="flex:1; height:16px; background-image:repeating-linear-gradient(115deg, var(--bd) 0 3px, transparent 3px 10px);"></div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:20px;">
+    <div style="display:flex; align-items:baseline; gap:18px; flex-wrap:wrap;">
+      <div style="font:400 15px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--t2); max-width:70ch; text-wrap:pretty;">Three services, same layout family as the product gallery so a visitor moving from the company page to the founder profile reads one system rather than two. Each card carries its copy block underneath, written to the 300-character ceiling.</div>
+      <div style="font:500 11px/1 'JetBrains Mono',monospace; color:var(--t3); border:1px solid var(--bs); border-radius:3px; padding:5px 7px; margin-left:auto;">1080 × 1080 × 3</div>
+    </div>
+    <div style="display:flex; gap:30px; flex-wrap:wrap; align-items:flex-start;">
+      <sc-for list="{{ services }}" as="s" hint-placeholder-count="3">
+        <div style="display:flex; flex-direction:column; gap:14px; width:1080px;">
+          <div id="{{ s.domId }}" style="width:1080px; height:1080px; background:var(--canvas); border:1px solid var(--bs); position:relative; overflow:hidden; display:flex; flex-direction:column; padding:80px;">
+            <div style="position:absolute; right:0; bottom:0; width:520px; height:440px; background-image:repeating-linear-gradient(146deg, transparent 0 17px, rgba(24,29,41,.032) 17px 20px, transparent 20px 37px);"></div>
+            <div style="position:relative; display:flex; align-items:center; gap:20px;">
+              <img src="uploads/Group 2-5ccff24a.svg" alt="MARBIM" style="height:52px; width:auto; object-fit:contain; flex-shrink:0;" />
+              <div style="font:400 20px/1 'JetBrains Mono',monospace; letter-spacing:.1em; text-transform:uppercase; color:var(--t3);">{{ s.eyebrow }}</div>
+              <div style="font:400 19px/1 'JetBrains Mono',monospace; color:var(--t3); margin-left:auto;">{{ s.duration }}</div>
+            </div>
+            <div style="position:relative; margin-top:auto; display:flex; flex-direction:column; gap:34px;">
+              <div style="font:700 74px/1.1 'Archivo',sans-serif; letter-spacing:-.028em; max-width:17ch; text-wrap:pretty;">{{ s.name }}</div>
+              <div style="height:12px; width:240px; background:{{ s.accent }};"></div>
+              <div style="font:600 34px/1.4 'Plus Jakarta Sans',sans-serif; max-width:26ch; text-wrap:pretty;">{{ s.promise }}</div>
+              <div style="display:flex; flex-direction:column; gap:18px; padding-top:12px;">
+                <sc-for list="{{ s.bullets }}" as="d" hint-placeholder-count="3">
+                  <div style="display:flex; align-items:flex-start; gap:20px;">
+                    <div style="width:5px; height:30px; transform:skewX(-34deg); background:var(--st); flex-shrink:0; margin-top:4px;"></div>
+                    <div style="font:400 27px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--t2); text-wrap:pretty;">{{ d }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="position:relative; margin-top:56px; padding-top:32px; border-top:1px solid var(--bd); display:flex; align-items:center; gap:22px;">
+              <img src="uploads/fabricxai-logo-light.png" alt="FabricX AI" style="height:32px; width:auto; align-self:center; object-fit:contain;" />
+              <div style="font:400 21px/1.4 'JetBrains Mono',monospace; color:var(--t3); margin-left:auto;">{{ s.foot }}</div>
+            </div>
+          </div>
+          <div style="display:flex; background:var(--surface); border:1px solid var(--bs); border-radius:8px; overflow:hidden; box-shadow:0 1px 2px rgba(24,29,41,.06);">
+            <div style="width:3px; flex-shrink:0; background:{{ s.accent }};"></div>
+            <div style="flex:1; min-width:0; padding:20px 22px; display:flex; flex-direction:column; gap:12px;">
+              <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
+                <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.09em; text-transform:uppercase; color:var(--t3);">Service description</div>
+                <div style="font:500 11.5px/1 'JetBrains Mono',monospace; color:{{ s.countColor }}; margin-left:auto;">{{ s.count }}</div>
+              </div>
+              <div style="font:400 16px/1.6 'Plus Jakarta Sans',sans-serif; color:var(--t2); text-wrap:pretty;">{{ s.copy }}</div>
+            </div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;captionLanguage&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;en&quot;,&quot;bn&quot;],&quot;default&quot;:&quot;en&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Localisation&quot;}}">
+const DRAFT_ROWS = [
+  ['Quantity', '24,000 → 26,000 pcs', 0.97],
+  ['Ex-factory', '04 Sep → 30 Aug', 0.94],
+  ['Colour split', '+2,000 Navy / L', 0.78]
+];
+
+const BOOK = [
+  ['PO-88203', "H&M · SH-4471 men's shirt", '24,000', '04 Sep', '12 d', 'bad'],
+  ['PO-88219', 'Bestseller · PL-2210 polo', '42,000', '28 Aug', '34 d', 'ok'],
+  ['PO-88231', 'H&M · SH-4488 shirt', '18,000', '16 Nov', 'not open', 'warn'],
+  ['PO-88214', 'Primark · TE-1180 tee', '60,000', '22 Aug', '41 d', 'ok']
+];
+
+const TNA = [
+  ['PP sample approved', '08 Aug', '12 Aug', 'late 4 d', true, 'bad'],
+  ['Fabric in-house', '11 Aug', '11 Aug', 'on date', false, 'ok'],
+  ['Cutting start', '14 Aug', '—', 'blocked', true, 'bad'],
+  ['Sewing start', '17 Aug', '—', 'planned', false, 'plan'],
+  ['Finishing done', '30 Aug', '—', 'planned', false, 'plan'],
+  ['Ex-factory', '04 Sep', '—', 'float −3 d', true, 'bad']
+];
+
+const HOURS = [
+  ['08', 812, 'ok'], ['09', 864, 'ok'], ['10', 851, 'ok'], ['11', 402, 'bad'],
+  ['12', 790, 'warn'], ['14', 872, 'ok'], ['15', 858, 'ok'], ['16', 869, 'ok']
+];
+
+const OWNER_FEED = [
+  ['LC conflict', '$214,500 stuck at the bank on two discrepancies.', '9 days', 'bad', false, ''],
+  ['Approval', '৳4,182,000 of payroll waits on you. Bank cut-off Monday 09:00.', 'due Mon', 'accent', true, 'Approve payroll'],
+  ['At-risk order', 'PO-88231 fabric still on the water, cutting due 02 Sep.', '10 days', 'bad', false, '']
+];
+
+const WATERFALL = [
+  ['Quoted', 16.8, '16.8%', 'end'],
+  ['Fabric', -2.9, '−2.9', 'bad'],
+  ['CM', -1.2, '−1.2', 'bad'],
+  ['Commercial', -0.8, '−0.8', 'bad'],
+  ['Realised', 11.9, '11.9%', 'end']
+];
+
+const FEATURES = [
+  'Buyer email or PDF to a structured RFQ in seconds',
+  'TNA that watches the LC expiry behind every date',
+  'Four hard gates: PP, UD, GRN, attendance',
+  'Hourly output per line, Bengali, offline-tolerant',
+  'AQL inspections and buyer report packs as PDF',
+  'Bonded UD balances and back-to-back LC headroom',
+  'Payroll on the wage gazette, not a typed rate',
+  'Owner phone app: exceptions first, approve in place',
+  'Order memory: what the last similar order actually cost',
+  'One approve inbox for every AI draft and money edit'
+];
+
+const SEGMENTS = [
+  ['Garment factory owners', 'Woven, knit and composite units from roughly 300 to 5,000 workers.'],
+  ['Merchandising managers', 'The people holding twelve orders and four buyers in a spreadsheet.'],
+  ['Commercial managers', 'LC, back-to-back, UD and bank submissions — the paperwork that stops shipments.'],
+  ['Buying houses', 'Order visibility across the supplier factories they place with.']
+];
+
+const BEATS = [
+  ['01', 'The email arrives', '0:00–0:04', 'shot',
+    'A buyer email, 200 words, three attachments.', 'No structure, no PO number, a revision buried in the third paragraph.',
+    'Inbox', 'light'],
+  ['02', 'MARBIM reads it', '0:04–0:08', 'shot',
+    'The mark thinking, then a draft card.', 'Eight fields extracted, each with a confidence bar and a tap back to the source line.',
+    'MARBIM', 'light'],
+  ['03', 'A person approves', '0:08–0:12', 'shot',
+    'Two amber buttons, one press.', 'The low-confidence field gets corrected first. Nothing was written before this moment.',
+    'Approve inbox', 'accent'],
+  ['04', 'The TNA re-plans', '0:12–0:16', 'shot',
+    'Dates move, the ripple previewed.', 'Six milestones shift and the LC float turns red before anyone commits to it.',
+    'Order desk', 'light'],
+  ['05', 'The gate refuses', '0:16–0:20', 'shot',
+    'Cutting will not open the lay.', 'The PP sample is on round two. The refusal names it, and nothing is written.',
+    'Cutting', 'bad'],
+  ['06', 'The floor reports', '0:20–0:24', 'shot',
+    'Hourly output, in Bengali.', 'Forty minutes of downtime at eleven, entered on the line, visible in the office.',
+    'Line tracking', 'light'],
+  ['07', 'PASS, then paid', '0:24–0:28', 'shot',
+    'AQL verdict full-bleed, then the realization.', 'The final inspection actualizes the TNA. Docs go to the bank. Money lands.',
+    'Quality → LC', 'ok'],
+  ['08', 'End card', '0:28–0:30', 'end', '', '', '', 'dark']
+];
+
+const SERVICES = [
+  ['assess', 'Factory Digital Assessment', 'One day inside the factory',
+    'We map what you actually do, then say what to fix first.',
+    ['A walk of every department, from GRN to bill of lading',
+     'Your real Excel and paper flow, drawn as one diagram',
+     'A readiness report: what is ready, what blocks a rollout, in what order'],
+    'one day on site · report in five',
+    'A one-day walk of how your factory really runs — store, cutting, sewing, quality, commercial, accounts. We read your existing files and registers rather than ask you to describe them. You get a readiness report: what can go live first, what needs cleaning up, what a rollout costs in staff time.',
+    'var(--accent)'],
+  ['pilot', 'FabricXAI Pilot Implementation', 'Department by department',
+    'One department live at a time, with a champion in each.',
+    ['A named champion per department, trained before their module opens',
+     'Masters loaded by AI extraction from your own files, approved by your staff',
+     'Payroll runs in parallel for two cycles before anything is switched off'],
+    '8 to 12 weeks · two payroll cycles',
+    'A rollout that never asks the whole factory to change at once. One department goes live at a time behind a champion we train first. Item masters, styles, BOMs and wage grades come in by extraction from your own files, approved by your staff before they count. Payroll runs parallel for two cycles.',
+    'var(--info)'],
+  ['buying', 'Buying-house Integration', 'Across your supplier factories',
+    'See every order in every factory, without chasing anyone.',
+    ['One order book across all supplier factories you place with',
+     'TNA and inspection status per PO, updated by the factory floor itself',
+     'Shared documents and one approval trail both sides can read'],
+    '4 to 6 weeks · per supplier group',
+    'Order visibility across the factories you place with, fed by what they already record for themselves — so nothing is double-entered and nobody sends a status email. TNA position, inspection results and shipment docs per PO, with one approval trail both sides read.',
+    'var(--ok)']
+];
+
+class Component extends DCLogic {
+  state = { lang: 'en' };
+
+  bar(conf) {
+    return {
+      height: '100%', width: Math.round(conf * 100) + '%',
+      background: conf < 0.85 ? 'var(--warn)' : 'var(--ok)'
+    };
+  }
+
+  count(text, max) {
+    return { count: text.length + ' / ' + max, over: text.length > max };
+  }
+
+  renderVals() {
+    const bn = this.state.lang === 'bn';
+    const capFont = bn
+      ? "700 40px/1.3 'Anek Bangla','Plus Jakarta Sans',sans-serif"
+      : "700 44px/1.16 'Archivo',sans-serif";
+
+    const CAPS = {
+      a: bn ? 'এআই খসড়া করে। সিদ্ধান্ত আপনার।' : 'The AI drafts. You decide.',
+      b: bn ? 'প্রতিটি তারিখ এলসির সময়সীমা জানে।' : 'Every date knows the LC deadline.',
+      c: bn ? 'দামি ভুলগুলো অসম্ভব করে দেওয়া হয়েছে।' : 'Expensive mistakes, made impossible.',
+      d: bn ? 'ফ্লোরের সত্য, প্রতি ঘণ্টায়।' : "The floor's truth, hourly.",
+      e: bn ? 'কারখানা আপনার পকেটে।' : 'The factory in your pocket.',
+      f: bn ? 'প্রতিটি অর্ডার পরেরটিকে শেখায়।' : 'Every order teaches the next one.'
+    };
+
+    const tagline = 'FabricXAI — the system that runs the floor';
+    const desc = 'An AI-powered ERP for Bangladeshi garment export factories, woven and knit. MARBIM reads your buyer emails, POs, proformas and bank advices and lands every field as a draft — your people approve it. Built for how the work actually runs here: LC and back-to-back headroom, bonded UD balances, wage-gazette payroll, Bengali floor screens that keep working offline. For owners, merchandisers and commercial teams.';
+
+    const hourMax = Math.max.apply(null, HOURS.map(h => h[1]));
+    const wfScale = 5.4;
+
+    return {
+      langs: [['en', 'English'], ['bn', 'বাংলা']].map(l => ({
+        label: l[1],
+        pick: () => this.setState({ lang: l[0] }),
+        style: {
+          background: this.state.lang === l[0] ? 'var(--ink)' : 'transparent',
+          color: this.state.lang === l[0] ? 'var(--canvas)' : 'var(--t2)',
+          border: '1px solid ' + (this.state.lang === l[0] ? 'var(--ink)' : 'var(--bd)'),
+          borderRadius: '8px', padding: '11px 15px', cursor: 'pointer', minHeight: '44px',
+          font: "600 14px/1 'Plus Jakarta Sans',sans-serif"
+        }
+      })),
+      langNote: bn
+        ? 'Gallery captions are showing the Bengali layer. Product-page copy stays English — LinkedIn indexes one language per page.'
+        : 'Gallery captions in English. Switch to বাংলা for the alternate caption layer used on Bangladeshi feeds.',
+
+      copyBlocks: [
+        {
+          field: 'Product name + tagline', sel: 'var(--ink)', text: tagline,
+          textStyle: { font: "600 26px/1.35 'Archivo',sans-serif", letterSpacing: '-.015em' },
+          ...(() => { const c = this.count(tagline, 60); return { count: '7 words · ' + c.count, countColor: 'var(--t3)' }; })(),
+          hasNote: true, note: 'Seven words. LinkedIn truncates the tagline in search results, so the product name carries the meaning on its own.'
+        },
+        {
+          field: 'Product description', sel: 'var(--accent)', text: desc,
+          textStyle: { font: "400 16px/1.65 'Plus Jakarta Sans',sans-serif", color: 'var(--t2)', textWrap: 'pretty' },
+          ...(() => { const c = this.count(desc, 500); return { count: c.count, countColor: c.over ? 'var(--bad)' : 'var(--ok)' }; })(),
+          hasNote: true, note: 'One paragraph, no superlatives, no "revolutionary". The trust line sits second because it is the objection every factory owner raises first.'
+        }
+      ],
+
+      features: FEATURES.map((f, i) => ({
+        n: String(i + 1).padStart(2, '0'), text: f,
+        len: f.length + '/60',
+        c: f.length > 60 ? 'var(--bad)' : 'var(--t3)'
+      })),
+
+      segments: SEGMENTS.map(s => ({ name: s[0], note: s[1] })),
+
+      bookRows: BOOK.map(r => ({
+        po: r[0], buyer: r[1], qty: r[2], exf: r[3], lc: r[4],
+        lcColor: r[5] === 'bad' ? 'var(--bad)' : r[5] === 'warn' ? 'var(--warn)' : 'var(--t2)',
+        sel: r[5] === 'bad' ? 'var(--bad)' : r[5] === 'warn' ? 'var(--warn)' : 'var(--ok)'
+      })),
+
+      draftRows: DRAFT_ROWS.map(r => ({
+        field: r[0], value: r[1], conf: r[2].toFixed(2),
+        confColor: r[2] < 0.85 ? 'var(--warn)' : 'var(--t2)',
+        bar: this.bar(r[2]),
+        sel: r[2] < 0.85 ? 'var(--warn)' : 'var(--ok)'
+      })),
+
+      tnaRows: TNA.map(m => ({
+        name: m[0], plan: m[1], act: m[2], state: m[3], cp: m[4],
+        actColor: m[5] === 'bad' ? 'var(--bad)' : m[5] === 'ok' ? 'var(--ok)' : 'var(--t3)',
+        sel: m[5] === 'bad' ? 'var(--bad)' : m[5] === 'ok' ? 'var(--ok)' : 'var(--bs)',
+        selW: m[4] ? '5px' : '3px'
+      })),
+
+      hours: HOURS.map(h => ({
+        t: h[0], v: h[1],
+        c: h[2] === 'bad' ? 'var(--bad)' : h[2] === 'warn' ? 'var(--warn)' : 'var(--t2)',
+        bar: {
+          width: '100%', height: Math.max(5, h[1] / hourMax * 100) + '%', borderRadius: '3px 3px 0 0',
+          background: h[2] === 'bad' ? 'var(--bad)' : h[2] === 'warn' ? 'var(--warn)' : 'var(--ink)'
+        }
+      })),
+
+      ownerFeed: OWNER_FEED.map(e => ({
+        kind: e[0], truth: e[1], age: e[2],
+        sel: e[3] === 'accent' ? 'var(--accent)' : '#E0665C',
+        selW: '5px',
+        border: e[3] === 'accent' ? 'var(--accent-press)' : '#E0665C',
+        ageColor: '#E0665C',
+        act: e[4], actLabel: e[5]
+      })),
+
+      waterfall: WATERFALL.map(w => ({
+        label: w[0], v: w[2],
+        c: w[3] === 'end' ? 'var(--ink)' : 'var(--bad)',
+        bar: {
+          width: '100%',
+          height: Math.max(5, Math.abs(w[1]) * (w[3] === 'end' ? wfScale * 0.9 : wfScale * 3.4)) + 'px',
+          borderRadius: '3px',
+          background: w[3] === 'end' ? 'var(--ink)' : 'var(--bad)'
+        }
+      })),
+
+      galBoard: {
+        width: '1200px', height: '627px', background: 'var(--canvas)',
+        border: '1px solid var(--bs)', position: 'relative', overflow: 'hidden',
+        display: 'flex', alignItems: 'stretch'
+      },
+      galWeave: {
+        position: 'absolute', right: '0', top: '0', bottom: '0', width: '520px',
+        backgroundImage: 'repeating-linear-gradient(146deg, transparent 0 14px, rgba(24,29,41,.03) 14px 16px, transparent 16px 30px)'
+      },
+      galText: {
+        width: '470px', flexShrink: 0, padding: '52px 34px 46px 56px',
+        display: 'flex', flexDirection: 'column', gap: '20px', position: 'relative'
+      },
+      galSub: { font: "400 17px/1.55 'Plus Jakarta Sans',sans-serif", color: 'var(--t2)', textWrap: 'pretty' },
+      galStage: {
+        flex: 1, minWidth: 0, position: 'relative', display: 'flex',
+        alignItems: 'center', overflow: 'hidden'
+      },
+      galFrame: {
+        position: 'relative', width: '780px', marginLeft: '-30px',
+        background: 'var(--surface)', border: '1px solid var(--bd)', borderRadius: '12px',
+        overflow: 'hidden', boxShadow: '0 12px 32px rgba(24,29,41,.12)'
+      },
+      galChrome: {
+        background: 'var(--sunken)', borderBottom: '1px solid var(--bs)',
+        padding: '13px 16px', display: 'flex', alignItems: 'center', gap: '14px'
+      },
+      galPill: {
+        flex: 1, background: 'var(--surface)', border: '1px solid var(--bs)', borderRadius: '5px',
+        padding: '7px 11px', font: "400 12px/1.3 'JetBrains Mono',monospace", color: 'var(--t3)'
+      },
+      capA: { font: capFont, letterSpacing: bn ? '0' : '-.024em', textWrap: 'pretty' },
+      capAText: CAPS.a, capBText: CAPS.b, capCText: CAPS.c,
+      capDText: CAPS.d, capEText: CAPS.e, capFText: CAPS.f,
+
+      beats: BEATS.map(b => {
+        const dark = b[7] === 'dark';
+        const isEnd = b[3] === 'end';
+        const tone = b[7];
+        const accentBar = tone === 'accent' ? 'var(--accent)'
+          : tone === 'bad' ? 'var(--bad)' : tone === 'ok' ? 'var(--ok)' : 'var(--bd)';
+        return {
+          n: b[0], title: b[1], time: b[2],
+          isEnd, isShot: !isEnd,
+          board: {
+            width: '1920px', height: '1080px', transform: 'scale(0.6)', transformOrigin: 'top left',
+            marginBottom: '-432px', marginRight: '-768px',
+            background: dark ? 'var(--d-canvas)' : 'var(--canvas)',
+            border: dark ? 'none' : '1px solid var(--bs)',
+            position: 'relative', overflow: 'hidden', display: 'flex'
+          },
+          weave: {
+            position: 'absolute', right: '0', top: '0', bottom: '0', width: '700px',
+            backgroundImage: dark
+              ? 'repeating-linear-gradient(146deg, transparent 0 22px, rgba(255,255,255,.045) 22px 26px, transparent 26px 48px)'
+              : 'repeating-linear-gradient(146deg, transparent 0 22px, rgba(24,29,41,.03) 22px 26px, transparent 26px 48px)'
+          },
+          chip: b[6],
+          chipStyle: {
+            font: "500 17px/1 'JetBrains Mono',monospace", letterSpacing: '.07em',
+            textTransform: 'uppercase', color: 'var(--t3)',
+            border: '1px solid var(--bd)', borderRadius: '4px', padding: '10px 13px'
+          },
+          module: b[0] + ' / 08',
+          muted: 'var(--t3)',
+          shot: b[4],
+          shotStyle: {
+            font: "700 64px/1.14 'Archivo',sans-serif", letterSpacing: '-.026em',
+            color: 'var(--ink)', maxWidth: '22ch', textWrap: 'pretty'
+          },
+          accentBar,
+          sub: b[5],
+          subStyle: {
+            font: "400 27px/1.5 'Plus Jakarta Sans',sans-serif", color: 'var(--t2)',
+            paddingLeft: '24px', maxWidth: '40ch', textWrap: 'pretty'
+          }
+        };
+      }),
+
+      services: SERVICES.map(s => {
+        const c = this.count(s[6], 300);
+        return {
+          domId: 'ab-service-' + s[0],
+          eyebrow: s[2], name: s[1], promise: s[3],
+          bullets: s[4], foot: s[5], copy: s[6], accent: s[7],
+          count: c.count, countColor: c.over ? 'var(--bad)' : 'var(--ok)',
+          duration: s[5].split(' · ')[0]
+        };
+      })
+    };
+  }
+}
+
+</script>
+</body>
+</html>

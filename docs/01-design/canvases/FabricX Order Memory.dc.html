@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #F3F1EC; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  [data-mode="dark"] { --fx-bg-canvas:#0F131B !important; --fx-bg-surface:#181D29 !important; --fx-bg-raised:#212736 !important; --fx-bg-sunken:#0B0E15 !important; --fx-bg-hover:rgba(255,255,255,.05) !important; --fx-bg-selected:rgba(225,179,52,.17) !important; --fx-border-subtle:#252B3A !important; --fx-border-default:#343B4C !important; --fx-border-strong:#4E576B !important; --fx-text-primary:#F4F3F0 !important; --fx-text-secondary:#AEB5C4 !important; --fx-text-tertiary:#7C8497 !important; --fx-text-disabled:#565E71 !important; --fx-text-inverse:#181D29 !important; --fx-accent-hover:#EBC352 !important; --fx-accent-pressed:#F2D077 !important; --fx-accent-subtle:rgba(225,179,52,.14) !important; --fx-success:#4FA97D !important; --fx-warning:#D99A3F !important; --fx-danger:#E0665C !important; --fx-info:#6D9BE8 !important; --fx-focus:#E1B334 !important; --fx-sh1:0 0 0 1px #252B3A !important; --fx-sh2:0 0 0 1px #252B3A !important; --fx-sh3:0 0 0 1px #343B4C !important; }
+  body:has([data-mode="dark"]) { background: #0B0E15; }
+  a { color: #181D29; text-decoration: underline; text-underline-offset: 3px; }
+  a:hover { color: #B88C21; }
+  @keyframes fx-breathe { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(calc(var(--dx) * 3.5%), calc(var(--dy) * 3.5%)); } }
+  @keyframes fx-caret { 0%, 45% { opacity: 1; } 55%, 100% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
+</style>
+</helmet>
+
+<div data-mode="{{ mode }}" style="--fx-bg-canvas:#FBFAF8; --fx-bg-surface:#FFFFFF; --fx-bg-sunken:#F3F1EC; --fx-bg-hover:rgba(24,29,41,.035); --fx-bg-selected:rgba(225,179,52,.12); --fx-border-subtle:#E7E4DE; --fx-border-default:#D6D2C9; --fx-border-strong:#A9A49A; --fx-text-primary:#181D29; --fx-text-secondary:#4C5364; --fx-text-tertiary:#767E90; --fx-text-disabled:#A8AEBB; --fx-text-inverse:#FBFAF8; --fx-accent:#E1B334; --fx-accent-hover:#CFA22B; --fx-accent-pressed:#B88C21; --fx-accent-subtle:#FAF1DA; --fx-accent-on:#181D29; --fx-success:#2F7D5B; --fx-warning:#B4741C; --fx-danger:#B23A32; --fx-info:#2F5FA8; --fx-focus:#181D29; --fx-sh1:0 1px 2px rgba(24,29,41,.06); --fx-sh2:0 4px 12px rgba(24,29,41,.08); --fx-sh3:0 12px 32px rgba(24,29,41,.12); font-family:'Plus Jakarta Sans',system-ui,sans-serif; color:var(--fx-text-primary); min-height:100vh; background:var(--fx-bg-sunken);">
+
+<div style="position:sticky; top:0; z-index:60; background:var(--fx-bg-surface); border-bottom:1px solid var(--fx-border-default); padding:10px 20px; display:flex; align-items:center; gap:18px; flex-wrap:wrap;">
+  <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Prototype bar — not product chrome</div>
+  <div style="display:flex; gap:2px; background:var(--fx-bg-sunken); border-radius:8px; padding:3px;">
+    <sc-for list="{{ screens }}" as="s" hint-placeholder-count="4">
+      <button onClick="{{ s.pick }}" style="{{ s.style }}">{{ s.label }}</button>
+    </sc-for>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px;">
+    <span style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">role</span>
+    <select onChange="{{ setRole }}" value="{{ role }}" style="background:var(--fx-bg-surface); color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:4px; padding:7px 9px; font:500 12px/1 'JetBrains Mono',monospace;">
+      <option value="merchandiser">merchandiser</option>
+      <option value="manager">manager</option>
+      <option value="owner">owner</option>
+      <option value="planner">planner</option>
+      <option value="viewer">viewer</option>
+    </select>
+  </div>
+  <sc-if value="{{ isP1 }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex; align-items:center; gap:8px;">
+      <span style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">host</span>
+      <select onChange="{{ setHost }}" value="{{ host }}" style="background:var(--fx-bg-surface); color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:4px; padding:7px 9px; font:500 12px/1 'JetBrains Mono',monospace;">
+        <option value="rfq">inside RFQ detail</option>
+        <option value="bom">inside BOM editor</option>
+      </select>
+    </div>
+  </sc-if>
+  <sc-if value="{{ isP2 }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex; align-items:center; gap:8px;">
+      <span style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">note</span>
+      <select onChange="{{ setWindow }}" value="{{ noteWindow }}" style="background:var(--fx-bg-surface); color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:4px; padding:7px 9px; font:500 12px/1 'JetBrains Mono',monospace;">
+        <option value="open">inside 7-day window</option>
+        <option value="closed">window closed</option>
+      </select>
+    </div>
+  </sc-if>
+  <div style="display:flex; align-items:center; gap:10px; margin-left:auto;">
+    <button onClick="{{ toggleMode }}" style="{{ modeBtn }}">{{ modeLabel }}</button>
+    <button onClick="{{ toggleAnnot }}" style="{{ annotBtn }}">actions {{ annotLabel }}</button>
+  </div>
+</div>
+
+<div style="padding:26px 28px 60px; display:flex; flex-direction:column; gap:20px; max-width:1280px;">
+
+  <sc-if value="{{ isP1 }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex; flex-direction:column; gap:16px;">
+      <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:20px; flex-wrap:wrap;">
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Order memory · embedded panel</div>
+          <div style="font:700 30px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">Have we made this before?</div>
+          <div style="font:400 14.5px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:66ch; text-wrap:pretty;">{{ hostLead }}</div>
+        </div>
+        <div style="font:400 12.5px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ hostCrumb }}</div>
+      </div>
+
+      <div style="border:1px dashed var(--fx-border-default); border-radius:8px; padding:14px 16px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; background:var(--fx-bg-surface);">
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">host page</div>
+        <div style="font:400 13.5px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); flex:1 1 320px; min-width:0; text-wrap:pretty;">{{ hostFrame }}</div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(340px, 1fr)); gap:18px;">
+        <sc-for list="{{ matches }}" as="m" hint-placeholder-count="3">
+          <div style="display:flex; background:var(--fx-bg-surface); border:1px solid {{ m.border }}; border-radius:8px; overflow:hidden; box-shadow:{{ m.shadow }}; flex-direction:column;">
+            <div style="display:flex; align-items:stretch;">
+              <div style="width:{{ m.selW }}; flex-shrink:0; background:{{ m.sel }};"></div>
+              <div style="flex:1; min-width:0; display:flex; flex-direction:column;">
+                <div style="height:132px; background:var(--fx-bg-sunken); background-image:repeating-linear-gradient(146deg, transparent 0 7px, var(--fx-border-subtle) 7px 9px, transparent 9px 17px); display:flex; align-items:center; justify-content:center; padding:16px; border-bottom:1px solid var(--fx-border-subtle);">
+                  <div style="font:400 12px/1.6 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); text-align:center;">placeholder — shipped sample photo<br />{{ m.style }}</div>
+                </div>
+                <div style="padding:16px 18px; display:flex; flex-direction:column; gap:13px; flex:1;">
+                  <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">
+                    <div style="font:500 13px/1.2 'JetBrains Mono',monospace;">{{ m.order }}</div>
+                    <div style="font:400 13px/1.3 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">{{ m.buyer }} · {{ m.year }}</div>
+                    <div style="font:600 15px/1 'JetBrains Mono',monospace; color:{{ m.scoreColor }}; margin-left:auto;">{{ m.score }}</div>
+                  </div>
+                  <div style="font:600 16px/1.3 'Plus Jakarta Sans',sans-serif; text-wrap:pretty;">{{ m.title }}</div>
+                  <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                    <sc-for list="{{ m.chips }}" as="c" hint-placeholder-count="4">
+                      <div style="font:500 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-secondary); border:1px solid var(--fx-border-subtle); border-radius:3px; padding:6px 7px; background:var(--fx-bg-sunken);">{{ c }}</div>
+                    </sc-for>
+                  </div>
+                  <div style="display:flex; flex-direction:column; gap:8px; padding-top:2px; border-top:1px solid var(--fx-border-subtle);">
+                    <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary); padding-top:11px;">How it actually ran</div>
+                    <sc-for list="{{ m.outcome }}" as="o" hint-placeholder-count="3">
+                      <div style="display:grid; grid-template-columns:1fr auto; gap:10px; align-items:baseline;">
+                        <div style="font:400 13px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">{{ o.k }}</div>
+                        <div style="font:500 13px/1.3 'JetBrains Mono',monospace; color:{{ o.c }}; text-align:right;">{{ o.v }}</div>
+                      </div>
+                    </sc-for>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:9px; flex-wrap:wrap; margin-top:auto; padding-top:4px;">
+                    <sc-if value="{{ canBaseline }}" hint-placeholder-val="{{ true }}">
+                      <button onClick="{{ m.use }}" style="{{ m.useStyle }}">Use as baseline</button>
+                    </sc-if>
+                    <button onClick="{{ goOutcome }}" style="background:transparent; color:var(--fx-text-secondary); border:1px solid var(--fx-border-default); border-radius:8px; padding:10px 14px; font:600 13px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-bg-hover); color:var(--fx-text-primary)">Open the record</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+        <div style="font:400 12.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:70ch; text-wrap:pretty;">The fingerprint is construction first — a woven poplin shirt and a knit pique polo never match each other however similar the buyer and quantity. Everything below 70% is hidden rather than shown weakly.</div>
+      </div>
+
+      <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">memory.useAsBaseline → pending draft on the cost sheet, never a direct write</div>
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">same panel, two hosts — RFQ detail and the BOM editor</div>
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">amber sits on the top match only</div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP2 }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex; flex-direction:column; gap:18px;">
+      <div style="display:flex; align-items:center; gap:8px; font:400 13px/1 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">
+        <span onClick="{{ goP1 }}" style="cursor:pointer;">Order memory</span><span style="opacity:.5;">/</span><span style="color:var(--fx-text-primary); font-weight:500; font-family:'JetBrains Mono',monospace; font-size:12.5px;">PO-88096 · outcome</span>
+      </div>
+      <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex-wrap:wrap;">
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div style="font:700 30px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">SH-4390 · H&amp;M · shipped 02 May 2026</div>
+          <div style="font:400 14.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">men's shirt · 40s poplin, garment wash · 22,000 pcs · compiled the day it shipped</div>
+        </div>
+        <div style="font:400 12.5px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">nothing here was typed — it is the order's own record</div>
+      </div>
+      <div style="height:9px; background-image:repeating-linear-gradient(115deg, var(--fx-accent) 0 2px, transparent 2px 9px);"></div>
+
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(430px, 1fr)); gap:18px; align-items:start;">
+
+        <div style="display:flex; flex-direction:column; gap:18px;">
+          <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:20px; display:flex; flex-direction:column; gap:14px; box-shadow:var(--fx-sh1);">
+            <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
+              <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Efficiency · 24 working days</div>
+              <div style="font:500 13px/1.3 'JetBrains Mono',monospace; color:var(--fx-success); margin-left:auto;">ended 74% · planned 62%</div>
+            </div>
+            <div style="position:relative; height:118px; display:flex; align-items:flex-end; gap:3px;">
+              <sc-for list="{{ curve }}" as="c" hint-placeholder-count="24">
+                <div style="{{ c.style }}"></div>
+              </sc-for>
+              <div style="{{ planLine }}"></div>
+              <div style="{{ planLabel }}">plan 62%</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+              <div style="font:400 12.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">Nine days under plan at the start, and the dip on day 12 is the two-day changeover to another style. It crossed plan on day 14 and never went back.</div>
+            </div>
+          </div>
+
+          <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+            <div style="display:flex; align-items:center; gap:12px; padding:16px 20px 12px; flex-wrap:wrap;">
+              <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Where the days went</div>
+              <div style="font:500 13px/1.3 'JetBrains Mono',monospace; color:var(--fx-warning); margin-left:auto;">12 days lost · ex-factory still held</div>
+            </div>
+            <sc-for list="{{ delays }}" as="d" hint-placeholder-count="5">
+              <div style="display:flex; align-items:stretch; border-top:1px solid var(--fx-border-subtle);">
+                <div style="width:{{ d.selW }}; flex-shrink:0; background:{{ d.sel }};"></div>
+                <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:5px; padding:13px 20px 13px 17px;">
+                  <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">
+                    <div style="font:500 13.5px/1.35 'Plus Jakarta Sans',sans-serif;">{{ d.name }}</div>
+                    <div style="font:400 12.5px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ d.dates }}</div>
+                    <div style="font:500 13px/1.3 'JetBrains Mono',monospace; color:{{ d.sel }}; margin-left:auto;">{{ d.lost }}</div>
+                  </div>
+                  <div style="font:400 12.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ d.why }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:18px;">
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:18px;">
+            <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:18px 20px; display:flex; flex-direction:column; gap:13px; box-shadow:var(--fx-sh1);">
+              <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Margin</div>
+              <div style="display:flex; flex-direction:column; gap:9px;">
+                <div style="display:flex; align-items:baseline; gap:10px;">
+                  <div style="font:400 12px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); width:52px; flex-shrink:0;">quoted</div>
+                  <div style="font:500 14px/1.2 'JetBrains Mono',monospace;">12.0%</div>
+                </div>
+                <div style="height:9px; border-radius:999px; background:var(--fx-bg-sunken); overflow:hidden;"><div style="height:100%; width:100%; background:var(--fx-border-strong);"></div></div>
+                <div style="display:flex; align-items:baseline; gap:10px;">
+                  <div style="font:400 12px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); width:52px; flex-shrink:0;">actual</div>
+                  <div style="font:600 14px/1.2 'JetBrains Mono',monospace; color:var(--fx-warning);">11.2%</div>
+                </div>
+                <div style="height:9px; border-radius:999px; background:var(--fx-bg-sunken); overflow:hidden;"><div style="height:100%; width:93%; background:var(--fx-warning);"></div></div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:6px; padding-top:2px;">
+                <sc-for list="{{ marginRows }}" as="m" hint-placeholder-count="4">
+                  <div style="display:flex; align-items:baseline; gap:10px;">
+                    <div style="font:400 12.5px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">{{ m.k }}</div>
+                    <div style="font:500 12.5px/1.3 'JetBrains Mono',monospace; color:{{ m.c }}; margin-left:auto;">{{ m.v }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:18px 20px; display:flex; flex-direction:column; gap:13px; box-shadow:var(--fx-sh1);">
+              <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Top defects · DHU 4.2%</div>
+              <sc-for list="{{ defects }}" as="d" hint-placeholder-count="3">
+                <div style="display:flex; flex-direction:column; gap:6px;">
+                  <div style="display:flex; align-items:baseline; gap:10px;">
+                    <div style="font:400 13px/1.4 'Plus Jakarta Sans',sans-serif;">{{ d.name }}</div>
+                    <div style="font:500 12.5px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-left:auto;">{{ d.n }}</div>
+                  </div>
+                  <div style="height:7px; border-radius:999px; background:var(--fx-bg-sunken); overflow:hidden;"><div style="height:100%; width:{{ d.pct }}; background:{{ d.c }};"></div></div>
+                </div>
+              </sc-for>
+              <div style="font:400 12px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">Collar shape dominated for three weeks — the same comment the buyer made on the PP sample.</div>
+            </div>
+          </div>
+
+          <div style="background:var(--fx-bg-surface); border:1px solid {{ noteBorder }}; border-radius:8px; padding:20px; display:flex; flex-direction:column; gap:14px; box-shadow:var(--fx-sh1);">
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+              <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">The merchandiser's note</div>
+              <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:{{ noteStateColor }}; margin-left:auto;">{{ noteState }}</div>
+            </div>
+            <div style="font:400 15px/1.65 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-primary); text-wrap:pretty;">{{ noteBody }}</div>
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding-top:2px;">
+              <div style="font:400 12.5px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">Nabila Rahman · 02 May 2026</div>
+              <sc-if value="{{ canEditNote }}" hint-placeholder-val="{{ false }}">
+                <button onClick="{{ editNote }}" style="margin-left:auto; background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:11px 16px; font:600 13.5px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-accent-hover)">Edit the note</button>
+              </sc-if>
+              <sc-if value="{{ noteLocked }}" hint-placeholder-val="{{ true }}">
+                <div style="margin-left:auto; font:400 12.5px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:40ch; text-wrap:pretty;">{{ lockNote }}</div>
+              </sc-if>
+            </div>
+          </div>
+
+          <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">memory.editNote — manager only, 7 days from close</div>
+              <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">everything else on this page is compiled, not editable by anyone</div>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP3 }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex; flex-direction:column; gap:18px;">
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Order memory · close-out</div>
+        <div style="font:700 30px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">The two lines that pay for themselves</div>
+        <div style="font:400 14.5px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:66ch; text-wrap:pretty;">This is the only screen in FabricX that asks for prose. It appears once, when an order closes, and it is the reason a match card two years later is worth reading.</div>
+      </div>
+
+      <div style="display:flex; justify-content:center; padding:8px 0 20px;">
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:14px; box-shadow:var(--fx-sh3); width:620px; max-width:100%; clip-path:polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%); display:flex; flex-direction:column;">
+          <div style="padding:26px 28px 16px; display:flex; flex-direction:column; gap:9px;">
+            <div style="font:400 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Closing PO-88190 · C&amp;A · DN-3302</div>
+            <div style="font:600 22px/1.25 'Plus Jakarta Sans',sans-serif;">What should the next person know?</div>
+            <div style="font:400 14px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">The numbers are already saved — efficiency, defects, delays, margin. Two lines from you is what the numbers cannot say.</div>
+          </div>
+          <div style="padding:0 28px 8px; display:flex; flex-direction:column; gap:16px;">
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <label style="font:500 13px/1 'Plus Jakarta Sans',sans-serif;">What went better than expected?</label>
+              <input value="{{ note1 }}" onChange="{{ setNote1 }}" placeholder="the wash house held its March price all the way through" style="background:var(--fx-bg-surface); color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:4px; padding:13px 14px; font:400 14.5px/1.4 'Plus Jakarta Sans',sans-serif; width:100%; min-height:48px;" />
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <label style="font:500 13px/1 'Plus Jakarta Sans',sans-serif;">What would you do differently?</label>
+              <input value="{{ note2 }}" onChange="{{ setNote2 }}" placeholder="order the zip trims three weeks earlier — the supplier short-shipped twice" style="background:var(--fx-bg-surface); color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:4px; padding:13px 14px; font:400 14.5px/1.4 'Plus Jakarta Sans',sans-serif; width:100%; min-height:48px;" />
+            </div>
+            <div style="display:flex; align-items:flex-start; gap:11px; background:var(--fx-bg-sunken); border-radius:8px; padding:14px 16px;">
+              <div style="width:7px; height:7px; border-radius:999px; background:var(--fx-info); margin-top:6px; flex-shrink:0;"></div>
+              <div style="font:400 13px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ prompt }}</div>
+            </div>
+          </div>
+          <div style="padding:18px 28px 24px; display:flex; flex-direction:column; gap:12px; border-top:1px solid var(--fx-border-subtle); margin-top:16px;">
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+              <button onClick="{{ saveNote }}" style="{{ saveStyle }}">Save the note and close</button>
+              <div style="font:400 12px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-left:auto;">memory.saveNote</div>
+            </div>
+            <button onClick="{{ skipNote }}" style="align-self:flex-start; background:transparent; color:var(--fx-text-tertiary); border:none; padding:6px 0; font:400 13px/1.4 'Plus Jakarta Sans',sans-serif; cursor:pointer; text-decoration:underline; text-underline-offset:3px;">Close without a note</button>
+            <div style="font:400 12.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:56ch; text-wrap:pretty;">Skipping is allowed and nobody is blocked. But 11 of the last 14 closed orders have no note, and that is why the C&amp;A denim match card is three numbers with no story behind them.</div>
+          </div>
+        </div>
+      </div>
+
+      <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">memory.saveNote — fires on order close, once</div>
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">skip is a text link, not a button — discouraged by weight, never disabled</div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP4 }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex; flex-direction:column; gap:18px;">
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Order memory · asked of MARBIM</div>
+        <div style="font:700 30px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">The same memory, asked in words</div>
+        <div style="font:400 14.5px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:66ch; text-wrap:pretty;">A merchandiser on the phone to a buyer does not open a panel. The answer card is the panel's contents, sized for a conversation.</div>
+      </div>
+
+      <div style="max-width:720px; display:flex; flex-direction:column; gap:16px;">
+        <div style="display:flex; justify-content:flex-end;">
+          <div style="background:var(--fx-bg-sunken); border-radius:14px 14px 4px 14px; padding:12px 16px; font:400 15px/1.55 'Plus Jakarta Sans',sans-serif; max-width:82%; text-wrap:pretty;">Have we made ribbed polos for Bestseller?</div>
+        </div>
+        <div style="display:flex; gap:12px;">
+          <div style="width:30px; height:30px; border-radius:999px; background:#181D29; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <img src="uploads/MARBIM_logo.png" alt="" style="width:15px; height:15px;" />
+          </div>
+          <div style="display:flex; flex-direction:column; gap:14px; flex:1; min-width:0;">
+            <div style="font:400 15px/1.6 'Plus Jakarta Sans',sans-serif; text-wrap:pretty;">Twice, both with a rib collar and cuff. PL-2180 ran last July and is the closer one — same 180gsm pique, same knitter. The older one used a flat collar on the second colourway, which is why its consumption looks lower than it should.</div>
+            <div style="border:1px solid var(--fx-border-subtle); border-radius:8px; background:var(--fx-bg-surface); box-shadow:var(--fx-sh1); overflow:hidden; clip-path:polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);">
+              <div style="padding:14px 16px 12px; border-bottom:1px solid var(--fx-border-subtle); display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">
+                <div style="font:400 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">2 matches · order memory</div>
+                <div style="font:400 11.5px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-left:auto;">ribbed collar · pique · Bestseller</div>
+              </div>
+              <sc-for list="{{ answerMatches }}" as="a" hint-placeholder-count="2">
+                <div style="display:flex; align-items:stretch; border-bottom:1px solid var(--fx-border-subtle);">
+                  <div style="width:{{ a.selW }}; flex-shrink:0; background:{{ a.sel }};"></div>
+                  <div style="flex:1; min-width:0; padding:14px 16px; display:flex; flex-direction:column; gap:9px;">
+                    <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">
+                      <div style="font:500 13px/1.2 'JetBrains Mono',monospace;">{{ a.order }}</div>
+                      <div style="font:400 13px/1.3 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">{{ a.when }}</div>
+                      <div style="font:600 14px/1 'JetBrains Mono',monospace; color:{{ a.sel }}; margin-left:auto;">{{ a.score }}</div>
+                    </div>
+                    <div style="font:500 14.5px/1.35 'Plus Jakarta Sans',sans-serif; text-wrap:pretty;">{{ a.title }}</div>
+                    <div style="font:400 13px/1.5 'JetBrains Mono',monospace; color:var(--fx-text-secondary); text-wrap:pretty;">{{ a.line }}</div>
+                  </div>
+                </div>
+              </sc-for>
+              <div style="padding:13px 16px; display:flex; align-items:center; gap:9px; flex-wrap:wrap;">
+                <button style="background:transparent; border:1px solid var(--fx-border-default); border-radius:8px; padding:10px 13px; font:500 12px/1 'JetBrains Mono',monospace; color:var(--fx-text-secondary); cursor:pointer; min-height:44px;" style-hover="background:var(--fx-bg-hover); color:var(--fx-text-primary)">copy link</button>
+                <button onClick="{{ goOutcome }}" style="background:transparent; border:1px solid var(--fx-border-default); border-radius:8px; padding:10px 13px; font:500 12px/1 'JetBrains Mono',monospace; color:var(--fx-text-secondary); cursor:pointer; min-height:44px;" style-hover="background:var(--fx-bg-hover); color:var(--fx-text-primary)">open PL-2180</button>
+                <sc-if value="{{ canBaseline }}" hint-placeholder-val="{{ true }}">
+                  <button onClick="{{ useTop }}" style="margin-left:auto; background:var(--fx-text-primary); color:var(--fx-text-inverse); border:none; border-radius:8px; padding:11px 15px; font:600 13px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;">Use PL-2180 as baseline</button>
+                </sc-if>
+              </div>
+            </div>
+            <div style="font:400 11.5px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">from · order memory · 2 closed orders · consumption is actual, not planned</div>
+          </div>
+        </div>
+      </div>
+
+      <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+        <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px; align-self:flex-start;">marbim.ask → memory.useAsBaseline · the draft button is ink here so the panel keeps one amber moment</div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <div style="display:flex; flex-direction:column; gap:12px;">
+    <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Role access — order memory</div>
+    <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden;">
+      <sc-for list="{{ access }}" as="a" hint-placeholder-count="5">
+        <div style="display:grid; grid-template-columns:1fr 96px 1.5fr; gap:16px; padding:11px 18px; align-items:center; border-bottom:1px solid var(--fx-border-subtle);">
+          <div style="font:500 13px/1.4 'JetBrains Mono',monospace;">{{ a.role }}</div>
+          <div><span style="{{ a.chip }}">{{ a.level }}</span></div>
+          <div style="font:400 13px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ a.note }}</div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+</div>
+
+<sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed; left:50%; bottom:28px; transform:translateX(-50%); z-index:90; background:var(--fx-text-primary); color:var(--fx-text-inverse); border-radius:8px; box-shadow:var(--fx-sh3); padding:14px 18px; display:flex; align-items:center; gap:14px; max-width:92vw;">
+    <div style="font:500 13.5px/1.4 'Plus Jakarta Sans',sans-serif;">{{ toast }}</div>
+    <button onClick="{{ clearToast }}" style="background:transparent; border:none; color:var(--fx-accent); font:600 12px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer;">Dismiss</button>
+  </div>
+</sc-if>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;role&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;merchandiser&quot;,&quot;manager&quot;,&quot;owner&quot;,&quot;planner&quot;,&quot;viewer&quot;],&quot;default&quot;:&quot;merchandiser&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Access&quot;},&quot;hostPage&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;rfq&quot;,&quot;bom&quot;],&quot;default&quot;:&quot;rfq&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Content&quot;},&quot;showActionNames&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Annotation&quot;}}">
+const USERS = {
+  merchandiser: 'Nabila Rahman', manager: 'Shafiq Alam', owner: 'M. A. Chowdhury',
+  planner: 'Rumana Akter', viewer: 'Audit (external)'
+};
+
+const MATCHES = [
+  {
+    order: 'PO-88096', style: 'SH-4390', buyer: 'H&M', year: '2026', score: '87%',
+    title: "Men's shirt · 40s poplin, garment wash",
+    chips: ['woven · poplin 133×72', 'garment wash', '22,000 pcs', 'same wash house'],
+    outcome: [
+      ['Fabric consumed', '1.61 m/pc vs 1.505 planned', 'var(--fx-warning)'],
+      ['Line efficiency', '71% · plan 62%', 'var(--fx-success)'],
+      ['Margin', '11.2% vs 12.0% quoted', 'var(--fx-warning)']
+    ]
+  },
+  {
+    order: 'PO-88104', style: 'PL-2180', buyer: 'Bestseller', year: '2026', score: '84%',
+    title: 'Polo · 180gsm pique, ribbed collar',
+    chips: ['knit · single pique', 'ribbed collar and cuff', '38,000 pcs', 'printed logo'],
+    outcome: [
+      ['Fabric consumed', '262 g/pc vs 255 planned', 'var(--fx-warning)'],
+      ['Line efficiency', '61% · plan 64%', 'var(--fx-warning)'],
+      ['Margin', '11.2% vs 12.0% quoted', 'var(--fx-warning)']
+    ]
+  },
+  {
+    order: 'PO-87990', style: 'DN-3290', buyer: 'C&A', year: '2025', score: '76%',
+    title: 'Denim 5-pocket · 11oz, stone wash',
+    chips: ['woven · denim 11oz', 'stone wash', '19,000 pcs', 'no note saved'],
+    outcome: [
+      ['Fabric consumed', '1.41 m/pc vs 1.34 planned', 'var(--fx-danger)'],
+      ['Line efficiency', '58% · plan 60%', 'var(--fx-warning)'],
+      ['Margin', '8.4% vs 11.5% quoted', 'var(--fx-danger)']
+    ]
+  }
+];
+
+const CURVE = [48, 52, 55, 58, 57, 61, 63, 60, 66, 68, 64, 58, 55, 62, 67, 70, 72, 69, 71, 73, 74, 72, 73, 74];
+// bars and the plan line both scale against this ceiling, so they cannot drift apart
+const CURVE_CEIL = 80;
+const PLAN_EFF = 62;
+
+const DELAYS = [
+  ['Fabric in-house', 'planned 12 Mar · actual 18 Mar', '+6 days', 'The mill shipped 4,200 m short and the balance came 6 days later. We knew on day 2 and said nothing to the buyer until day 5.', 'var(--fx-danger)', '5px'],
+  ['PP sample approved', 'planned 26 Mar · actual 29 Mar', '+3 days', 'Collar shape comment on the first submit — the same comment H&M made on SH-4200 and SH-4310.', 'var(--fx-warning)', '3px'],
+  ['Cutting start', 'planned 01 Apr · actual 02 Apr', '+1 day', 'Marker re-made after the ratio changed. Half a day of it was waiting for CAD.', 'var(--fx-warning)', '3px'],
+  ['Sewing complete', 'planned 22 Apr · actual 24 Apr', '+2 days', 'Line 3 was pulled onto a Primark order for two days in week 3.', 'var(--fx-warning)', '3px'],
+  ['Ex-factory', 'planned 02 May · actual 02 May', 'held', 'A second finishing table from 26 Apr absorbed all 12 days. It cost 0.4 margin points and saved the delivery.', 'var(--fx-success)', '3px']
+];
+
+const MARGIN_ROWS = [
+  ['Fabric over-consumption', '−0.6 pt', 'var(--fx-danger)'],
+  ['Wash rate rise in April', '−0.4 pt', 'var(--fx-danger)'],
+  ['Efficiency above plan', '+0.3 pt', 'var(--fx-success)'],
+  ['Trims from stock', '−0.1 pt', 'var(--fx-warning)']
+];
+
+const DEFECTS = [
+  ['Collar shape', '312', '46%', 'var(--fx-danger)'],
+  ['Broken stitch', '188', '28%', 'var(--fx-warning)'],
+  ['Measurement · sleeve', '124', '18%', 'var(--fx-warning)']
+];
+
+const NOTE = 'H&M comment on the collar shape at every first PP — send two collar options with the first sample and you get the three days back. The wash house raises its rate in April, so fix the price in writing in March. Their merchandiser answers on WhatsApp within the hour and by email in two days.';
+
+const ANSWER = [
+  ['PO-88104', 'July 2026 · 38,000 pcs', '84%', 'PL-2180 · 180gsm pique, ribbed collar and cuff',
+    '262 g/pc actual vs 255 planned · 61% eff · margin 11.2 vs 12.0', 'var(--fx-accent)', '5px'],
+  ['PO-87840', 'October 2025 · 26,000 pcs', '71%', 'PL-2090 · 180gsm pique, rib collar on one colourway only',
+    '241 g/pc actual vs 250 planned · 66% eff · margin 12.8 vs 12.0', 'var(--fx-border-strong)', '3px']
+];
+
+const ACCESS = [
+  ['merchandiser', 'view', 'Reads every panel and record, and writes the close-out note on their own orders.'],
+  ['manager', 'edit', 'Can correct a note for 7 days after close. Cannot touch the compiled numbers.'],
+  ['owner', 'view', 'Reads records. The margin thumbnail is the part they use.'],
+  ['planner', 'view', 'Reads efficiency curves and delay reasons to plan the next one honestly.'],
+  ['viewer · commercial · storekeeper', 'view', 'Inherits the host page — if they can see the RFQ, they see the panel without the baseline action.']
+];
+
+class Component extends DCLogic {
+  state = {
+    screen: 'p1', role: 'merchandiser', host: 'rfq', noteWindow: 'open', annot: true,
+    note1: '', note2: '', toast: '', mark: 'rest'
+  };
+
+  componentWillUnmount() { clearTimeout(this._t); }
+
+  flash(msg) {
+    clearTimeout(this._t);
+    this.setState({ toast: msg });
+    this._t = setTimeout(() => this.setState({ toast: '' }), 4400);
+  }
+
+  pill(active) {
+    return {
+      background: active ? 'var(--fx-bg-surface)' : 'transparent',
+      color: active ? 'var(--fx-text-primary)' : 'var(--fx-text-secondary)',
+      border: '1px solid ' + (active ? 'var(--fx-border-default)' : 'transparent'),
+      borderRadius: '6px', padding: '9px 12px', cursor: 'pointer',
+      font: "600 12.5px/1 'Plus Jakarta Sans',sans-serif", whiteSpace: 'nowrap'
+    };
+  }
+
+  ghost(on) {
+    return {
+      background: on ? 'var(--fx-text-primary)' : 'transparent',
+      color: on ? 'var(--fx-text-inverse)' : 'var(--fx-text-secondary)',
+      border: '1px solid ' + (on ? 'var(--fx-text-primary)' : 'var(--fx-border-default)'),
+      borderRadius: '8px', padding: '10px 13px', cursor: 'pointer', minHeight: '44px',
+      font: "500 12px/1 'JetBrains Mono',monospace", whiteSpace: 'nowrap'
+    };
+  }
+
+  chip(level) {
+    const base = {
+      font: "500 11px/1 'JetBrains Mono',monospace", letterSpacing: '.05em', textTransform: 'uppercase',
+      borderRadius: '4px', padding: '6px 8px', display: 'inline-block', whiteSpace: 'nowrap'
+    };
+    if (level === 'view') return { ...base, color: 'var(--fx-text-secondary)', background: 'var(--fx-bg-sunken)', border: '1px solid transparent' };
+    return { ...base, color: 'var(--fx-text-primary)', border: '1px solid var(--fx-border-strong)' };
+  }
+
+  renderVals() {
+    const s = this.state;
+    const mode = s.mode || 'light';
+    const role = s.role, screen = s.screen;
+    const canBaseline = role === 'merchandiser' || role === 'manager';
+    const inWindow = s.noteWindow === 'open';
+    const canEditNote = role === 'manager' && screen === 'p2' && inWindow;
+    const hasNote = (s.note1 + s.note2).trim().length > 0;
+
+    return {
+      screens: [['p1', 'P1 similar orders'], ['p2', 'P2 outcome record'], ['p3', 'P3 close-out'], ['p4', 'P4 asked of MARBIM']].map(x => ({
+        label: x[1], pick: () => this.setState({ screen: x[0] }), style: this.pill(screen === x[0])
+      })),
+      role, userName: USERS[role],
+      setRole: (e) => this.setState({ role: e.target.value }),
+      host: s.host, setHost: (e) => this.setState({ host: e.target.value }),
+      noteWindow: s.noteWindow, setWindow: (e) => this.setState({ noteWindow: e.target.value }),
+      annot: s.annot, annotLabel: s.annot ? 'on' : 'off', annotBtn: this.ghost(s.annot),
+      mode, modeLabel: mode === 'dark' ? 'dark' : 'light', modeBtn: this.ghost(mode === 'dark'),
+      logoSrc: 'uploads/fabricxai-logo-' + (mode === 'dark' ? 'dark' : 'light') + '.png',
+      toggleMode: () => this.setState(x => ({ mode: x.mode === 'dark' ? 'light' : 'dark' })),
+      toggleAnnot: () => this.setState(x => ({ annot: !x.annot })),
+
+      isP1: screen === 'p1', isP2: screen === 'p2', isP3: screen === 'p3', isP4: screen === 'p4',
+      goP1: () => this.setState({ screen: 'p1' }),
+      goOutcome: () => this.setState({ screen: 'p2' }),
+      canBaseline,
+
+      hostLead: s.host === 'rfq'
+        ? 'Three closed orders that share this one\u2019s fingerprint, with what they actually cost rather than what they were quoted at. It sits under the buyer\u2019s facts, before you touch a price.'
+        : 'The same three, shown while you build the BOM. Here the consumption figures are the point — planned against what the floor really used.',
+      hostCrumb: s.host === 'rfq' ? 'RFQ-2026-118 · H&M · SH-4471' : 'BOM SH-4471 · v2 draft',
+      hostFrame: s.host === 'rfq'
+        ? 'Above this panel: the buyer\u2019s facts, attachments and the clarification thread. Below it: the quote versions. The panel is collapsed by default on orders with no match above 70%.'
+        : 'Above this panel: the BOM line groups. The seed-from-similar card and this panel share the same match list — one calculation, two places it surfaces.',
+
+      matches: MATCHES.map((m, i) => ({
+        order: m.order, style: m.style, buyer: m.buyer, year: m.year, score: m.score, title: m.title, chips: m.chips,
+        outcome: m.outcome.map(o => ({ k: o[0], v: o[1], c: o[2] })),
+        sel: i === 0 ? 'var(--fx-accent)' : i === 1 ? 'var(--fx-border-strong)' : 'var(--fx-border-subtle)',
+        selW: i === 0 ? '5px' : '3px',
+        border: i === 0 ? 'var(--fx-accent)' : 'var(--fx-border-subtle)',
+        shadow: i === 0 ? 'var(--fx-sh2)' : 'var(--fx-sh1)',
+        scoreColor: i === 0 ? 'var(--fx-accent-pressed)' : 'var(--fx-text-secondary)',
+        use: () => this.flash('Baseline set from ' + m.order + ' · a pending draft is waiting on the cost sheet'),
+        useStyle: i === 0
+          ? { background: 'var(--fx-accent)', color: 'var(--fx-accent-on)', border: 'none', borderRadius: '8px', padding: '11px 16px', font: "600 13px/1 'Plus Jakarta Sans',sans-serif", cursor: 'pointer', minHeight: '44px' }
+          : { background: 'transparent', color: 'var(--fx-text-primary)', border: '1px solid var(--fx-border-strong)', borderRadius: '8px', padding: '11px 16px', font: "600 13px/1 'Plus Jakarta Sans',sans-serif", cursor: 'pointer', minHeight: '44px' }
+      })),
+
+      curve: CURVE.map(v => ({
+        style: {
+          flex: 1, height: (v / CURVE_CEIL * 100) + '%', minWidth: '4px', borderRadius: '2px 2px 0 0',
+          background: v >= PLAN_EFF ? 'var(--fx-success)' : 'var(--fx-warning)'
+        }
+      })),
+      planLine: {
+        position: 'absolute', left: 0, right: 0, height: 0,
+        bottom: (PLAN_EFF / CURVE_CEIL * 100) + '%',
+        borderTop: '1px dashed var(--fx-text-primary)'
+      },
+      planLabel: {
+        position: 'absolute', right: 0, bottom: (PLAN_EFF / CURVE_CEIL * 100) + '%',
+        transform: 'translateY(-100%)', font: "500 11px/1 'JetBrains Mono',monospace",
+        color: 'var(--fx-text-primary)', background: 'var(--fx-bg-surface)', padding: '2px 4px'
+      },
+      delays: DELAYS.map(d => ({ name: d[0], dates: d[1], lost: d[2], why: d[3], sel: d[4], selW: d[5] })),
+      marginRows: MARGIN_ROWS.map(m => ({ k: m[0], v: m[1], c: m[2] })),
+      defects: DEFECTS.map(d => ({ name: d[0], n: d[1], pct: d[2], c: d[3] })),
+
+      noteBody: NOTE,
+      noteState: inWindow ? 'editable for 3 more days' : 'locked · closed 97 days ago',
+      noteStateColor: inWindow ? 'var(--fx-warning)' : 'var(--fx-text-tertiary)',
+      noteBorder: canEditNote ? 'var(--fx-accent)' : 'var(--fx-border-subtle)',
+      canEditNote, noteLocked: !canEditNote,
+      lockNote: inWindow
+        ? (role === 'manager' ? '' : 'Only a manager can correct a note, and only for 7 days after close.')
+        : 'The window closed. A wrong note stays wrong on the record — the correction goes in the next order\u2019s note instead.',
+      editNote: () => this.flash('Editing the note · 3 days left in the window · the original is kept in the audit trail'),
+
+      note1: s.note1, note2: s.note2,
+      setNote1: (e) => this.setState({ note1: e.target.value }),
+      setNote2: (e) => this.setState({ note2: e.target.value }),
+      prompt: hasNote
+        ? 'That is enough. Two specific lines beat a paragraph of general advice — the next person is reading this in a hurry.'
+        : 'Write it for the person who quotes this style in eighteen months. Names, dates, prices that moved, comments the buyer always makes. Not "went fine".',
+      saveStyle: hasNote
+        ? { background: 'var(--fx-accent)', color: 'var(--fx-accent-on)', border: 'none', borderRadius: '8px', padding: '13px 18px', font: "600 14.5px/1 'Plus Jakarta Sans',sans-serif", cursor: 'pointer', minHeight: '48px' }
+        : { background: 'var(--fx-bg-sunken)', color: 'var(--fx-text-disabled)', border: '1px solid var(--fx-border-subtle)', borderRadius: '8px', padding: '13px 18px', font: "600 14.5px/1 'Plus Jakarta Sans',sans-serif", cursor: 'pointer', minHeight: '48px' },
+      saveNote: () => {
+        if (!hasNote) { this.flash('Write at least one line — or use the link below to close without one'); return; }
+        this.flash('Note saved · PO-88190 closed · it will show on every match card for this style');
+      },
+      skipNote: () => this.flash('Closed without a note · the record keeps the numbers, not the reasons'),
+
+      answerMatches: ANSWER.map(a => ({
+        order: a[0], when: a[1], score: a[2], title: a[3], line: a[4], sel: a[5], selW: a[6]
+      })),
+      useTop: () => this.flash('Baseline set from PO-88104 · pending draft on the cost sheet'),
+
+      access: ACCESS.map(a => ({ role: a[0], level: a[1], note: a[2], chip: this.chip(a[1]) })),
+      toast: s.toast, clearToast: () => this.setState({ toast: '' })
+    };
+  }
+}
+
+</script>
+</body>
+</html>

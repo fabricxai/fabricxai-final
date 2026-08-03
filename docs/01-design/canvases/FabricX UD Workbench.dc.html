@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #F3F1EC; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  [data-mode="dark"] { --fx-bg-canvas:#0F131B !important; --fx-bg-surface:#181D29 !important; --fx-bg-raised:#212736 !important; --fx-bg-sunken:#0B0E15 !important; --fx-bg-hover:rgba(255,255,255,.05) !important; --fx-bg-selected:rgba(225,179,52,.17) !important; --fx-border-subtle:#252B3A !important; --fx-border-default:#343B4C !important; --fx-border-strong:#4E576B !important; --fx-text-primary:#F4F3F0 !important; --fx-text-secondary:#AEB5C4 !important; --fx-text-tertiary:#7C8497 !important; --fx-text-disabled:#565E71 !important; --fx-text-inverse:#181D29 !important; --fx-accent-hover:#EBC352 !important; --fx-accent-pressed:#F2D077 !important; --fx-accent-subtle:rgba(225,179,52,.14) !important; --fx-success:#4FA97D !important; --fx-warning:#D99A3F !important; --fx-danger:#E0665C !important; --fx-info:#6D9BE8 !important; --fx-focus:#E1B334 !important; --fx-sh1:0 0 0 1px #252B3A !important; --fx-sh2:0 0 0 1px #252B3A !important; --fx-sh3:0 0 0 1px #343B4C !important; }
+  body:has([data-mode="dark"]) { background: #0B0E15; }
+  a { color: #181D29; text-decoration: underline; text-underline-offset: 3px; }
+  a:hover { color: #B88C21; }
+  @keyframes fx-slide-in { from { transform: translateX(28px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
+</style>
+</helmet>
+
+<div data-mode="{{ mode }}" style="--fx-bg-canvas:#FBFAF8; --fx-bg-surface:#FFFFFF; --fx-bg-sunken:#F3F1EC; --fx-bg-hover:rgba(24,29,41,.035); --fx-bg-selected:rgba(225,179,52,.12); --fx-border-subtle:#E7E4DE; --fx-border-default:#D6D2C9; --fx-border-strong:#A9A49A; --fx-text-primary:#181D29; --fx-text-secondary:#4C5364; --fx-text-tertiary:#767E90; --fx-text-disabled:#A8AEBB; --fx-text-inverse:#FBFAF8; --fx-accent:#E1B334; --fx-accent-hover:#CFA22B; --fx-accent-pressed:#B88C21; --fx-accent-subtle:#FAF1DA; --fx-accent-on:#181D29; --fx-success:#2F7D5B; --fx-warning:#B4741C; --fx-danger:#B23A32; --fx-info:#2F5FA8; --fx-focus:#181D29; --fx-sh1:0 1px 2px rgba(24,29,41,.06); --fx-sh2:0 4px 12px rgba(24,29,41,.08); --fx-sh3:0 12px 32px rgba(24,29,41,.12); font-family:'Plus Jakarta Sans',system-ui,sans-serif; color:var(--fx-text-primary); min-height:100vh; background:var(--fx-bg-sunken);">
+
+<div style="position:sticky; top:0; z-index:60; background:var(--fx-bg-surface); border-bottom:1px solid var(--fx-border-default); padding:10px 20px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+  <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Prototype bar</div>
+  <div style="display:flex; gap:2px; background:var(--fx-bg-sunken); border-radius:8px; padding:3px;">
+    <sc-for list="{{ screens }}" as="s" hint-placeholder-count="3">
+      <button onClick="{{ s.pick }}" style="{{ s.style }}">{{ s.label }}</button>
+    </sc-for>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px;">
+    <span style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">role</span>
+    <select onChange="{{ setRole }}" value="{{ role }}" style="background:var(--fx-bg-surface); color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:4px; padding:7px 9px; font:500 12px/1 'JetBrains Mono',monospace;">
+      <option value="commercial">commercial</option>
+      <option value="storekeeper">storekeeper</option>
+      <option value="owner">owner</option>
+      <option value="merchandiser">merchandiser</option>
+    </select>
+  </div>
+  <sc-if value="{{ isP2 }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex; align-items:center; gap:8px;">
+      <span style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">ud</span>
+      <select onChange="{{ setUd }}" value="{{ udKey }}" style="background:var(--fx-bg-surface); color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:4px; padding:7px 9px; font:500 12px/1 'JetBrains Mono',monospace;">
+        <option value="woven">UD-118 · woven, yards</option>
+        <option value="composite">UD-124 · composite, yarn kg</option>
+      </select>
+    </div>
+  </sc-if>
+  <div style="display:flex; align-items:center; gap:10px; margin-left:auto;">
+    <button onClick="{{ toggleMode }}" style="{{ modeBtn }}">{{ modeLabel }}</button>
+    <button onClick="{{ toggleAnnot }}" style="{{ annotBtn }}">actions {{ annotLabel }}</button>
+  </div>
+</div>
+
+<div style="display:flex; align-items:stretch; min-height:calc(100vh - 49px);">
+
+  <div style="width:232px; flex-shrink:0; background:var(--fx-bg-surface); border-right:1px solid var(--fx-border-subtle); padding:20px 14px; display:flex; flex-direction:column; gap:20px;">
+    <img src="{{ logoSrc }}" alt="FabricX AI" style="height:26px; width:auto; align-self:flex-start; max-width:100%; object-fit:contain;" />
+    <div style="display:flex; flex-direction:column; gap:2px;">
+      <sc-for list="{{ nav }}" as="n" hint-placeholder-count="3">
+        <div onClick="{{ n.pick }}" style="{{ n.style }}">
+          <div style="{{ n.marker }}"></div>{{ n.label }}
+        </div>
+      </sc-for>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:8px;">
+      <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Your scope</div>
+      <div style="font:400 13px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ scopeNote }}</div>
+    </div>
+    <div style="margin-top:auto; display:flex; flex-direction:column; gap:7px;">
+      <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Signed in</div>
+      <div style="font:500 14px/1.3 'Plus Jakarta Sans',sans-serif;">{{ userName }}</div>
+      <div style="font:400 12px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ role }} · 12 Sep 2026</div>
+    </div>
+  </div>
+
+  <div style="flex:1; min-width:0; background:var(--fx-bg-canvas); position:relative; padding:0 0 90px;">
+
+  <sc-if value="{{ locked }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:26px 28px; display:flex; flex-direction:column; gap:18px; max-width:1280px;">
+      <div style="max-width:520px; background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:32px; display:flex; flex-direction:column; gap:14px; box-shadow:var(--fx-sh1);">
+        <div style="font:600 22px/1.25 'Plus Jakarta Sans',sans-serif;">You don't have access to utilisation declarations</div>
+        <div style="font:400 15px/1.6 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">A UD is a customs undertaking. Your role is <span style="font-family:'JetBrains Mono',monospace; font-size:13.5px; color:var(--fx-text-primary);">{{ role }}</span>.</div>
+      </div>
+      <div style="max-width:640px; font:400 14px/1.6 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">No UD numbers, no authorised quantities, no balances. What a bonded factory has declared to customs is the single most sensitive record it keeps.</div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP1 }}" hint-placeholder-val="{{ true }}">
+    <div style="padding:26px 28px; display:flex; flex-direction:column; gap:20px; max-width:1320px;">
+      <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex-wrap:wrap;">
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Commercial · bonded warehouse</div>
+          <div style="font:700 34px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">UD workbench</div>
+          <div style="font:400 15px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:68ch; text-wrap:pretty;">{{ lead }}</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <button style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:8px; padding:11px 16px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-bg-hover)">Export</button>
+          <sc-if value="{{ canEdit }}" hint-placeholder-val="{{ true }}">
+            <button onClick="{{ createUd }}" style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:11px 18px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-accent-hover)">Record a UD</button>
+          </sc-if>
+        </div>
+      </div>
+      <div style="height:9px; background-image:repeating-linear-gradient(115deg, var(--fx-accent) 0 2px, transparent 2px 9px);"></div>
+
+      <div style="display:flex; gap:16px; flex-wrap:wrap;">
+        <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4">
+          <div style="flex:1 1 200px; min-width:190px; display:flex; background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+            <div style="width:3px; flex-shrink:0; background:{{ k.sel }};"></div>
+            <div style="padding:16px 18px; display:flex; flex-direction:column; gap:6px; flex:1; min-width:0;">
+              <div style="font:400 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">{{ k.label }}</div>
+              <div style="font:600 26px/1.1 'Plus Jakarta Sans',sans-serif; letter-spacing:-.012em; color:{{ k.c }};">{{ k.value }}</div>
+              <div style="font:400 12px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">{{ k.note }}</div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+        <div style="display:flex; align-items:center; gap:12px; padding:14px 20px; border-bottom:1px solid var(--fx-border-subtle); flex-wrap:wrap;">
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">{{ rowCount }}</div>
+          <div style="display:flex; align-items:center; gap:7px; margin-left:auto;">
+            <div style="width:5px; height:13px; background:var(--fx-danger);"></div>
+            <div style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">5px = overdraw risk, or validity ending with balance unused</div>
+          </div>
+        </div>
+        <div style="overflow-x:auto;">
+        <div style="min-width:1180px;">
+          <div style="display:flex; align-items:stretch; background:var(--fx-bg-sunken); border-bottom:1px solid var(--fx-border-subtle);">
+            <div style="width:5px; flex-shrink:0;"></div>
+            <div style="flex:1; min-width:0; display:grid; grid-template-columns:150px 1fr 116px 128px 1.5fr 128px; gap:14px; padding:11px 20px 11px 17px; font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">
+              <div>UD number</div><div>Authorises</div><div>Issued</div><div>Validity</div><div>Authorised · consumed · balance</div><div style="text-align:right;">Status</div>
+            </div>
+          </div>
+          <sc-for list="{{ rows }}" as="r" hint-placeholder-count="4">
+            <div onClick="{{ r.open }}" style="display:flex; align-items:stretch; border-bottom:1px solid var(--fx-border-subtle); cursor:pointer;" style-hover="background:var(--fx-bg-hover)">
+              <div style="width:{{ r.selW }}; flex-shrink:0; background:{{ r.sel }};"></div>
+              <div style="flex:1; min-width:0; display:grid; grid-template-columns:150px 1fr 116px 128px 1.5fr 128px; gap:14px; padding:12px 20px 12px 17px; align-items:center; min-height:44px;">
+                <div style="display:flex; flex-direction:column; gap:3px;">
+                  <div style="font:500 13px/1.3 'JetBrains Mono',monospace;">{{ r.no }}</div>
+                  <div style="font:400 11.5px/1.2 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ r.bond }}</div>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:3px; min-width:0;">
+                  <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+                    <div style="font:500 13.5px/1.3 'Plus Jakarta Sans',sans-serif; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ r.item }}</div>
+                    <div style="font:500 10px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary); border:1px solid var(--fx-border-subtle); border-radius:3px; padding:4px 5px; flex-shrink:0;">{{ r.kind }}</div>
+                  </div>
+                  <div style="font:400 11.5px/1.2 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ r.against }}</div>
+                </div>
+                <div style="font:400 12.5px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-secondary);">{{ r.issued }}</div>
+                <div style="display:flex; flex-direction:column; gap:3px;">
+                  <div style="font:500 13px/1.3 'JetBrains Mono',monospace; color:{{ r.valColor }};">{{ r.validity }}</div>
+                  <div style="font:400 11.5px/1.2 'JetBrains Mono',monospace; color:{{ r.valColor }};">{{ r.valDays }}</div>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:5px; min-width:0;">
+                  <div style="display:flex; align-items:baseline; gap:9px; flex-wrap:wrap;">
+                    <div style="font:400 12px/1.2 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ r.auth }}</div>
+                    <div style="font:500 12.5px/1.2 'JetBrains Mono',monospace; color:var(--fx-text-primary);">{{ r.used }}</div>
+                    <div style="font:600 13px/1.2 'JetBrains Mono',monospace; color:{{ r.balColor }}; margin-left:auto;">{{ r.balance }}</div>
+                  </div>
+                  <div style="height:8px; border-radius:999px; background:var(--fx-bg-sunken); overflow:hidden; display:flex;">
+                    <div style="{{ r.usedBar }}"></div>
+                    <sc-if value="{{ r.reserved }}" hint-placeholder-val="{{ false }}">
+                      <div style="{{ r.resBar }}"></div>
+                    </sc-if>
+                  </div>
+                  <div style="font:400 11.5px/1.3 'JetBrains Mono',monospace; color:{{ r.balColor }};">{{ r.balNote }}</div>
+                </div>
+                <div style="display:flex; justify-content:flex-end;"><span style="{{ r.chip }}">{{ r.status }}</span></div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        </div>
+        <div style="padding:13px 20px; display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+          <div style="font:400 12px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">the pale band on a bar is quantity already reserved by an open requisition — committed, not yet released</div>
+          <div style="font:400 12px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-left:auto;">woven UDs authorise yards · composite UDs authorise yarn in kg</div>
+        </div>
+      </div>
+
+      <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">uds.create · uds.export</div>
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">storekeeper sees balances, never the authorisation paperwork</div>
+        </div>
+      </sc-if>
+
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Role access — UD workbench</div>
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden;">
+          <sc-for list="{{ access }}" as="a" hint-placeholder-count="5">
+            <div style="display:grid; grid-template-columns:1fr 96px 1.5fr; gap:16px; padding:11px 18px; align-items:center; border-bottom:1px solid var(--fx-border-subtle);">
+              <div style="font:500 13px/1.4 'JetBrains Mono',monospace;">{{ a.role }}</div>
+              <div><span style="{{ a.chip }}">{{ a.level }}</span></div>
+              <div style="font:400 13px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ a.note }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP2 }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:26px 28px; display:flex; flex-direction:column; gap:18px; max-width:1320px;">
+      <div style="display:flex; align-items:center; gap:8px; font:400 13px/1 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">
+        <span onClick="{{ goP1 }}" style="cursor:pointer;">UD workbench</span><span style="opacity:.5;">/</span><span style="color:var(--fx-text-primary); font-weight:500; font-family:'JetBrains Mono',monospace; font-size:12.5px;">{{ ud.no }}</span>
+      </div>
+      <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex-wrap:wrap;">
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div style="font:700 30px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">{{ ud.no }}</div>
+          <div style="font:400 15px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">{{ ud.sub }}</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <div style="display:flex; align-items:center; gap:10px; border:1px solid {{ ud.valColor }}; border-radius:999px; padding:11px 15px;">
+            <div style="width:8px; height:8px; border-radius:999px; background:{{ ud.valColor }}; flex-shrink:0;"></div>
+            <div style="font:500 13px/1.3 'JetBrains Mono',monospace; color:{{ ud.valColor }};">{{ ud.valChip }}</div>
+          </div>
+          <sc-if value="{{ canEdit }}" hint-placeholder-val="{{ true }}">
+            <button onClick="{{ openRecon }}" style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:11px 18px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-accent-hover)">Generate reconciliation</button>
+          </sc-if>
+        </div>
+      </div>
+      <div style="height:9px; background-image:repeating-linear-gradient(115deg, var(--fx-accent) 0 2px, transparent 2px 9px);"></div>
+
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(420px, 1fr)); gap:18px; align-items:start;">
+        <div style="display:flex; flex-direction:column; gap:18px;">
+          <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+            <div style="padding:16px 20px 12px; display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
+              <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Authorised items</div>
+              <div style="font:400 12px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-left:auto;">tap a row for the issues behind it</div>
+            </div>
+            <sc-for list="{{ items }}" as="i" hint-placeholder-count="3">
+              <div>
+                <div onClick="{{ i.toggle }}" style="{{ i.rowStyle }}">
+                  <div style="width:{{ i.selW }}; flex-shrink:0; background:{{ i.sel }};"></div>
+                  <div style="flex:1; min-width:0; display:grid; grid-template-columns:1fr 116px 116px 116px; gap:12px; padding:13px 20px 13px 17px; align-items:center; min-height:44px;">
+                    <div style="display:flex; align-items:center; gap:9px; min-width:0;">
+                      <div style="font:500 12px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ i.chev }}</div>
+                      <div style="display:flex; flex-direction:column; gap:3px; min-width:0;">
+                        <div style="font:500 13.5px/1.3 'Plus Jakarta Sans',sans-serif;">{{ i.name }}</div>
+                        <div style="font:400 11.5px/1.2 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ i.hs }}</div>
+                      </div>
+                    </div>
+                    <div style="font:400 13px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); text-align:right;">{{ i.auth }}</div>
+                    <div style="font:500 13px/1.3 'JetBrains Mono',monospace; text-align:right;">{{ i.used }}</div>
+                    <div style="font:600 13px/1.3 'JetBrains Mono',monospace; text-align:right; color:{{ i.balColor }};">{{ i.balance }}</div>
+                  </div>
+                </div>
+                <sc-if value="{{ i.open }}" hint-placeholder-val="{{ false }}">
+                  <div style="background:var(--fx-bg-sunken); border-bottom:1px solid var(--fx-border-subtle); padding:14px 20px 16px 34px; display:flex; flex-direction:column; gap:9px;">
+                    <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Released against this line</div>
+                    <sc-for list="{{ i.draws }}" as="d" hint-placeholder-count="3">
+                      <div style="display:flex; align-items:stretch; background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:4px; overflow:hidden;">
+                        <div style="width:3px; flex-shrink:0; background:{{ d.c }};"></div>
+                        <div style="flex:1; min-width:0; display:grid; grid-template-columns:132px 1fr 116px 108px; gap:12px; padding:11px 14px; align-items:center; min-height:44px;">
+                          <div style="font:500 12.5px/1.3 'JetBrains Mono',monospace;">{{ d.issue }}</div>
+                          <div style="font:400 12.5px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">{{ d.what }}</div>
+                          <div style="font:500 12.5px/1.3 'JetBrains Mono',monospace; text-align:right;">{{ d.qty }}</div>
+                          <div style="font:400 12px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); text-align:right;">{{ d.order }}</div>
+                        </div>
+                      </div>
+                    </sc-for>
+                    <div style="font:400 12.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ i.note }}</div>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+            <div style="padding:14px 20px; display:flex; align-items:center; gap:14px; flex-wrap:wrap; border-top:1px solid var(--fx-border-subtle);">
+              <div style="font:500 12.5px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-secondary);">{{ ud.totalLabel }}</div>
+              <div style="font:600 16px/1.1 'JetBrains Mono',monospace; margin-left:auto; color:{{ ud.totalColor }};">{{ ud.totalBalance }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:18px;">
+          <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:20px; display:flex; flex-direction:column; gap:14px; box-shadow:var(--fx-sh1);">
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Where it stands with customs</div>
+            <sc-for list="{{ facts }}" as="f" hint-placeholder-count="6">
+              <div style="display:grid; grid-template-columns:160px 1fr; gap:14px; padding-bottom:11px; border-bottom:1px solid var(--fx-border-subtle); align-items:center;">
+                <div style="font:400 13px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">{{ f.k }}</div>
+                <div style="font:500 13px/1.4 'JetBrains Mono',monospace; color:{{ f.c }};">{{ f.v }}</div>
+              </div>
+            </sc-for>
+            <div style="font:400 12.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ ud.closeNote }}</div>
+            <sc-if value="{{ canEdit }}" hint-placeholder-val="{{ true }}">
+              <button onClick="{{ closeUd }}" style="align-self:flex-start; background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-strong); border-radius:8px; padding:12px 17px; font:600 13.5px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-bg-hover)">{{ ud.closeLabel }}</button>
+            </sc-if>
+          </div>
+
+          <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">uds.generateReconciliation — PDF, previewed before it leaves</div>
+              <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">uds.close — refuses while any balance is unreconciled</div>
+              <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">every consumed figure traces to a store issue and an order</div>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP3 }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:26px 28px; display:flex; flex-direction:column; gap:20px; max-width:900px;">
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Pattern · blocked issue</div>
+        <div style="font:700 30px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">When the UD cannot cover the issue</div>
+        <div style="font:400 14.5px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:68ch; text-wrap:pretty;">Designed once here and reused verbatim on the store's issue screen. Releasing bonded goods past the UD is a customs offence, so the block is absolute — and because it is absolute, it has to name the shortfall and the way out rather than just refusing.</div>
+        <div style="height:9px; background-image:repeating-linear-gradient(115deg, var(--fx-accent) 0 2px, transparent 2px 9px);"></div>
+      </div>
+
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-danger); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh2);">
+        <div style="padding:22px 24px 18px; display:flex; flex-direction:column; gap:14px;">
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            <div style="width:10px; height:10px; border-radius:999px; background:var(--fx-danger); flex-shrink:0;"></div>
+            <div style="font:600 21px/1.25 'Plus Jakarta Sans',sans-serif;">This issue is blocked</div>
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-danger); margin-left:auto;">nothing written</div>
+          </div>
+          <div style="font:400 15px/1.6 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:70ch; text-wrap:pretty;">{{ block.text }}</div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:14px;">
+            <sc-for list="{{ block.figures }}" as="f" hint-placeholder-count="4">
+              <div style="display:flex; background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden;">
+                <div style="width:3px; flex-shrink:0; background:{{ f.c }};"></div>
+                <div style="padding:14px 16px; display:flex; flex-direction:column; gap:5px; flex:1; min-width:0;">
+                  <div style="font:400 11.5px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">{{ f.k }}</div>
+                  <div style="font:600 22px/1.05 'JetBrains Mono',monospace; color:{{ f.c }};">{{ f.v }}</div>
+                  <div style="font:400 12px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">{{ f.note }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="background:var(--fx-bg-sunken); border-radius:4px; padding:13px 15px; font:400 12.5px/1.7 'JetBrains Mono',monospace; color:var(--fx-text-secondary);">{{ block.math }}</div>
+        </div>
+
+        <div style="border-top:1px solid var(--fx-border-subtle); padding:20px 24px; display:flex; flex-direction:column; gap:14px;">
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Ways out</div>
+            <div style="display:flex; align-items:center; gap:9px; margin-left:auto; border:1px solid var(--fx-text-primary); border-radius:4px; padding:7px 10px 7px 12px; box-shadow:inset 3px 0 0 var(--fx-accent);">
+              <div style="font:500 11.5px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-primary);">override approver · owner</div>
+            </div>
+          </div>
+          <sc-for list="{{ block.ways }}" as="w" hint-placeholder-count="3">
+            <div style="display:flex; align-items:stretch; border:1px solid var(--fx-border-subtle); border-radius:4px; overflow:hidden;">
+              <div style="width:3px; flex-shrink:0; background:{{ w.c }};"></div>
+              <div style="flex:1; min-width:0; display:grid; grid-template-columns:1fr 200px; gap:14px; padding:14px 16px; align-items:center;">
+                <div style="display:flex; flex-direction:column; gap:4px; min-width:0;">
+                  <div style="font:500 14px/1.35 'Plus Jakarta Sans',sans-serif;">{{ w.what }}</div>
+                  <div style="font:400 12.5px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ w.detail }}</div>
+                </div>
+                <div style="font:400 12.5px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); text-align:right;">{{ w.who }}</div>
+              </div>
+            </div>
+          </sc-for>
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            <sc-if value="{{ canRequest }}" hint-placeholder-val="{{ true }}">
+              <button onClick="{{ requestOverride }}" style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:14px 20px; font:600 15px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:48px;" style-hover="background:var(--fx-accent-hover)">Request an owner override</button>
+            </sc-if>
+            <sc-if value="{{ isOwner }}" hint-placeholder-val="{{ false }}">
+              <div style="font:500 13.5px/1.5 'JetBrains Mono',monospace; color:var(--fx-text-secondary);">you are the approver — the request arrives in your inbox, not on this screen</div>
+            </sc-if>
+            <div style="font:400 12.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); flex:1 1 240px; min-width:0; text-wrap:pretty;">{{ block.overrideNote }}</div>
+          </div>
+        </div>
+      </div>
+
+      <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">uds.requestOverride → Approve inbox · approver: OWNER, not manager</div>
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">same card renders inside store.issueToProduction — one pattern, two hosts</div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <div style="position:absolute; right:22px; bottom:22px; display:flex; align-items:center; gap:11px;">
+    <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">MARBIM · rest</div>
+    <div role="img" aria-label="MARBIM" style="{{ markStage }}">
+      <sc-for list="{{ markSlashes }}" as="s" hint-placeholder-count="8">
+        <img src="{{ s.src }}" alt="" style="{{ s.style }}" />
+      </sc-for>
+    </div>
+  </div>
+
+  </div>
+</div>
+
+<sc-if value="{{ recon }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closeRecon }}" style="position:fixed; inset:0; z-index:80; display:flex; justify-content:flex-end; background-color:rgba(24,29,41,.5); background-image:repeating-linear-gradient(146deg, transparent 0 7px, rgba(255,255,255,.06) 7px 9px, transparent 9px 17px);">
+    <div style="width:620px; max-width:100%; background:var(--fx-bg-surface); border-left:1px solid var(--fx-border-subtle); box-shadow:var(--fx-sh3); display:flex; flex-direction:column; animation:fx-slide-in 260ms cubic-bezier(.2,.8,.2,1) both;">
+      <div style="padding:22px 24px 16px; border-bottom:1px solid var(--fx-border-subtle); display:flex; flex-direction:column; gap:8px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="font:400 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Reconciliation · preview</div>
+          <button onClick="{{ closeRecon }}" style="margin-left:auto; background:transparent; border:1px solid var(--fx-border-default); border-radius:8px; padding:9px 12px; font:600 12.5px/1 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); cursor:pointer; min-height:44px;">Close</button>
+        </div>
+        <div style="font:600 19px/1.3 'Plus Jakarta Sans',sans-serif;">{{ ud.no }} · statement for customs</div>
+        <div style="font:400 13px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">This is the page the bond officer reads. Nothing on it is typed — every line traces to a store issue, and the totals are the ones on the previous screen.</div>
+      </div>
+      <div style="flex:1; overflow-y:auto; padding:22px 24px; background:var(--fx-bg-sunken);">
+        <div style="background:#FFFFFF; border:1px solid #181D29; padding:26px 24px; display:flex; flex-direction:column; gap:16px; color:#181D29;">
+          <div style="display:flex; align-items:flex-start; gap:16px; border-bottom:1px solid #181D29; padding-bottom:14px;">
+            <div style="display:flex; flex-direction:column; gap:3px;">
+              <div style="font:700 15px/1.2 'Plus Jakarta Sans',sans-serif;">FabricX Apparels Ltd</div>
+              <div style="font:400 10.5px/1.4 'JetBrains Mono',monospace;">Bonded warehouse licence {{ ud.bond }}</div>
+            </div>
+            <div style="margin-left:auto; display:flex; flex-direction:column; gap:3px; text-align:right;">
+              <div style="font:700 13px/1.2 'JetBrains Mono',monospace;">{{ ud.no }}</div>
+              <div style="font:400 10.5px/1.4 'JetBrains Mono',monospace;">utilisation statement · 12 Sep 2026</div>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1.6fr 1fr 1fr 1fr; gap:10px; border-bottom:1px solid #181D29; padding-bottom:7px;">
+            <div style="font:600 9.5px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase;">Item · HS code</div>
+            <div style="font:600 9.5px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; text-align:right;">Authorised</div>
+            <div style="font:600 9.5px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; text-align:right;">Released</div>
+            <div style="font:600 9.5px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; text-align:right;">Balance</div>
+          </div>
+          <sc-for list="{{ reconRows }}" as="r" hint-placeholder-count="3">
+            <div style="display:grid; grid-template-columns:1.6fr 1fr 1fr 1fr; gap:10px; padding-bottom:9px; border-bottom:1px solid rgba(24,29,41,.25);">
+              <div style="display:flex; flex-direction:column; gap:2px;">
+                <div style="font:500 12px/1.3 'Plus Jakarta Sans',sans-serif;">{{ r.name }}</div>
+                <div style="font:400 10px/1.3 'JetBrains Mono',monospace;">{{ r.hs }}</div>
+              </div>
+              <div style="font:400 12px/1.3 'JetBrains Mono',monospace; text-align:right;">{{ r.auth }}</div>
+              <div style="font:500 12px/1.3 'JetBrains Mono',monospace; text-align:right;">{{ r.used }}</div>
+              <div style="font:600 12px/1.3 'JetBrains Mono',monospace; text-align:right;">{{ r.balance }}</div>
+            </div>
+          </sc-for>
+          <div style="display:flex; align-items:baseline; gap:12px; padding-top:2px;">
+            <div style="font:600 11px/1.3 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase;">Total balance held in bond</div>
+            <div style="font:700 15px/1.2 'JetBrains Mono',monospace; margin-left:auto;">{{ ud.totalBalance }}</div>
+          </div>
+          <div style="border-top:1px solid #181D29; padding-top:12px; display:flex; flex-direction:column; gap:6px;">
+            <div style="font:400 10.5px/1.6 'JetBrains Mono',monospace;">Every released quantity above is supported by a store issue reference and an export order. Detail attached as annexure A ({{ ud.drawCount }} lines).</div>
+            <div style="font:400 10.5px/1.6 'JetBrains Mono',monospace;">Prepared by {{ userName }} · signed for FabricX Apparels Ltd</div>
+          </div>
+        </div>
+      </div>
+      <div style="padding:16px 24px 20px; border-top:1px solid var(--fx-border-subtle); display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <sc-if value="{{ canEdit }}" hint-placeholder-val="{{ true }}">
+          <button onClick="{{ downloadRecon }}" style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:12px 18px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-accent-hover)">Download the PDF</button>
+        </sc-if>
+        <div style="font:400 12px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-left:auto;">uds.generateReconciliation</div>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed; left:50%; bottom:28px; transform:translateX(-50%); z-index:90; background:var(--fx-text-primary); color:var(--fx-text-inverse); border-radius:8px; box-shadow:var(--fx-sh3); padding:14px 18px; display:flex; align-items:center; gap:14px; max-width:92vw;">
+    <div style="font:500 13.5px/1.4 'Plus Jakarta Sans',sans-serif;">{{ toast }}</div>
+    <button onClick="{{ clearToast }}" style="background:transparent; border:none; color:var(--fx-accent); font:600 12px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer;">Dismiss</button>
+  </div>
+</sc-if>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;role&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;commercial&quot;,&quot;storekeeper&quot;,&quot;owner&quot;,&quot;merchandiser&quot;],&quot;default&quot;:&quot;commercial&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Access&quot;},&quot;showActionNames&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Annotation&quot;}}">
+const SLASH_VEC = [
+  { dx: -0.896, dy: 0.444 }, { dx: -0.271, dy: 0.963 }, { dx: -0.97, dy: -0.243 }, { dx: 0.415, dy: 0.91 },
+  { dx: -0.512, dy: -0.859 }, { dx: 0.936, dy: 0.352 }, { dx: 0.282, dy: -0.96 }, { dx: 0.908, dy: -0.419 }
+];
+
+const TODAY = new Date(2026, 8, 12);
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const fmt = d => String(d.getDate()).padStart(2, '0') + ' ' + MONTHS[d.getMonth()];
+const days = d => Math.round((d - TODAY) / 86400000);
+const n = (v, u) => v.toLocaleString('en-US') + ' ' + u;
+
+const USERS = {
+  commercial: 'Tanvir Hasan', storekeeper: 'Jamal Uddin',
+  owner: 'M. A. Chowdhury', merchandiser: 'Nabila Rahman'
+};
+
+// no, bond, item, kind, unit, against, issued, validity, authorised, released, reserved, status
+const UDS = [
+  ['UD-2026-118', 'bond 04/GAZ/2019', '40s poplin shell fabric', 'woven', 'yd', 'H&M · PO-88203, PO-88231', [2026, 2, 14], [2026, 11, 14], 131200, 85800, 5400, 'live'],
+  ['UD-2026-124', 'bond 11/NAR/2021', '30/1 combed cotton yarn', 'composite', 'kg', 'Bestseller · PO-88219', [2026, 3, 2], [2026, 8, 30], 46000, 43700, 1800, 'live'],
+  ['UD-2026-131', 'bond 04/GAZ/2019', '50s twill shell fabric', 'woven', 'yd', 'H&M · PO-88231', [2026, 6, 20], [2027, 2, 20], 21400, 0, 0, 'live'],
+  ['UD-2025-097', 'bond 04/GAZ/2019', '11oz denim shell fabric', 'woven', 'yd', 'C&A · PO-88190', [2025, 9, 8], [2026, 8, 25], 38600, 36100, 0, 'closing']
+];
+
+const UD_DETAIL = {
+  woven: {
+    key: 'UD-2026-118',
+    sub: '40s poplin and interlining · bond 04/GAZ/2019 · Eastern Bank as AD · H&M programme',
+    bond: '04/GAZ/2019', validity: [2026, 11, 14], unit: 'yd',
+    items: [
+      ['40s × 40s poplin, 133 × 72', '5208.32.00', 118400, 78600, 5400, [
+        ['ISS-0912', 'REQ-0912 · cutting, shade A lay', '5,280 yd', 'PO-88203'],
+        ['ISS-0904', 'REQ-0904 · cutting, first lay', '4,120 yd', 'PO-88203'],
+        ['ISS-0881', 'REQ-0881 · sample room', '260 yd', 'PO-88203']
+      ], 'Three of 41 releases shown. 5,400 yd is reserved by REQ-0918, which cutting has raised but not collected — committed against the UD, not yet released.'],
+      ['Fusible interlining, 40 gsm', '5903.90.00', 8600, 5900, 0, [
+        ['ISS-0912', 'REQ-0912 · collar and cuff', '410 yd', 'PO-88203'],
+        ['ISS-0866', 'REQ-0866 · sample room', '90 yd', 'PO-88203']
+      ], 'Interlining is declared separately because it carries its own HS code — customs reconciles per code, not per garment.'],
+      ['Woven main and care labels', '5807.10.00', 4200, 1300, 0, [
+        ['ISS-0908', 'REQ-0908 · sewing floor 3', '620 yd', 'PO-88203']
+      ], 'Labels sit on the same UD because they were imported against it. A locally bought label would not be here at all.']
+    ],
+    closeNote: 'Cannot be closed yet — 47,200 yd of the authorisation is still unreleased and the validity runs to 14 Dec. Closing early forfeits the balance.',
+    closeLabel: 'Close the UD'
+  },
+  composite: {
+    key: 'UD-2026-124',
+    sub: '30/1 combed cotton yarn · bond 11/NAR/2021 · knit-composite unit · Bestseller programme',
+    bond: '11/NAR/2021', validity: [2026, 8, 30], unit: 'kg',
+    items: [
+      ['30/1 combed cotton yarn', '5205.23.00', 42000, 40100, 1800, [
+        ['ISS-0899', 'lot YL-2274 to knitting', '2,100 kg', 'PO-88219'],
+        ['ISS-0874', 'lot YL-2261 to knitting', '2,480 kg', 'PO-88219'],
+        ['ISS-0851', 'lot YL-2240 to knitting', '1,960 kg', 'PO-88219']
+      ], 'A composite unit declares yarn, not fabric — the greige and the dyed fabric it becomes are the same customs quantity, tracked through knitting and dyeing by lot.'],
+      ['Reactive dyes and chemicals', '3204.16.00', 3200, 2900, 0, [
+        ['ISS-0896', 'dye house · navy and white', '1,240 kg', 'PO-88219'],
+        ['ISS-0862', 'dye house · four shades', '860 kg', 'PO-88219']
+      ], 'Dyes are consumed against the same UD as the yarn. Overdrawing here is the quiet one — nobody counts chemicals as carefully as they count yarn.'],
+      ['Elastane for rib', '5402.44.00', 800, 700, 0, [
+        ['ISS-0891', 'rib knitting', '380 kg', 'PO-88219']
+      ], '100 kg left on a line that expires in 18 days. This is the balance that will be forfeited if nobody notices.']
+    ],
+    closeNote: 'Validity ends in 18 days with 2,300 kg unreleased across three lines. Either the yarn moves before 30 Sep or the balance is written off and re-declared under a new UD.',
+    closeLabel: 'Close and forfeit the balance'
+  }
+};
+
+const ACCESS = [
+  ['commercial', 'edit', 'Records UDs and amendments, generates the reconciliation, closes a UD.'],
+  ['storekeeper', 'view', 'Balances only — enough to know whether an issue will clear, never the paperwork.'],
+  ['owner', 'approve', 'The only approver for a release past the authorised quantity.'],
+  ['merchandiser', 'view', 'Reads the balance on their own orders so they can see a block coming.'],
+  ['manager · planner · qc · packing · hr · accounts · viewer', 'none', 'HIDDEN — a customs undertaking is not general-access.']
+];
+
+class Component extends DCLogic {
+  state = { screen: 'p1', role: 'commercial', annot: true, udKey: 'composite', openItem: 0, recon: false, toast: '' };
+
+  componentWillUnmount() { clearTimeout(this._t); }
+
+  flash(msg) {
+    clearTimeout(this._t);
+    this.setState({ toast: msg });
+    this._t = setTimeout(() => this.setState({ toast: '' }), 4400);
+  }
+
+  pill(active) {
+    return {
+      background: active ? 'var(--fx-bg-surface)' : 'transparent',
+      color: active ? 'var(--fx-text-primary)' : 'var(--fx-text-secondary)',
+      border: '1px solid ' + (active ? 'var(--fx-border-default)' : 'transparent'),
+      borderRadius: '6px', padding: '9px 12px', cursor: 'pointer',
+      font: "600 12.5px/1 'Plus Jakarta Sans',sans-serif", whiteSpace: 'nowrap'
+    };
+  }
+
+  ghost(on) {
+    return {
+      background: on ? 'var(--fx-text-primary)' : 'transparent',
+      color: on ? 'var(--fx-text-inverse)' : 'var(--fx-text-secondary)',
+      border: '1px solid ' + (on ? 'var(--fx-text-primary)' : 'var(--fx-border-default)'),
+      borderRadius: '8px', padding: '10px 13px', cursor: 'pointer', minHeight: '44px',
+      font: "500 12px/1 'JetBrains Mono',monospace", whiteSpace: 'nowrap'
+    };
+  }
+
+  chip(level) {
+    const base = {
+      font: "500 11px/1 'JetBrains Mono',monospace", letterSpacing: '.05em', textTransform: 'uppercase',
+      borderRadius: '4px', padding: '6px 8px', display: 'inline-block', whiteSpace: 'nowrap'
+    };
+    if (level === 'none') return { ...base, color: 'var(--fx-text-tertiary)', border: '1px solid var(--fx-border-subtle)' };
+    if (level === 'view') return { ...base, color: 'var(--fx-text-secondary)', background: 'var(--fx-bg-sunken)', border: '1px solid transparent' };
+    if (level === 'edit') return { ...base, color: 'var(--fx-text-primary)', border: '1px solid var(--fx-border-strong)' };
+    return { ...base, color: 'var(--fx-text-primary)', border: '1px solid var(--fx-text-primary)', boxShadow: 'inset 3px 0 0 var(--fx-accent)', paddingLeft: '12px' };
+  }
+
+  renderVals() {
+    const s = this.state;
+    const mode = s.mode || 'light';
+    const role = s.role, screen = s.screen;
+    const locked = role === 'merchandiser' && false;
+    const canEdit = role === 'commercial';
+    const isOwner = role === 'owner';
+    const balancesOnly = role === 'storekeeper';
+
+    const rows = UDS.map(u => {
+      const val = new Date(u[7][0], u[7][1], u[7][2]);
+      const dVal = days(val);
+      const bal = u[8] - u[9] - u[10];
+      const usedPct = u[9] / u[8] * 100;
+      const resPct = u[10] / u[8] * 100;
+      const tight = bal <= u[8] * 0.06 && bal > 0;
+      const expiringWithBalance = dVal <= 30 && bal > 0;
+      const urgent = tight || expiringWithBalance;
+      return {
+        no: u[0], bond: u[1], item: u[2], kind: u[3], against: u[5],
+        issued: fmt(new Date(u[6][0], u[6][1], u[6][2])),
+        validity: fmt(val), valDays: dVal < 0 ? Math.abs(dVal) + ' d ago' : dVal + ' d left',
+        valColor: dVal < 0 ? 'var(--fx-text-tertiary)' : dVal <= 30 ? 'var(--fx-danger)' : 'var(--fx-text-primary)',
+        auth: n(u[8], u[4]), used: '− ' + n(u[9], u[4]), balance: n(bal, u[4]),
+        balColor: bal === 0 ? 'var(--fx-text-tertiary)' : tight ? 'var(--fx-danger)' : expiringWithBalance ? 'var(--fx-warning)' : 'var(--fx-success)',
+        balNote: bal === 0 ? 'fully released' : tight
+          ? 'only ' + Math.round(bal / u[8] * 100) + '% left — the next big lay will not clear'
+          : expiringWithBalance ? n(bal, u[4]) + ' will be forfeited on ' + fmt(val) : Math.round(bal / u[8] * 100) + '% still available',
+        usedBar: { width: usedPct + '%', background: 'var(--fx-text-primary)' },
+        resBar: { width: resPct + '%', background: 'var(--fx-border-strong)' },
+        reserved: u[10] > 0,
+        status: u[11], chip: this.chip(u[11] === 'closing' ? 'view' : 'edit'),
+        sel: urgent ? 'var(--fx-danger)' : bal === 0 ? 'var(--fx-border-strong)' : 'var(--fx-border-subtle)',
+        selW: urgent ? '5px' : '3px',
+        open: () => this.setState({ screen: 'p2', udKey: u[3] === 'composite' ? 'composite' : 'woven', openItem: 0 })
+      };
+    });
+
+    const d = UD_DETAIL[s.udKey];
+    const totalAuth = d.items.reduce((a, i) => a + i[2], 0);
+    const totalUsed = d.items.reduce((a, i) => a + i[3], 0);
+    const totalRes = d.items.reduce((a, i) => a + i[4], 0);
+    const totalBal = totalAuth - totalUsed - totalRes;
+    const dVal = days(new Date(d.validity[0], d.validity[1], d.validity[2]));
+    const drawCount = d.items.reduce((a, i) => a + i[5].length, 0);
+
+    const items = d.items.map((i, idx) => {
+      const bal = i[2] - i[3] - i[4];
+      const open = s.openItem === idx;
+      return {
+        name: i[0], hs: 'HS ' + i[1],
+        auth: n(i[2], d.unit), used: '− ' + n(i[3], d.unit), balance: n(bal, d.unit),
+        balColor: bal === 0 ? 'var(--fx-text-tertiary)' : bal <= i[2] * 0.06 ? 'var(--fx-danger)' : 'var(--fx-success)',
+        sel: bal <= i[2] * 0.06 && bal > 0 ? 'var(--fx-danger)' : 'transparent',
+        selW: bal <= i[2] * 0.06 && bal > 0 ? '5px' : '3px',
+        chev: open ? '▾' : '▸', open, note: i[6],
+        draws: i[5].map(x => ({ issue: x[0], what: x[1], qty: x[2], order: x[3], c: 'var(--fx-border-strong)' })),
+        toggle: () => this.setState(x => ({ openItem: x.openItem === idx ? -1 : idx }))
+      };
+    });
+
+    const shortfall = 4820 - 2300;
+
+    return {
+      screens: [['p1', 'P1 register'], ['p2', 'P2 UD detail'], ['p3', 'P3 blocked issue']].map(x => ({
+        label: x[1], pick: () => this.setState({ screen: x[0] }), style: this.pill(screen === x[0])
+      })),
+      role, userName: USERS[role],
+      setRole: (e) => this.setState({ role: e.target.value }),
+      udKey: s.udKey, setUd: (e) => this.setState({ udKey: e.target.value, openItem: 0 }),
+      annot: s.annot, annotLabel: s.annot ? 'on' : 'off', annotBtn: this.ghost(s.annot),
+      mode, modeLabel: mode === 'dark' ? 'dark' : 'light', modeBtn: this.ghost(mode === 'dark'),
+      logoSrc: 'uploads/fabricxai-logo-' + (mode === 'dark' ? 'dark' : 'light') + '.png',
+      toggleMode: () => this.setState(x => ({ mode: x.mode === 'dark' ? 'light' : 'dark' })),
+      toggleAnnot: () => this.setState(x => ({ annot: !x.annot })),
+
+      nav: [['p1', 'UD register'], ['p2', 'UD detail'], ['p3', 'Blocked issue']].map(x => ({
+        label: x[1], pick: () => this.setState({ screen: x[0] }),
+        style: {
+          display: 'flex', alignItems: 'center', gap: '11px', padding: '11px 12px', borderRadius: '8px', cursor: 'pointer',
+          minHeight: '44px', font: "500 14px/1 'Plus Jakarta Sans',sans-serif",
+          background: screen === x[0] ? 'var(--fx-bg-selected)' : 'transparent',
+          color: screen === x[0] ? 'var(--fx-text-primary)' : 'var(--fx-text-secondary)'
+        },
+        marker: { width: '2px', height: '15px', transform: 'skewX(-34deg)', background: screen === x[0] ? 'var(--fx-accent)' : 'transparent', flexShrink: 0 }
+      })),
+      scopeNote: balancesOnly
+        ? 'Balances only. You need to know whether an issue will clear, not what was declared to customs.'
+        : isOwner ? 'Read everything. You are the only signature that can release past an authorisation.'
+          : canEdit ? 'Four live UDs across two bonded warehouses.' : 'Read the balance on your own orders.',
+
+      locked, isP1: screen === 'p1', isP2: screen === 'p2', isP3: screen === 'p3',
+      goP1: () => this.setState({ screen: 'p1' }),
+      canEdit, isOwner, canRequest: canEdit || balancesOnly,
+
+      lead: balancesOnly
+        ? 'What is left on each declaration. If a balance is red, an issue against it will be refused at the store screen.'
+        : 'Every bonded input the factory has declared, what has been released against it, and what is left. A UD that expires with balance on it is duty paid for nothing.',
+      kpis: [
+        { label: 'Live UDs', value: '3', note: 'two bonded warehouses · one closing', sel: 'var(--fx-border-strong)', c: 'var(--fx-text-primary)' },
+        { label: 'Expiring in 30 days', value: '2', note: 'UD-124 · 30 Sep · UD-097 · 25 Sep', sel: 'var(--fx-danger)', c: 'var(--fx-danger)' },
+        { label: 'Balance at risk', value: '2,300 kg', note: 'UD-124 yarn and dyes, 18 days left', sel: 'var(--fx-danger)', c: 'var(--fx-danger)' },
+        { label: 'Overdraw risk', value: '1', note: 'UD-124 · 1.1% of the yarn line left', sel: 'var(--fx-warning)', c: 'var(--fx-warning)' }
+      ],
+      rowCount: UDS.length + ' declarations · woven in yards, composite in kilos',
+      rows,
+
+      ud: {
+        no: d.key, sub: d.sub, bond: d.bond,
+        valChip: fmt(new Date(d.validity[0], d.validity[1], d.validity[2])) + ' · ' + dVal + ' d of validity',
+        valColor: dVal <= 30 ? 'var(--fx-danger)' : 'var(--fx-text-primary)',
+        totalLabel: 'Balance across ' + d.items.length + ' declared lines · ' + drawCount + ' releases traced',
+        totalBalance: n(totalBal, d.unit),
+        totalColor: totalBal <= totalAuth * 0.06 ? 'var(--fx-danger)' : 'var(--fx-text-primary)',
+        closeNote: d.closeNote, closeLabel: d.closeLabel,
+        drawCount: String(drawCount)
+      },
+      items,
+      facts: [
+        { k: 'Bonded warehouse', v: 'licence ' + d.bond, c: 'var(--fx-text-primary)' },
+        { k: 'Authorised total', v: n(totalAuth, d.unit), c: 'var(--fx-text-primary)' },
+        { k: 'Released to date', v: n(totalUsed, d.unit) + ' · ' + Math.round(totalUsed / totalAuth * 100) + '%', c: 'var(--fx-text-primary)' },
+        { k: 'Reserved, not released', v: n(totalRes, d.unit), c: totalRes ? 'var(--fx-warning)' : 'var(--fx-text-tertiary)' },
+        { k: 'Balance in bond', v: n(totalBal, d.unit), c: totalBal <= totalAuth * 0.06 ? 'var(--fx-danger)' : 'var(--fx-success)' },
+        { k: 'Last reconciliation', v: '02 Aug 2026 · accepted by the bond office', c: 'var(--fx-text-primary)' }
+      ],
+      recon: s.recon,
+      openRecon: () => this.setState({ recon: true }),
+      closeRecon: () => this.setState({ recon: false }),
+      reconRows: d.items.map(i => ({
+        name: i[0], hs: 'HS ' + i[1],
+        auth: n(i[2], d.unit), used: n(i[3], d.unit), balance: n(i[2] - i[3] - i[4], d.unit)
+      })),
+      downloadRecon: () => this.flash('Reconciliation PDF generated · ' + drawCount + ' release lines in annexure A'),
+      closeUd: () => this.flash(s.udKey === 'composite'
+        ? 'Cannot close · 2,300 kg unreleased. Closing forfeits it — the owner has to sign that off.'
+        : 'Cannot close · 47,200 yd unreleased and 93 days of validity left'),
+
+      block: {
+        text: 'Cutting has asked for 4,820 yd of 40s poplin against PO-88203. UD-2026-118 has 2,300 yd left to release. Releasing bonded goods beyond the authorised quantity is a customs offence, so nothing has been written — not even a partial issue.',
+        figures: [
+          { k: 'Requisition asks', v: '4,820 yd', note: 'REQ-0918 · cutting, lay 4', c: 'var(--fx-text-primary)' },
+          { k: 'UD balance', v: '2,300 yd', note: 'UD-2026-118 · poplin line', c: 'var(--fx-danger)' },
+          { k: 'Shortfall', v: n(shortfall, 'yd'), note: 'cannot be released under this UD', c: 'var(--fx-danger)' },
+          { k: 'Validity left', v: '93 days', note: 'to 14 Dec 2026', c: 'var(--fx-text-primary)' }
+        ],
+        math: '4,820 yd requested\n− 2,300 yd balance on UD-2026-118\n= ' + n(shortfall, 'yd') + ' short',
+        ways: [
+          { what: 'Amend the UD upward at the bond office', detail: 'Three working days. The right answer when the order genuinely needs more than was declared.', who: 'commercial · Tanvir Hasan', c: 'var(--fx-border-strong)' },
+          { what: 'Issue 2,300 yd now and hold the rest of the lay', detail: 'Cutting lays what it can and waits. Costs a day of table time, breaks nothing.', who: 'storekeeper · Jamal Uddin', c: 'var(--fx-border-strong)' },
+          { what: 'Release the balance from non-bonded stock', detail: 'Only if merchandising accepts the substitution and the duty position is checked first.', who: 'merchandiser · approval needed', c: 'var(--fx-warning)' }
+        ],
+        overrideNote: 'An override releases past the authorisation on the owner\u2019s signature alone. It is the only action in FabricX that no manager can approve, because the exposure is criminal rather than commercial.'
+      },
+      requestOverride: () => this.flash('Override requested · approver: OWNER (M. A. Chowdhury) · ' + n(shortfall, 'yd') + ' past the authorisation'),
+
+      access: ACCESS.map(a => ({ role: a[0], level: a[1], note: a[2], chip: this.chip(a[1]) })),
+      createUd: () => this.flash('New UD · paste the bond office authorisation and MARBIM drafts the item lines'),
+      toast: s.toast, clearToast: () => this.setState({ toast: '' }),
+      markStage: { position: 'relative', width: '32px', height: '32px', flexShrink: 0 },
+      markSlashes: SLASH_VEC.map((v, i) => ({
+        src: 'assets/mark/' + (mode === 'dark' ? 'w-' : 'i-') + (i + 1) + '.png',
+        style: { position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', '--dx': v.dx, '--dy': v.dy, transformOrigin: 'center', animation: 'none' }
+      }))
+    };
+  }
+}
+
+</script>
+</body>
+</html>

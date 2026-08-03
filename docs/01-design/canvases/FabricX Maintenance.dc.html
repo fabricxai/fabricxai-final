@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Anek+Bangla:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #F3F1EC; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  [data-mode="dark"] { --fx-bg-canvas:#0F131B !important; --fx-bg-surface:#181D29 !important; --fx-bg-raised:#212736 !important; --fx-bg-sunken:#0B0E15 !important; --fx-bg-hover:rgba(255,255,255,.05) !important; --fx-bg-selected:rgba(225,179,52,.17) !important; --fx-border-subtle:#252B3A !important; --fx-border-default:#343B4C !important; --fx-border-strong:#4E576B !important; --fx-text-primary:#F4F3F0 !important; --fx-text-secondary:#AEB5C4 !important; --fx-text-tertiary:#7C8497 !important; --fx-text-disabled:#565E71 !important; --fx-text-inverse:#181D29 !important; --fx-accent-hover:#EBC352 !important; --fx-accent-pressed:#F2D077 !important; --fx-accent-subtle:rgba(225,179,52,.14) !important; --fx-success:#4FA97D !important; --fx-warning:#D99A3F !important; --fx-danger:#E0665C !important; --fx-info:#6D9BE8 !important; --fx-focus:#E1B334 !important; --fx-sh1:0 0 0 1px #252B3A !important; --fx-sh2:0 0 0 1px #252B3A !important; --fx-sh3:0 0 0 1px #343B4C !important; }
+  body:has([data-mode="dark"]) { background: #0B0E15; }
+  a { color: #181D29; text-decoration: underline; text-underline-offset: 3px; }
+  a:hover { color: #B88C21; }
+</style>
+</helmet>
+
+<div data-mode="{{ mode }}" style="--fx-bg-canvas:#FBFAF8; --fx-bg-surface:#FFFFFF; --fx-bg-sunken:#F3F1EC; --fx-bg-hover:rgba(24,29,41,.035); --fx-bg-selected:rgba(225,179,52,.12); --fx-border-subtle:#E7E4DE; --fx-border-default:#D6D2C9; --fx-border-strong:#A9A49A; --fx-text-primary:#181D29; --fx-text-secondary:#4C5364; --fx-text-tertiary:#767E90; --fx-text-disabled:#A8AEBB; --fx-text-inverse:#FBFAF8; --fx-accent:#E1B334; --fx-accent-hover:#CFA22B; --fx-accent-pressed:#B88C21; --fx-accent-subtle:#FAF1DA; --fx-accent-on:#181D29; --fx-success:#2F7D5B; --fx-warning:#B4741C; --fx-danger:#B23A32; --fx-info:#2F5FA8; --fx-focus:#181D29; --fx-sh1:0 1px 2px rgba(24,29,41,.06); --fx-sh2:0 4px 12px rgba(24,29,41,.08); --fx-sh3:0 12px 32px rgba(24,29,41,.12); font-family:'Plus Jakarta Sans',system-ui,sans-serif; color:var(--fx-text-primary); min-height:100vh; background:var(--fx-bg-sunken);">
+
+<div style="position:sticky; top:0; z-index:60; background:var(--fx-bg-surface); border-bottom:1px solid var(--fx-border-default); padding:10px 20px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+  <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Prototype bar</div>
+  <div style="display:flex; gap:2px; background:var(--fx-bg-sunken); border-radius:8px; padding:3px; flex-wrap:wrap;">
+    <sc-for list="{{ screens }}" as="s" hint-placeholder-count="3">
+      <button onClick="{{ s.pick }}" style="{{ s.style }}">{{ s.label }}</button>
+    </sc-for>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px;">
+    <span style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">role</span>
+    <select onChange="{{ setRole }}" value="{{ role }}" style="background:var(--fx-bg-surface); color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:4px; padding:7px 9px; font:500 12px/1 'JetBrains Mono',monospace;">
+      <option value="mechanic">mechanic</option>
+      <option value="in-charge">maintenance in-charge</option>
+      <option value="supervisor">supervisor</option>
+      <option value="planner">planner</option>
+      <option value="qc">qc</option>
+    </select>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px;">
+    <span style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">factory</span>
+    <select onChange="{{ setFtype }}" value="{{ ftype }}" style="background:var(--fx-bg-surface); color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:4px; padding:7px 9px; font:500 12px/1 'JetBrains Mono',monospace;">
+      <option value="woven">woven</option>
+      <option value="knit-composite">knit-composite</option>
+    </select>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px;">
+    <span style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">link</span>
+    <button onClick="{{ toggleOffline }}" style="{{ offlineBtn }}">{{ offlineLabel }}</button>
+  </div>
+  <div style="display:flex; align-items:center; gap:10px; margin-left:auto;">
+    <button onClick="{{ toggleMode }}" style="{{ modeBtn }}">{{ modeLabel }}</button>
+    <button onClick="{{ toggleAnnot }}" style="{{ annotBtn }}">actions {{ annotLabel }}</button>
+  </div>
+</div>
+
+<div style="display:flex; align-items:stretch; min-height:calc(100vh - 49px);">
+
+  <div style="width:236px; flex-shrink:0; background:var(--fx-bg-surface); border-right:1px solid var(--fx-border-subtle); padding:20px 14px; display:flex; flex-direction:column; gap:20px;">
+    <img src="{{ logoSrc }}" alt="FabricX AI" style="height:26px; width:auto; align-self:flex-start; max-width:100%; object-fit:contain;" />
+    <sc-if value="{{ hasNav }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex; flex-direction:column; gap:2px;">
+        <sc-for list="{{ nav }}" as="n" hint-placeholder-count="3">
+          <div onClick="{{ n.pick }}" style="{{ n.style }}">
+            <div style="{{ n.marker }}"></div>{{ n.label }}
+            <sc-if value="{{ n.badge }}" hint-placeholder-val="{{ false }}">
+              <div style="{{ n.badgeStyle }}">{{ n.count }}</div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:9px;">
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Right now</div>
+        <sc-for list="{{ pulse }}" as="p" hint-placeholder-count="3">
+          <div style="display:flex; flex-direction:column; gap:3px; padding-bottom:9px; border-bottom:1px solid var(--fx-border-subtle);">
+            <div style="font:400 11.5px/1.3 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">{{ p.k }}</div>
+            <div style="font:600 17px/1.15 'JetBrains Mono',monospace; color:{{ p.c }};">{{ p.v }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+    <sc-if value="{{ noNav }}" hint-placeholder-val="{{ false }}">
+      <div style="font:400 12.5px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary); text-wrap:pretty;">Maintenance does not appear in your navigation.</div>
+    </sc-if>
+    <div style="margin-top:auto; display:flex; flex-direction:column; gap:7px;">
+      <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Signed in</div>
+      <div style="font:500 14px/1.3 'Plus Jakarta Sans',sans-serif;">{{ userName }}</div>
+      <div style="font:400 12px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ role }} · 31 Jul · 11:04</div>
+    </div>
+  </div>
+
+  <div style="flex:1; min-width:0; background:var(--fx-bg-canvas); position:relative; padding:0 0 96px;">
+
+  <sc-if value="{{ locked }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:26px 28px; display:flex; flex-direction:column; gap:16px; max-width:560px;">
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:32px; display:flex; flex-direction:column; gap:14px; box-shadow:var(--fx-sh1);">
+        <div style="font:600 22px/1.25 'Plus Jakarta Sans',sans-serif;">You don't have access to maintenance</div>
+        <div style="font:400 15px/1.6 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">A stopped machine is reported from the line tracking screen, which you do have. That raises the ticket without anyone opening this module.</div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP1 }}" hint-placeholder-val="{{ true }}">
+    <div style="padding:22px 24px; display:flex; flex-direction:column; gap:18px; max-width:1240px;">
+      <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:20px; flex-wrap:wrap;">
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Maintenance · queue</div>
+          <div style="font:700 34px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">{{ queueTitle }}</div>
+          <div style="font:400 16px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:60ch; text-wrap:pretty;">{{ queueLead }}</div>
+        </div>
+        <sc-if value="{{ canCreate }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ raise }}" style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:15px 20px; font:600 16px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:56px;" style-hover="background:var(--fx-accent-hover)">Report a stopped machine</button>
+        </sc-if>
+      </div>
+      <div style="height:9px; background-image:repeating-linear-gradient(115deg, var(--fx-accent) 0 2px, transparent 2px 9px);"></div>
+
+      <div style="display:flex; flex-direction:column; gap:14px;">
+        <sc-for list="{{ tickets }}" as="t" hint-placeholder-count="4">
+          <div style="display:flex; background:var(--fx-bg-surface); border:1px solid {{ t.border }}; border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+            <div style="width:{{ t.selW }}; flex-shrink:0; background:{{ t.sel }};"></div>
+            <div style="flex:1; min-width:0; padding:18px 20px; display:flex; flex-direction:column; gap:14px;">
+              <div style="display:flex; align-items:center; gap:11px; flex-wrap:wrap;">
+                <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:{{ t.sel }}; border:1px solid {{ t.sel }}; border-radius:3px; padding:6px 7px;">{{ t.priority }}</div>
+                <div style="font:500 12.5px/1.2 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ t.id }}</div>
+                <div style="display:flex; align-items:baseline; gap:8px; margin-left:auto;">
+                  <div style="font:700 24px/1 'JetBrains Mono',monospace; color:{{ t.waitColor }};">{{ t.wait }}</div>
+                  <div style="font:400 12.5px/1.2 'JetBrains Mono',monospace; color:{{ t.waitColor }};">waiting</div>
+                </div>
+              </div>
+              <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
+                <div style="font:700 22px/1.25 'Plus Jakarta Sans',sans-serif;">{{ t.machine }}</div>
+                <div style="font:500 15px/1.3 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">{{ t.where }}</div>
+              </div>
+              <div style="font:400 15px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ t.symptom }}</div>
+              <div style="display:flex; gap:20px; flex-wrap:wrap; padding-top:2px; border-top:1px solid var(--fx-border-subtle);">
+                <sc-for list="{{ t.facts }}" as="f" hint-placeholder-count="3">
+                  <div style="display:flex; flex-direction:column; gap:3px; padding-top:12px;">
+                    <div style="font:400 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">{{ f.k }}</div>
+                    <div style="font:500 14px/1.25 'JetBrains Mono',monospace; color:{{ f.c }};">{{ f.v }}</div>
+                  </div>
+                </sc-for>
+              </div>
+              <sc-if value="{{ t.repeat }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex; align-items:stretch; border:1px solid var(--fx-warning); border-radius:4px; overflow:hidden;">
+                  <div style="width:3px; flex-shrink:0; background:var(--fx-warning);"></div>
+                  <div style="flex:1; min-width:0; padding:12px 14px; font:400 13.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ t.repeatNote }}</div>
+                </div>
+              </sc-if>
+              <sc-if value="{{ t.canClaim }}" hint-placeholder-val="{{ true }}">
+                <button onClick="{{ t.claim }}" style="{{ t.claimStyle }}">{{ t.claimLabel }}</button>
+              </sc-if>
+              <sc-if value="{{ t.mine }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                  <button onClick="{{ t.resolve }}" style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:17px 22px; font:600 17px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:56px; flex:1 1 260px;" style-hover="background:var(--fx-accent-hover)">Machine running</button>
+                  <button onClick="{{ t.escalate }}" style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-strong); border-radius:8px; padding:16px 20px; font:600 15px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:56px;">Need a part</button>
+                </div>
+              </sc-if>
+              <sc-if value="{{ t.watching }}" hint-placeholder-val="{{ false }}">
+                <div style="font:500 14px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ t.watchNote }}</div>
+              </sc-if>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+
+      <sc-if value="{{ resolveOpen }}" hint-placeholder-val="{{ false }}">
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-default); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh2);">
+          <div style="display:flex; align-items:center; gap:12px; padding:16px 20px; border-bottom:1px solid var(--fx-border-subtle); flex-wrap:wrap;">
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Closing {{ resolve.id }} · {{ resolve.machine }}</div>
+            <button onClick="{{ closeResolve }}" style="margin-left:auto; background:transparent; border:1px solid var(--fx-border-default); border-radius:8px; padding:12px 15px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); cursor:pointer; min-height:48px;">Cancel</button>
+          </div>
+          <div style="padding:18px 20px; display:flex; flex-direction:column; gap:16px;">
+            <div style="display:flex; flex-direction:column; gap:10px;">
+              <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Parts used</div>
+              <div style="display:flex; flex-wrap:wrap; gap:10px;">
+                <sc-for list="{{ resolve.parts }}" as="p" hint-placeholder-count="5">
+                  <div onClick="{{ p.pick }}" style="{{ p.style }}">
+                    <div style="font:600 15px/1.25 'Plus Jakarta Sans',sans-serif;">{{ p.name }}</div>
+                    <div style="font:400 12px/1.3 'JetBrains Mono',monospace; color:{{ p.stockColor }};">{{ p.stock }}</div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="font:400 13.5px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ resolve.partsNote }}</div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:10px;">
+              <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">What was wrong</div>
+              <div style="display:flex; flex-wrap:wrap; gap:10px;">
+                <sc-for list="{{ resolve.causes }}" as="c" hint-placeholder-count="4">
+                  <div onClick="{{ c.pick }}" style="{{ c.style }}">{{ c.label }}</div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="display:flex; align-items:stretch; border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden;">
+              <div style="width:3px; flex-shrink:0; background:var(--fx-info);"></div>
+              <div style="flex:1; min-width:0; padding:14px 16px; display:flex; flex-direction:column; gap:5px;">
+                <div style="font:500 14.5px/1.35 'Plus Jakarta Sans',sans-serif;">{{ resolve.downtimeLine }}</div>
+                <div style="font:400 13px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ resolve.downtimeNote }}</div>
+              </div>
+            </div>
+            <button onClick="{{ resolve.confirm }}" style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:20px 24px; font:700 19px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:64px;" style-hover="background:var(--fx-accent-hover)">Machine running · close the ticket</button>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">maintenance.claimTicket · maintenance.resolveTicket</div>
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">resolving writes the downtime minutes back to the line's efficiency, unprompted</div>
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">supervisor creates only — the ticket comes out of the downtime entry on line tracking</div>
+        </div>
+      </sc-if>
+
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Role access — maintenance</div>
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden;">
+          <sc-for list="{{ access }}" as="a" hint-placeholder-count="5">
+            <div style="display:grid; grid-template-columns:1fr 116px 1.5fr; gap:16px; padding:12px 18px; align-items:center; border-bottom:1px solid var(--fx-border-subtle);">
+              <div style="font:500 13px/1.4 'JetBrains Mono',monospace;">{{ a.role }}</div>
+              <div><span style="{{ a.chip }}">{{ a.level }}</span></div>
+              <div style="font:400 13px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ a.note }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP2 }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:22px 24px; display:flex; flex-direction:column; gap:18px; max-width:1240px;">
+      <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:20px; flex-wrap:wrap;">
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Maintenance · preventive</div>
+          <div style="font:700 30px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">This week's PM</div>
+          <div style="font:400 16px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:60ch; text-wrap:pretty;">{{ pmLead }}</div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-end;">
+          <div style="font:400 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">Done this week</div>
+          <div style="font:700 26px/1.05 'JetBrains Mono',monospace; color:{{ pmColor }};">{{ pmDone }}</div>
+        </div>
+      </div>
+      <div style="height:9px; background-image:repeating-linear-gradient(115deg, var(--fx-accent) 0 2px, transparent 2px 9px);"></div>
+
+      <div style="display:flex; flex-direction:column; gap:14px;">
+        <sc-for list="{{ pms }}" as="p" hint-placeholder-count="3">
+          <div style="display:flex; background:var(--fx-bg-surface); border:1px solid {{ p.border }}; border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+            <div style="width:{{ p.selW }}; flex-shrink:0; background:{{ p.sel }};"></div>
+            <div style="flex:1; min-width:0; display:flex; flex-direction:column;">
+              <div onClick="{{ p.toggle }}" style="padding:17px 20px; display:flex; align-items:center; gap:13px; flex-wrap:wrap; cursor:pointer; min-height:56px;">
+                <div style="font:500 14px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ p.chev }}</div>
+                <div style="display:flex; flex-direction:column; gap:3px; min-width:0;">
+                  <div style="font:700 19px/1.25 'Plus Jakarta Sans',sans-serif;">{{ p.type }}</div>
+                  <div style="font:400 13.5px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ p.scope }}</div>
+                </div>
+                <div style="display:flex; align-items:baseline; gap:12px; margin-left:auto;">
+                  <div style="font:600 15px/1.2 'JetBrains Mono',monospace; color:{{ p.dueColor }};">{{ p.due }}</div>
+                  <div style="font:700 20px/1 'JetBrains Mono',monospace; color:{{ p.progColor }};">{{ p.progress }}</div>
+                </div>
+              </div>
+              <div style="height:8px; background:var(--fx-bg-sunken); overflow:hidden;"><div style="{{ p.bar }}"></div></div>
+              <sc-if value="{{ p.open }}" hint-placeholder-val="{{ true }}">
+                <div style="padding:16px 20px 18px; display:flex; flex-direction:column; gap:12px;">
+                  <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">{{ p.checkLabel }}</div>
+                  <sc-for list="{{ p.checks }}" as="c" hint-placeholder-count="5">
+                    <div onClick="{{ c.tick }}" style="{{ c.rowStyle }}">
+                      <div style="{{ c.box }}">{{ c.mark }}</div>
+                      <div style="display:flex; flex-direction:column; gap:3px; min-width:0;">
+                        <div style="{{ c.textStyle }}">{{ c.what }}</div>
+                        <div style="font:400 12.5px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary); text-wrap:pretty;">{{ c.note }}</div>
+                      </div>
+                      <div style="font:400 12.5px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-left:auto; white-space:nowrap;">{{ c.every }}</div>
+                    </div>
+                  </sc-for>
+                  <sc-if value="{{ canEdit }}" hint-placeholder-val="{{ true }}">
+                    <button onClick="{{ p.complete }}" style="{{ p.completeStyle }}">{{ p.completeLabel }}</button>
+                  </sc-if>
+                  <div style="font:400 13px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ p.note }}</div>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+
+      <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">maintenance.completePm — ticked per machine, not per checklist</div>
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">an overdue PM on a machine with an open ticket is not a coincidence — the queue links back here</div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP3 }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:26px 28px; display:flex; flex-direction:column; gap:18px; max-width:1340px;">
+      <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex-wrap:wrap;">
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Machines · registry</div>
+          <div style="font:700 30px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">{{ machineCount }} machines on the floor</div>
+          <div style="font:400 14.5px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:68ch; text-wrap:pretty;">Downtime cost is the number that gets a machine replaced. It is minutes lost × the line's cost per minute, taken from closed tickets — not an estimate anyone typed.</div>
+        </div>
+        <sc-if value="{{ canEdit }}" hint-placeholder-val="{{ true }}">
+          <button onClick="{{ addMachine }}" style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:11px 18px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-accent-hover)">Add a machine</button>
+        </sc-if>
+      </div>
+      <div style="height:9px; background-image:repeating-linear-gradient(115deg, var(--fx-accent) 0 2px, transparent 2px 9px);"></div>
+
+      <sc-if value="{{ showNameplate }}" hint-placeholder-val="{{ false }}">
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-accent); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh2); clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%); max-width:760px;">
+          <div style="display:flex; align-items:center; gap:12px; padding:15px 20px; background:var(--fx-accent-subtle); flex-wrap:wrap;">
+            <div style="width:26px; height:26px; border-radius:999px; background:#181D29; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+              <img src="uploads/MARBIM_logo.png" alt="" style="width:14px; height:14px;" />
+            </div>
+            <div style="font:600 15px/1.3 'Plus Jakarta Sans',sans-serif;">Nameplate read from the photo</div>
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-accent-pressed); border:1px solid var(--fx-accent-pressed); border-radius:4px; padding:5px 7px;">draft</div>
+            <button onClick="{{ dropNameplate }}" style="margin-left:auto; background:transparent; border:1px solid var(--fx-accent-pressed); border-radius:8px; padding:9px 12px; font:600 12.5px/1 'Plus Jakarta Sans',sans-serif; color:var(--fx-accent-pressed); cursor:pointer; min-height:44px;">Dismiss</button>
+          </div>
+          <sc-for list="{{ nameplate }}" as="n" hint-placeholder-count="5">
+            <div style="display:flex; align-items:stretch; border-bottom:1px solid var(--fx-border-subtle);">
+              <div style="width:3px; flex-shrink:0; background:{{ n.sel }};"></div>
+              <div style="flex:1; min-width:0; display:grid; grid-template-columns:170px 1fr 80px; gap:14px; padding:12px 20px 12px 17px; align-items:center; min-height:44px;">
+                <div style="font:400 13px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">{{ n.k }}</div>
+                <div style="font:500 13.5px/1.4 'JetBrains Mono',monospace;">{{ n.v }}</div>
+                <div style="font:500 12px/1.3 'JetBrains Mono',monospace; color:{{ n.confColor }}; text-align:right;">{{ n.conf }}</div>
+              </div>
+            </div>
+          </sc-for>
+          <div style="padding:16px 20px; font:400 13px/1.6 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">The serial is stamped and clean. The year I read as 2019 but the plate is worn at that digit and it could be 2018 — check the purchase invoice before the depreciation schedule uses it.</div>
+        </div>
+      </sc-if>
+
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+        <div style="display:flex; align-items:center; gap:12px; padding:14px 20px; border-bottom:1px solid var(--fx-border-subtle); flex-wrap:wrap;">
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">{{ regCount }}</div>
+          <div style="display:flex; align-items:center; gap:7px; margin-left:auto;">
+            <div style="width:5px; height:13px; background:var(--fx-danger);"></div>
+            <div style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">5px = down now, or four breakdowns and more in the last six months</div>
+          </div>
+        </div>
+        <div style="overflow-x:auto;">
+        <div style="min-width:1120px;">
+          <div style="display:grid; grid-template-columns:124px 1fr 148px 132px 168px 148px; gap:14px; padding:11px 20px; background:var(--fx-bg-sunken); border-bottom:1px solid var(--fx-border-subtle); font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">
+            <div>Asset</div><div>Machine</div><div>Line</div><div>Status</div><div>Breakdowns · 6 mo</div><div style="text-align:right;">Downtime cost YTD</div>
+          </div>
+          <sc-for list="{{ machines }}" as="m" hint-placeholder-count="6">
+            <div>
+              <div onClick="{{ m.toggle }}" style="{{ m.rowStyle }}">
+                <div style="width:{{ m.selW }}; flex-shrink:0; background:{{ m.sel }};"></div>
+                <div style="flex:1; min-width:0; display:grid; grid-template-columns:124px 1fr 148px 132px 168px 148px; gap:14px; padding:12px 20px 12px 17px; align-items:center; min-height:44px;">
+                  <div style="display:flex; align-items:center; gap:9px;">
+                    <div style="font:500 12px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ m.chev }}</div>
+                    <div style="font:500 12.5px/1.3 'JetBrains Mono',monospace;">{{ m.asset }}</div>
+                  </div>
+                  <div style="display:flex; flex-direction:column; gap:3px; min-width:0;">
+                    <div style="font:500 13.5px/1.3 'Plus Jakarta Sans',sans-serif;">{{ m.name }}</div>
+                    <div style="font:400 11.5px/1.2 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ m.model }}</div>
+                  </div>
+                  <div style="font:400 13px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">{{ m.line }}</div>
+                  <div><span style="{{ m.statusChip }}">{{ m.status }}</span></div>
+                  <div style="display:flex; align-items:flex-end; gap:3px; height:30px;">
+                    <sc-for list="{{ m.spark }}" as="b" hint-placeholder-count="6">
+                      <div style="{{ b.style }}"></div>
+                    </sc-for>
+                  </div>
+                  <div style="font:600 13px/1.3 'JetBrains Mono',monospace; text-align:right; color:{{ m.costColor }};">{{ m.cost }}</div>
+                </div>
+              </div>
+              <sc-if value="{{ m.open }}" hint-placeholder-val="{{ false }}">
+                <div style="background:var(--fx-bg-sunken); border-bottom:1px solid var(--fx-border-subtle); padding:18px 20px 20px 34px; display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:20px; align-items:start;">
+                  <div style="display:flex; flex-direction:column; gap:10px;">
+                    <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Identity</div>
+                    <sc-for list="{{ m.identity }}" as="i" hint-placeholder-count="5">
+                      <div style="display:grid; grid-template-columns:150px 1fr; gap:12px; align-items:baseline; padding-bottom:7px; border-bottom:1px solid var(--fx-border-subtle);">
+                        <div style="font:400 12.5px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">{{ i.k }}</div>
+                        <div style="font:500 13px/1.4 'JetBrains Mono',monospace;">{{ i.v }}</div>
+                      </div>
+                    </sc-for>
+                    <sc-if value="{{ canEdit }}" hint-placeholder-val="{{ true }}">
+                      <button onClick="{{ m.reassign }}" style="align-self:flex-start; background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-strong); border-radius:8px; padding:12px 16px; font:600 13px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-bg-hover)">Move to another line</button>
+                    </sc-if>
+                  </div>
+                  <div style="display:flex; flex-direction:column; gap:10px;">
+                    <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Line history</div>
+                    <sc-for list="{{ m.history }}" as="h" hint-placeholder-count="3">
+                      <div style="display:flex; align-items:flex-start; gap:11px;">
+                        <div style="width:8px; height:8px; border-radius:999px; background:{{ h.c }}; margin-top:5px; flex-shrink:0;"></div>
+                        <div style="display:flex; flex-direction:column; gap:2px; min-width:0;">
+                          <div style="display:flex; align-items:baseline; gap:9px; flex-wrap:wrap;">
+                            <div style="font:500 13px/1.35 'Plus Jakarta Sans',sans-serif;">{{ h.what }}</div>
+                            <div style="font:400 11.5px/1.2 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ h.when }}</div>
+                          </div>
+                          <div style="font:400 12.5px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ h.note }}</div>
+                        </div>
+                      </div>
+                    </sc-for>
+                    <div style="display:flex; align-items:stretch; border:1px solid {{ m.verdictBorder }}; border-radius:4px; overflow:hidden; margin-top:4px;">
+                      <div style="width:3px; flex-shrink:0; background:{{ m.verdictBorder }};"></div>
+                      <div style="flex:1; min-width:0; padding:13px 15px; font:400 13px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ m.verdict }}</div>
+                    </div>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+        </div>
+        <div style="padding:14px 20px; font:400 12px/1.45 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ regFoot }}</div>
+      </div>
+
+      <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">machines.create · marbim.extractNameplate · machines.reassignLine</div>
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">reassigning a line moves the PM schedule with the machine, not with the line</div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ showSync }}" hint-placeholder-val="{{ false }}">
+    <div style="position:sticky; bottom:0; z-index:30; background:var(--fx-bg-surface); border-top:1px solid {{ sync.c }}; padding:14px 22px; display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+      <div style="width:10px; height:10px; border-radius:999px; background:{{ sync.c }}; flex-shrink:0;"></div>
+      <div style="font:600 15px/1.3 'Plus Jakarta Sans',sans-serif;">{{ sync.title }}</div>
+      <div style="font:400 13.5px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); flex:1 1 280px; min-width:0; text-wrap:pretty;">{{ sync.note }}</div>
+      <div style="font:400 12.5px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ sync.meta }}</div>
+    </div>
+  </sc-if>
+
+  <div style="position:absolute; right:22px; bottom:{{ markBottom }}; display:flex; align-items:center; gap:11px;">
+    <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">MARBIM · rest</div>
+    <div role="img" aria-label="MARBIM" style="{{ markStage }}">
+      <sc-for list="{{ markSlashes }}" as="s" hint-placeholder-count="8">
+        <img src="{{ s.src }}" alt="" style="{{ s.style }}" />
+      </sc-for>
+    </div>
+  </div>
+
+  </div>
+</div>
+
+<sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed; left:50%; bottom:96px; transform:translateX(-50%); z-index:90; background:var(--fx-text-primary); color:var(--fx-text-inverse); border-radius:8px; box-shadow:var(--fx-sh3); padding:15px 19px; display:flex; align-items:center; gap:14px; max-width:92vw;">
+    <div style="font:500 14.5px/1.4 'Plus Jakarta Sans',sans-serif;">{{ toast }}</div>
+    <button onClick="{{ clearToast }}" style="background:transparent; border:none; color:var(--fx-accent); font:600 13px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer;">Dismiss</button>
+  </div>
+</sc-if>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;role&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;mechanic&quot;,&quot;in-charge&quot;,&quot;supervisor&quot;,&quot;planner&quot;,&quot;qc&quot;],&quot;default&quot;:&quot;mechanic&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Access&quot;},&quot;factoryType&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;woven&quot;,&quot;knit-composite&quot;],&quot;default&quot;:&quot;woven&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Access&quot;},&quot;offline&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Floor&quot;},&quot;showActionNames&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Annotation&quot;}}">
+const SLASH_VEC = [
+  { dx: -0.896, dy: 0.444 }, { dx: -0.271, dy: 0.963 }, { dx: -0.97, dy: -0.243 }, { dx: 0.415, dy: 0.91 },
+  { dx: -0.512, dy: -0.859 }, { dx: 0.936, dy: 0.352 }, { dx: 0.282, dy: -0.96 }, { dx: 0.908, dy: -0.419 }
+];
+
+const USERS = {
+  mechanic: 'Rafiq Ahmed', 'in-charge': 'Nazrul Haque', supervisor: 'Abdul Karim',
+  planner: 'Ruhul Amin', qc: 'Shamima Nasrin'
+};
+
+const bdt = v => '৳' + v.toLocaleString('en-US');
+
+// id, priority, machine, asset, line, symptom, waitMin, reportedBy, reportedAt, claimedBy, repeatNote, costPerMin
+const TICKETS = {
+  woven: [
+    ['MT-2291', 'line down', 'Single needle lockstitch', 'M-0412', 'Line 4 · station 14', 'Needle bar seized mid-seam. Operator stopped the machine and moved to the spare, which is also on the collar operation, so the whole collar station is on one head.', 47, 'Abdul Karim · supervisor', '10:17', 'Rafiq Ahmed', 'Third needle-bar failure on this machine since February. The last two were closed as "lubrication" and the machine went back on the line the same hour.', 42],
+    ['MT-2292', 'line down', 'Overlock 5-thread', 'M-0388', 'Line 6 · station 3', 'Skipping stitches on knit rib. Operator changed the needle twice, same result. Line running four stations short.', 22, 'Selina Akter · supervisor', '10:42', '', '', 38],
+    ['MT-2288', 'slow', 'Bartack', 'M-0501', 'Line 3 · station 22', 'Running but noisy under load. Not stopping the line yet — the operator says it has been getting louder since Tuesday.', 186, 'Abdul Karim · supervisor', '07:58', '', '', 0],
+    ['MT-2285', 'standby', 'Fusing press', 'M-0140', 'Cutting section', 'Temperature reads 8° below setpoint on the left platen. Cutting is between lays so nothing is stopped, but the next fusing run needs it right.', 312, 'Jamal Uddin · storekeeper', '05:52', '', '', 0]
+  ],
+  'knit-composite': [
+    ['MT-2294', 'line down', 'Circular knitting · 30 inch', 'K-0106', 'Knitting hall · machine 6', 'Needle broken in cylinder, fabric showing a continuous vertical line. Machine stopped. The greige it was running is for the Bestseller polo body and dyeing has a slot booked Thursday.', 38, 'Nazrul Haque · in-charge', '10:26', 'Rafiq Ahmed', 'Second cylinder needle break this month on the same machine. Both after a yarn count change without a tension reset.', 64],
+    ['MT-2293', 'line down', 'Flat knit collar machine', 'K-0118', 'Knitting hall · collar bank', 'Carriage jams at the left return. Collar output stopped and the polo order needs 42,000 of them.', 19, 'Selina Akter · supervisor', '10:45', '', '', 29],
+    ['MT-2290', 'slow', 'Dyeing machine · 300 kg', 'D-0204', 'Dye house · machine 2', 'Temperature holds but the circulation pump is drawing more current than the log says it should. Batch will finish; the next one should not start on it.', 128, 'Nazrul Haque · in-charge', '08:56', '', '', 0],
+    ['MT-2286', 'standby', 'Fabric inspection machine', 'F-0071', 'Finishing', 'Metre counter drifting about 2% long against a tape check. Nothing is stopped but every roll measured today is suspect.', 264, 'Shamima Nasrin · qc', '06:40', '', '', 0]
+  ]
+};
+
+const PRIO_ORDER = ['line down', 'slow', 'standby'];
+const PRIO_COLOR = { 'line down': 'var(--fx-danger)', slow: 'var(--fx-warning)', standby: 'var(--fx-text-tertiary)' };
+
+const PARTS = [
+  ['Needle bar assembly', 'in store · 4', true],
+  ['Needle bar bushing', 'in store · 11', true],
+  ['Rotary hook', 'in store · 2', true],
+  ['Timing belt', 'out of stock', false],
+  ['Cylinder needle · 30 inch', 'in store · 240', true],
+  ['Sinker', 'in store · 86', true]
+];
+
+const CAUSES = ['Wear', 'No lubrication', 'Wrong setting after changeover', 'Operator handling', 'Part failure', 'Unknown'];
+
+// type, scope, machines, done, dueDay, overdue, checks[[what, note, every, done]], note
+const PMS = {
+  woven: [
+    ['Single needle lockstitch', '148 machines · Lines 1 to 6', 148, 96, 'Friday', false,
+      [['Hook timing and clearance', 'against the gauge, not by ear', 'weekly', true],
+       ['Oil level and wick condition', 'the wick is what the machine actually runs on', 'weekly', true],
+       ['Needle bar height', 'the check that would have caught M-0412', 'weekly', false],
+       ['Feed dog height and tilt', 'four turns, gauge in the kit', 'monthly', false],
+       ['Belt tension and guard fitted', 'guard fitted is a compliance item as well', 'weekly', true]],
+      'Ninety-six of a hundred and forty-eight done by Thursday. The remaining fifty-two are Lines 4 and 6, which are the two lines with open tickets.'],
+    ['Overlock 5-thread', '62 machines · Lines 3 to 6', 62, 62, 'Wednesday', false,
+      [['Looper timing', 'the usual cause of skipped stitch on knit', 'weekly', true],
+       ['Knife sharpness and gap', 'replace at the gauge mark, not when it tears', 'weekly', true],
+       ['Differential feed setting', 'reset after every knit-to-woven changeover', 'weekly', true],
+       ['Thread path and tension discs', 'clean the discs, lint is the enemy', 'weekly', true]],
+      'Complete since Wednesday. MT-2292 came in after this PM was signed off, which is worth reading before the cause is written.'],
+    ['Fusing press', '4 machines · Cutting', 4, 1, 'Tuesday', true,
+      [['Platen temperature at five points', 'a single-point reading hides exactly this fault', 'weekly', true],
+       ['Pressure gauge against the block', 'the block lives in the drawer under the press', 'weekly', false],
+       ['Belt tracking and cleanliness', 'adhesive residue changes the pressure profile', 'weekly', false],
+       ['Timer accuracy against a stopwatch', 'twenty seconds should be twenty seconds', 'monthly', false]],
+      'Two days overdue, and M-0140 has a standby ticket open for a platen reading 8° low. The five-point temperature check is the one that finds this.']
+  ],
+  'knit-composite': [
+    ['Circular knitting · 30 inch', '18 machines · Knitting hall', 18, 11, 'Thursday', true,
+      [['Needle and sinker inspection', 'every needle, by hand, with the cylinder turning slow', 'weekly', true],
+       ['Yarn tension across all feeders', 'reset after every count change — the missed step on K-0106', 'weekly', false],
+       ['Lycra feeder calibration', 'drift here shows up as a shade band nobody can dye out', 'weekly', false],
+       ['Oil pump and needle lubrication', 'the cylinder eats needles without it', 'weekly', true],
+       ['Cam box and lock inspection', 'the expensive one, catch it early', 'monthly', false],
+       ['Fabric take-down tension', 'sets the GSM as much as the yarn does', 'weekly', true]],
+      'One day overdue on seven machines, and K-0106 broke a cylinder needle this morning after a count change. The tension reset is the second item on this list.'],
+    ['Flat knit collar machine', '12 machines · Collar bank', 12, 12, 'Wednesday', false,
+      [['Carriage rail cleanliness and lubrication', 'a jam at the return is almost always this', 'weekly', true],
+       ['Needle bed alignment', 'gauge check, both beds', 'weekly', true],
+       ['Yarn carrier stop positions', 'reset with every collar size change', 'weekly', true],
+       ['Programme card and pattern memory', 'back it up before anyone edits it', 'monthly', true]],
+      'Done Wednesday, and K-0118 jammed at the left return this morning anyway. Worth checking whether the rail was cleaned or only ticked.'],
+    ['Dyeing machine · 300 kg', '6 machines · Dye house', 6, 4, 'Friday', false,
+      [['Circulation pump current draw', 'against the log, the check D-0204 needs', 'weekly', true],
+       ['Temperature probe against a reference', 'a 2° drift ruins a shade batch', 'weekly', true],
+       ['Valve and gasket inspection', 'chemical store containment is a compliance item too', 'monthly', false],
+       ['Filter cleaning', 'every batch, logged by the operator not the mechanic', 'daily', true]],
+      'Four of six. The two outstanding are machines 2 and 5, and machine 2 has the pump current ticket open.']
+  ]
+};
+
+// asset, name, model, line, status, breakdowns[6], costYtd, identity, history, verdict
+const MACHINES = {
+  woven: [
+    ['M-0412', 'Single needle lockstitch', 'Juki DDL-9000C', 'Line 4 · station 14', 'down', [1, 0, 1, 0, 0, 1], 118400,
+      [['Serial', 'DDL9C-2019-44712'], ['Bought', 'Mar 2019 · ৳214,000'], ['Supplier', 'Juki Bangladesh'], ['Warranty', 'expired Mar 2022'], ['Last PM', '24 Jul · needle bar height not ticked']],
+      [['Moved to Line 4', 'Jan 2026', 'On the collar operation since, which is the operation with two trained operators.'],
+       ['Needle bar failure', 'Feb, May, today', 'Three in six months. The first two closed as lubrication in under twenty minutes each.'],
+       ['On Line 2', '2019 to 2025', 'Six years, four breakdowns total.']],
+      'Three failures of the same part in six months on a machine that ran six years without one. Either the last two repairs did not fix it or something changed when it moved to Line 4. ৳118,400 of downtime this year is more than half what the machine cost.'],
+    ['M-0388', 'Overlock 5-thread', 'Pegasus M900', 'Line 6 · station 3', 'down', [0, 1, 0, 0, 1, 1], 42600,
+      [['Serial', 'M900-2021-08841'], ['Bought', 'Aug 2021 · ৳186,000'], ['Supplier', 'Pegasus Asia'], ['Warranty', 'expired Aug 2023'], ['Last PM', '29 Jul · complete']],
+      [['On Line 6', 'since Aug 2021', 'Never moved.'], ['Looper replaced', 'Jun 2026', 'Under a skipped-stitch ticket, same symptom as today.']],
+      'Normal for its age. Today is the second skipped-stitch call since June, so the looper replacement in June should be read again before a new part is fitted.'],
+    ['M-0501', 'Bartack', 'Brother KE-430HX', 'Line 3 · station 22', 'running', [0, 0, 0, 0, 0, 1], 8200,
+      [['Serial', 'KE430-2023-11290'], ['Bought', 'Nov 2023 · ৳298,000'], ['Supplier', 'Brother Bangladesh'], ['Warranty', 'to Nov 2026'], ['Last PM', '25 Jul · complete']],
+      [['On Line 3', 'since Nov 2023', 'Never moved.'], ['Noise reported', 'today', 'Running, getting louder since Tuesday.']],
+      'Still under warranty until November. Whatever the noise is, it is the supplier\u2019s to fix, and a call today costs nothing while a call in December costs a rebuild.'],
+    ['M-0140', 'Fusing press', 'Hashima HP-450MS', 'Cutting section', 'watch', [0, 1, 0, 1, 0, 0], 31800,
+      [['Serial', 'HP450-2017-2201'], ['Bought', 'Jun 2017 · ৳620,000'], ['Supplier', 'Hashima Japan'], ['Warranty', 'expired Jun 2020'], ['Last PM', '21 Jul · overdue since Tue']],
+      [['In cutting since new', 'Jun 2017', 'Nine years, never moved.'], ['Heating element replaced', 'Feb 2025', 'Left platen, same side as today\u2019s reading.']],
+      'Left platen 8° low, and the element on that side was replaced eighteen months ago. A fusing fault does not stop a line — it shows up as bubbling collars two weeks later, on garments already packed.'],
+    ['M-0455', 'Single needle lockstitch', 'Juki DDL-9000C', 'Line 1 · station 8', 'running', [0, 0, 0, 0, 0, 0], 0,
+      [['Serial', 'DDL9C-2019-44718'], ['Bought', 'Mar 2019 · ৳214,000'], ['Supplier', 'Juki Bangladesh'], ['Warranty', 'expired Mar 2022'], ['Last PM', '24 Jul · complete']],
+      [['On Line 1', 'since Mar 2019', 'Never moved, never broken down.']],
+      'Bought the same week as M-0412 and has never stopped. Same model, same age, same operator load — which is the strongest argument that M-0412\u2019s problem is not the model.']
+  ],
+  'knit-composite': [
+    ['K-0106', 'Circular knitting · 30 inch', 'Mayer & Cie Relanit 3.2', 'Knitting hall · machine 6', 'down', [0, 1, 0, 0, 1, 1], 204600,
+      [['Serial', 'RL32-2018-6612'], ['Bought', 'Sep 2018 · ৳4,820,000'], ['Supplier', 'Mayer & Cie · Germany'], ['Warranty', 'expired Sep 2021'], ['Last PM', '23 Jul · tension reset not ticked']],
+      [['In the knitting hall since new', 'Sep 2018', 'Never moved.'],
+       ['Cylinder needle breaks', 'Jul × 2', 'Both within a week, both after a yarn count change.'],
+       ['Cam box serviced', 'Mar 2026', 'Scheduled, no fault found.']],
+      'Two needle breaks this month, both after a count change, and the tension reset is the step not ticked on the last two PMs. ৳204,600 of downtime — a knitting machine down stops dyeing and sewing behind it, which is why its cost per minute is the highest on the floor.'],
+    ['K-0118', 'Flat knit collar machine', 'Shima Seiki SES-122', 'Knitting hall · collar bank', 'down', [0, 0, 1, 0, 0, 1], 68200,
+      [['Serial', 'SES122-2020-3318'], ['Bought', 'Feb 2020 · ৳2,140,000'], ['Supplier', 'Shima Seiki'], ['Warranty', 'expired Feb 2023'], ['Last PM', '29 Jul · complete']],
+      [['On the collar bank since new', 'Feb 2020', 'Never moved.'], ['Carriage rail cleaned', 'Mar 2026', 'After the last jam at the same return point.']],
+      'Second jam at the left return, and the rail cleaning is the first item on a PM that was signed complete two days ago. Worth checking whether it was cleaned or only ticked.'],
+    ['D-0204', 'Dyeing machine · 300 kg', 'Fongs Allwin 300', 'Dye house · machine 2', 'watch', [0, 0, 1, 0, 0, 0], 96400,
+      [['Serial', 'AW300-2019-1142'], ['Bought', 'Jul 2019 · ৳6,400,000'], ['Supplier', 'Fongs · Hong Kong'], ['Warranty', 'expired Jul 2022'], ['Last PM', '24 Jul · complete']],
+      [['In the dye house since new', 'Jul 2019', 'Never moved.'], ['Pump seal replaced', 'Nov 2025', 'After a similar current reading.']],
+      'Pump drawing over the log again, eight months after a seal replacement for the same reading. A dyeing machine that fails mid-batch does not just stop — it ruins the batch in it.'],
+    ['K-0111', 'Circular knitting · 30 inch', 'Mayer & Cie Relanit 3.2', 'Knitting hall · machine 11', 'running', [0, 0, 0, 0, 0, 0], 0,
+      [['Serial', 'RL32-2018-6619'], ['Bought', 'Sep 2018 · ৳4,820,000'], ['Supplier', 'Mayer & Cie · Germany'], ['Warranty', 'expired Sep 2021'], ['Last PM', '23 Jul · complete']],
+      [['In the knitting hall since new', 'Sep 2018', 'Never moved, no breakdowns.']],
+      'Identical machine, same delivery, zero downtime. Its PM sheets have the tension reset ticked every week.'],
+    ['F-0071', 'Fabric inspection machine', 'Uzu 4-point inspection', 'Finishing', 'watch', [0, 0, 0, 1, 0, 0], 14200,
+      [['Serial', 'UZ4P-2022-0871'], ['Bought', 'Apr 2022 · ৳880,000'], ['Supplier', 'Uzu Machinery'], ['Warranty', 'expired Apr 2025'], ['Last PM', '18 Jul · complete']],
+      [['In finishing since new', 'Apr 2022', 'Never moved.'], ['Counter recalibrated', 'Jan 2026', 'Drifted 1.4% then.']],
+      'Counter drifting 2% long, second time in seven months. Every roll it measured today is recorded 2% longer than it is, which is a fabric shortage nobody will find until cutting runs out.']
+  ]
+};
+
+const ACCESS = [
+  ['mechanic', 'edit tickets', 'Claims and resolves tickets, ticks PM checklists. Cannot create a machine or move it.'],
+  ['maintenance in-charge', 'edit all', 'Everything a mechanic can do, plus the PM schedule and the machine registry.'],
+  ['supervisor', 'create', 'Raises a ticket from the downtime entry on line tracking. Cannot claim or close one.'],
+  ['planner · manager', 'view', 'Reads the queue and the registry, because a machine down is a plan that changed.'],
+  ['qc · storekeeper · merchandiser · hr · accounts · viewer', 'none', 'HIDDEN — a stopped machine reaches them through line tracking, not here.']
+];
+
+class Component extends DCLogic {
+  state = {
+    screen: 'p1', role: 'mechanic', ftype: 'woven', annot: true, offline: false,
+    claimed: {}, resolveId: '', pickedParts: {}, cause: '', openPm: 0, openMachine: -1,
+    showNameplate: false, toast: ''
+  };
+
+  componentWillUnmount() { clearTimeout(this._t); }
+
+  flash(msg) {
+    clearTimeout(this._t);
+    this.setState({ toast: msg });
+    this._t = setTimeout(() => this.setState({ toast: '' }), 4400);
+  }
+
+  pill(active) {
+    return {
+      background: active ? 'var(--fx-bg-surface)' : 'transparent',
+      color: active ? 'var(--fx-text-primary)' : 'var(--fx-text-secondary)',
+      border: '1px solid ' + (active ? 'var(--fx-border-default)' : 'transparent'),
+      borderRadius: '6px', padding: '9px 12px', cursor: 'pointer',
+      font: "600 12.5px/1 'Plus Jakarta Sans',sans-serif", whiteSpace: 'nowrap'
+    };
+  }
+
+  ghost(on) {
+    return {
+      background: on ? 'var(--fx-text-primary)' : 'transparent',
+      color: on ? 'var(--fx-text-inverse)' : 'var(--fx-text-secondary)',
+      border: '1px solid ' + (on ? 'var(--fx-text-primary)' : 'var(--fx-border-default)'),
+      borderRadius: '8px', padding: '10px 13px', cursor: 'pointer', minHeight: '44px',
+      font: "500 12px/1 'JetBrains Mono',monospace", whiteSpace: 'nowrap'
+    };
+  }
+
+  chip(level) {
+    const base = {
+      font: "500 11px/1 'JetBrains Mono',monospace", letterSpacing: '.05em', textTransform: 'uppercase',
+      borderRadius: '4px', padding: '6px 8px', display: 'inline-block', whiteSpace: 'nowrap'
+    };
+    if (level === 'none') return { ...base, color: 'var(--fx-text-tertiary)', border: '1px solid var(--fx-border-subtle)' };
+    if (level === 'view') return { ...base, color: 'var(--fx-text-secondary)', background: 'var(--fx-bg-sunken)', border: '1px solid transparent' };
+    if (level === 'create') return { ...base, color: 'var(--fx-text-secondary)', border: '1px solid var(--fx-border-default)' };
+    if (level === 'edit tickets') return { ...base, color: 'var(--fx-text-primary)', border: '1px solid var(--fx-border-strong)' };
+    return { ...base, color: 'var(--fx-text-primary)', border: '1px solid var(--fx-text-primary)', boxShadow: 'inset 3px 0 0 var(--fx-accent)', paddingLeft: '12px' };
+  }
+
+  statusChip(st) {
+    const base = {
+      font: "500 11px/1 'JetBrains Mono',monospace", letterSpacing: '.05em', textTransform: 'uppercase',
+      borderRadius: '4px', padding: '6px 8px', display: 'inline-block', whiteSpace: 'nowrap'
+    };
+    if (st === 'down') return { ...base, color: 'var(--fx-danger)', border: '1px solid var(--fx-danger)' };
+    if (st === 'watch') return { ...base, color: 'var(--fx-warning)', border: '1px solid var(--fx-warning)' };
+    return { ...base, color: 'var(--fx-success)', border: '1px solid var(--fx-success)' };
+  }
+
+  renderVals() {
+    const s = this.state;
+    const mode = s.mode || 'light';
+    const role = s.role, ft = s.ftype, screen = s.screen;
+    const isMech = role === 'mechanic';
+    const isInCharge = role === 'in-charge';
+    const isSup = role === 'supervisor';
+    const locked = role === 'qc';
+    const allowed = !locked;
+    const canWork = isMech || isInCharge;
+    const canEdit = isInCharge;
+
+    const raw = TICKETS[ft];
+    const sorted = raw.slice().sort((a, b) => {
+      const p = PRIO_ORDER.indexOf(a[1]) - PRIO_ORDER.indexOf(b[1]);
+      return p !== 0 ? p : b[6] - a[6];
+    });
+
+    const downCount = raw.filter(t => t[1] === 'line down').length;
+    const atRisk = raw.filter(t => t[1] === 'line down' && t[6] > 30).length;
+    const lostPerMin = raw.filter(t => t[1] === 'line down').reduce((a, t) => a + t[11], 0);
+    const lostSoFar = raw.filter(t => t[1] === 'line down').reduce((a, t) => a + t[11] * t[6], 0);
+
+    const mine = id => s.claimed[id] || (raw.find(t => t[0] === id) || [])[9] === USERS[role];
+
+    const tickets = sorted.map(t => {
+      const claimedBy = s.claimed[t[0]] ? USERS[role] : t[9];
+      const isMine = canWork && claimedBy === USERS[role];
+      const wait = t[6] >= 60 ? Math.floor(t[6] / 60) + 'h ' + (t[6] % 60) + 'm' : t[6] + ' min';
+      const risky = t[1] === 'line down' && t[6] > 30;
+      return {
+        id: t[0], priority: t[1], machine: t[2], where: t[4], symptom: t[5],
+        wait, waitColor: risky ? 'var(--fx-danger)' : t[1] === 'line down' ? 'var(--fx-warning)' : 'var(--fx-text-tertiary)',
+        sel: PRIO_COLOR[t[1]], selW: risky ? '5px' : '3px',
+        border: risky ? 'var(--fx-danger)' : 'var(--fx-border-subtle)',
+        facts: [
+          { k: 'Asset', v: t[3], c: 'var(--fx-text-primary)' },
+          { k: 'Reported', v: t[8] + ' · ' + t[7].split(' · ')[0], c: 'var(--fx-text-primary)' },
+          { k: 'Claimed', v: claimedBy || 'nobody yet', c: claimedBy ? 'var(--fx-text-primary)' : 'var(--fx-danger)' },
+          { k: 'Costing', v: t[11] ? bdt(t[11]) + ' / min' : 'line still running', c: t[11] ? 'var(--fx-danger)' : 'var(--fx-text-secondary)' }
+        ],
+        repeat: !!t[10], repeatNote: t[10],
+        canClaim: canWork && !claimedBy,
+        mine: isMine,
+        watching: !canWork || (!!claimedBy && !isMine),
+        watchNote: !canWork
+          ? (isSup ? 'you raised this · the mechanic claims and closes it' : 'read-only · a mechanic claims and closes this')
+          : 'claimed by ' + claimedBy,
+        claimLabel: 'Claim this ticket',
+        claimStyle: t[1] === 'line down'
+          ? { background: 'var(--fx-accent)', color: 'var(--fx-accent-on)', border: 'none', borderRadius: '8px', padding: '17px 22px', font: "600 17px/1 'Plus Jakarta Sans',sans-serif", cursor: 'pointer', minHeight: '56px' }
+          : { background: 'transparent', color: 'var(--fx-text-primary)', border: '1px solid var(--fx-border-strong)', borderRadius: '8px', padding: '16px 20px', font: "600 16px/1 'Plus Jakarta Sans',sans-serif", cursor: 'pointer', minHeight: '56px' },
+        claim: () => this.setState(x => ({ claimed: { ...x.claimed, [t[0]]: true } })),
+        resolve: () => this.setState({ resolveId: t[0], pickedParts: {}, cause: '' }),
+        escalate: () => this.flash(t[0] + ' · part requested from store, ticket stays open and the clock keeps running')
+      };
+    });
+
+    const rt = raw.find(t => t[0] === s.resolveId);
+    const partsUsed = Object.keys(s.pickedParts).filter(k => s.pickedParts[k]);
+
+    const pmSet = PMS[ft];
+    const pmTotal = pmSet.reduce((a, p) => a + p[2], 0);
+    const pmDoneN = pmSet.reduce((a, p) => a + p[3], 0);
+    const pmPct = Math.round(pmDoneN / pmTotal * 100);
+
+    const machineSet = MACHINES[ft];
+    const maxBreak = Math.max.apply(null, machineSet.map(m => Math.max.apply(null, m[5])));
+    const totalCost = machineSet.reduce((a, m) => a + m[6], 0);
+    const worst = machineSet.reduce((a, m) => (m[6] > a[6] ? m : a), machineSet[0]);
+
+    return {
+      screens: [['p1', 'P1 queue'], ['p2', 'P2 preventive'], ['p3', 'P3 machines']].map(x => ({
+        label: x[1], pick: () => this.setState({ screen: x[0] }), style: this.pill(screen === x[0])
+      })),
+      role, userName: USERS[role],
+      setRole: (e) => this.setState({ role: e.target.value, resolveId: '' }),
+      ftype: ft, setFtype: (e) => this.setState({ ftype: e.target.value, openMachine: -1, openPm: 0, resolveId: '', claimed: {} }),
+      annot: s.annot, annotLabel: s.annot ? 'on' : 'off', annotBtn: this.ghost(s.annot),
+      mode, modeLabel: mode === 'dark' ? 'dark' : 'light', modeBtn: this.ghost(mode === 'dark'),
+      logoSrc: 'uploads/fabricxai-logo-' + (mode === 'dark' ? 'dark' : 'light') + '.png',
+      toggleMode: () => this.setState(x => ({ mode: x.mode === 'dark' ? 'light' : 'dark' })),
+      toggleAnnot: () => this.setState(x => ({ annot: !x.annot })),
+      offlineLabel: s.offline ? 'offline' : 'online', offlineBtn: this.ghost(s.offline),
+      toggleOffline: () => this.setState(x => ({ offline: !x.offline })),
+
+      locked, hasNav: allowed, noNav: !allowed,
+      isP1: allowed && screen === 'p1', isP2: allowed && screen === 'p2', isP3: allowed && screen === 'p3',
+      canEdit, canCreate: isSup || canWork,
+
+      nav: [['p1', 'Queue'], ['p2', 'Preventive'], ['p3', 'Machines']].map(x => ({
+        label: x[1], pick: () => this.setState({ screen: x[0] }),
+        badge: x[0] === 'p1' && downCount > 0, count: String(downCount),
+        badgeStyle: {
+          marginLeft: 'auto', font: "600 11px/1 'JetBrains Mono',monospace",
+          color: 'var(--fx-text-inverse)', background: 'var(--fx-danger)',
+          borderRadius: '999px', padding: '5px 7px', minWidth: '20px', textAlign: 'center'
+        },
+        style: {
+          display: 'flex', alignItems: 'center', gap: '11px', padding: '12px 12px', borderRadius: '8px', cursor: 'pointer',
+          minHeight: '48px', font: "500 15px/1 'Plus Jakarta Sans',sans-serif",
+          background: screen === x[0] ? 'var(--fx-bg-selected)' : 'transparent',
+          color: screen === x[0] ? 'var(--fx-text-primary)' : 'var(--fx-text-secondary)'
+        },
+        marker: { width: '2px', height: '16px', transform: 'skewX(-34deg)', background: screen === x[0] ? 'var(--fx-accent)' : 'transparent', flexShrink: 0 }
+      })),
+      pulse: [
+        { k: 'Lines down', v: String(downCount), c: downCount ? 'var(--fx-danger)' : 'var(--fx-success)' },
+        { k: 'Costing per minute', v: bdt(lostPerMin), c: 'var(--fx-danger)' },
+        { k: 'Lost so far today', v: bdt(lostSoFar), c: 'var(--fx-danger)' }
+      ],
+
+      queueTitle: downCount
+        ? downCount + (downCount === 1 ? ' line is stopped' : ' lines are stopped')
+        : 'Nothing is stopped',
+      queueLead: atRisk
+        ? atRisk + (atRisk === 1 ? ' ticket has' : ' tickets have') + ' been waiting over thirty minutes. At ' + bdt(lostPerMin) + ' a minute across the stopped lines, the queue order is the only decision that matters right now.'
+        : 'Line-down first, then anything slowing a line, then the rest. Nothing has been waiting over thirty minutes.',
+      tickets,
+      raise: () => this.flash(isSup
+        ? 'Ticket raised from the downtime entry · machine, line and stop time come with it'
+        : 'Ticket raised · pick the machine from the line map or scan its asset tag'),
+
+      resolveOpen: !!rt && canWork,
+      resolve: rt ? {
+        id: rt[0], machine: rt[2],
+        parts: PARTS.map(p => ({
+          name: p[0], stock: p[1],
+          stockColor: p[2] ? 'var(--fx-text-tertiary)' : 'var(--fx-danger)',
+          pick: () => p[2] ? this.setState(x => ({ pickedParts: { ...x.pickedParts, [p[0]]: !x.pickedParts[p[0]] } })) : this.flash(p[0] + ' is out of stock · raise a purchase requisition from procurement'),
+          style: {
+            display: 'flex', flexDirection: 'column', gap: '5px', padding: '14px 16px', borderRadius: '8px',
+            minHeight: '56px', cursor: p[2] ? 'pointer' : 'not-allowed',
+            border: '1px solid ' + (s.pickedParts[p[0]] ? 'var(--fx-text-primary)' : p[2] ? 'var(--fx-border-default)' : 'var(--fx-danger)'),
+            background: s.pickedParts[p[0]] ? 'var(--fx-bg-selected)' : 'var(--fx-bg-surface)',
+            opacity: p[2] ? 1 : 0.7
+          }
+        })),
+        partsNote: partsUsed.length
+          ? partsUsed.length + (partsUsed.length === 1 ? ' part' : ' parts') + ' will be taken off store stock when this closes — the storekeeper does not enter it separately.'
+          : 'Nothing selected. A repair with no parts is a valid answer and it is the one that tells you the PM missed something.',
+        causes: CAUSES.map(c => ({
+          label: c,
+          pick: () => this.setState({ cause: c }),
+          style: {
+            padding: '14px 17px', borderRadius: '8px', cursor: 'pointer', minHeight: '56px',
+            display: 'flex', alignItems: 'center',
+            font: "600 15px/1 'Plus Jakarta Sans',sans-serif",
+            border: '1px solid ' + (s.cause === c ? 'var(--fx-text-primary)' : 'var(--fx-border-default)'),
+            background: s.cause === c ? 'var(--fx-bg-selected)' : 'var(--fx-bg-surface)'
+          }
+        })),
+        downtimeLine: rt[6] + ' minutes of downtime · ' + bdt(rt[11] * rt[6]),
+        downtimeNote: 'This goes straight onto the line\u2019s efficiency for today and onto the machine\u2019s cost for the year. Nobody types it in twice, and nobody can round it down.',
+        confirm: () => {
+          this.setState({ resolveId: '', pickedParts: {}, cause: '' });
+          this.flash(rt[0] + ' closed · ' + rt[6] + ' min written to ' + rt[4].split(' · ')[0] + (partsUsed.length ? ' · ' + partsUsed.length + ' part(s) off stock' : ' · no parts used'));
+        }
+      } : null,
+      closeResolve: () => this.setState({ resolveId: '', pickedParts: {}, cause: '' }),
+
+      pmLead: 'Checklists are per machine type, and the tick is per machine. A checklist signed complete while a machine on it is broken is the most useful thing in this module — it says which step was skipped.',
+      pmDone: pmDoneN + ' of ' + pmTotal + ' · ' + pmPct + '%',
+      pmColor: pmPct >= 90 ? 'var(--fx-success)' : pmPct >= 70 ? 'var(--fx-warning)' : 'var(--fx-danger)',
+      pms: pmSet.map((p, i) => {
+        const pct = Math.round(p[3] / p[2] * 100);
+        const od = p[5];
+        return {
+          type: p[0], scope: p[1],
+          due: od ? 'due ' + p[4] + ' · overdue' : 'due ' + p[4],
+          dueColor: od ? 'var(--fx-danger)' : 'var(--fx-text-secondary)',
+          progress: p[3] + ' / ' + p[2],
+          progColor: pct === 100 ? 'var(--fx-success)' : od ? 'var(--fx-danger)' : 'var(--fx-text-primary)',
+          bar: { height: '100%', width: pct + '%', background: pct === 100 ? 'var(--fx-success)' : od ? 'var(--fx-danger)' : 'var(--fx-text-primary)' },
+          sel: od ? 'var(--fx-danger)' : pct === 100 ? 'var(--fx-success)' : 'var(--fx-border-subtle)',
+          selW: od ? '5px' : '3px',
+          border: od ? 'var(--fx-danger)' : 'var(--fx-border-subtle)',
+          chev: s.openPm === i ? '▾' : '▸', open: s.openPm === i,
+          toggle: () => this.setState(x => ({ openPm: x.openPm === i ? -1 : i })),
+          checkLabel: p[6].filter(c => c[3]).length + ' of ' + p[6].length + ' steps signed off on the machines done so far',
+          checks: p[6].map(c => ({
+            what: c[0], note: c[1], every: c[2], mark: c[3] ? '✓' : '',
+            rowStyle: {
+              display: 'flex', alignItems: 'flex-start', gap: '13px', padding: '13px 14px', borderRadius: '8px',
+              minHeight: '56px', cursor: canWork ? 'pointer' : 'default',
+              background: c[3] ? 'var(--fx-bg-sunken)' : 'transparent',
+              border: '1px solid ' + (c[3] ? 'transparent' : 'var(--fx-border-subtle)')
+            },
+            box: {
+              width: '26px', height: '26px', borderRadius: '4px', flexShrink: 0, marginTop: '1px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: c[3] ? 'var(--fx-success)' : 'transparent',
+              border: c[3] ? 'none' : '2px solid var(--fx-border-strong)',
+              color: 'var(--fx-text-inverse)', font: "700 15px/1 'Plus Jakarta Sans',sans-serif"
+            },
+            textStyle: {
+              font: "600 15.5px/1.3 'Plus Jakarta Sans',sans-serif",
+              color: c[3] ? 'var(--fx-text-secondary)' : 'var(--fx-text-primary)'
+            },
+            tick: () => canWork && this.flash(c[0] + ' · ticked against this machine, not the whole type')
+          })),
+          completeLabel: pct === 100 ? 'All machines done' : 'Sign off the machine in front of you',
+          completeStyle: pct === 100
+            ? { alignSelf: 'flex-start', background: 'transparent', color: 'var(--fx-text-tertiary)', border: '1px solid var(--fx-border-subtle)', borderRadius: '8px', padding: '15px 20px', font: "600 15px/1 'Plus Jakarta Sans',sans-serif", cursor: 'default', minHeight: '56px' }
+            : { alignSelf: 'flex-start', background: 'var(--fx-accent)', color: 'var(--fx-accent-on)', border: 'none', borderRadius: '8px', padding: '17px 22px', font: "600 16px/1 'Plus Jakarta Sans',sans-serif", cursor: 'pointer', minHeight: '56px' },
+          complete: () => pct < 100 && this.flash(p[0] + ' · one machine signed off, ' + (p[2] - p[3] - 1) + ' left this week'),
+          note: p[7]
+        };
+      }),
+
+      machineCount: String(machineSet.length),
+      regCount: machineSet.length + ' machines shown · ' + machineSet.filter(m => m[4] === 'down').length + ' down, ' + machineSet.filter(m => m[4] === 'watch').length + ' on watch',
+      regFoot: bdt(totalCost) + ' of downtime cost across these machines this year · ' + worst[0] + ' is ' + Math.round(worst[6] / totalCost * 100) + '% of it',
+      machines: machineSet.map((m, i) => ({
+        asset: m[0], name: m[1], model: m[2], line: m[3], status: m[4],
+        statusChip: this.statusChip(m[4]),
+        spark: m[5].map(v => ({
+          style: {
+            width: '9px', borderRadius: '2px 2px 0 0',
+            height: Math.max(3, v / maxBreak * 100) + '%',
+            background: v ? 'var(--fx-danger)' : 'var(--fx-border-default)'
+          }
+        })),
+        cost: m[6] ? bdt(m[6]) : '—',
+        costColor: m[6] > 100000 ? 'var(--fx-danger)' : m[6] ? 'var(--fx-text-primary)' : 'var(--fx-text-disabled)',
+        sel: m[4] === 'down' ? 'var(--fx-danger)' : m[4] === 'watch' ? 'var(--fx-warning)' : 'var(--fx-success)',
+        selW: m[4] === 'down' || m[5].reduce((a, b) => a + b, 0) >= 4 ? '5px' : '3px',
+        chev: s.openMachine === i ? '▾' : '▸', open: s.openMachine === i,
+        toggle: () => this.setState(x => ({ openMachine: x.openMachine === i ? -1 : i })),
+        rowStyle: {
+          display: 'flex', alignItems: 'stretch', borderBottom: '1px solid var(--fx-border-subtle)',
+          cursor: 'pointer', background: s.openMachine === i ? 'var(--fx-bg-hover)' : 'transparent'
+        },
+        identity: m[7].map(x => ({ k: x[0], v: x[1] })),
+        history: m[8].map(h => ({
+          what: h[0], when: h[1], note: h[2],
+          c: h[0].indexOf('failure') >= 0 || h[0].indexOf('break') >= 0 || h[0].indexOf('jam') >= 0 ? 'var(--fx-danger)' : 'var(--fx-border-strong)'
+        })),
+        verdict: m[9],
+        verdictBorder: m[6] > 100000 ? 'var(--fx-danger)' : m[6] ? 'var(--fx-border-strong)' : 'var(--fx-success)',
+        reassign: () => this.flash(m[0] + ' · moving a machine moves its PM schedule with it, and its history stays attached')
+      })),
+      addMachine: () => this.setState({ showNameplate: true }),
+      showNameplate: s.showNameplate && canEdit,
+      dropNameplate: () => this.setState({ showNameplate: false }),
+      nameplate: [
+        ['Manufacturer', ft === 'woven' ? 'Juki Corporation' : 'Mayer & Cie', 0.98],
+        ['Model', ft === 'woven' ? 'DDL-9000C-S' : 'Relanit 3.2 · 30 inch', 0.95],
+        ['Serial', ft === 'woven' ? 'DDL9C-2019-44730' : 'RL32-2019-6741', 0.97],
+        ['Year', '2019', 0.71],
+        ['Voltage', '220 V · single phase', 0.93]
+      ].map(r => ({
+        k: r[0], v: r[1], conf: r[2].toFixed(2),
+        confColor: r[2] < 0.85 ? 'var(--fx-warning)' : 'var(--fx-text-primary)',
+        sel: r[2] < 0.85 ? 'var(--fx-warning)' : 'var(--fx-success)'
+      })),
+
+      showSync: allowed && screen !== 'p3',
+      sync: {
+        c: s.offline ? 'var(--fx-warning)' : 'var(--fx-success)',
+        title: s.offline ? 'Working offline' : 'Everything saved',
+        note: s.offline
+          ? 'Two ticket updates and four PM ticks are held on this tablet. They go up in order the moment the hall wifi comes back, and nothing is lost if the battery dies first.'
+          : 'Tickets and PM ticks are going up as you make them. The knitting hall drops signal near the dye house — you will see this bar turn amber, not an error.',
+        meta: s.offline ? '6 queued · last sync 10:41' : 'last sync 11:04'
+      },
+
+      access: ACCESS.map(a => ({ role: a[0], level: a[1], note: a[2], chip: this.chip(a[1]) })),
+      toast: s.toast, clearToast: () => this.setState({ toast: '' }),
+      markBottom: (allowed && screen !== 'p3') ? '84px' : '22px',
+      markStage: { position: 'relative', width: '32px', height: '32px', flexShrink: 0 },
+      markSlashes: SLASH_VEC.map((v, i) => ({
+        src: 'assets/mark/' + (mode === 'dark' ? 'w-' : 'i-') + (i + 1) + '.png',
+        style: { position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', transformOrigin: 'center' }
+      }))
+    };
+  }
+}
+
+</script>
+</body>
+</html>

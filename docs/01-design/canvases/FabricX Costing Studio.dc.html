@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #F3F1EC; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  [data-mode="dark"] { --fx-bg-canvas:#0F131B !important; --fx-bg-surface:#181D29 !important; --fx-bg-raised:#212736 !important; --fx-bg-sunken:#0B0E15 !important; --fx-bg-hover:rgba(255,255,255,.05) !important; --fx-bg-selected:rgba(225,179,52,.17) !important; --fx-border-subtle:#252B3A !important; --fx-border-default:#343B4C !important; --fx-border-strong:#4E576B !important; --fx-text-primary:#F4F3F0 !important; --fx-text-secondary:#AEB5C4 !important; --fx-text-tertiary:#7C8497 !important; --fx-text-disabled:#565E71 !important; --fx-text-inverse:#181D29 !important; --fx-accent-hover:#EBC352 !important; --fx-accent-pressed:#F2D077 !important; --fx-accent-subtle:rgba(225,179,52,.14) !important; --fx-success:#4FA97D !important; --fx-warning:#D99A3F !important; --fx-danger:#E0665C !important; --fx-info:#6D9BE8 !important; --fx-focus:#E1B334 !important; --fx-sh1:0 0 0 1px #252B3A !important; --fx-sh2:0 0 0 1px #252B3A !important; --fx-sh3:0 0 0 1px #343B4C !important; }
+  body:has([data-mode="dark"]) { background: #0B0E15; }
+  a { color: #181D29; text-decoration: underline; text-underline-offset: 3px; }
+  a:hover { color: #B88C21; }
+  @keyframes fx-breathe { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(calc(var(--dx) * 3.5%), calc(var(--dy) * 3.5%)); } }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
+</style>
+</helmet>
+
+<div data-mode="{{ mode }}" style="--fx-bg-canvas:#FBFAF8; --fx-bg-surface:#FFFFFF; --fx-bg-sunken:#F3F1EC; --fx-bg-hover:rgba(24,29,41,.035); --fx-bg-selected:rgba(225,179,52,.12); --fx-border-subtle:#E7E4DE; --fx-border-default:#D6D2C9; --fx-border-strong:#A9A49A; --fx-text-primary:#181D29; --fx-text-secondary:#4C5364; --fx-text-tertiary:#767E90; --fx-text-disabled:#A8AEBB; --fx-text-inverse:#FBFAF8; --fx-accent:#E1B334; --fx-accent-hover:#CFA22B; --fx-accent-pressed:#B88C21; --fx-accent-subtle:#FAF1DA; --fx-accent-on:#181D29; --fx-success:#2F7D5B; --fx-warning:#B4741C; --fx-danger:#B23A32; --fx-info:#2F5FA8; --fx-focus:#181D29; --fx-sh1:0 1px 2px rgba(24,29,41,.06); --fx-sh2:0 4px 12px rgba(24,29,41,.08); --fx-sh3:0 12px 32px rgba(24,29,41,.12); font-family:'Plus Jakarta Sans',system-ui,sans-serif; color:var(--fx-text-primary); min-height:100vh; background:var(--fx-bg-sunken);">
+
+<div style="position:sticky; top:0; z-index:60; background:var(--fx-bg-surface); border-bottom:1px solid var(--fx-border-default); padding:10px 20px; display:flex; align-items:center; gap:18px; flex-wrap:wrap;">
+  <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Prototype bar — not product chrome</div>
+  <div style="display:flex; gap:2px; background:var(--fx-bg-sunken); border-radius:8px; padding:3px;">
+    <sc-for list="{{ screens }}" as="s" hint-placeholder-count="3">
+      <button onClick="{{ s.pick }}" style="{{ s.style }}">{{ s.label }}</button>
+    </sc-for>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px;">
+    <span style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">role</span>
+    <select onChange="{{ setRole }}" value="{{ role }}" style="background:var(--fx-bg-surface); color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:4px; padding:7px 9px; font:500 12px/1 'JetBrains Mono',monospace;">
+      <option value="merchandiser">merchandiser</option>
+      <option value="manager">manager</option>
+      <option value="owner">owner</option>
+      <option value="commercial">commercial</option>
+      <option value="viewer">viewer</option>
+    </select>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px;">
+    <span style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">factory</span>
+    <select onChange="{{ setFtype }}" value="{{ ftype }}" style="background:var(--fx-bg-surface); color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:4px; padding:7px 9px; font:500 12px/1 'JetBrains Mono',monospace;">
+      <option value="woven">woven</option>
+      <option value="knit">knit</option>
+      <option value="knit-composite">knit-composite</option>
+    </select>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px;">
+    <span style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">state</span>
+    <select onChange="{{ setSt }}" value="{{ st }}" style="background:var(--fx-bg-surface); color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:4px; padding:7px 9px; font:500 12px/1 'JetBrains Mono',monospace;">
+      <sc-for list="{{ stOptions }}" as="o" hint-placeholder-count="3">
+        <option value="{{ o.v }}">{{ o.t }}</option>
+      </sc-for>
+    </select>
+  </div>
+  <div style="display:flex; align-items:center; gap:10px; margin-left:auto;">
+    <button onClick="{{ toggleMode }}" style="{{ modeBtn }}">{{ modeLabel }}</button>
+    <button onClick="{{ toggleAnnot }}" style="{{ annotBtn }}">actions {{ annotLabel }}</button>
+  </div>
+</div>
+
+<div style="display:flex; align-items:stretch; min-height:calc(100vh - 49px);">
+
+  <div style="width:236px; flex-shrink:0; background:var(--fx-bg-surface); border-right:1px solid var(--fx-border-subtle); padding:20px 14px; display:flex; flex-direction:column; gap:20px;">
+    <img src="{{ logoSrc }}" alt="FabricX AI" style="height:26px; width:auto; align-self:flex-start; max-width:100%; object-fit:contain;" />
+    <div style="display:flex; flex-direction:column; gap:2px;">
+      <sc-for list="{{ nav }}" as="n" hint-placeholder-count="3">
+        <div onClick="{{ n.pick }}" style="{{ n.style }}">
+          <div style="{{ n.marker }}"></div>{{ n.label }}
+        </div>
+      </sc-for>
+    </div>
+    <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+      <div style="font:400 11px/1.5 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:8px 9px;">{{ navNote }}</div>
+    </sc-if>
+    <div style="margin-top:auto; display:flex; flex-direction:column; gap:7px;">
+      <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Signed in</div>
+      <div style="font:500 14px/1.3 'Plus Jakarta Sans',sans-serif;">{{ userName }}</div>
+      <div style="font:400 12px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ role }} · desk density</div>
+    </div>
+  </div>
+
+  <div style="flex:1; min-width:0; background:var(--fx-bg-canvas); position:relative; padding:0 0 96px;">
+
+  <sc-if value="{{ locked }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:26px 28px; display:flex; flex-direction:column; gap:18px; max-width:1280px;">
+      <div style="max-width:520px; background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:32px; display:flex; flex-direction:column; gap:14px; box-shadow:var(--fx-sh1);">
+        <div style="font:600 22px/1.25 'Plus Jakarta Sans',sans-serif;">You don't have access to costing</div>
+        <div style="font:400 15px/1.6 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">Cost sheets carry our margin. Your role is <span style="font-family:'JetBrains Mono',monospace; font-size:13.5px; color:var(--fx-text-primary);">{{ role }}</span>.</div>
+      </div>
+      <div style="max-width:640px; font:400 14px/1.6 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">No style names, no buyer, no line counts. What a factory pays for yarn is the most commercially sensitive number it holds — the locked card leaks none of its shape.</div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP1 }}" hint-placeholder-val="{{ true }}">
+    <div style="padding:26px 28px; display:flex; flex-direction:column; gap:18px; max-width:1280px;">
+      <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex-wrap:wrap;">
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Costing · bill of materials</div>
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <div style="font:700 32px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">{{ style.code }}</div>
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-secondary); border:1px solid var(--fx-border-default); border-radius:4px; padding:6px 8px;">{{ style.badge }}</div>
+          </div>
+          <div style="font:400 15px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">{{ style.desc }}</div>
+        </div>
+        <div style="display:flex; gap:24px; flex-wrap:wrap;">
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <div style="font:400 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Buyer</div>
+            <div style="font:500 15px/1.2 'Plus Jakarta Sans',sans-serif;">{{ style.buyer }}</div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <div style="font:400 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Order</div>
+            <div style="font:500 15px/1.2 'JetBrains Mono',monospace;">{{ style.qty }}</div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <div style="font:400 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">BOM</div>
+            <div style="font:500 15px/1.2 'JetBrains Mono',monospace;">v2 · draft</div>
+          </div>
+        </div>
+      </div>
+      <div style="height:9px; background-image:repeating-linear-gradient(115deg, var(--fx-accent) 0 2px, transparent 2px 9px);"></div>
+
+      <sc-if value="{{ hasMatch }}" hint-placeholder-val="{{ true }}">
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-accent); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh2); clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);">
+          <div style="display:flex; align-items:center; gap:12px; padding:15px 20px; background:var(--fx-accent-subtle); flex-wrap:wrap;">
+            <div style="width:26px; height:26px; border-radius:999px; background:#181D29; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+              <img src="uploads/MARBIM_logo.png" alt="" style="width:14px; height:14px;" />
+            </div>
+            <div style="font:600 15px/1.3 'Plus Jakarta Sans',sans-serif;">{{ match.headline }}</div>
+            <div style="font:600 15px/1 'JetBrains Mono',monospace; color:var(--fx-accent-pressed); margin-left:auto;">{{ match.score }}</div>
+          </div>
+          <div style="padding:18px 20px; display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:18px;">
+            <div style="display:flex; flex-direction:column; gap:9px;">
+              <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Same</div>
+              <sc-for list="{{ match.same }}" as="m" hint-placeholder-count="4">
+                <div style="display:flex; align-items:flex-start; gap:10px;">
+                  <div style="width:7px; height:7px; border-radius:999px; background:var(--fx-success); margin-top:6px; flex-shrink:0;"></div>
+                  <div style="font:400 13.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ m }}</div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:9px;">
+              <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Different — check these after seeding</div>
+              <sc-for list="{{ match.diff }}" as="m" hint-placeholder-count="3">
+                <div style="display:flex; align-items:flex-start; gap:10px;">
+                  <div style="width:7px; height:7px; border-radius:999px; background:var(--fx-warning); margin-top:6px; flex-shrink:0;"></div>
+                  <div style="font:400 13.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ m }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="padding:0 20px 18px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <sc-if value="{{ canDraft }}" hint-placeholder-val="{{ true }}">
+              <button onClick="{{ seed }}" style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:12px 18px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-accent-hover)">Seed 17 lines from {{ match.order }}</button>
+              <button onClick="{{ dismissMatch }}" style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:8px; padding:11px 16px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;">Start empty</button>
+            </sc-if>
+            <div style="font:400 12.5px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); margin-left:auto; max-width:46ch; text-wrap:pretty;">Seeding copies consumption and wastage, never prices — those are re-quoted every time. The two differences above land as empty lines for you to fill.</div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ noMatch }}" hint-placeholder-val="{{ false }}">
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:20px; display:flex; align-items:center; gap:14px; flex-wrap:wrap; box-shadow:var(--fx-sh1);">
+          <div style="font:500 14px/1.4 'Plus Jakarta Sans',sans-serif;">No close match in the last 18 months</div>
+          <div style="font:400 13.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); flex:1 1 320px; min-width:0; text-wrap:pretty;">Best was 64% — a different fabric family, so seeding would give you numbers you have to unpick. Build it from the template instead.</div>
+          <sc-if value="{{ canDraft }}" hint-placeholder-val="{{ true }}">
+            <button style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-strong); border-radius:8px; padding:11px 16px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-bg-hover)">Use the shirt template</button>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <sc-for list="{{ bomGroups }}" as="g" hint-placeholder-count="4">
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            <div style="font:600 17px/1.2 'Plus Jakarta Sans',sans-serif;">{{ g.name }}</div>
+            <div style="font:400 12.5px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ g.count }}</div>
+            <div style="flex:1; height:7px; background-image:repeating-linear-gradient(115deg, var(--fx-border-default) 0 2px, transparent 2px 9px);"></div>
+            <sc-if value="{{ canDraft }}" hint-placeholder-val="{{ true }}">
+              <button onClick="{{ g.add }}" style="background:transparent; color:var(--fx-text-secondary); border:1px solid var(--fx-border-default); border-radius:8px; padding:10px 14px; font:600 13px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-bg-hover); color:var(--fx-text-primary)">Add a line</button>
+            </sc-if>
+          </div>
+          <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+            <div style="overflow-x:auto;">
+            <div style="min-width:1020px;">
+              <div style="display:flex; align-items:stretch; background:var(--fx-bg-sunken); border-bottom:1px solid var(--fx-border-subtle);">
+                <div style="width:3px; flex-shrink:0;"></div>
+                <div style="flex:1; min-width:0; display:grid; grid-template-columns:1.5fr 1.2fr 116px 88px 92px 176px; gap:14px; padding:11px 20px 11px 17px; font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">
+                  <div>Item</div><div>Spec</div><div style="text-align:right;">Consumption</div><div style="text-align:right;">Wastage</div><div style="text-align:right;">Net</div><div>Source</div>
+                </div>
+              </div>
+              <sc-for list="{{ g.lines }}" as="l" hint-placeholder-count="4">
+                <div onClick="{{ l.edit }}" style="{{ l.rowStyle }}">
+                  <div style="width:3px; flex-shrink:0; background:{{ l.sel }};"></div>
+                  <div style="flex:1; min-width:0; display:grid; grid-template-columns:1.5fr 1.2fr 116px 88px 92px 176px; gap:14px; padding:12px 20px 12px 17px; align-items:center; min-height:44px;">
+                    <div style="font:500 14px/1.35 'Plus Jakarta Sans',sans-serif; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ l.item }}</div>
+                    <div style="font:400 12.5px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ l.spec }}</div>
+                    <div style="font:400 13px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-secondary); text-align:right;">{{ l.cons }}</div>
+                    <div style="font:400 13px/1.3 'JetBrains Mono',monospace; color:{{ l.wastageColor }}; text-align:right;">{{ l.wastage }}</div>
+                    <div style="font:600 13px/1.3 'JetBrains Mono',monospace; text-align:right;">{{ l.net }}</div>
+                    <div><span style="{{ l.chip }}">{{ l.source }}</span></div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+            </div>
+          </div>
+        </div>
+      </sc-for>
+
+      <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">bom.addLine · bom.editLine</div>
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">bom.seedFromOrder — offered only above 80% match, and the match card comes first</div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP2 }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:26px 28px; display:flex; flex-direction:column; gap:16px; max-width:1320px;">
+      <div style="display:flex; align-items:center; gap:8px; font:400 13px/1 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">
+        <span onClick="{{ goP1 }}" style="cursor:pointer;">BOM {{ style.code }}</span><span style="opacity:.5;">/</span><span style="color:var(--fx-text-primary); font-weight:500; font-family:'JetBrains Mono',monospace; font-size:12.5px;">CS-2026-0417 · v2</span>
+      </div>
+      <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex-wrap:wrap;">
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div style="font:700 32px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">Cost sheet</div>
+          <div style="font:400 15px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">{{ style.code }} · {{ style.buyer }} · {{ style.qty }} · FOB Chattogram</div>
+        </div>
+        <div style="font:400 13px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">$1 = ৳119.50 · rate fixed at draft</div>
+      </div>
+      <div style="height:9px; background-image:repeating-linear-gradient(115deg, var(--fx-accent) 0 2px, transparent 2px 9px);"></div>
+
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(420px, 1fr)); gap:18px; align-items:start;">
+
+        <div style="display:flex; flex-direction:column; gap:16px;">
+
+          <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+            <div style="display:flex; align-items:center; gap:12px; padding:16px 20px 12px; flex-wrap:wrap;">
+              <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Fabric</div>
+              <div style="font:500 10.5px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-secondary); border:1px solid var(--fx-border-default); border-radius:3px; padding:5px 7px;">{{ fabric.variant }}</div>
+              <div style="font:600 15px/1.2 'JetBrains Mono',monospace; margin-left:auto;">{{ fabric.total }}</div>
+            </div>
+            <div style="padding:0 20px 6px; font:400 13px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ fabric.lead }}</div>
+            <div style="padding:12px 20px 0;">
+              <sc-for list="{{ fabric.rows }}" as="r" hint-placeholder-count="5">
+                <div style="{{ r.rowStyle }}">
+                  <div style="font:400 13.5px/1.4 'Plus Jakarta Sans',sans-serif; color:{{ r.labelColor }};">{{ r.label }}</div>
+                  <div style="font:400 12px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); text-align:right;">{{ r.basis }}</div>
+                  <div style="font:{{ r.weight }} 13.5px/1.3 'JetBrains Mono',monospace; text-align:right; color:{{ r.valueColor }};">{{ r.usd }}</div>
+                  <div style="font:400 12.5px/1.3 'JetBrains Mono',monospace; text-align:right; color:var(--fx-text-tertiary);">{{ r.bdt }}</div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="padding:14px 20px 18px; font:400 12px/1.45 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ fabric.foot }}</div>
+          </div>
+
+          <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+            <div style="display:flex; align-items:center; gap:12px; padding:16px 20px 12px; flex-wrap:wrap;">
+              <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Trims and packing</div>
+              <div style="font:600 15px/1.2 'JetBrains Mono',monospace; margin-left:auto;">{{ trims.total }}</div>
+            </div>
+            <div style="padding:6px 20px 0;">
+              <sc-for list="{{ trims.rows }}" as="r" hint-placeholder-count="6">
+                <div style="{{ r.rowStyle }}">
+                  <div style="font:400 13.5px/1.4 'Plus Jakarta Sans',sans-serif; color:{{ r.labelColor }};">{{ r.label }}</div>
+                  <div style="font:400 12px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); text-align:right;">{{ r.basis }}</div>
+                  <div style="font:{{ r.weight }} 13.5px/1.3 'JetBrains Mono',monospace; text-align:right; color:{{ r.valueColor }};">{{ r.usd }}</div>
+                  <div style="font:400 12.5px/1.3 'JetBrains Mono',monospace; text-align:right; color:var(--fx-text-tertiary);">{{ r.bdt }}</div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="padding:14px 20px 18px; font:400 12px/1.45 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">quantities come from the BOM — change one there and this recomputes</div>
+          </div>
+
+          <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+            <div style="display:flex; align-items:center; gap:12px; padding:16px 20px 12px; flex-wrap:wrap;">
+              <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Cut and make</div>
+              <div style="display:flex; gap:2px; background:var(--fx-bg-sunken); border-radius:8px; padding:3px; margin-left:auto;">
+                <sc-for list="{{ cmMethods }}" as="m" hint-placeholder-count="2">
+                  <button onClick="{{ m.pick }}" style="{{ m.style }}">{{ m.label }}</button>
+                </sc-for>
+              </div>
+            </div>
+            <div style="padding:6px 20px 0;">
+              <sc-for list="{{ cm.rows }}" as="r" hint-placeholder-count="6">
+                <div style="{{ r.rowStyle }}">
+                  <div style="font:400 13.5px/1.4 'Plus Jakarta Sans',sans-serif; color:{{ r.labelColor }};">{{ r.label }}</div>
+                  <div style="font:400 12px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); text-align:right;">{{ r.basis }}</div>
+                  <div style="font:{{ r.weight }} 13.5px/1.3 'JetBrains Mono',monospace; text-align:right; color:{{ r.valueColor }};">{{ r.usd }}</div>
+                  <div style="font:400 12.5px/1.3 'JetBrains Mono',monospace; text-align:right; color:var(--fx-text-tertiary);">{{ r.bdt }}</div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="padding:14px 20px 18px; font:400 12.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ cm.foot }}</div>
+          </div>
+
+          <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+            <div style="display:flex; align-items:center; gap:12px; padding:16px 20px 12px; flex-wrap:wrap;">
+              <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Embellishment and finishing</div>
+              <div style="font:600 15px/1.2 'JetBrains Mono',monospace; margin-left:auto;">{{ emb.total }}</div>
+            </div>
+            <div style="padding:6px 20px 0;">
+              <sc-for list="{{ emb.rows }}" as="r" hint-placeholder-count="3">
+                <div style="{{ r.rowStyle }}">
+                  <div style="font:400 13.5px/1.4 'Plus Jakarta Sans',sans-serif; color:{{ r.labelColor }};">{{ r.label }}</div>
+                  <div style="font:400 12px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); text-align:right;">{{ r.basis }}</div>
+                  <div style="font:{{ r.weight }} 13.5px/1.3 'JetBrains Mono',monospace; text-align:right; color:{{ r.valueColor }};">{{ r.usd }}</div>
+                  <div style="font:400 12.5px/1.3 'JetBrains Mono',monospace; text-align:right; color:var(--fx-text-tertiary);">{{ r.bdt }}</div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="padding:14px 20px 18px; font:400 12px/1.45 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ emb.foot }}</div>
+          </div>
+
+          <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+            <div style="display:flex; align-items:center; gap:12px; padding:16px 20px 12px; flex-wrap:wrap;">
+              <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Commercial and margin</div>
+              <div style="font:600 15px/1.2 'JetBrains Mono',monospace; margin-left:auto;">{{ comm.total }}</div>
+            </div>
+            <div style="padding:6px 20px 0;">
+              <sc-for list="{{ comm.rows }}" as="r" hint-placeholder-count="6">
+                <div style="{{ r.rowStyle }}">
+                  <div style="font:400 13.5px/1.4 'Plus Jakarta Sans',sans-serif; color:{{ r.labelColor }};">{{ r.label }}</div>
+                  <div style="font:400 12px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); text-align:right;">{{ r.basis }}</div>
+                  <div style="font:{{ r.weight }} 13.5px/1.3 'JetBrains Mono',monospace; text-align:right; color:{{ r.valueColor }};">{{ r.usd }}</div>
+                  <div style="font:400 12.5px/1.3 'JetBrains Mono',monospace; text-align:right; color:var(--fx-text-tertiary);">{{ r.bdt }}</div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="padding:14px 20px 18px; font:400 12.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ comm.foot }}</div>
+          </div>
+
+          <sc-if value="{{ showWaterfall }}" hint-placeholder-val="{{ false }}">
+            <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+              <div style="display:flex; align-items:center; gap:12px; padding:16px 20px 12px; flex-wrap:wrap;">
+                <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Planned vs actual · shipped 24 Jul</div>
+                <div style="font:500 13px/1.2 'JetBrains Mono',monospace; color:var(--fx-warning); margin-left:auto;">margin 16.5% vs 17.9% planned</div>
+              </div>
+              <div style="padding:6px 20px 18px; display:flex; flex-direction:column; gap:12px;">
+                <sc-for list="{{ waterfall }}" as="w" hint-placeholder-count="6">
+                  <div style="display:flex; flex-direction:column; gap:6px;">
+                    <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">
+                      <div style="font:400 13.5px/1.4 'Plus Jakarta Sans',sans-serif; color:{{ w.labelColor }};">{{ w.label }}</div>
+                      <div style="font:500 13px/1.3 'JetBrains Mono',monospace; color:{{ w.c }}; margin-left:auto;">{{ w.delta }}</div>
+                      <div style="font:400 12.5px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); width:64px; text-align:right;">{{ w.running }}</div>
+                    </div>
+                    <div style="height:8px; border-radius:999px; background:var(--fx-bg-sunken); overflow:hidden; display:flex;">
+                      <div style="{{ w.barStyle }}"></div>
+                    </div>
+                    <div style="font:400 12.5px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ w.why }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+
+        <div style="position:sticky; top:69px; display:flex; flex-direction:column; gap:16px;">
+          <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh2); clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);">
+            <div style="padding:18px 20px 14px; display:flex; flex-direction:column; gap:14px;">
+              <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Live</div>
+              <div style="display:flex; flex-direction:column; gap:4px;">
+                <div style="font:400 11.5px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">FOB per piece</div>
+                <div style="display:flex; align-items:baseline; gap:10px;">
+                  <div style="font:700 34px/1.05 'JetBrains Mono',monospace; letter-spacing:-.01em;">{{ rail.fob }}</div>
+                  <div style="font:400 14px/1.2 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ rail.fobBdt }}</div>
+                </div>
+              </div>
+              <div style="display:flex; gap:22px; flex-wrap:wrap;">
+                <div style="display:flex; flex-direction:column; gap:4px;">
+                  <div style="font:400 11.5px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">CM</div>
+                  <div style="font:600 20px/1.1 'JetBrains Mono',monospace;">{{ rail.cm }}</div>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:4px;">
+                  <div style="font:400 11.5px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">Margin</div>
+                  <div style="font:600 20px/1.1 'JetBrains Mono',monospace; color:{{ rail.marginColor }};">{{ rail.margin }}</div>
+                </div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:7px;">
+                <div style="display:flex; justify-content:space-between; font:400 11.5px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);"><span>floor 15%</span><span>{{ rail.marginPct }}</span></div>
+                <div style="display:flex; gap:4px; align-items:center;">
+                  <sc-for list="{{ rail.ticks }}" as="t" hint-placeholder-count="20">
+                    <div style="width:2px; height:15px; transform:skewX(-34deg); flex-shrink:0; background:{{ t.c }};"></div>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="font:400 12.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ rail.note }}</div>
+            </div>
+            <div style="padding:0 20px 18px; display:flex; flex-direction:column; gap:9px;">
+              <sc-if value="{{ canDraft }}" hint-placeholder-val="{{ true }}">
+                <button onClick="{{ submit }}" style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:13px 18px; font:600 14.5px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:48px;" style-hover="background:var(--fx-accent-hover)">Submit for approval</button>
+                <button onClick="{{ saveVersion }}" style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-strong); border-radius:8px; padding:12px 16px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;">Save as v3</button>
+              </sc-if>
+              <sc-if value="{{ canApprove }}" hint-placeholder-val="{{ false }}">
+                <button onClick="{{ approve }}" style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:13px 18px; font:600 14.5px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:48px;" style-hover="background:var(--fx-accent-hover)">{{ approveLabel }}</button>
+              </sc-if>
+              <button onClick="{{ toggleWaterfall }}" style="{{ waterfallBtn }}">Compare with actual</button>
+              <sc-if value="{{ viewOnlyRail }}" hint-placeholder-val="{{ false }}">
+                <div style="font:500 13px/1.5 'JetBrains Mono',monospace; color:var(--fx-text-secondary);">{{ viewOnlyNote }}</div>
+              </sc-if>
+            </div>
+          </div>
+
+          <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:18px 20px; display:flex; flex-direction:column; gap:11px; box-shadow:var(--fx-sh1);">
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Where this goes</div>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <sc-for list="{{ routes }}" as="r" hint-placeholder-count="2">
+                <div style="display:flex; align-items:flex-start; gap:10px;">
+                  <div style="width:6px; height:6px; border-radius:999px; background:{{ r.c }}; margin-top:6px; flex-shrink:0;"></div>
+                  <div style="display:flex; flex-direction:column; gap:2px; min-width:0;">
+                    <div style="font:500 13px/1.4 'Plus Jakarta Sans',sans-serif;">{{ r.who }}</div>
+                    <div style="font:400 12.5px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ r.when }}</div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+            <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+              <div style="font:400 11px/1.4 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:6px 8px;">costing.compute (live) · costing.saveVersion · costing.submitForApproval · costing.compareActual</div>
+            </sc-if>
+          </div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP3 }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:26px 28px; display:flex; flex-direction:column; gap:18px; max-width:1280px;">
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Costing · templates</div>
+        <div style="font:700 32px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">Consumption templates</div>
+        <div style="font:400 15px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:68ch; text-wrap:pretty;">One template per product type, each pointing at the order it was last learned from. Drift is the gap between the template and what the last three orders actually consumed — when it opens up, the template is costing you money in both directions.</div>
+        <div style="height:9px; background-image:repeating-linear-gradient(115deg, var(--fx-accent) 0 2px, transparent 2px 9px);"></div>
+      </div>
+
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+        <div style="overflow-x:auto;">
+        <div style="min-width:1080px;">
+          <div style="display:flex; align-items:stretch; background:var(--fx-bg-sunken); border-bottom:1px solid var(--fx-border-subtle);">
+            <div style="width:3px; flex-shrink:0;"></div>
+            <div style="flex:1; min-width:0; display:grid; grid-template-columns:1.5fr 148px 116px 200px 108px 148px; gap:14px; padding:11px 20px 11px 17px; font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">
+              <div>Product type</div><div>Basis</div><div style="text-align:right;">Consumption</div><div>Last learned from</div><div style="text-align:right;">Drift</div><div style="text-align:right;">Action</div>
+            </div>
+          </div>
+          <sc-for list="{{ templates }}" as="t" hint-placeholder-count="5">
+            <div style="display:flex; align-items:stretch; border-bottom:1px solid var(--fx-border-subtle);" style-hover="background:var(--fx-bg-hover)">
+              <div style="width:{{ t.selW }}; flex-shrink:0; background:{{ t.sel }};"></div>
+              <div style="flex:1; min-width:0; display:grid; grid-template-columns:1.5fr 148px 116px 200px 108px 148px; gap:14px; padding:12px 20px 12px 17px; align-items:center; min-height:44px;">
+                <div style="display:flex; flex-direction:column; gap:3px; min-width:0;">
+                  <div style="font:500 14px/1.35 'Plus Jakarta Sans',sans-serif;">{{ t.name }}</div>
+                  <div style="font:400 12px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ t.code }}</div>
+                </div>
+                <div style="font:400 12.5px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">{{ t.basis }}</div>
+                <div style="font:600 13.5px/1.3 'JetBrains Mono',monospace; text-align:right;">{{ t.cons }}</div>
+                <div style="display:flex; flex-direction:column; gap:3px; min-width:0;">
+                  <a href="#" style="font:500 13px/1.3 'JetBrains Mono',monospace;">{{ t.order }}</a>
+                  <div style="font:400 12px/1.3 'JetBrains Mono',monospace; color:{{ t.ageColor }};">{{ t.age }}</div>
+                </div>
+                <div style="font:500 13.5px/1.3 'JetBrains Mono',monospace; text-align:right; color:{{ t.driftColor }};">{{ t.drift }}</div>
+                <div style="display:flex; justify-content:flex-end;">
+                  <sc-if value="{{ t.showRefresh }}" hint-placeholder-val="{{ false }}">
+                    <button onClick="{{ t.refresh }}" style="{{ t.refreshStyle }}">Refresh</button>
+                  </sc-if>
+                  <sc-if value="{{ t.showFresh }}" hint-placeholder-val="{{ true }}">
+                    <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">current</div>
+                  </sc-if>
+                </div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        </div>
+        <div style="padding:14px 20px; font:400 12px/1.45 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">refreshing rewrites the template for every future quote, so it is an approval, not a save</div>
+      </div>
+
+      <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+        <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px; align-self:flex-start;">costing.refreshTemplate → Approve inbox (approver: manager)</div>
+      </sc-if>
+
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Role access — costing</div>
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden;">
+          <sc-for list="{{ access }}" as="a" hint-placeholder-count="6">
+            <div style="display:grid; grid-template-columns:1fr 96px 1.5fr; gap:16px; padding:11px 18px; align-items:center; border-bottom:1px solid var(--fx-border-subtle);">
+              <div style="font:500 13px/1.4 'JetBrains Mono',monospace;">{{ a.role }}</div>
+              <div><span style="{{ a.chip }}">{{ a.level }}</span></div>
+              <div style="font:400 13px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ a.note }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <div style="position:absolute; right:22px; bottom:22px; display:flex; align-items:center; gap:11px;">
+    <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ markLabel }}</div>
+    <div role="img" aria-label="MARBIM" style="{{ markStage }}">
+      <sc-for list="{{ markSlashes }}" as="s" hint-placeholder-count="8">
+        <img src="{{ s.src }}" alt="" style="{{ s.style }}" />
+      </sc-for>
+    </div>
+  </div>
+
+  </div>
+</div>
+
+<sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed; left:50%; bottom:28px; transform:translateX(-50%); z-index:90; background:var(--fx-text-primary); color:var(--fx-text-inverse); border-radius:8px; box-shadow:var(--fx-sh3); padding:14px 18px; display:flex; align-items:center; gap:14px; max-width:92vw;">
+    <div style="font:500 13.5px/1.4 'Plus Jakarta Sans',sans-serif;">{{ toast }}</div>
+    <button onClick="{{ clearToast }}" style="background:transparent; border:none; color:var(--fx-accent); font:600 12px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer;">Dismiss</button>
+  </div>
+</sc-if>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;role&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;merchandiser&quot;,&quot;manager&quot;,&quot;owner&quot;,&quot;commercial&quot;,&quot;viewer&quot;],&quot;default&quot;:&quot;merchandiser&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Access&quot;},&quot;factoryType&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;woven&quot;,&quot;knit&quot;,&quot;knit-composite&quot;],&quot;default&quot;:&quot;woven&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Access&quot;},&quot;showActionNames&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Annotation&quot;}}">
+const SLASH_VEC = [
+  { dx: -0.896, dy: 0.444 }, { dx: -0.271, dy: 0.963 }, { dx: -0.97, dy: -0.243 }, { dx: 0.415, dy: 0.91 },
+  { dx: -0.512, dy: -0.859 }, { dx: 0.936, dy: 0.352 }, { dx: 0.282, dy: -0.96 }, { dx: 0.908, dy: -0.419 }
+];
+
+const FX = 119.5;
+const usd = v => '$' + v.toFixed(3).replace(/0$/, '');
+const usd2 = v => '$' + v.toFixed(2);
+const tk = v => '৳' + (v * FX).toFixed(1);
+const tk0 = v => '৳' + Math.round(v * FX);
+
+const USERS = {
+  merchandiser: 'Nabila Rahman', manager: 'Shafiq Alam', owner: 'M. A. Chowdhury',
+  commercial: 'Tanvir Hasan', viewer: 'Audit (external)'
+};
+
+const STYLES = {
+  woven: { code: 'SH-4471', badge: 'woven', buyer: 'H&M', qty: '24,000 pcs', desc: "men's long-sleeve shirt · 40s poplin, garment wash" },
+  knit: { code: 'PL-2210', badge: 'knit', buyer: 'Bestseller', qty: '42,000 pcs', desc: 'polo 180gsm pique · fabric bought ready-dyed' },
+  'knit-composite': { code: 'PL-2210', badge: 'knit-composite', buyer: 'Bestseller', qty: '42,000 pcs', desc: 'polo 180gsm pique · knitted and dyed in-house' }
+};
+
+const MATCH = {
+  woven: {
+    order: 'PO-88096', score: '87% match',
+    headline: 'SH-4390 for H&M is close enough to seed from',
+    same: ['40s poplin body, same 133 × 72 construction', 'Garment wash, same wash house', 'Same trim family — 18L horn-look buttons, woven main label', 'Same size range and packing method'],
+    diff: ['Collar interlining is fusible here, sewn-in on SH-4390', 'Size ratio is heavier on L and XL this time']
+  },
+  knit: {
+    order: 'PO-88104', score: '84% match',
+    headline: 'PL-2180 for Bestseller is close enough to seed from',
+    same: ['180gsm single pique, same combed cotton', 'Rib collar and cuff from the same knitter', 'Same 3-button placket and twill tape', 'Same polybag and carton spec'],
+    diff: ['Embroidery is new — PL-2180 had a printed logo', 'Four shades this time instead of two']
+  },
+  'knit-composite': {
+    order: 'PO-88104', score: '84% match',
+    headline: 'PL-2180 for Bestseller is close enough to seed from',
+    same: ['180gsm single pique knitted in-house on the same machines', 'Same 30/1 combed cotton count', 'Rib collar and cuff knitted in-house', 'Same polybag and carton spec'],
+    diff: ['Embroidery is new — PL-2180 had a printed logo', 'Dyeing is reactive four-shade, PL-2180 was two']
+  }
+};
+
+// group, item, spec, consumption, wastage, net, source
+const BOM = {
+  woven: [
+    ['Fabric', '40s poplin body', '40s × 40s, 133 × 72, 100% cotton', '1.42 m', '6%', '1.505 m', 'tech pack p.4'],
+    ['Fabric', 'Collar and cuff interlining', 'fusible, 40gsm', '0.09 m', '4%', '0.094 m', 'tech pack p.6'],
+    ['Trims', 'Buttons 18L horn-look', '9 on garment + 1 spare', '10 pcs', '2%', '10.2 pcs', 'tech pack p.8'],
+    ['Trims', 'Sewing thread', 'poly core spun, 40/2', '145 m', '8%', '157 m', 'standard'],
+    ['Trims', 'Main and care labels', 'woven main, printed care, size', '3 pcs', '1%', '3.03 pcs', 'buyer email 09 Aug'],
+    ['Trims', 'Collar bone', 'plastic, 2 per shirt', '2 pcs', '2%', '2.04 pcs', 'standard'],
+    ['Packing', 'Polybag', '320 × 420, 30 micron', '1 pc', '2%', '1.02 pcs', 'tech pack p.11'],
+    ['Packing', 'Carton', '5-ply, 24 pcs per carton', '0.042 pc', '1%', '0.042 pc', 'tech pack p.11'],
+    ['Packing', 'Tissue and back board', '2 tissue, 1 board', '3 pcs', '2%', '3.06 pcs', 'standard'],
+    ['Embellishment', 'Garment wash', 'soft hand feel, nominated wash house', '1 pc', '3%', '1.03 pcs', 'buyer email 10 Aug']
+  ],
+  knit: [
+    ['Fabric', '180gsm single pique body', '100% combed cotton, ready-dyed', '0.28 kg', '12%', '0.3136 kg', 'tech pack p.3'],
+    ['Fabric', 'Rib collar and cuff', '1 × 1 rib, same dye lot', '0.04 kg', '10%', '0.044 kg', 'tech pack p.5'],
+    ['Trims', 'Pearl buttons', '3 on placket', '3 pcs', '2%', '3.06 pcs', 'tech pack p.7'],
+    ['Trims', 'Sewing thread', 'poly core spun, 50/2', '110 m', '8%', '119 m', 'standard'],
+    ['Trims', 'Twill tape', 'placket reinforcement', '0.12 m', '5%', '0.126 m', 'standard'],
+    ['Trims', 'Main and care labels', 'woven main, printed care, size', '3 pcs', '1%', '3.03 pcs', 'tech pack p.7'],
+    ['Packing', 'Polybag', '300 × 400, 30 micron', '1 pc', '2%', '1.02 pcs', 'tech pack p.10'],
+    ['Packing', 'Carton', '5-ply, 30 pcs per carton', '0.033 pc', '1%', '0.033 pc', 'tech pack p.10'],
+    ['Embellishment', 'Chest embroidery', '4,200 stitches, 12-head machine', '1 pc', '2%', '1.02 pcs', 'artwork 09 Aug']
+  ]
+};
+
+const FABRIC = {
+  woven: {
+    variant: 'purchased · per yard',
+    lead: 'Woven shell fabric is bought by the yard from the mill. The yard price is the quote we hold from Well Group, valid 30 days.',
+    rows: [
+      ['Body · 40s poplin', '1.505 m = 1.646 yd', 1.646 * 0.955],
+      ['Interlining', '0.094 m × $0.42/m', 0.094 * 0.42],
+      ['Freight to unit', 'Gazipur, per piece', 0.014]
+    ],
+    foot: 'wash is costed in Embellishment, not here — it is a service on the finished garment, not part of the fabric price'
+  },
+  knit: {
+    variant: 'purchased · per kg',
+    lead: 'Knit fabric is bought ready-dyed by the kilo from Fakir Knitwears, so one price covers knitting, dyeing and finishing.',
+    rows: [
+      ['Body · 180gsm pique', '0.3136 kg × $5.80/kg', 0.3136 * 5.80],
+      ['Rib collar and cuff', '0.044 kg × $6.20/kg', 0.044 * 6.20],
+      ['Freight to unit', 'Narayanganj, per piece', 0.011]
+    ],
+    foot: 'one supplier price per kg — the knitting and dyeing margins belong to them, not to us'
+  },
+  'knit-composite': {
+    variant: 'yarn → fabric build',
+    lead: 'A composite unit knits and dyes its own fabric, so the fabric price is built from the yarn up. Every charge below is ours, which is where the margin on a composite order actually comes from.',
+    rows: [
+      ['Yarn · 30/1 combed cotton', '$3.35/kg', 3.35],
+      ['Knitting charge', 'in-house, $0.42/kg', 0.42],
+      ['Dyeing charge', 'reactive, in-house, $1.05/kg', 1.05],
+      ['Finishing', 'compacting and heat set, $0.28/kg', 0.28],
+      ['Process loss', '8% across knit and dye', 0.44],
+      ['Effective fabric cost', 'per kg, after loss', 5.54],
+      ['Body · 180gsm pique', '0.3136 kg × $5.54/kg', 0.3136 * 5.54],
+      ['Rib collar and cuff', '0.044 kg × $5.54/kg', 0.044 * 5.54]
+    ],
+    foot: 'the per-kg rows build the rate, the last two consume it — only the consuming rows enter the FOB'
+  }
+};
+
+const TRIMS = {
+  woven: [
+    ['Buttons 18L horn-look', '10.2 pcs × $0.021', 10.2 * 0.021],
+    ['Sewing thread', '157 m × $0.0009', 157 * 0.0009],
+    ['Labels · main, care, size', '3.03 pcs × $0.026', 3.03 * 0.026],
+    ['Collar bone', '2.04 pcs × $0.006', 2.04 * 0.006],
+    ['Polybag', '1.02 pcs × $0.032', 1.02 * 0.032],
+    ['Carton', '0.042 pc × $1.42', 0.042 * 1.42],
+    ['Tissue and back board', '3.06 pcs × $0.011', 3.06 * 0.011]
+  ],
+  knit: [
+    ['Pearl buttons', '3.06 pcs × $0.014', 3.06 * 0.014],
+    ['Sewing thread', '119 m × $0.0009', 119 * 0.0009],
+    ['Twill tape', '0.126 m × $0.048', 0.126 * 0.048],
+    ['Labels · main, care, size', '3.03 pcs × $0.026', 3.03 * 0.026],
+    ['Polybag', '1.02 pcs × $0.030', 1.02 * 0.030],
+    ['Carton', '0.033 pc × $1.38', 0.033 * 1.38]
+  ]
+};
+
+const CM_DATA = {
+  woven: { smv: 18.4, eff: 0.62, ops: 42, mins: 600, dayCost: 106000, perDozen: 1500 },
+  knit: { smv: 15.2, eff: 0.68, ops: 38, mins: 600, dayCost: 94000, perDozen: 1344 }
+};
+
+const EMB = {
+  woven: {
+    rows: [['Garment wash', '1.03 pcs × $0.214 · nominated house', 1.03 * 0.214], ['Wash test', 'shrinkage and shade, per piece', 0.008]],
+    foot: 'WOVEN line — the wash is a service bought per garment, and it moves with the wash house price, not the fabric'
+  },
+  knit: {
+    rows: [['Chest embroidery', '4,200 stitches · $0.031/1,000', 4.2 * 0.031], ['Embroidery backing', '1.02 pcs × $0.004', 1.02 * 0.004]],
+    foot: 'in-house on 12 heads — subcontracting the same logo quotes at $0.19, which is why this stays inside'
+  }
+};
+
+const TEMPLATES = [
+  ["Men's shirt · long sleeve", 'TPL-SHIRT-LS', 'metres per piece', '1.42 m', 'PO-88096', '14 Jun 2026', 59, 2.1],
+  ['Polo · pique', 'TPL-POLO-PQ', 'kg per piece', '0.28 kg', 'PO-88104', '02 Jul 2026', 41, -1.4],
+  ['Basic tee · single jersey', 'TPL-TEE-SJ', 'kg per piece', '0.19 kg', 'PO-88061', '11 May 2026', 93, 5.8],
+  ['Denim · 5 pocket', 'TPL-DENIM-5P', 'metres per piece', '1.34 m', 'PO-87990', '28 Mar 2026', 137, 7.4],
+  ['Sweatshirt · brushed back', 'TPL-SWEAT-BB', 'kg per piece', '0.46 kg', 'PO-88044', '22 Apr 2026', 112, 0.9]
+];
+
+const ACCESS = [
+  ['merchandiser', 'edit', 'Drafts the BOM and the cost sheet, submits for approval. Cannot approve their own sheet.'],
+  ['manager', 'approve', 'Approves cost sheets and template refreshes for their department.'],
+  ['owner', 'approve', 'Approves only when the margin falls under the 15% floor. Reads everything.'],
+  ['commercial', 'view', 'Reads the sheet to check LC value and bank charges. No edit.'],
+  ['planner', 'view', 'Reads SMV and line assumptions to plan capacity.'],
+  ['viewer · storekeeper · supervisor · qc · hr · accounts', 'none', 'HIDDEN — costing is absent from nav. What we pay for yarn is the most sensitive number we hold.']
+];
+
+class Component extends DCLogic {
+  state = { screen: 'p1', role: 'merchandiser', ftype: 'woven', st: 'match', annot: true, cmMethod: 'smv', waterfall: false, toast: '', mark: 'rest' };
+
+  componentWillUnmount() { clearTimeout(this._t); }
+
+  flash(msg) {
+    clearTimeout(this._t);
+    this.setState({ toast: msg, mark: 'resolve' });
+    this._t = setTimeout(() => this.setState({ toast: '', mark: 'rest' }), 4400);
+  }
+
+  pill(active) {
+    return {
+      background: active ? 'var(--fx-bg-surface)' : 'transparent',
+      color: active ? 'var(--fx-text-primary)' : 'var(--fx-text-secondary)',
+      border: '1px solid ' + (active ? 'var(--fx-border-default)' : 'transparent'),
+      borderRadius: '6px', padding: '9px 12px', cursor: 'pointer',
+      font: "600 12.5px/1 'Plus Jakarta Sans',sans-serif", whiteSpace: 'nowrap'
+    };
+  }
+
+  ghost(on) {
+    return {
+      background: on ? 'var(--fx-text-primary)' : 'transparent',
+      color: on ? 'var(--fx-text-inverse)' : 'var(--fx-text-secondary)',
+      border: '1px solid ' + (on ? 'var(--fx-text-primary)' : 'var(--fx-border-default)'),
+      borderRadius: '8px', padding: '11px 14px', cursor: 'pointer', minHeight: '44px',
+      font: "500 12.5px/1 'JetBrains Mono',monospace", whiteSpace: 'nowrap'
+    };
+  }
+
+  chip(level) {
+    const base = {
+      font: "500 11px/1 'JetBrains Mono',monospace", letterSpacing: '.05em', textTransform: 'uppercase',
+      borderRadius: '4px', padding: '6px 8px', display: 'inline-block', whiteSpace: 'nowrap'
+    };
+    if (level === 'none') return { ...base, color: 'var(--fx-text-tertiary)', border: '1px solid var(--fx-border-subtle)' };
+    if (level === 'view') return { ...base, color: 'var(--fx-text-secondary)', background: 'var(--fx-bg-sunken)', border: '1px solid transparent' };
+    if (level === 'edit') return { ...base, color: 'var(--fx-text-primary)', border: '1px solid var(--fx-border-strong)' };
+    return { ...base, color: 'var(--fx-text-primary)', border: '1px solid var(--fx-text-primary)', boxShadow: 'inset 3px 0 0 var(--fx-accent)', paddingLeft: '12px' };
+  }
+
+  row(label, basis, val, opts) {
+    const o = opts || {};
+    return {
+      label, basis, usd: o.hide ? '•••' : usd(val), bdt: o.hide ? '•••' : tk(val),
+      weight: o.strong ? '600' : o.medium ? '500' : '400',
+      labelColor: o.muted ? 'var(--fx-text-secondary)' : 'var(--fx-text-primary)',
+      valueColor: o.strong ? 'var(--fx-text-primary)' : 'var(--fx-text-secondary)',
+      rowStyle: {
+        display: 'grid', gridTemplateColumns: '1.35fr 148px 84px 76px', gap: '10px', alignItems: 'center',
+        padding: o.last ? '11px 0 4px' : '9px 0',
+        borderBottom: o.last ? 'none' : '1px solid var(--fx-border-subtle)',
+        borderTop: o.rule ? '1px solid var(--fx-border-default)' : 'none'
+      }
+    };
+  }
+
+  renderVals() {
+    const s = this.state;
+    const mode = s.mode || 'light';
+    const role = s.role, ft = s.ftype, screen = s.screen;
+    const locked = role === 'viewer';
+    const isComposite = ft === 'knit-composite';
+    const isWoven = ft === 'woven';
+    const bomKey = isWoven ? 'woven' : 'knit';
+    const canDraft = role === 'merchandiser';
+    const canApproveRole = role === 'manager' || role === 'owner';
+    const style = STYLES[ft];
+
+    const p1States = [{ v: 'match', t: 'match found' }, { v: 'nomatch', t: 'no close match' }];
+    const p2States = [{ v: 'match', t: 'margin healthy' }, { v: 'below', t: 'margin below floor' }];
+    const stOptions = screen === 'p2' ? p2States : screen === 'p3' ? [{ v: 'match', t: 'ready' }] : p1States;
+    const validSt = stOptions.some(o => o.v === s.st) ? s.st : stOptions[0].v;
+
+    // fabric
+    const fab = FABRIC[ft];
+    const fabRows = fab.rows.map((r, i) => {
+      const isRate = isComposite && i < 6;
+      const consuming = !isComposite || i >= 6;
+      return this.row(r[0], r[1], r[2], {
+        muted: isRate, medium: isComposite && i === 5, rule: isComposite && i === 6,
+        last: i === fab.rows.length - 1
+      });
+    });
+    const fabTotal = fab.rows.reduce((a, r, i) => ((!isComposite || i >= 6) ? a + r[2] : a), 0);
+
+    // trims
+    const trimRows = TRIMS[bomKey].map((r, i) => this.row(r[0], r[1], r[2], { last: i === TRIMS[bomKey].length - 1 }));
+    const trimTotal = TRIMS[bomKey].reduce((a, r) => a + r[2], 0);
+
+    // CM
+    const c = CM_DATA[bomKey];
+    const outPerDay = Math.round(c.ops * c.mins * c.eff / c.smv);
+    const cmBdtSmv = c.dayCost / outPerDay;
+    const cmBdt = s.cmMethod === 'smv' ? cmBdtSmv : c.perDozen / 12;
+    const cmUsd = cmBdt / FX;
+    const cmRows = s.cmMethod === 'smv'
+      ? [
+        this.row('SMV', String(c.smv) + ' minutes', 0, { hide: true }),
+        this.row('Line efficiency', Math.round(c.eff * 100) + '%', 0, { hide: true }),
+        this.row('Operators × minutes', c.ops + ' × ' + c.mins + ' min', 0, { hide: true }),
+        this.row('Output per day', outPerDay.toLocaleString('en-US') + ' pcs', 0, { hide: true }),
+        this.row('Line cost per day', '৳' + c.dayCost.toLocaleString('en-US'), 0, { hide: true }),
+        this.row('CM per piece', '৳' + c.dayCost.toLocaleString('en-US') + ' ÷ ' + outPerDay.toLocaleString('en-US'), cmUsd, { strong: true, rule: true, last: true })
+      ]
+      : [
+        this.row('Rate per dozen', '৳' + c.perDozen.toLocaleString('en-US') + ' agreed with the floor', 0, { hide: true }),
+        this.row('Pieces per dozen', '12', 0, { hide: true }),
+        this.row('CM per piece', '৳' + c.perDozen.toLocaleString('en-US') + ' ÷ 12', cmUsd, { strong: true, rule: true, last: true })
+      ];
+    const cmRows2 = cmRows.map((r, i) => {
+      if (i === cmRows.length - 1) return r;
+      const src = s.cmMethod === 'smv'
+        ? [String(c.smv) + ' min', Math.round(c.eff * 100) + '%', c.ops + ' × ' + c.mins, outPerDay.toLocaleString('en-US') + ' pcs', '৳' + c.dayCost.toLocaleString('en-US')][i]
+        : ['৳' + c.perDozen.toLocaleString('en-US'), '12'][i];
+      return { ...r, usd: src, bdt: '' };
+    });
+
+    // embellishment
+    const embRows = EMB[bomKey].rows.map((r, i) => this.row(r[0], r[1], r[2], { last: i === EMB[bomKey].rows.length - 1 }));
+    const embTotal = EMB[bomKey].rows.reduce((a, r) => a + r[2], 0);
+
+    const subtotal = fabTotal + trimTotal + cmUsd + embTotal;
+    const bank = 0.052, docs = 0.028, inspect = 0.041, sample = 0.019;
+    const marginRatio = validSt === 'below' ? 0.139 : 0.179;
+    const preCommission = subtotal + bank + docs + inspect + sample;
+    const fob = Number((preCommission / (1 - 0.03 - marginRatio)).toFixed(2));
+    const commission = fob * 0.03;
+    const marginVal = fob - preCommission - commission;
+    const marginPct = marginVal / fob * 100;
+    const belowFloor = marginPct < 15;
+
+    const commRows = [
+      this.row('Bank charges', 'LC negotiation, per piece', bank),
+      this.row('Documentation', 'certificates and courier', docs),
+      this.row('Inspection', 'buyer nominated lab', inspect),
+      this.row('Sample amortisation', 'fit and PP sets over the order', sample),
+      this.row('Buying commission', '3% of FOB', commission, { rule: true }),
+      this.row('Margin', marginPct.toFixed(1) + '% of FOB · floor 15%', marginVal, { medium: true }),
+      this.row('FOB per piece', 'Chattogram, per piece', fob, { strong: true, last: true })
+    ];
+
+    const waterfall = [
+      ['Planned FOB', 0, 'the sheet as approved on 11 Jun', 'var(--fx-border-strong)', 4.25],
+      ['Fabric', 0.061, 'wastage came in at 8.4% against 6% planned — the shade-B rolls were laid separately', 'var(--fx-danger)', 4.311],
+      ['CM', -0.028, 'line 3 held 71% efficiency against 62% planned', 'var(--fx-success)', 4.283],
+      ['Wash', 0.019, 'wash house raised its rate mid-order', 'var(--fx-danger)', 4.302],
+      ['Trims', 0.004, 'button short shipment covered from stock', 'var(--fx-warning)', 4.306],
+      ['Actual FOB', 0, 'margin 16.5% against 17.9% planned', 'var(--fx-warning)', 4.306]
+    ];
+
+    const groupOrder = ['Fabric', 'Trims', 'Packing', 'Embellishment'];
+    const bomGroups = groupOrder.map(g => {
+      const lines = BOM[bomKey].filter(l => l[0] === g);
+      return {
+        name: g, count: lines.length + (lines.length === 1 ? ' line' : ' lines'),
+        add: () => this.flash('New ' + g.toLowerCase() + ' line — consumption and wastage required before it costs'),
+        lines: lines.map(l => ({
+          item: l[1], spec: l[2], cons: l[3], wastage: l[4], net: l[5], source: l[6],
+          wastageColor: parseFloat(l[4]) >= 10 ? 'var(--fx-warning)' : 'var(--fx-text-secondary)',
+          sel: parseFloat(l[4]) >= 10 ? 'var(--fx-warning)' : 'transparent',
+          chip: {
+            font: "500 11px/1 'JetBrains Mono',monospace", color: l[6] === 'standard' ? 'var(--fx-text-tertiary)' : 'var(--fx-text-secondary)',
+            border: '1px solid ' + (l[6] === 'standard' ? 'var(--fx-border-subtle)' : 'var(--fx-border-default)'),
+            borderRadius: '3px', padding: '6px 7px', display: 'inline-block', whiteSpace: 'nowrap'
+          },
+          edit: () => (canDraft ? this.flash('Editing ' + l[1] + ' · consumption and wastage are the only editable fields') : null),
+          rowStyle: {
+            display: 'flex', alignItems: 'stretch', borderBottom: '1px solid var(--fx-border-subtle)',
+            cursor: canDraft ? 'pointer' : 'default'
+          }
+        }))
+      };
+    }).filter(g => g.lines.length > 0);
+
+    const anim = { rest: () => 'none', resolve: i => 'fx-breathe 2.4s ease-in-out ' + (-i * 150) + 'ms infinite' }[s.mark] || (() => 'none');
+
+    return {
+      screens: [['p1', 'P1 BOM'], ['p2', 'P2 cost sheet'], ['p3', 'P3 templates']].map(x => ({
+        label: x[1], pick: () => this.setState({ screen: x[0], st: 'match' }), style: this.pill(screen === x[0])
+      })),
+      role, userName: USERS[role],
+      setRole: (e) => this.setState({ role: e.target.value }),
+      ftype: ft, setFtype: (e) => this.setState({ ftype: e.target.value }),
+      st: validSt, stOptions, setSt: (e) => this.setState({ st: e.target.value }),
+      annot: s.annot, annotLabel: s.annot ? 'on' : 'off', annotBtn: this.ghost(s.annot),
+      mode, modeLabel: mode === 'dark' ? 'dark' : 'light', modeBtn: this.ghost(mode === 'dark'),
+      logoSrc: 'uploads/fabricxai-logo-' + (mode === 'dark' ? 'dark' : 'light') + '.png',
+      toggleMode: () => this.setState(x => ({ mode: x.mode === 'dark' ? 'light' : 'dark' })),
+      toggleAnnot: () => this.setState(x => ({ annot: !x.annot })),
+
+      nav: (locked ? [] : [['p1', 'Bills of materials'], ['p2', 'Cost sheets'], ['p3', 'Templates']]).map(n => ({
+        label: n[1], pick: () => this.setState({ screen: n[0], st: 'match' }),
+        style: {
+          display: 'flex', alignItems: 'center', gap: '11px', padding: '11px 12px', borderRadius: '8px', cursor: 'pointer',
+          minHeight: '44px', font: "500 14px/1 'Plus Jakarta Sans',sans-serif",
+          background: screen === n[0] ? 'var(--fx-bg-selected)' : 'transparent',
+          color: screen === n[0] ? 'var(--fx-text-primary)' : 'var(--fx-text-secondary)'
+        },
+        marker: { width: '2px', height: '15px', transform: 'skewX(-34deg)', background: screen === n[0] ? 'var(--fx-accent)' : 'transparent', flexShrink: 0 }
+      })),
+      navNote: locked ? 'HIDDEN — costing absent from nav for ' + role : 'BOM feeds the sheet · the sheet feeds the quote',
+
+      locked,
+      isP1: !locked && screen === 'p1', isP2: !locked && screen === 'p2', isP3: !locked && screen === 'p3',
+      goP1: () => this.setState({ screen: 'p1', st: 'match' }),
+      style, canDraft, canApprove: canApproveRole && screen === 'p2',
+      approveLabel: belowFloor && role === 'owner' ? 'Approve below the floor' : 'Approve this sheet',
+      approve: () => this.flash(belowFloor && role === 'owner'
+        ? 'Approved at ' + marginPct.toFixed(1) + '% · below the 15% floor, signed by the owner'
+        : 'Cost sheet v2 approved · the quote can be drafted from it now'),
+
+      hasMatch: validSt === 'match' && screen === 'p1',
+      noMatch: validSt === 'nomatch' && screen === 'p1',
+      match: MATCH[ft],
+      seed: () => this.flash('17 lines seeded from ' + MATCH[ft].order + ' · 2 lines left empty for the differences'),
+      dismissMatch: () => this.setState({ st: 'nomatch' }),
+      bomGroups,
+
+      fabric: {
+        variant: fab.variant, lead: fab.lead, foot: fab.foot,
+        rows: fabRows, total: usd2(fabTotal)
+      },
+      trims: { rows: trimRows, total: usd2(trimTotal) },
+      cmMethods: [['smv', 'SMV based'], ['dozen', 'Per dozen']].map(m => ({
+        label: m[1], pick: () => this.setState({ cmMethod: m[0] }), style: this.pill(s.cmMethod === m[0])
+      })),
+      cm: {
+        rows: cmRows2,
+        foot: s.cmMethod === 'smv'
+          ? 'Every term is on the page — change the efficiency and the CM moves in front of you. A CM that arrives as one number is a CM nobody can argue with.'
+          : 'The floor quotes per dozen and the two methods rarely agree. ' + tk0(cmBdtSmv) + '/pc by SMV against ' + tk0(c.perDozen / 12) + '/pc per dozen — the gap is the argument worth having before you quote.'
+      },
+      emb: { rows: embRows, total: usd2(embTotal), foot: EMB[bomKey].foot },
+      comm: {
+        rows: commRows, total: usd2(bank + docs + inspect + sample + commission),
+        foot: belowFloor
+          ? 'Margin is ' + marginPct.toFixed(1) + '%, under the 15% floor. This sheet cannot be approved by the manager alone.'
+          : 'Margin sits ' + (marginPct - 15).toFixed(1) + ' points over the floor, so the manager can approve it on their own.'
+      },
+
+      rail: {
+        fob: usd2(fob), fobBdt: tk0(fob), cm: tk0(cmBdt) + '/pc',
+        margin: usd2(marginVal), marginPct: marginPct.toFixed(1) + '%',
+        marginColor: belowFloor ? 'var(--fx-danger)' : 'var(--fx-success)',
+        ticks: Array.from({ length: 20 }, (_, i) => ({
+          c: i < Math.round(marginPct) ? (belowFloor ? 'var(--fx-danger)' : 'var(--fx-accent)')
+            : i === 15 ? 'var(--fx-text-primary)' : 'var(--fx-border-default)'
+        })),
+        note: belowFloor
+          ? 'Under the floor. The 16th stroke is the floor — you are short of it.'
+          : 'The 16th stroke is the 15% floor. Everything past it is ours to give away or keep.'
+      },
+      routes: belowFloor
+        ? [
+          { who: 'Shafiq Alam · manager', when: 'checks the build-up, cannot approve under the floor', c: 'var(--fx-warning)' },
+          { who: 'M. A. Chowdhury · owner', when: 'signs anything under 15% — the only person who can', c: 'var(--fx-accent)' }
+        ]
+        : [
+          { who: 'Shafiq Alam · manager', when: 'approves on their own at this margin', c: 'var(--fx-accent)' },
+          { who: 'Owner', when: 'not involved above the floor', c: 'var(--fx-border-strong)' }
+        ],
+      submit: () => this.flash(belowFloor
+        ? 'Submitted · approver: owner (M. A. Chowdhury) — margin ' + marginPct.toFixed(1) + '% is under the floor'
+        : 'Submitted · approver: manager (Shafiq Alam) — margin ' + marginPct.toFixed(1) + '%'),
+      saveVersion: () => this.flash('Saved as v3 · v2 stays available for comparison'),
+      viewOnlyRail: !canDraft && !canApproveRole,
+      viewOnlyNote: role === 'commercial'
+        ? 'read-only · you check the bank and LC lines, not the margin'
+        : 'read-only for ' + role,
+      showWaterfall: s.waterfall,
+      waterfallBtn: this.ghost(s.waterfall),
+      toggleWaterfall: () => this.setState(x => ({ waterfall: !x.waterfall })),
+      waterfall: waterfall.map(w => ({
+        label: w[0], why: w[2],
+        delta: w[1] === 0 ? usd2(w[4]) : (w[1] > 0 ? '+' : '−') + Math.abs(w[1]).toFixed(3),
+        running: usd2(w[4]), c: w[3],
+        labelColor: w[1] === 0 ? 'var(--fx-text-primary)' : 'var(--fx-text-secondary)',
+        barStyle: {
+          height: '100%', width: (w[1] === 0 ? 100 : Math.min(100, Math.abs(w[1]) / 0.07 * 100)) + '%',
+          background: w[3]
+        }
+      })),
+
+      templates: TEMPLATES.map(t => {
+        const stale = t[6] > 90 || Math.abs(t[7]) > 5;
+        const worst = t[1] === 'TPL-DENIM-5P';
+        return {
+          name: t[0], code: t[1], basis: t[2], cons: t[3], order: t[4],
+          age: t[5] + ' · ' + t[6] + ' days',
+          ageColor: t[6] > 90 ? 'var(--fx-warning)' : 'var(--fx-text-tertiary)',
+          drift: (t[7] >= 0 ? '+' : '−') + Math.abs(t[7]).toFixed(1) + '%',
+          driftColor: Math.abs(t[7]) > 5 ? 'var(--fx-danger)' : Math.abs(t[7]) > 2 ? 'var(--fx-warning)' : 'var(--fx-success)',
+          sel: Math.abs(t[7]) > 5 ? 'var(--fx-danger)' : t[6] > 90 ? 'var(--fx-warning)' : 'var(--fx-border-subtle)',
+          selW: Math.abs(t[7]) > 5 ? '5px' : '3px',
+          showRefresh: stale && (canDraft || canApproveRole),
+          showFresh: !stale,
+          refresh: () => this.flash('Refresh submitted for ' + t[1] + ' · approver: manager · every future quote uses the new figure'),
+          refreshStyle: worst
+            ? { background: 'var(--fx-accent)', color: 'var(--fx-accent-on)', border: 'none', borderRadius: '8px', padding: '10px 15px', font: "600 13px/1 'Plus Jakarta Sans',sans-serif", cursor: 'pointer', minHeight: '44px' }
+            : { background: 'transparent', color: 'var(--fx-text-primary)', border: '1px solid var(--fx-border-strong)', borderRadius: '8px', padding: '10px 15px', font: "600 13px/1 'Plus Jakarta Sans',sans-serif", cursor: 'pointer', minHeight: '44px' }
+        };
+      }),
+
+      access: ACCESS.map(a => ({ role: a[0], level: a[1], note: a[2], chip: this.chip(a[1]) })),
+      toast: s.toast, clearToast: () => this.setState({ toast: '' }),
+      markLabel: s.mark === 'resolve' ? 'MARBIM · listening' : 'MARBIM · rest',
+      markStage: { position: 'relative', width: '32px', height: '32px', flexShrink: 0 },
+      markSlashes: SLASH_VEC.map((v, i) => ({
+        src: 'assets/mark/' + (mode === 'dark' ? 'w-' : 'i-') + (i + 1) + '.png',
+        style: { position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', '--dx': v.dx, '--dy': v.dy, transformOrigin: 'center', animation: anim(i) }
+      }))
+    };
+  }
+}
+
+</script>
+</body>
+</html>

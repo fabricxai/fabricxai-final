@@ -1,0 +1,1860 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Anek+Bangla:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #F3F1EC; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: #181D29; text-decoration: none; }
+  a:hover { color: #B88C21; }
+  @keyframes wv1 { from { transform: translate(-190px,110px) rotate(-22deg); opacity:0 } 55% { opacity:1 } to { transform: none; opacity:1 } }
+  @keyframes wv2 { from { transform: translate(150px,150px) rotate(19deg); opacity:0 } 55% { opacity:1 } to { transform: none; opacity:1 } }
+  @keyframes wv3 { from { transform: translate(-210px,-70px) rotate(14deg); opacity:0 } 55% { opacity:1 } to { transform: none; opacity:1 } }
+  @keyframes wv4 { from { transform: translate(120px,-180px) rotate(-16deg); opacity:0 } 55% { opacity:1 } to { transform: none; opacity:1 } }
+  @keyframes wv5 { from { transform: translate(-120px,180px) rotate(24deg); opacity:0 } 55% { opacity:1 } to { transform: none; opacity:1 } }
+  @keyframes wv6 { from { transform: translate(200px,60px) rotate(-12deg); opacity:0 } 55% { opacity:1 } to { transform: none; opacity:1 } }
+  @keyframes wv7 { from { transform: translate(60px,-200px) rotate(20deg); opacity:0 } 55% { opacity:1 } to { transform: none; opacity:1 } }
+  @keyframes wv8 { from { transform: translate(-160px,-140px) rotate(-19deg); opacity:0 } 55% { opacity:1 } to { transform: none; opacity:1 } }
+  @keyframes fx-bob { 0%,100% { transform: perspective(1400px) rotateY(3deg) rotateX(2deg) translateY(0) } 50% { transform: perspective(1400px) rotateY(3deg) rotateX(2deg) translateY(-9px) } }
+  @keyframes fx-breathe { 0%,100% { transform: scale(1); opacity:.92 } 50% { transform: scale(1.035); opacity:1 } }
+  @keyframes fx-draw { from { width: 0 } to { width: 100% } }
+  @keyframes fx-rise { from { transform: translateY(14px); opacity:0 } to { transform: none; opacity:1 } }
+  [data-motion="off"] *, [data-motion="off"] *::before, [data-motion="off"] *::after { animation: none !important; transition: none !important; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+</helmet>
+
+<div data-motion="{{ motionAttr }}" style="--c:#FBFAF8; --s:#FFFFFF; --sk:#F3F1EC; --rz:#FFFFFF; --bs:#E7E4DE; --bd:#D6D2C9; --bt:#A9A49A; --t1:#181D29; --t2:#4C5364; --t3:#767E90; --ti:#FBFAF8; --a:#E1B334; --ah:#CFA22B; --ap:#B88C21; --aw:#FAF1DA; --ok:#2F7D5B; --wn:#B4741C; --dg:#B23A32; --in:#2F5FA8; --sh1:0 1px 2px rgba(24,29,41,.06); --sh2:0 4px 12px rgba(24,29,41,.08); --sh3:0 12px 32px rgba(24,29,41,.12); font-family:'Plus Jakarta Sans',system-ui,sans-serif; color:var(--t1); min-height:100vh; background:var(--sk);">
+
+<div style="position:sticky; top:0; z-index:90; background:#FFFFFF; border-bottom:1px solid var(--bd); padding:10px 20px; display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+  <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--t3);">Prototype bar</div>
+  <div style="display:flex; gap:2px; background:var(--sk); border-radius:8px; padding:3px; flex-wrap:wrap;">
+    <sc-for list="{{ pages }}" as="p" hint-placeholder-count="9">
+      <button onClick="{{ p.pick }}" style="{{ p.style }}">{{ p.label }}</button>
+    </sc-for>
+  </div>
+  <div style="display:flex; gap:2px; background:var(--sk); border-radius:8px; padding:3px;">
+    <sc-for list="{{ viewports }}" as="v" hint-placeholder-count="3">
+      <button onClick="{{ v.pick }}" style="{{ v.style }}">{{ v.label }}</button>
+    </sc-for>
+  </div>
+  <div style="display:flex; gap:2px; background:var(--sk); border-radius:8px; padding:3px;">
+    <sc-for list="{{ langs }}" as="l" hint-placeholder-count="2">
+      <button onClick="{{ l.pick }}" style="{{ l.style }}">{{ l.label }}</button>
+    </sc-for>
+  </div>
+  <button onClick="{{ toggleMotion }}" style="{{ motionBtn }}">motion {{ motionLabel }}</button>
+  <div style="font:400 11.5px/1.4 'JetBrains Mono',monospace; color:var(--t3); margin-left:auto;">{{ vpNote }}</div>
+</div>
+
+<div style="{{ shellStyle }}">
+  <div style="{{ frameStyle }}">
+    <div style="background:#FFFFFF; border-bottom:1px solid var(--bd); padding:11px 14px; display:flex; align-items:center; gap:12px;">
+      <div style="display:flex; gap:7px; flex-shrink:0;">
+        <div style="width:11px; height:11px; border-radius:999px; background:#E7E4DE;"></div>
+        <div style="width:11px; height:11px; border-radius:999px; background:#E7E4DE;"></div>
+        <div style="width:11px; height:11px; border-radius:999px; background:#E7E4DE;"></div>
+      </div>
+      <div style="flex:1; min-width:0; background:var(--sk); border-radius:999px; padding:7px 13px; font:400 12px/1.2 'JetBrains Mono',monospace; color:var(--t3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">fabricxai.com{{ route }}</div>
+      <div style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--t3); flex-shrink:0;">{{ sizeLabel }}</div>
+    </div>
+
+    <div style="background:var(--c); overflow:hidden;">
+
+      <div style="{{ navStyle }}">
+        <img src="uploads/fabricxai-logo-light.png" alt="FabricX AI" style="height:26px; width:auto; align-self:center; object-fit:contain; flex-shrink:0;" />
+        <sc-if value="{{ wide }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex; align-items:center; gap:26px; margin-left:34px;">
+            <sc-for list="{{ navLinks }}" as="n" hint-placeholder-count="5">
+              <div onClick="{{ n.pick }}" style="{{ n.style }}">{{ n.label }}</div>
+            </sc-for>
+          </div>
+        </sc-if>
+        <div style="display:flex; align-items:center; gap:12px; margin-left:auto;">
+          <sc-if value="{{ wide }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex; align-items:center; gap:7px; border:1px solid var(--bd); border-radius:999px; padding:6px 10px;">
+              <div style="{{ enChip }}">EN</div>
+              <div style="width:1px; height:12px; background:var(--bs);"></div>
+              <div style="{{ bnChip }}">বাংলা</div>
+            </div>
+          </sc-if>
+          <button onClick="{{ goDemo }}" style="background:var(--a); color:var(--t1); border:none; border-radius:8px; padding:12px 17px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px; white-space:nowrap;" style-hover="background:var(--ah)">{{ t.demoCta }}</button>
+          <sc-if value="{{ narrow }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex; flex-direction:column; gap:4px; padding:12px 8px; cursor:pointer;">
+              <div style="width:20px; height:2px; background:var(--t1);"></div>
+              <div style="width:20px; height:2px; background:var(--t1);"></div>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+
+      <sc-if value="{{ isLanding }}" hint-placeholder-val="{{ true }}">
+        <div style="{{ heroWrap }}">
+          <div style="display:flex; flex-direction:column; gap:22px; min-width:0; max-width:620px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <div style="height:9px; width:52px; background-image:repeating-linear-gradient(115deg, var(--a) 0 2px, transparent 2px 9px);"></div>
+              <div style="font:500 12px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--t3);">{{ t.heroEyebrow }}</div>
+            </div>
+            <div style="{{ h1Style }}">{{ t.heroH1 }}</div>
+            <div style="{{ leadStyle }}">{{ t.heroSub }}</div>
+            <div style="{{ ctaRow }}">
+              <button onClick="{{ goWalk }}" style="{{ ctaPrimary }}">{{ t.watchCta }}</button>
+              <button onClick="{{ goDemo }}" style="{{ ctaOutline }}">{{ t.demoCta }}</button>
+            </div>
+            <div style="display:flex; align-items:center; gap:11px; padding-top:4px;">
+              <div style="width:8px; height:8px; border-radius:999px; background:var(--ok); flex-shrink:0;"></div>
+              <div style="font:400 13.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--t2); text-wrap:pretty;">{{ t.heroProof }}</div>
+            </div>
+          </div>
+          <div style="{{ weaveStage }}">
+            <sc-for list="{{ weaveLayers }}" as="w" hint-placeholder-count="8">
+              <div style="{{ w.style }}"></div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="border-top:1px solid var(--bs); border-bottom:1px solid var(--bs); background:var(--s);">
+          <div style="{{ sectionPad }}">
+            <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+              <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--t3); white-space:nowrap;">{{ t.trustedBy }}</div>
+              <div style="{{ logoStrip }}">
+                <sc-for list="{{ trustSlots }}" as="s" hint-placeholder-count="5">
+                  <div style="height:38px; border:1px dashed var(--bd); border-radius:6px; display:flex; align-items:center; justify-content:center; padding:0 14px;">
+                    <div style="font:400 11.5px/1.3 'JetBrains Mono',monospace; color:var(--t3); white-space:nowrap;">{{ s }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="{{ sectionPad }}">
+          <div style="display:flex; flex-direction:column; gap:10px; max-width:660px;">
+            <div style="font:500 12px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--t3);">{{ t.journeyEyebrow }}</div>
+            <div style="{{ h2Style }}">{{ t.journeyH2 }}</div>
+            <div style="{{ bodyStyle }}">{{ t.journeySub }}</div>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:20px; padding-top:30px;">
+            <div style="position:relative; padding:24px 0 4px;">
+              <div style="position:absolute; left:0; right:0; top:38px; height:2px; background-image:repeating-linear-gradient(115deg, var(--bt) 0 2px, transparent 2px 9px);"></div>
+              <div style="{{ stationRow }}">
+                <sc-for list="{{ stations }}" as="st" hint-placeholder-count="9">
+                  <div onClick="{{ st.pick }}" style="{{ st.wrap }}">
+                    <div style="{{ st.dot }}"></div>
+                    <div style="{{ st.label }}">{{ st.name }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="{{ journeyGrid }}">
+              <div style="display:flex; flex-direction:column; gap:16px; min-width:0;">
+                <div style="display:flex; align-items:center; gap:11px; flex-wrap:wrap;">
+                  <div style="font:500 12px/1 'JetBrains Mono',monospace; color:var(--t3);">{{ station.step }}</div>
+                  <sc-if value="{{ station.hasBadge }}" hint-placeholder-val="{{ true }}">
+                    <div style="{{ station.badgeStyle }}">{{ station.badge }}</div>
+                  </sc-if>
+                </div>
+                <div style="{{ h3Style }}">{{ station.caption }}</div>
+                <div style="{{ bodyStyle }}">{{ station.detail }}</div>
+                <div style="display:flex; align-items:center; gap:12px; padding-top:6px;">
+                  <div style="font:400 12.5px/1.4 'JetBrains Mono',monospace; color:var(--t3);">{{ station.meta }}</div>
+                </div>
+              </div>
+              <div style="{{ station.cardWrap }}">
+                <div style="{{ station.cardStyle }}">
+                  <div style="display:flex; align-items:center; gap:10px; padding:12px 15px; border-bottom:1px solid var(--bs); background:var(--sk);">
+                    <div style="display:flex; gap:5px;">
+                      <div style="width:8px; height:8px; border-radius:999px; background:var(--bd);"></div>
+                      <div style="width:8px; height:8px; border-radius:999px; background:var(--bd);"></div>
+                      <div style="width:8px; height:8px; border-radius:999px; background:var(--bd);"></div>
+                    </div>
+                    <div style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--t3); margin-left:auto;">{{ station.screen }}</div>
+                  </div>
+                  <div style="padding:16px 18px 18px; display:flex; flex-direction:column; gap:11px;">
+                    <sc-for list="{{ station.rows }}" as="r" hint-placeholder-count="4">
+                      <div style="display:flex; align-items:stretch; border:1px solid var(--bs); border-radius:6px; overflow:hidden; background:var(--s);">
+                        <div style="{{ r.sel }}"></div>
+                        <div style="flex:1; min-width:0; padding:11px 13px; display:flex; align-items:center; gap:11px; flex-wrap:wrap;">
+                          <div style="display:flex; flex-direction:column; gap:3px; min-width:0;">
+                            <div style="font:500 13px/1.3 'Plus Jakarta Sans',sans-serif;">{{ r.a }}</div>
+                            <div style="font:400 11px/1.25 'JetBrains Mono',monospace; color:var(--t3);">{{ r.b }}</div>
+                          </div>
+                          <div style="{{ r.valStyle }}">{{ r.c }}</div>
+                        </div>
+                      </div>
+                    </sc-for>
+                    <sc-if value="{{ station.hasAct }}" hint-placeholder-val="{{ false }}">
+                      <div style="background:var(--a); color:var(--t1); border-radius:6px; padding:11px 14px; font:600 13px/1 'Plus Jakarta Sans',sans-serif; text-align:center;">{{ station.act }}</div>
+                    </sc-if>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:var(--s); border-top:1px solid var(--bs);">
+          <div style="{{ sectionPad }}">
+            <div style="display:flex; flex-direction:column; gap:10px; max-width:660px;">
+              <div style="font:500 12px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--t3);">{{ t.problemsEyebrow }}</div>
+              <div style="{{ h2Style }}">{{ t.problemsH2 }}</div>
+            </div>
+            <div style="{{ tripGrid }}">
+              <sc-for list="{{ problems }}" as="p" hint-placeholder-count="3">
+                <div style="display:flex; flex-direction:column; gap:16px; min-width:0;">
+                  <div style="display:flex; flex-direction:column; gap:9px;">
+                    <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--dg);">{{ p.tag }}</div>
+                    <div style="{{ h3Style }}">{{ p.pain }}</div>
+                    <div style="{{ bodyStyle }}">{{ p.painNote }}</div>
+                  </div>
+                  <div style="height:9px; background-image:repeating-linear-gradient(115deg, var(--a) 0 2px, transparent 2px 9px);"></div>
+                  <div style="display:flex; flex-direction:column; gap:9px;">
+                    <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--ok);">{{ p.answerTag }}</div>
+                    <div style="font:600 17px/1.35 'Plus Jakarta Sans',sans-serif; text-wrap:pretty;">{{ p.answer }}</div>
+                  </div>
+                  <div style="{{ p.cardWrap }}">
+                    <div style="background:var(--s); border:1px solid var(--bs); border-radius:8px; box-shadow:var(--sh2); overflow:hidden;">
+                      <div style="padding:11px 14px; border-bottom:1px solid var(--bs); background:var(--sk); font:400 11px/1 'JetBrains Mono',monospace; color:var(--t3);">{{ p.screen }}</div>
+                      <div style="padding:14px; display:flex; flex-direction:column; gap:9px;">
+                        <sc-for list="{{ p.items }}" as="i" hint-placeholder-count="4">
+                          <div style="display:flex; align-items:center; gap:10px; border:1px solid var(--bs); border-radius:6px; padding:10px 12px; background:var(--s);">
+                            <div style="{{ i.dot }}"></div>
+                            <div style="display:flex; flex-direction:column; gap:2px; min-width:0;">
+                              <div style="font:500 12.5px/1.3 'Plus Jakarta Sans',sans-serif;">{{ i.a }}</div>
+                              <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--t3);">{{ i.b }}</div>
+                            </div>
+                          </div>
+                        </sc-for>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+
+        <div style="{{ sectionPad }}">
+          <div style="{{ trustLoopGrid }}">
+            <div style="display:flex; flex-direction:column; gap:14px; min-width:0; max-width:520px;">
+              <div style="font:500 12px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--t3);">{{ t.loopEyebrow }}</div>
+              <div style="{{ h2Style }}">{{ t.loopH2 }}</div>
+              <div style="{{ bodyStyle }}">{{ t.loopBody }}</div>
+              <div style="display:flex; flex-direction:column; gap:11px; padding-top:6px;">
+                <sc-for list="{{ loopSteps }}" as="s" hint-placeholder-count="3">
+                  <div style="display:flex; align-items:flex-start; gap:13px;">
+                    <div style="{{ s.num }}">{{ s.n }}</div>
+                    <div style="display:flex; flex-direction:column; gap:3px; min-width:0;">
+                      <div style="font:600 15.5px/1.3 'Plus Jakarta Sans',sans-serif;">{{ s.name }}</div>
+                      <div style="font:400 13.5px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--t2); text-wrap:pretty;">{{ s.note }}</div>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="{{ draftWrap }}">
+              <div style="background:var(--s); border:1px solid var(--a); border-radius:10px; box-shadow:var(--sh3); overflow:hidden; clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);">
+                <div style="display:flex; align-items:center; gap:11px; padding:14px 17px; background:var(--aw);">
+                  <div style="width:26px; height:26px; border-radius:999px; background:#181D29; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                    <img src="uploads/MARBIM_logo.png" alt="" style="width:14px; height:14px;" />
+                  </div>
+                  <div style="font:600 14.5px/1.3 'Plus Jakarta Sans',sans-serif;">{{ t.draftTitle }}</div>
+                  <div style="font:500 10.5px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--ap); border:1px solid var(--ap); border-radius:3px; padding:5px 6px; margin-left:auto;">{{ draftWord }}</div>
+                </div>
+                <sc-for list="{{ draftFields }}" as="f" hint-placeholder-count="4">
+                  <div style="display:flex; align-items:stretch; border-bottom:1px solid var(--bs);">
+                    <div style="{{ f.sel }}"></div>
+                    <div style="flex:1; min-width:0; padding:12px 16px; display:flex; flex-direction:column; gap:7px;">
+                      <div style="display:flex; align-items:baseline; gap:11px; flex-wrap:wrap;">
+                        <div style="font:400 12.5px/1.3 'Plus Jakarta Sans',sans-serif; color:var(--t3); min-width:96px;">{{ f.k }}</div>
+                        <div style="font:500 13.5px/1.3 'JetBrains Mono',monospace;">{{ f.v }}</div>
+                        <div style="{{ f.confColor }}">{{ f.conf }}</div>
+                      </div>
+                      <div style="height:5px; border-radius:999px; background:var(--sk); overflow:hidden;"><div style="{{ f.bar }}"></div></div>
+                    </div>
+                  </div>
+                </sc-for>
+                <div style="padding:15px 17px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                  <div style="background:var(--a); color:var(--t1); border-radius:8px; padding:12px 17px; font:600 14px/1 'Plus Jakarta Sans',sans-serif;">{{ t.approveAll }}</div>
+                  <div style="border:1px solid var(--bd); border-radius:8px; padding:11px 15px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; color:var(--t2);">{{ t.reject }}</div>
+                  <div style="font:400 11.5px/1.4 'JetBrains Mono',monospace; color:var(--t3); margin-left:auto;">{{ t.auditLine }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:var(--s); border-top:1px solid var(--bs); border-bottom:1px solid var(--bs);">
+          <div style="{{ sectionPad }}">
+            <div style="display:flex; flex-direction:column; gap:10px; max-width:660px;">
+              <div style="font:500 12px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--t3);">{{ t.deptEyebrow }}</div>
+              <div style="{{ h2Style }}">{{ t.deptH2 }}</div>
+            </div>
+            <div style="{{ deptGrid }}">
+              <sc-for list="{{ departments }}" as="d" hint-placeholder-count="11">
+                <div onClick="{{ goProduct }}" style="display:flex; background:var(--s); border:1px solid var(--bs); border-radius:8px; overflow:hidden; box-shadow:var(--sh1); cursor:pointer; min-width:0;" style-hover="box-shadow:var(--sh2)">
+                  <div style="width:3px; flex-shrink:0; background:var(--bt);"></div>
+                  <div style="flex:1; min-width:0; padding:17px 18px; display:flex; flex-direction:column; gap:8px;">
+                    <div style="font:600 16px/1.25 'Plus Jakarta Sans',sans-serif;">{{ d.name }}</div>
+                    <div style="font:400 11.5px/1.3 'JetBrains Mono',monospace; color:var(--t3);">{{ d.who }}</div>
+                    <div style="font:400 13.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--t2); text-wrap:pretty;">{{ d.killer }}</div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+
+        <div style="{{ sectionPad }}">
+          <div style="display:flex; flex-direction:column; gap:10px; max-width:660px;">
+            <div style="font:500 12px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--t3);">{{ t.bdEyebrow }}</div>
+            <div style="{{ h2Style }}">{{ t.bdH2 }}</div>
+            <div style="{{ bodyStyle }}">{{ t.bdSub }}</div>
+          </div>
+          <div style="{{ bdGrid }}">
+            <sc-for list="{{ bdItems }}" as="b" hint-placeholder-count="5">
+              <div style="display:flex; flex-direction:column; gap:8px; min-width:0; padding:18px 0 0; border-top:2px solid var(--t1);">
+                <div style="font:600 15.5px/1.3 'Plus Jakarta Sans',sans-serif;">{{ b.name }}</div>
+                <div style="font:400 13px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--t2); text-wrap:pretty;">{{ b.note }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding-top:26px;">
+            <div style="font:400 12px/1 'JetBrains Mono',monospace; color:var(--t3);">{{ t.factoryTypes }}</div>
+            <sc-for list="{{ typeBadges }}" as="b" hint-placeholder-count="3">
+              <div style="font:500 12px/1 'JetBrains Mono',monospace; letter-spacing:.04em; color:var(--t1); border:1px solid var(--bt); border-radius:999px; padding:9px 13px;">{{ b }}</div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="background:#0F131B; color:#F4F3F0;">
+          <div style="{{ sectionPad }}">
+            <div style="{{ ownerGrid }}">
+              <div style="display:flex; flex-direction:column; gap:16px; min-width:0; max-width:520px;">
+                <div style="font:500 12px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:#7C8497;">{{ t.ownerEyebrow }}</div>
+                <div style="{{ h2Dark }}">{{ t.ownerH2 }}</div>
+                <div style="font:400 15.5px/1.6 'Plus Jakarta Sans',sans-serif; color:#AEB5C4; text-wrap:pretty;">{{ t.ownerBody }}</div>
+                <div style="display:flex; flex-direction:column; gap:9px; padding-top:6px;">
+                  <sc-for list="{{ ownerPoints }}" as="o" hint-placeholder-count="3">
+                    <div style="display:flex; align-items:flex-start; gap:11px;">
+                      <div style="width:7px; height:7px; border-radius:999px; background:#E1B334; margin-top:7px; flex-shrink:0;"></div>
+                      <div style="font:400 14px/1.55 'Plus Jakarta Sans',sans-serif; color:#AEB5C4; text-wrap:pretty;">{{ o }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="{{ phoneWrap }}">
+                <div style="width:330px; max-width:100%; background:#181D29; border:1px solid #343B4C; border-radius:22px; overflow:hidden; box-shadow:0 24px 60px rgba(0,0,0,.45);">
+                  <div style="padding:14px 18px 12px; display:flex; align-items:center; gap:12px; border-bottom:1px solid #252B3A;">
+                    <img src="uploads/fabricxai-logo-dark.png" alt="FabricX AI" style="height:18px; width:auto; align-self:center; object-fit:contain;" />
+                    <div style="font:400 10.5px/1.2 'JetBrains Mono',monospace; color:#7C8497; margin-left:auto;">07:40</div>
+                  </div>
+                  <div style="padding:16px 16px 20px; display:flex; flex-direction:column; gap:12px;">
+                    <div style="font:700 21px/1.25 'Archivo',sans-serif; color:#F4F3F0;">{{ t.ownerFeedTitle }}</div>
+                    <sc-for list="{{ ownerFeed }}" as="f" hint-placeholder-count="3">
+                      <div style="display:flex; background:#212736; border:1px solid #252B3A; border-radius:8px; overflow:hidden;">
+                        <div style="{{ f.sel }}"></div>
+                        <div style="flex:1; min-width:0; padding:13px 14px; display:flex; flex-direction:column; gap:7px;">
+                          <div style="display:flex; align-items:center; gap:9px; flex-wrap:wrap;">
+                            <div style="{{ f.kindStyle }}">{{ f.kind }}</div>
+                            <div style="font:400 10.5px/1.2 'JetBrains Mono',monospace; color:{{ f.ageColor }}; margin-left:auto;">{{ f.age }}</div>
+                          </div>
+                          <div style="font:600 14.5px/1.4 'Plus Jakarta Sans',sans-serif; color:#F4F3F0; text-wrap:pretty;">{{ f.truth }}</div>
+                          <sc-if value="{{ f.act }}" hint-placeholder-val="{{ false }}">
+                            <div style="background:#E1B334; color:#181D29; border-radius:6px; padding:11px 14px; font:600 13.5px/1 'Plus Jakarta Sans',sans-serif; text-align:center;">{{ f.actLabel }}</div>
+                          </sc-if>
+                        </div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:var(--aw);">
+          <div style="{{ sectionPad }}">
+            <div style="{{ finalCta }}">
+              <div style="display:flex; flex-direction:column; gap:12px; min-width:0; max-width:560px;">
+                <div style="{{ h2Style }}">{{ t.finalH2 }}</div>
+                <div style="{{ bodyStyle }}">{{ t.finalSub }}</div>
+              </div>
+              <div style="{{ ctaRow }}">
+                <button onClick="{{ goDemo }}" style="{{ ctaPrimary }}">{{ t.demoCta }}</button>
+                <button onClick="{{ goWalk }}" style="{{ ctaOutline }}">{{ t.watchCta }}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isProduct }}" hint-placeholder-val="{{ false }}">
+        <div style="{{ sectionPad }}">
+          <div style="display:flex; flex-direction:column; gap:10px; max-width:680px;">
+            <div style="font:500 12px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--t3);">{{ t.productEyebrow }}</div>
+            <div style="{{ h1Small }}">{{ t.productH1 }}</div>
+            <div style="{{ leadStyle }}">{{ t.productSub }}</div>
+          </div>
+        </div>
+        <div data-scroll="depts" style="{{ productGrid }}">
+          <sc-if value="{{ wide }}" hint-placeholder-val="{{ true }}">
+            <div style="{{ sideNav }}">
+              <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--t3); padding-bottom:6px;">{{ t.onThisPage }}</div>
+              <sc-for list="{{ productNav }}" as="n" hint-placeholder-count="6">
+                <div onClick="{{ n.pick }}" style="{{ n.style }}">{{ n.label }}</div>
+              </sc-for>
+            </div>
+          </sc-if>
+          <div style="display:flex; flex-direction:column; gap:0; min-width:0;">
+            <sc-for list="{{ productDepts }}" as="d" hint-placeholder-count="4">
+              <div data-dept="{{ d.idx }}" style="{{ d.wrap }}">
+                <div style="{{ d.inner }}">
+                  <div style="display:flex; flex-direction:column; gap:15px; min-width:0;">
+                    <div style="display:flex; align-items:center; gap:11px; flex-wrap:wrap;">
+                      <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--t3);">{{ d.who }}</div>
+                    </div>
+                    <div style="{{ h2Style }}">{{ d.name }}</div>
+                    <div style="{{ bodyStyle }}">{{ d.promise }}</div>
+                    <div style="display:flex; flex-direction:column; gap:9px; padding-top:4px;">
+                      <sc-for list="{{ d.caps }}" as="c" hint-placeholder-count="3">
+                        <div style="display:flex; align-items:flex-start; gap:11px;">
+                          <div style="width:2px; height:15px; transform:skewX(-34deg); background:var(--bt); margin-top:4px; flex-shrink:0;"></div>
+                          <div style="font:400 14px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--t2); text-wrap:pretty;">{{ c }}</div>
+                        </div>
+                      </sc-for>
+                    </div>
+                    <div style="display:flex; gap:9px; flex-wrap:wrap; padding-top:8px;">
+                      <sc-if value="{{ d.hasGate }}" hint-placeholder-val="{{ false }}">
+                        <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--dg); border:1px solid var(--dg); border-radius:4px; padding:7px 9px;">{{ d.gate }}</div>
+                      </sc-if>
+                      <sc-if value="{{ d.hasAi }}" hint-placeholder-val="{{ false }}">
+                        <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--ap); border:1px solid var(--ap); border-radius:4px; padding:7px 9px;">{{ d.ai }}</div>
+                      </sc-if>
+                    </div>
+                  </div>
+                  <div style="{{ d.cardWrap }}">
+                    <div style="background:var(--s); border:1px solid var(--bs); border-radius:8px; box-shadow:var(--sh2); overflow:hidden;">
+                      <div style="padding:11px 14px; border-bottom:1px solid var(--bs); background:var(--sk); font:400 11px/1 'JetBrains Mono',monospace; color:var(--t3);">{{ d.screen }}</div>
+                      <div style="padding:14px; display:flex; flex-direction:column; gap:9px;">
+                        <sc-for list="{{ d.rows }}" as="r" hint-placeholder-count="3">
+                          <div style="display:flex; align-items:stretch; border:1px solid var(--bs); border-radius:6px; overflow:hidden;">
+                            <div style="{{ r.sel }}"></div>
+                            <div style="flex:1; min-width:0; padding:10px 12px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                              <div style="display:flex; flex-direction:column; gap:2px; min-width:0;">
+                                <div style="font:500 12.5px/1.3 'Plus Jakarta Sans',sans-serif;">{{ r.a }}</div>
+                                <div style="font:400 10.5px/1.25 'JetBrains Mono',monospace; color:var(--t3);">{{ r.b }}</div>
+                              </div>
+                              <div style="{{ r.valStyle }}">{{ r.c }}</div>
+                            </div>
+                          </div>
+                        </sc-for>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isMarbim }}" hint-placeholder-val="{{ false }}">
+        <div style="{{ sectionPad }}">
+          <div style="{{ marbimHero }}">
+            <div style="display:flex; flex-direction:column; gap:18px; min-width:0; max-width:560px;">
+              <div style="font:500 12px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--t3);">{{ t.marbimEyebrow }}</div>
+              <div style="{{ h1Small }}">{{ t.marbimH1 }}</div>
+              <div style="{{ leadStyle }}">{{ t.marbimSub }}</div>
+            </div>
+            <div style="display:flex; align-items:center; justify-content:center; padding:24px;">
+              <div style="{{ breatheStage }}">
+                <sc-for list="{{ markLayers }}" as="m" hint-placeholder-count="8">
+                  <div style="{{ m.style }}"></div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:var(--s); border-top:1px solid var(--bs); border-bottom:1px solid var(--bs);">
+          <div style="{{ sectionPad }}">
+            <div style="display:flex; flex-direction:column; gap:10px; max-width:660px;">
+              <div style="{{ h2Style }}">{{ t.rosterH2 }}</div>
+              <div style="{{ bodyStyle }}">{{ t.rosterSub }}</div>
+            </div>
+            <div style="{{ rosterGrid }}">
+              <sc-for list="{{ roster }}" as="r" hint-placeholder-count="12">
+                <div style="display:flex; align-items:center; gap:11px; border:1px solid var(--bs); border-radius:6px; padding:13px 14px; background:var(--s); min-width:0;">
+                  <div style="width:2px; height:15px; transform:skewX(-34deg); background:var(--ap); flex-shrink:0;"></div>
+                  <div style="display:flex; flex-direction:column; gap:2px; min-width:0;">
+                    <div style="font:500 13.5px/1.3 'Plus Jakarta Sans',sans-serif;">{{ r.doc }}</div>
+                    <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--t3);">{{ r.out }}</div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+
+        <div style="{{ sectionPad }}">
+          <div style="{{ neverGrid }}">
+            <div style="display:flex; flex-direction:column; gap:14px; min-width:0; max-width:520px;">
+              <div style="{{ h2Style }}">{{ t.neverH2 }}</div>
+              <div style="{{ bodyStyle }}">{{ t.neverSub }}</div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:11px; min-width:0;">
+              <sc-for list="{{ neverList }}" as="n" hint-placeholder-count="5">
+                <div style="display:flex; align-items:flex-start; gap:13px; border-bottom:1px solid var(--bs); padding-bottom:13px;">
+                  <div style="font:500 12px/1.4 'JetBrains Mono',monospace; color:var(--dg); flex-shrink:0; padding-top:1px;">{{ neverWord }}</div>
+                  <div style="font:400 14.5px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--t1); text-wrap:pretty;">{{ n }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isWalk }}" hint-placeholder-val="{{ false }}">
+        <div style="{{ sectionPad }}">
+          <div style="display:flex; flex-direction:column; gap:10px; max-width:660px;">
+            <div style="font:500 12px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--t3);">{{ t.walkEyebrow }}</div>
+            <div style="{{ h1Small }}">{{ t.walkH1 }}</div>
+            <div style="{{ leadStyle }}">{{ t.walkSub }}</div>
+          </div>
+          <div style="padding-top:28px; display:flex; flex-direction:column; gap:22px;">
+            <div style="position:relative; background:#0F131B; border-radius:10px; overflow:hidden; aspect-ratio:16/9; display:flex; align-items:center; justify-content:center; box-shadow:var(--sh3);">
+              <div style="display:flex; flex-direction:column; align-items:center; gap:18px;">
+                <div style="width:74px; height:74px; border-radius:999px; background:#E1B334; display:flex; align-items:center; justify-content:center;">
+                  <div style="width:0; height:0; border-left:22px solid #181D29; border-top:14px solid transparent; border-bottom:14px solid transparent; margin-left:6px;"></div>
+                </div>
+                <div style="font:600 16px/1.3 'Plus Jakarta Sans',sans-serif; color:#F4F3F0;">{{ t.playLabel }}</div>
+              </div>
+              <div style="position:absolute; left:20px; bottom:20px; display:flex; align-items:center; gap:11px;">
+                <img src="uploads/fabricxai-logo-dark.png" alt="" style="height:18px; width:auto; align-self:center; object-fit:contain; opacity:.7;" />
+              </div>
+            </div>
+            <div style="{{ chapterGrid }}">
+              <sc-for list="{{ chapters }}" as="c" hint-placeholder-count="8">
+                <div style="display:flex; align-items:stretch; border:1px solid var(--bs); border-radius:8px; overflow:hidden; background:var(--s); cursor:pointer; min-width:0;" style-hover="background:rgba(24,29,41,.035)">
+                  <div style="width:3px; flex-shrink:0; background:var(--bt);"></div>
+                  <div style="flex:1; min-width:0; padding:14px 16px; display:flex; flex-direction:column; gap:5px;">
+                    <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">
+                      <div style="font:500 12.5px/1.2 'JetBrains Mono',monospace; color:var(--in);">{{ c.time }}</div>
+                      <div style="font:600 14.5px/1.3 'Plus Jakarta Sans',sans-serif;">{{ c.name }}</div>
+                    </div>
+                    <div style="font:400 13px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--t2); text-wrap:pretty;">{{ c.note }}</div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isPricing }}" hint-placeholder-val="{{ false }}">
+        <div style="{{ sectionPad }}">
+          <div style="display:flex; flex-direction:column; gap:10px; max-width:660px;">
+            <div style="font:500 12px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--t3);">{{ t.pricingEyebrow }}</div>
+            <div style="{{ h1Small }}">{{ t.pricingH1 }}</div>
+            <div style="{{ leadStyle }}">{{ t.pricingSub }}</div>
+          </div>
+          <div style="{{ pricingGrid }}">
+            <div style="display:flex; background:var(--s); border:1px solid var(--a); border-radius:10px; overflow:hidden; box-shadow:var(--sh2); min-width:0;">
+              <div style="width:5px; flex-shrink:0; background:var(--a);"></div>
+              <div style="flex:1; min-width:0; padding:26px 26px 28px; display:flex; flex-direction:column; gap:16px;">
+                <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--ap);">{{ t.pilotTag }}</div>
+                <div style="{{ h3Style }}">{{ t.pilotName }}</div>
+                <div style="{{ bodyStyle }}">{{ t.pilotBody }}</div>
+                <div style="display:flex; flex-direction:column; gap:9px; padding-top:2px;">
+                  <sc-for list="{{ pilotPoints }}" as="p" hint-placeholder-count="4">
+                    <div style="display:flex; align-items:flex-start; gap:11px;">
+                      <div style="width:2px; height:15px; transform:skewX(-34deg); background:var(--bt); margin-top:4px; flex-shrink:0;"></div>
+                      <div style="font:400 14px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--t2); text-wrap:pretty;">{{ p }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+                <button onClick="{{ goDemo }}" style="align-self:flex-start; background:var(--a); color:var(--t1); border:none; border-radius:8px; padding:14px 20px; font:600 15px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:48px; margin-top:4px;" style-hover="background:var(--ah)">{{ t.talkCta }}</button>
+              </div>
+            </div>
+            <div style="display:flex; background:var(--s); border:1px solid var(--bs); border-radius:10px; overflow:hidden; box-shadow:var(--sh1); min-width:0;">
+              <div style="width:3px; flex-shrink:0; background:var(--bt);"></div>
+              <div style="flex:1; min-width:0; padding:26px; display:flex; flex-direction:column; gap:14px;">
+                <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--t3);">{{ t.noTiersTag }}</div>
+                <div style="{{ h3Style }}">{{ t.noTiersName }}</div>
+                <div style="{{ bodyStyle }}">{{ t.noTiersBody }}</div>
+              </div>
+            </div>
+          </div>
+          <div style="padding-top:44px; display:flex; flex-direction:column; gap:16px;">
+            <div style="{{ h2Style }}">{{ t.faqH2 }}</div>
+            <div style="display:flex; flex-direction:column; gap:0; max-width:820px;">
+              <sc-for list="{{ faqs }}" as="f" hint-placeholder-count="5">
+                <div style="border-bottom:1px solid var(--bs);">
+                  <div onClick="{{ f.toggle }}" style="display:flex; align-items:center; gap:14px; padding:18px 2px; cursor:pointer; min-height:48px;">
+                    <div style="font:600 16px/1.4 'Plus Jakarta Sans',sans-serif; min-width:0; text-wrap:pretty;">{{ f.q }}</div>
+                    <div style="font:400 17px/1 'JetBrains Mono',monospace; color:var(--t3); margin-left:auto; flex-shrink:0;">{{ f.sign }}</div>
+                  </div>
+                  <sc-if value="{{ f.open }}" hint-placeholder-val="{{ false }}">
+                    <div style="padding:0 2px 20px; font:400 14.5px/1.65 'Plus Jakarta Sans',sans-serif; color:var(--t2); max-width:68ch; text-wrap:pretty;">{{ f.a }}</div>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isDemo }}" hint-placeholder-val="{{ false }}">
+        <div style="{{ sectionPad }}">
+          <div style="{{ demoGrid }}">
+            <div style="display:flex; flex-direction:column; gap:16px; min-width:0; max-width:480px;">
+              <div style="font:500 12px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--t3);">{{ t.demoEyebrow }}</div>
+              <div style="{{ h1Small }}">{{ t.demoH1 }}</div>
+              <div style="{{ leadStyle }}">{{ t.demoSub }}</div>
+              <div style="display:flex; flex-direction:column; gap:10px; padding-top:8px;">
+                <sc-for list="{{ demoPromise }}" as="d" hint-placeholder-count="3">
+                  <div style="display:flex; align-items:flex-start; gap:11px;">
+                    <div style="width:7px; height:7px; border-radius:999px; background:var(--ok); margin-top:7px; flex-shrink:0;"></div>
+                    <div style="font:400 14px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--t2); text-wrap:pretty;">{{ d }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="min-width:0;">
+              <sc-if value="{{ demoSent }}" hint-placeholder-val="{{ false }}">
+                <div style="background:var(--s); border:1px solid var(--ok); border-radius:10px; padding:32px 28px; display:flex; flex-direction:column; gap:15px; box-shadow:var(--sh2); background-image:repeating-linear-gradient(146deg, transparent 0 9px, rgba(24,29,41,.028) 9px 11px, transparent 11px 20px);">
+                  <div style="width:44px; height:44px; border-radius:999px; background:var(--ok); display:flex; align-items:center; justify-content:center; color:#FFFFFF; font:700 21px/1 'Plus Jakarta Sans',sans-serif;">✓</div>
+                  <div style="{{ h3Style }}">{{ t.sentH }}</div>
+                  <div style="{{ bodyStyle }}">{{ t.sentBody }}</div>
+                  <button onClick="{{ resetDemo }}" style="align-self:flex-start; background:transparent; color:var(--t1); border:1px solid var(--bd); border-radius:8px; padding:12px 17px; font:600 13.5px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;">{{ t.backToForm }}</button>
+                </div>
+              </sc-if>
+              <sc-if value="{{ demoForm }}" hint-placeholder-val="{{ true }}">
+                <div style="background:var(--s); border:1px solid var(--bs); border-radius:10px; padding:26px; display:flex; flex-direction:column; gap:16px; box-shadow:var(--sh2);">
+                  <sc-for list="{{ demoFields }}" as="f" hint-placeholder-count="6">
+                    <div style="display:flex; flex-direction:column; gap:7px;">
+                      <div style="display:flex; align-items:baseline; gap:9px; flex-wrap:wrap;">
+                        <div style="font:500 12.5px/1.3 'Plus Jakarta Sans',sans-serif; color:var(--t2);">{{ f.label }}</div>
+                        <sc-if value="{{ f.req }}" hint-placeholder-val="{{ false }}">
+                          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--t3);">{{ f.hint }}</div>
+                        </sc-if>
+                      </div>
+                      <sc-if value="{{ f.isChips }}" hint-placeholder-val="{{ false }}">
+                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                          <sc-for list="{{ f.chips }}" as="c" hint-placeholder-count="3">
+                            <div onClick="{{ c.pick }}" style="{{ c.style }}">{{ c.label }}</div>
+                          </sc-for>
+                        </div>
+                      </sc-if>
+                      <sc-if value="{{ f.isInput }}" hint-placeholder-val="{{ true }}">
+                        <div style="background:var(--sk); border:1px solid var(--bd); border-radius:6px; padding:13px 15px; min-height:48px; display:flex; align-items:center; font:400 14.5px/1.3 'Plus Jakarta Sans',sans-serif; color:var(--t3);">{{ f.placeholder }}</div>
+                      </sc-if>
+                    </div>
+                  </sc-for>
+                  <button onClick="{{ sendDemo }}" style="background:var(--a); color:var(--t1); border:none; border-radius:8px; padding:16px 22px; font:600 16px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:52px; margin-top:4px;" style-hover="background:var(--ah)">{{ t.sendCta }}</button>
+                  <div style="font:400 12.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--t3); text-wrap:pretty;">{{ t.formFoot }}</div>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isAbout }}" hint-placeholder-val="{{ false }}">
+        <div style="{{ sectionPad }}">
+          <div style="display:flex; flex-direction:column; gap:10px; max-width:680px;">
+            <div style="font:500 12px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--t3);">{{ t.aboutEyebrow }}</div>
+            <div style="{{ h1Small }}">{{ t.aboutH1 }}</div>
+          </div>
+          <div style="{{ aboutGrid }}">
+            <div style="display:flex; flex-direction:column; gap:18px; min-width:0; max-width:62ch;">
+              <sc-for list="{{ aboutParas }}" as="p" hint-placeholder-count="4">
+                <div style="font:400 16px/1.7 'Plus Jakarta Sans',sans-serif; color:var(--t2); text-wrap:pretty;">{{ p }}</div>
+              </sc-for>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:16px; min-width:0;">
+              <div style="background:var(--s); border:1px solid var(--bs); border-radius:10px; padding:22px; display:flex; flex-direction:column; gap:13px; box-shadow:var(--sh1);">
+                <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--t3);">{{ t.founderTag }}</div>
+                <div style="display:flex; align-items:center; gap:14px;">
+                  <div style="width:56px; height:56px; border-radius:999px; background:var(--sk); border:1px dashed var(--bd); display:flex; align-items:center; justify-content:center; font:400 10px/1.3 'JetBrains Mono',monospace; color:var(--t3); text-align:center; flex-shrink:0;">{{ photoWord }}</div>
+                  <div style="display:flex; flex-direction:column; gap:3px; min-width:0;">
+                    <div style="font:600 16px/1.3 'Plus Jakarta Sans',sans-serif;">{{ t.founderName }}</div>
+                    <div style="font:400 12.5px/1.3 'JetBrains Mono',monospace; color:var(--t3);">{{ t.founderRole }}</div>
+                  </div>
+                </div>
+                <div style="font:400 13.5px/1.6 'Plus Jakarta Sans',sans-serif; color:var(--t2); text-wrap:pretty;">{{ t.founderBio }}</div>
+              </div>
+              <div style="background:var(--aw); border-radius:10px; padding:20px; display:flex; flex-direction:column; gap:9px;">
+                <div style="font:600 15px/1.3 'Plus Jakarta Sans',sans-serif;">{{ t.buildPublicH }}</div>
+                <div style="font:400 13.5px/1.6 'Plus Jakarta Sans',sans-serif; color:var(--t2); text-wrap:pretty;">{{ t.buildPublicBody }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isStory }}" hint-placeholder-val="{{ false }}">
+        <div style="{{ sectionPad }}">
+          <div style="display:flex; flex-direction:column; gap:10px; max-width:680px;">
+            <div style="font:500 12px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--t3);">Motion specification</div>
+            <div style="{{ h1Small }}">The three signature scenes, frame by frame</div>
+            <div style="{{ leadStyle }}">Every scene has a composed static state. Reduced motion is not a degraded version — it is the last frame, arranged so it reads without ever having moved.</div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:38px; padding-top:32px;">
+            <sc-for list="{{ storyboards }}" as="sb" hint-placeholder-count="3">
+              <div style="display:flex; flex-direction:column; gap:16px;">
+                <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; border-bottom:2px solid var(--t1); padding-bottom:11px;">
+                  <div style="font:500 12px/1 'JetBrains Mono',monospace; color:var(--t3);">{{ sb.no }}</div>
+                  <div style="{{ h3Style }}">{{ sb.name }}</div>
+                  <div style="font:400 12.5px/1.3 'JetBrains Mono',monospace; color:var(--t3); margin-left:auto;">{{ sb.spec }}</div>
+                </div>
+                <div style="{{ frameGrid }}">
+                  <sc-for list="{{ sb.frames }}" as="f" hint-placeholder-count="5">
+                    <div style="display:flex; flex-direction:column; gap:9px; min-width:0;">
+                      <div style="aspect-ratio:16/10; background:var(--s); border:1px solid var(--bs); border-radius:6px; position:relative; overflow:hidden; display:flex; align-items:center; justify-content:center;">
+                        <div style="{{ f.vis }}"></div>
+                        <div style="position:absolute; left:9px; top:8px; font:500 10.5px/1 'JetBrains Mono',monospace; color:var(--t3);">{{ f.t }}</div>
+                      </div>
+                      <div style="font:500 12.5px/1.35 'Plus Jakarta Sans',sans-serif; text-wrap:pretty;">{{ f.title }}</div>
+                      <div style="font:400 11.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--t2); text-wrap:pretty;">{{ f.note }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="display:flex; align-items:stretch; border:1px solid var(--in); border-radius:8px; overflow:hidden;">
+                  <div style="width:3px; flex-shrink:0; background:var(--in);"></div>
+                  <div style="flex:1; min-width:0; padding:15px 17px; display:flex; flex-direction:column; gap:5px;">
+                    <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--in);">Reduced motion · composed static state</div>
+                    <div style="font:400 13.5px/1.6 'Plus Jakarta Sans',sans-serif; color:var(--t2); text-wrap:pretty;">{{ sb.reduced }}</div>
+                  </div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isHandoff }}" hint-placeholder-val="{{ false }}">
+        <div style="{{ sectionPad }}">
+          <div style="display:flex; flex-direction:column; gap:10px; max-width:680px;">
+            <div style="font:500 12px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--t3);">Developer handoff</div>
+            <div style="{{ h1Small }}">Component inventory and build note</div>
+          </div>
+
+          <div style="padding-top:26px; display:flex; flex-direction:column; gap:12px;">
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--t3);">Build target</div>
+            <div style="background:var(--s); border:1px solid var(--bs); border-radius:8px; padding:20px; display:flex; flex-direction:column; gap:11px; box-shadow:var(--sh1);">
+              <sc-for list="{{ buildNotes }}" as="b" hint-placeholder-count="6">
+                <div style="display:grid; grid-template-columns:200px 1fr; gap:14px; align-items:baseline; padding-bottom:10px; border-bottom:1px solid var(--bs);">
+                  <div style="font:500 12.5px/1.4 'JetBrains Mono',monospace; color:var(--t3);">{{ b.k }}</div>
+                  <div style="font:400 13.5px/1.6 'Plus Jakarta Sans',sans-serif; color:var(--t1); text-wrap:pretty;">{{ b.v }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="padding-top:32px; display:flex; flex-direction:column; gap:12px;">
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--t3);">Component inventory</div>
+            <div style="background:var(--s); border:1px solid var(--bs); border-radius:8px; overflow:hidden; box-shadow:var(--sh1);">
+              <div style="overflow-x:auto;">
+                <div style="min-width:880px;">
+                  <div style="display:grid; grid-template-columns:210px 1fr 1.3fr; gap:14px; padding:11px 18px; background:var(--sk); border-bottom:1px solid var(--bs); font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--t3);">
+                    <div>Component</div><div>Tokens</div><div>Note</div>
+                  </div>
+                  <sc-for list="{{ inventory }}" as="c" hint-placeholder-count="12">
+                    <div style="display:grid; grid-template-columns:210px 1fr 1.3fr; gap:14px; padding:12px 18px; border-bottom:1px solid var(--bs); align-items:start;">
+                      <div style="font:500 13px/1.4 'Plus Jakarta Sans',sans-serif;">{{ c.name }}</div>
+                      <div style="font:400 12px/1.6 'JetBrains Mono',monospace; color:var(--t2); text-wrap:pretty;">{{ c.tokens }}</div>
+                      <div style="font:400 13px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--t2); text-wrap:pretty;">{{ c.note }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="padding-top:32px; display:flex; flex-direction:column; gap:12px;">
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--t3);">Performance budget</div>
+            <div style="{{ budgetGrid }}">
+              <sc-for list="{{ budgets }}" as="b" hint-placeholder-count="4">
+                <div style="display:flex; background:var(--s); border:1px solid var(--bs); border-radius:8px; overflow:hidden; box-shadow:var(--sh1); min-width:0;">
+                  <div style="{{ b.sel }}"></div>
+                  <div style="flex:1; min-width:0; padding:16px 18px; display:flex; flex-direction:column; gap:6px;">
+                    <div style="font:400 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--t3);">{{ b.k }}</div>
+                    <div style="font:700 22px/1.1 'JetBrains Mono',monospace;">{{ b.v }}</div>
+                    <div style="font:400 12.5px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--t2); text-wrap:pretty;">{{ b.note }}</div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <div style="background:var(--s); border-top:1px solid var(--bs);">
+        <div style="{{ footPad }}">
+          <div style="{{ footGrid }}">
+            <div style="display:flex; flex-direction:column; gap:13px; min-width:0;">
+              <img src="uploads/fabricxai-logo-light.png" alt="FabricX AI" style="height:24px; width:auto; align-self:flex-start; object-fit:contain;" />
+              <div style="font:400 13.5px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--t2); max-width:34ch; text-wrap:pretty;">{{ t.footBlurb }}</div>
+              <div style="display:flex; align-items:center; gap:7px; border:1px solid var(--bd); border-radius:999px; padding:6px 10px; align-self:flex-start;">
+                <div style="{{ enChip }}">EN</div>
+                <div style="width:1px; height:12px; background:var(--bs);"></div>
+                <div style="{{ bnChip }}">বাংলা</div>
+              </div>
+            </div>
+            <sc-for list="{{ footCols }}" as="fc" hint-placeholder-count="3">
+              <div style="display:flex; flex-direction:column; gap:10px; min-width:0;">
+                <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--t3);">{{ fc.head }}</div>
+                <sc-for list="{{ fc.links }}" as="l" hint-placeholder-count="4">
+                  <div style="font:400 13.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--t2); cursor:pointer;" style-hover="color:var(--ap)">{{ l }}</div>
+                </sc-for>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; padding-top:24px; margin-top:24px; border-top:1px solid var(--bs);">
+            <div style="font:400 12px/1.4 'JetBrains Mono',monospace; color:var(--t3);">{{ t.copyright }}</div>
+            <div style="font:400 12px/1.4 'JetBrains Mono',monospace; color:var(--t3); margin-left:auto; cursor:pointer;">{{ t.privacy }}</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1560,&quot;height&quot;:980},&quot;page&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;landing&quot;,&quot;product&quot;,&quot;marbim&quot;,&quot;walk&quot;,&quot;pricing&quot;,&quot;demo&quot;,&quot;about&quot;,&quot;story&quot;,&quot;handoff&quot;],&quot;default&quot;:&quot;landing&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Site&quot;},&quot;viewport&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;desktop&quot;,&quot;tablet&quot;,&quot;mobile&quot;],&quot;default&quot;:&quot;desktop&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Site&quot;},&quot;language&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;en&quot;,&quot;bn&quot;],&quot;default&quot;:&quot;en&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Site&quot;},&quot;motion&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Motion&quot;}}">
+const EN = {
+  demoCta: 'Request a demo', watchCta: 'Watch the 4-minute walkthrough',
+  heroEyebrow: 'ERP for garment export factories',
+  heroH1: 'The system that runs the floor.',
+  heroSub: 'AI-powered ERP for garment factories — the AI drafts, your people decide.',
+  heroProof: '42 seconds from a buyer\u2019s email to a structured RFQ. Every field cites the line it came from.',
+  trustedBy: 'Running in',
+  journeyEyebrow: 'One order, end to end',
+  journeyH2: 'Follow PO-2044 through the factory.',
+  journeySub: '40,000 men\u2019s polos for Bestseller. Nine stations, one thread, and the screens the people at each station actually use.',
+  problemsEyebrow: 'Three problems',
+  problemsH2: 'What actually goes wrong, and what stops it.',
+  loopEyebrow: 'The trust loop',
+  loopH2: 'Propose. Approve. Commit.',
+  loopBody: 'Nothing the AI writes enters your factory without a human\u2019s approval. Every step audited — who drafted, who approved, what changed.',
+  draftTitle: 'Revised PO read from the buyer\u2019s email',
+  approveAll: 'Approve all 4', reject: 'Reject',
+  auditLine: 'drafted 214 · approved 196',
+  deptEyebrow: 'Eleven departments',
+  deptH2: 'Every desk, every floor, one record.',
+  bdEyebrow: 'Built here',
+  bdH2: 'For how a Bangladeshi factory actually works.',
+  bdSub: 'Not a global ERP with a Bengali translation bolted on. The things that stop an export order here are the things this was built around.',
+  factoryTypes: 'Factory types',
+  ownerEyebrow: 'The owner\u2019s view',
+  ownerH2: 'The factory in your pocket, at six in the morning.',
+  ownerBody: 'Exceptions first, ranked by what it costs to leave alone until Monday. No dashboards to read — the screen tells you what needs you and nothing else.',
+  ownerFeedTitle: '5 things need you',
+  finalH2: 'See it on your own orders.',
+  finalSub: 'A demo runs on your styles, your buyers, your LC terms — not a sample database.',
+  productEyebrow: 'The product',
+  productH1: 'Eleven departments, one order record.',
+  productSub: 'Each department gets the screen its people need, at the density their hands need it. The order underneath is the same object.',
+  onThisPage: 'On this page',
+  marbimEyebrow: 'MARBIM',
+  marbimH1: 'The AI drafts. Your people decide.',
+  marbimSub: 'MARBIM reads the documents your factory already receives and turns them into structured drafts. It never writes to your records — it proposes, and a person with the authority approves.',
+  rosterH2: 'What it reads.',
+  rosterSub: 'Every extraction lands as a draft with per-field confidence and a click back to the exact place on the page it came from.',
+  neverH2: 'What MARBIM never does.',
+  neverSub: 'A list this short is the point. An AI in a factory earns trust by what it refuses to do on its own.',
+  walkEyebrow: 'Walkthrough',
+  walkH1: 'Four minutes, one order, no slides.',
+  walkSub: 'The whole system as one order moves through it. Chapter links below jump straight to a department — this doubles as the manual.',
+  playLabel: 'Play · 4:06',
+  pricingEyebrow: 'Pricing',
+  pricingH1: 'One pilot, priced honestly.',
+  pricingSub: 'No tiers invented to make a middle option look reasonable. A pilot, then a conversation about what your factory actually uses.',
+  pilotTag: 'Available now', pilotName: 'Pilot program',
+  pilotBody: 'One factory, one department at a time, with us in the building for the first cycle of each.',
+  talkCta: 'Talk to us',
+  noTiersTag: 'Why no price list', noTiersName: 'Because we would be guessing.',
+  noTiersBody: 'A 600-worker woven unit and a 3,000-worker composite need different things, and a number on a page would be wrong for both. Tell us your lines, your buyers and what breaks most often, and we will quote against that.',
+  faqH2: 'Questions we get asked.',
+  demoEyebrow: 'Request a demo',
+  demoH1: 'We will run it on your orders.',
+  demoSub: 'Send this and we will come back on WhatsApp — it is faster than email and you will read it on the floor.',
+  sendCta: 'Send the request',
+  formFoot: 'We use these details to prepare the demo and nothing else. No newsletter, no list.',
+  sentH: 'We have it. Expect a WhatsApp inside one working day.',
+  sentBody: 'Rashid will message from +880 1XXX XXXXXX to fix a time. If your factory type is composite, he will bring the yarn-to-dyeing screens too.',
+  backToForm: 'Send another',
+  aboutEyebrow: 'About',
+  aboutH1: 'Loose threads make nothing. Woven, they hold a shipment.',
+  founderTag: 'Founder', founderName: 'Rashid Mahmud', founderRole: 'founder · FabricX AI',
+  founderBio: 'Fifteen years in Gazipur and Narayanganj, most of it watching good merchandisers lose Thursdays to retyping. FabricX is the system he wanted at 2am on a shipment week.',
+  buildPublicH: 'Built in public',
+  buildPublicBody: 'Every screen in this site is the real product, shipped. Nothing here is a render of something we intend to build.',
+  footBlurb: 'AI-powered ERP for garment export factories. Woven, knit and composite.',
+  copyright: '© 2026 FabricX AI · Dhaka, Bangladesh',
+  privacy: 'Privacy'
+};
+
+const BN = {
+  demoCta: 'ডেমো দেখতে চাই', watchCta: '৪ মিনিটের ওয়াকথ্রু দেখুন',
+  heroEyebrow: 'গার্মেন্ট রপ্তানি কারখানার জন্য ইআরপি',
+  heroH1: 'যে সিস্টেমে কারখানার ফ্লোর চলে।',
+  heroSub: 'গার্মেন্ট কারখানার জন্য এআই-চালিত ইআরপি — এআই খসড়া করে, সিদ্ধান্ত নেয় আপনার লোক।',
+  heroProof: 'বায়ারের ইমেইল থেকে গোছানো আরএফকিউ — ৪২ সেকেন্ডে। প্রতিটি ঘর কোন লাইন থেকে এসেছে, তা দেখানো থাকে।',
+  trustedBy: 'যেখানে চলছে',
+  journeyEyebrow: 'একটি অর্ডার, শুরু থেকে শেষ',
+  journeyH2: 'PO-2044 কারখানার ভেতর দিয়ে যায়।',
+  journeySub: 'বেস্টসেলারের জন্য ৪০,০০০ পুরুষ পোলো। নয়টি ধাপ, একটি সুতো, আর প্রতিটি ধাপের মানুষ যে স্ক্রিন আসলে ব্যবহার করেন।',
+  problemsEyebrow: 'তিনটি সমস্যা',
+  problemsH2: 'আসলে যা ভুল হয়, আর যা তা ঠেকায়।',
+  loopEyebrow: 'বিশ্বাসের চক্র',
+  loopH2: 'প্রস্তাব। অনুমোদন। রেকর্ড।',
+  loopBody: 'এআই যা লেখে, মানুষের অনুমোদন ছাড়া তা কারখানার খাতায় ওঠে না। প্রতিটি ধাপের হিসাব থাকে — কে খসড়া করল, কে অনুমোদন দিল, কী বদলাল।',
+  draftTitle: 'বায়ারের ইমেইল থেকে পড়া সংশোধিত পিও',
+  approveAll: '৪টিই অনুমোদন করুন', reject: 'বাতিল',
+  auditLine: 'খসড়া ২১৪ · অনুমোদিত ১৯৬',
+  deptEyebrow: 'এগারোটি বিভাগ',
+  deptH2: 'প্রতিটি ডেস্ক, প্রতিটি ফ্লোর, একটাই রেকর্ড।',
+  bdEyebrow: 'এখানেই তৈরি',
+  bdH2: 'বাংলাদেশের কারখানা আসলে যেভাবে চলে।',
+  bdSub: 'বাংলা অনুবাদ জুড়ে দেওয়া বিদেশি ইআরপি নয়। এখানে যেসব কারণে রপ্তানি অর্ডার আটকায়, সেগুলো ঘিরেই এটি বানানো।',
+  factoryTypes: 'কারখানার ধরন',
+  ownerEyebrow: 'মালিকের স্ক্রিন',
+  ownerH2: 'ভোর ছয়টায় কারখানা আপনার পকেটে।',
+  ownerBody: 'আগে ব্যতিক্রম, সোমবার পর্যন্ত ফেলে রাখলে কোনটির খরচ বেশি সেই অনুযায়ী সাজানো। পড়ার মতো ড্যাশবোর্ড নেই — কোনটিতে আপনার দরকার, স্ক্রিন শুধু তা-ই বলে।',
+  ownerFeedTitle: '৫টি বিষয়ে আপনার দরকার',
+  finalH2: 'নিজের অর্ডারে দেখে নিন।',
+  finalSub: 'ডেমো চলে আপনার স্টাইল, আপনার বায়ার, আপনার এলসি শর্তে — নমুনা ডেটায় নয়।',
+  productEyebrow: 'প্রোডাক্ট',
+  productH1: 'এগারো বিভাগ, একটাই অর্ডার রেকর্ড।',
+  productSub: 'প্রতিটি বিভাগ পায় তার মানুষের প্রয়োজনমতো স্ক্রিন, তাদের হাতের উপযোগী ঘনত্বে। নিচের অর্ডারটি একটাই বস্তু।',
+  onThisPage: 'এই পাতায়',
+  marbimEyebrow: 'মারবিম',
+  marbimH1: 'এআই খসড়া করে। সিদ্ধান্ত নেয় আপনার লোক।',
+  marbimSub: 'কারখানা যেসব কাগজ এমনিতেই পায়, মারবিম সেগুলো পড়ে গোছানো খসড়া বানায়। এটি নিজে কখনো রেকর্ডে লেখে না — প্রস্তাব করে, আর ক্ষমতাপ্রাপ্ত মানুষ অনুমোদন দেন।',
+  rosterH2: 'যা যা পড়ে।',
+  rosterSub: 'প্রতিটি পাঠ খসড়া হিসেবে আসে — প্রতি ঘরের আস্থার মাত্রা সহ, আর ক্লিক করলে কাগজের ঠিক যেখান থেকে এসেছে সেখানে নিয়ে যায়।',
+  neverH2: 'মারবিম যা কখনো করে না।',
+  neverSub: 'তালিকাটি ছোট, সেটাই মূল কথা। কারখানায় এআই বিশ্বাস অর্জন করে নিজে থেকে যা করতে অস্বীকার করে, তা দিয়ে।',
+  walkEyebrow: 'ওয়াকথ্রু',
+  walkH1: 'চার মিনিট, একটি অর্ডার, কোনো স্লাইড নেই।',
+  walkSub: 'একটি অর্ডার যেভাবে পুরো সিস্টেমের ভেতর দিয়ে যায়। নিচের অধ্যায় লিংক সরাসরি বিভাগে নিয়ে যায় — এটিই ম্যানুয়াল।',
+  playLabel: 'চালান · ৪:০৬',
+  pricingEyebrow: 'মূল্য',
+  pricingH1: 'একটি পাইলট, সৎ দামে।',
+  pricingSub: 'মাঝের অপশন যুক্তিসঙ্গত দেখানোর জন্য বানানো ধাপ নেই। আগে পাইলট, তারপর আপনার কারখানা আসলে কী ব্যবহার করে তা নিয়ে কথা।',
+  pilotTag: 'এখনই পাওয়া যাচ্ছে', pilotName: 'পাইলট প্রোগ্রাম',
+  pilotBody: 'একটি কারখানা, একবারে একটি বিভাগ, প্রতিটির প্রথম চক্রে আমরা কারখানাতেই থাকি।',
+  talkCta: 'কথা বলুন',
+  noTiersTag: 'কেন দামের তালিকা নেই', noTiersName: 'কারণ তা অনুমান হতো।',
+  noTiersBody: '৬০০ কর্মীর ওভেন ইউনিট আর ৩,০০০ কর্মীর কম্পোজিটের চাহিদা এক নয়, একটি সংখ্যা দুজনের জন্যই ভুল হতো। আপনার লাইন, বায়ার আর কোথায় সবচেয়ে বেশি আটকায় বলুন — তার ভিত্তিতে দাম দেব।',
+  faqH2: 'যে প্রশ্নগুলো আসে।',
+  demoEyebrow: 'ডেমোর অনুরোধ',
+  demoH1: 'আপনার অর্ডারেই চালিয়ে দেখাব।',
+  demoSub: 'পাঠিয়ে দিন, আমরা হোয়াটসঅ্যাপে ফিরব — ইমেইলের চেয়ে দ্রুত, আর ফ্লোরে দাঁড়িয়েই পড়তে পারবেন।',
+  sendCta: 'অনুরোধ পাঠান',
+  formFoot: 'এই তথ্য শুধু ডেমো প্রস্তুত করতে ব্যবহার করি, আর কিছুতে নয়। নিউজলেটার নেই, তালিকা নেই।',
+  sentH: 'পেয়েছি। এক কর্মদিবসের মধ্যে হোয়াটসঅ্যাপ পাবেন।',
+  sentBody: 'রশিদ +৮৮০ ১XXX XXXXXX থেকে সময় ঠিক করতে বার্তা দেবেন। আপনার কারখানা কম্পোজিট হলে তিনি সুতো-থেকে-ডাইং স্ক্রিনগুলোও দেখাবেন।',
+  backToForm: 'আরেকটি পাঠান',
+  aboutEyebrow: 'পরিচিতি',
+  aboutH1: 'আলগা সুতোয় কিছু হয় না। বোনা হলে তা শিপমেন্ট ধরে রাখে।',
+  founderTag: 'প্রতিষ্ঠাতা', founderName: 'রশিদ মাহমুদ', founderRole: 'প্রতিষ্ঠাতা · ফেব্রিক্সএআই',
+  founderBio: 'গাজীপুর ও নারায়ণগঞ্জে পনেরো বছর, তার বেশিরভাগ সময় দেখেছেন ভালো মার্চেন্ডাইজাররা বৃহস্পতিবার হারাচ্ছেন কেবল টাইপ করতে করতে। শিপমেন্টের সপ্তাহে রাত দুটোয় যে সিস্টেম তিনি চাইতেন, ফেব্রিক্স সেটাই।',
+  buildPublicH: 'প্রকাশ্যে তৈরি',
+  buildPublicBody: 'এই সাইটের প্রতিটি স্ক্রিন বাস্তব প্রোডাক্ট, চালু আছে। বানানোর ইচ্ছা আছে এমন কিছুর ছবি এখানে নেই।',
+  footBlurb: 'গার্মেন্ট রপ্তানি কারখানার জন্য এআই-চালিত ইআরপি। ওভেন, নিট ও কম্পোজিট।',
+  copyright: '© ২০২৬ ফেব্রিক্সএআই · ঢাকা, বাংলাদেশ',
+  privacy: 'গোপনীয়তা'
+};
+
+const PAGES = [
+  ['landing', 'Landing', '/'], ['product', 'Product', '/product'], ['marbim', 'MARBIM', '/marbim'],
+  ['walk', 'Walkthrough', '/walkthrough'], ['pricing', 'Pricing', '/pricing'],
+  ['demo', 'Demo', '/demo'], ['about', 'About', '/about'],
+  ['story', '3D storyboards', '/_storyboards'], ['handoff', 'Handoff', '/_handoff']
+];
+
+const VIEWPORTS = [['desktop', '1440', 1440], ['tablet', '834', 834], ['mobile', '390', 390]];
+
+// where each of the eight strands starts before it weaves in: [dx, dy, rotation]
+const SCATTER = [
+  [-190, 110, -22], [150, 150, 19], [-210, -70, 14], [120, -180, -16],
+  [-120, 180, 24], [200, 60, -12], [60, -200, 20], [-160, -140, -19]
+];
+
+// name, caption (<=10 words), detail, badge, badgeKind, screen label, rows, act
+const STATIONS = [
+  ['Inquiry', 'A buyer email becomes a structured RFQ.',
+    'Bestseller sends a spec in the body of an email with a tech pack attached. MARBIM reads both and drafts the RFQ — construction, quantities, target price, delivery window — each field citing the line it came from.',
+    'AI', 'ai', 'RFQ extraction review', '42 seconds · 11 fields · 2 flagged low',
+    [['40s piqué 180 gsm', 'construction · 0.96', '', 'ok'], ['40,000 pcs', 'quantity · 0.98', '', 'ok'], ['$6.80 target', 'price · 0.71 — read from a scan', '', 'warn']], ''],
+  ['Quote', 'Cost sheet first, quote second.',
+    'The quote cannot be drafted until a cost sheet is approved. Fabric, trims, CM at the real SMV, commercial and margin — and if margin falls below the floor, sending it routes to the owner rather than out of the building.',
+    'Gate', 'gate', 'Costing studio · FOB build-up', 'FOB $6.80 · CM ৳48.20/pc · margin 19.2%',
+    [['Fabric', '$3.41 · yarn to dyed', '', 'ink'], ['CM', '$1.12 · SMV 14.2', '', 'ink'], ['Margin', '19.2% · above floor', '', 'ok']], ''],
+  ['Order + TNA', 'Eleven dates that know the LC deadline.',
+    'The order becomes a TNA from a template — knit basic or woven with wash. Every milestone carries its dependencies, and the critical path is drawn thicker. The LC float chip watches the gap between the last planned date and the latest shipment date the LC allows.',
+    '', '', 'Order desk · TNA timeline', 'PO-2044 · ship 20 Nov · LC-4471',
+    [['Lab dip approved', '02 Aug · actual', '', 'ok'], ['Fabric in house', '18 Sep · planned', '', 'ink'], ['LC float', '8 days · on track', '', 'ok']], ''],
+  ['Materials', 'No back-to-back LC, no import PO.',
+    'Yarn is quoted by three spinners, the cheapest is 26 days and knitting starts in 18, so the comparison shows the one that clears rather than the one that saves. The import PO will not issue until a BTB is linked to it.',
+    'Gate', 'gate', 'Procurement · BTB gate', 'blocked · nothing written',
+    [['Needs', '$31,400 back-to-back', '', 'ink'], ['Headroom', '$24,000 on LC-4471', '', 'dg'], ['Short', '$7,400', '', 'dg']], ''],
+  ['Cut', 'PP approved and fabric issued. Then cut.',
+    'The cutting screen refuses to open a lay while the PP sample is unapproved or the fabric has not been issued from store. Both preconditions are chips on the card, and the refusal names which one is missing.',
+    'Gate', 'gate', 'Cutting · lay entry', 'floor density · 56px rows',
+    [['PP approved', '31 Jul · sampling', '', 'ok'], ['Fabric issued', 'ISS-0912 · 5,280 yd', '', 'ok'], ['Lay 4', '82 plies · ready', '', 'ink']], 'Open the lay'],
+  ['Sew', 'The floor\u2019s truth, hourly.',
+    'Line 3 enters output every hour on a tablet in Bengali, with downtime reasons picked from a list rather than typed. The run rate projects a finish date, and when it slips past the ex-factory date the order desk sees it before the merchandiser is asked.',
+    '', '', 'Line tracking · hourly board', 'L3 · 74% efficiency · projects 14 Nov',
+    [['09:00–10:00', '412 pcs', '', 'ink'], ['10:00–11:00', '388 pcs · thread break 12 min', '', 'warn'], ['Projected', 'sewing done 14 Nov', '', 'ok']], ''],
+  ['QC', 'The AQL rule, shown before the count.',
+    'Lot size gives the sample size, the accept number and the reject number, and the screen shows the rule before anyone counts. The verdict actualizes the TNA milestone — nobody types the date twice.',
+    '', '', 'Quality · final inspection', 'AQL 2.5 · lot 40,000 · sample 315',
+    [['Accept at', '14 defects', '', 'ok'], ['Reject at', '15 defects', '', 'dg'], ['Found', '9 · PASS', '', 'ok']], ''],
+  ['Ship', 'The B/L discrepancy caught before the bank.',
+    'MARBIM reads the draft bill of lading against the LC terms and flags what a bank would reject — a consignee name short of two letters, a freight term that contradicts FOB. Fixing it costs an email. Missing it costs a discrepancy fee and three weeks.',
+    'AI', 'ai', 'Shipment · LC document check', '2 discrepancies found',
+    [['Consignee', 'short of "AB" vs 46A', '', 'dg'], ['Freight', 'says prepaid on an FOB shipment', '', 'dg'], ['EXP', 'filled · docs can go', '', 'ok']], ''],
+  ['Paid', 'Realization posts to the books itself.',
+    'The bank advice PDF becomes a realization draft, approved by the owner, and posts to receivables. The order closes with its actual margin against the quoted one, and the difference is attributed to fabric, CM or commercial.',
+    '', '', 'Finance · profitability', 'quoted 19.2% · actual 20.1%',
+    [['Fabric', '+0.4 · yarn bought under', '', 'ok'], ['CM', '+0.9 · no changeover loss', '', 'ok'], ['Actual margin', '20.1%', '', 'ok']], '']
+];
+
+const PROBLEMS = [
+  ['Problem 01', 'Your merchandisers retype what a buyer already sent.',
+    'A tech pack arrives as a PDF. Quantities go into Excel by hand, then into a cost sheet by hand, then into a TNA by hand. Three chances to transpose a digit, and the last one ships.',
+    'Answer', 'Documents become drafts, not data entry.',
+    'MARBIM · extraction review',
+    [['Tech pack → BOM', '18 lines · 0.94 avg', 'ok'], ['Revised PO → diff', 'Navy/L +2,000', 'ok'], ['Challan → GRN', 'photo from the gate', 'ok'], ['LC SWIFT → checklist', '46A and 47A linked', 'ok']]],
+  ['Problem 02', 'The expensive mistakes are the quiet ones.',
+    'Cutting starts before the PP sample is approved. An import PO issues with no back-to-back behind it. Bonded fabric leaves the store past the UD balance. Nobody notices until it costs money or a customs officer does.',
+    'Answer', 'Four gates that cannot be talked past.',
+    'The gates · refusal cards',
+    [['PP approval', 'before any lay opens', 'dg'], ['BTB linked', 'before an import PO issues', 'dg'], ['UD balance', 'before bonded goods move', 'dg'], ['GRN matched', 'before anything is payable', 'dg']]],
+  ['Problem 03', 'The owner finds out on Sunday.',
+    'The LC expired with an unshipped balance. The line lost two days to a machine nobody escalated. By the time it reaches the owner it is a problem to absorb rather than a decision to make.',
+    'Answer', 'Exceptions ranked by what waiting costs.',
+    'Owner · exceptions feed',
+    [['LC conflict', '$214,500 stuck 9 days', 'dg'], ['Payroll approval', '৳4,182,000 · Monday 09:00', 'warn'], ['Fabric late', '10 days past the promise', 'dg'], ['CAP overdue', 'audit in 2 days', 'dg']]]
+];
+
+const LOOP = [
+  ['Propose', 'MARBIM reads the document and drafts. The draft is amber — it looks like something waiting for a person, because it is.'],
+  ['Approve', 'The person whose job it is approves per field or rejects with a reason. Approval rules decide who that is, per module and per action.'],
+  ['Commit', 'Only then does anything enter the record, with the draft, the approver and the diff kept beside it. Rev 1 never disappears.']
+];
+
+const DEPARTMENTS = [
+  ['Order Desk & TNA', 'merchandisers', 'Eleven milestones that know the LC deadline, and a ripple preview before any date moves.'],
+  ['RFQ & Quotation', 'merchandisers · managers', 'A buyer email becomes a structured RFQ in 42 seconds, each field citing its source.'],
+  ['Costing Studio', 'merchandisers · owner', 'CM in taka beside FOB in dollars, and a margin floor the owner has to sign past.'],
+  ['Planning Board', 'planners', 'Drag an order and see the ripple before you commit it. Scenarios fork, then apply.'],
+  ['Store & Inventory', 'storekeepers', 'Roll and lot intake with shade groups, and a UD balance that blocks a bonded issue.'],
+  ['Cutting', 'cutting in-charge', 'A lay cannot open until the PP sample is approved and the fabric is actually issued.'],
+  ['Line Tracking', 'supervisors', 'Hourly output in Bengali on a tablet, with a run rate that projects the finish date.'],
+  ['Quality', 'qc', 'The AQL rule shown before the count, and a verdict that actualizes the TNA itself.'],
+  ['Finishing & Shipment', 'packing · commercial', 'The B/L checked against the LC before the bank sees it, and EXP gating the send.'],
+  ['LC & Commercial', 'commercial · accounts', 'Every LC with two countdowns, BTB headroom, and a submission board that shows stuck.'],
+  ['Workforce & Payroll', 'hr · owner', 'Gazette grades, not typed wages. Payroll refuses to compute over an open exception.']
+];
+
+const BD_ITEMS = [
+  ['LC and back-to-back', 'Master LC, BTB headroom, amendment diffs, and a submission board that shows what is stuck at the bank and for how long.'],
+  ['Bonded and UD', 'Utilisation declarations with per-HS-code balances, a reconciliation the bond officer reads, and an issue that refuses past the balance.'],
+  ['Gazette payroll', 'Wage grades from the minimum wage gazette with version history. Choose a grade; the arithmetic follows. Nobody types a wage.'],
+  ['Bengali floor screens', 'The floor works in Bengali with Bengali numerals if the factory sets them. Not a translation layer — the same screens, written twice.'],
+  ['Offline tolerance', 'The knitting hall drops signal near the dye house. Entries queue on the tablet and go up in order when it comes back.']
+];
+
+const OWNER_FEED = [
+  ['LC conflict', '$214,500 is stuck at the bank on two discrepancies, nine days now.', '9 days', 'dg', false, ''],
+  ['Approval', '৳4,182,000 of payroll is waiting on you. Bank cut-off Monday 09:00.', 'due Monday', 'ap', true, 'Approve payroll'],
+  ['At-risk order', 'Fabric for PO-88231 is ten days past the mill\u2019s promise.', '10 days', 'dg', false, '']
+];
+
+const PRODUCT_DEPTS = [
+  ['Order Desk & TNA', 'merchandisers', 'Where the factory\u2019s promises live. Every order, its health, and the eleven dates that have to hold.',
+    ['A milestone timeline with dependencies and a thicker critical path, generated from a template that differs for knit and woven.',
+     'A ripple preview before any date moves — you see what shifts downstream before you confirm, and nothing shifts silently.',
+     'The LC float chip: the gap between the last planned date and the latest shipment the LC allows, watched continuously.'],
+    'Cutting waits on PP', 'Revised PO → diff draft', 'Order desk · TNA timeline',
+    [['Lab dip approved', '02 Aug · actual', 'ok'], ['Fabric in house', '18 Sep · planned', 'ink'], ['LC float', '8 days · on track', 'ok']]],
+  ['Store & Inventory', 'storekeepers · commercial', 'What is actually in the building, by roll and by lot, and what customs has been told about it.',
+    ['Roll and lot intake with shade groups, so a cutting issue can refuse a shade mix rather than discover it on the table.',
+     'Yarn and greige intake for composite units — the same UD quantity followed through knitting and dyeing by lot.',
+     'A bonded issue draws against the UD and is blocked when the balance will not cover it, naming the shortfall.'],
+    'UD balance blocks the issue', 'Challan photo → GRN draft', 'Store · issue to production',
+    [['Required', '4,820 yd · REQ-0918', 'ink'], ['UD balance', '2,300 yd', 'dg'], ['Short', '2,520 yd', 'dg']]],
+  ['Quality', 'qc · managers', 'Inline defects at three taps, and a final inspection that shows the rule before it counts.',
+    ['Inline DHU live in the header while the operation strip stays selected — three taps per defect, no typing.',
+     'The AQL stepper computes sample, accept and reject from the lot size and shows them as the rule, not as a result.',
+     'The verdict actualizes the TNA milestone and generates the buyer report pack, so nobody enters the date twice.'],
+    'PASS actualizes the TNA', 'Measurement sheet photo → table', 'Quality · final inspection',
+    [['Sample', '315 of 40,000', 'ink'], ['Accept / reject', '14 / 15', 'ink'], ['Found', '9 · PASS', 'ok']]],
+  ['LC & Commercial', 'commercial · accounts · owner', 'Every letter of credit, what it has left, and what is stuck at the bank.',
+    ['Two independent countdowns per LC — expiry and latest shipment — because the one that bites is rarely the one being watched.',
+     'BTB headroom with the arithmetic expanded, and an open-a-BTB action that refuses when the headroom will not cover it.',
+     'A submission board where discrepant sits red with days-stuck, and realization posts to receivables on the owner\u2019s approval.'],
+    'EXP gates the bank send', 'Bank advice → realization draft', 'LC register · submissions',
+    [['SUB-0158', 'discrepant · 9 d stuck', 'dg'], ['SUB-0165', 'realized 08 Sep', 'ok'], ['SUB-0141', 'accepted · 38 d unpaid', 'warn']]]
+];
+
+const ROSTER = [
+  ['Tech pack', 'BOM lines with consumption'], ['Purchase order', 'order + breakdown'],
+  ['Revised PO', 'a diff against Rev 1'], ['Proforma invoice', 'a supplier quote row'],
+  ['Delivery challan', 'a GRN draft from a photo'], ['LC SWIFT', 'docs checklist, 46A and 47A'],
+  ['Bank advice', 'a realization draft'], ['Draft B/L', 'discrepancies against the LC'],
+  ['Audit report', 'findings and CAP drafts'], ['Buyer comment sheet', 'comment points, one per line'],
+  ['Machine nameplate', 'an asset record'], ['Measurement sheet', 'a filled spec table']
+];
+
+const NEVER = [
+  'writes to your records on its own — everything lands as a draft with an approver named',
+  'invents a number it cannot point at on a source document',
+  'sends anything to a buyer, a bank or a supplier without a person pressing send',
+  'hides how sure it is — every field carries its confidence, and the low ones say why',
+  'learns from another factory\u2019s data. Your orders, prices and margins stay yours'
+];
+
+const CHAPTERS = [
+  ['0:00', 'The order arrives', 'A buyer email becomes a structured RFQ in 42 seconds.'],
+  ['0:31', 'Costing and the quote', 'Cost sheet first, and the margin floor that routes to the owner.'],
+  ['1:04', 'Order and TNA', 'Eleven milestones, the critical path, and the LC float chip.'],
+  ['1:38', 'Materials and the BTB gate', 'The import PO that will not issue without a back-to-back.'],
+  ['2:09', 'Cutting', 'PP approved and fabric issued — the two chips that open a lay.'],
+  ['2:36', 'The floor, hourly', 'Bengali entry, downtime reasons, and a projected finish date.'],
+  ['3:05', 'Quality and the AQL rule', 'The rule shown before the count, and PASS actualizing the TNA.'],
+  ['3:32', 'Shipment and getting paid', 'The B/L discrepancy caught, and the realization posting itself.']
+];
+
+const PILOT_POINTS = [
+  'One department live at a time, behind a champion we train first.',
+  'Item masters, styles, BOMs and wage grades loaded by extraction from your own files.',
+  'Payroll runs parallel for two cycles before anything depends on it.',
+  'We are in the building for the first cycle of each department.'
+];
+
+const FAQS = [
+  ['Who owns the data?', 'You do. It is your factory\u2019s record — orders, prices, margins, wages. We do not train anything on it, we do not pool it with other factories, and an export of everything you have is one action away on the settings page. If you leave, you leave with it in an open format.'],
+  ['What happens when the internet drops?', 'The floor screens keep working. Entries queue on the tablet with a visible counter and go up in order when the connection returns — no silent loss, no duplicate on retry. The knitting hall near a dye house is exactly the case this was built for.'],
+  ['We already have an ERP. Does this replace it?', 'Usually it starts beside it. Most factories run an accounting package that works, and the pain is in merchandising, the floor and compliance. We integrate at the boundary — export the disbursement file, export the ledger entries — rather than asking you to move accounts on day one.'],
+  ['What languages does it work in?', 'English and Bengali throughout, with a numerals toggle so payslips and floor screens can print Bengali digits. The floor screens were written in Bengali, not translated into it — a supervisor picking a downtime reason reads the words a supervisor uses.'],
+  ['How long does implementation take?', 'A department at a time, roughly two weeks each including a parallel run where the old way keeps going beside the new one. A full factory is a season, not a weekend. Anyone quoting you three days has not loaded a BOM from a real tech pack.']
+];
+
+const DEMO_FIELDS = [
+  ['Your name', '', true, 'required', 'Rashida Akter'],
+  ['Factory name', '', true, 'required', 'e.g. Gazipur Apparels Ltd'],
+  ['Your role', '', false, '', 'owner · merchandiser · manager'],
+  ['Factory type', 'chips', false, '', ''],
+  ['Sewing lines', '', false, '', 'e.g. 12'],
+  ['WhatsApp number', '', true, 'we reply here', '+880 1XXX XXXXXX']
+];
+
+const DEMO_PROMISE = [
+  'We come back on WhatsApp within one working day.',
+  'The demo runs on your styles and your LC terms, not a sample database.',
+  'Forty minutes, and you can stop it whenever it stops being useful.'
+];
+
+const ABOUT_PARAS = [
+  'A garment export order is hundreds of small promises made by different people to different parties, and almost none of them are written down in the same place. The merchandiser promises a date, the commercial manager promises a document, the supervisor promises an output, and the LC quietly promises a bank that all of it happens by a date nobody on the floor has read.',
+  'Every one of those promises is a loose thread. Individually they hold nothing. The factories that ship on time are not the ones with better threads — they are the ones where somebody, usually one exhausted merchandiser, is weaving them together in their head and in a spreadsheet at eleven at night.',
+  'FabricX is that weaving, made into a system. Not a dashboard on top of the work, but the place the work is actually recorded — with gates where a mistake is expensive, drafts where a document can be read, and an approval trail where money moves.',
+  'We build in public because a factory should be able to see the thing before it buys it. Every screen on this site is the product as it currently ships. When something is not built yet, we say so.'
+];
+
+const STORYBOARDS = [
+  ['Scene 01', 'The weave — hero', 'WebGL · 2.4s in · unravels on scroll', [
+    ['0.0s', 'Scattered', 'Eight thread strands drift in 3D, four amber and four ink, at low opacity. No mark is legible yet.'],
+    ['0.8s', 'Drawing together', 'Strands accelerate toward the centre on their own axes, 30ms apart. Opacity rises to full.'],
+    ['1.6s', 'Crossing', 'The strands cross and interlock at the mark\u2019s geometry, overshooting 15% before settling.'],
+    ['2.4s', 'Settled', 'The X sits beside the wordmark. Mouse parallax begins, capped at 6° on each axis.'],
+    ['scroll', 'Unravelling', 'On scroll toward the journey section the strands loosen and drift down, seeding the horizontal thread.']
+  ], 'The mark renders composed beside the wordmark from the first paint — same final geometry, same parallax-neutral position, no fade-in. A visitor with reduced motion sees the poster the animation was designed to arrive at.'],
+  ['Scene 02', 'Order journey — scrollytelling', 'Pinned section · 9 stations · scroll-driven', [
+    ['station 1', 'Thread enters', 'A single horizontal thread crosses the viewport. The order marker sits at station one, the rest are dim.'],
+    ['transition', 'Stitching forward', 'The thread stitches between stations in diagonal segments, 250ms each, as the marker advances.'],
+    ['station 4', 'Card slides in', 'The station\u2019s real UI screen enters as a 3D card at 10–14°, sh3 shadow, with one caption line.'],
+    ['gate beat', 'Refusal held', 'At a gate station the card holds an extra beat with its refusal visible — the block is the point.'],
+    ['station 9', 'Thread completes', 'The marker reaches Paid, the thread behind it drawn solid, and the section unpins.']
+  ], 'The section is not pinned. It becomes a vertical stack of nine numbered blocks — thread rule, caption, UI card flat at 0° — readable top to bottom with no scroll hijacking. This is also the mobile layout at every viewport under 834px.'],
+  ['Scene 03', 'The MARBIM mark — AI explainer', '8s loop · 5 beats · no sound', [
+    ['0.0s', 'Idle breathe', 'The mark scales 1.00 → 1.035 and back over 2.4s, phase-offset per stroke.'],
+    ['1.8s', 'Document arrives', 'A page shape flies in from the left and lands under the mark, tilting 6°.'],
+    ['3.2s', 'Thinking', 'Strokes orbit ±13°, staggered 90ms, opacity dipping — the only spinner in the system.'],
+    ['5.0s', 'Draft appears', 'A draft card pops out with four confidence bars filling left to right, 90ms apart.'],
+    ['6.8s', 'Approve', 'An amber press on the approve button, held 1.2s, then the loop resets to idle.']
+  ], 'The five beats become five static panels side by side with their captions — the same explanation as a strip rather than a loop. The mark sits at rest; the draft card shows its bars filled.']
+];
+
+const INVENTORY = [
+  ['Nav bar', 'surface #FFFFFF · border-default · text-primary', 'Sticky. The only amber on it is the demo CTA; language toggle is a bordered pill, never coloured.'],
+  ['Hero H1', 'Archivo 700 · text-primary · −0.02em', '64px desktop, 44px tablet, 34px mobile. Bengali switches the family to Anek Bangla at the same optical size.'],
+  ['Primary CTA', 'accent #E1B334 · accent-on #181D29 · radius 8', 'Every act-surface on the site. White on amber is prohibited; hover goes accent-hover.'],
+  ['Outline CTA', 'transparent · border-default · text-primary', 'Always paired to the right of a primary. Never two ambers in one viewport.'],
+  ['Thread rule', 'repeating-linear-gradient(115deg, accent 0 2px, transparent 2px 9px)', 'The one decorative element. 9px tall under section headers, muted to border-default between sections.'],
+  ['Floating UI card', 'surface · border-subtle · sh2 · radius 8', 'Idle 2–4° rotation with a slow bob; flattens to 0° and scales 1.02 on hover. Real screens only.'],
+  ['Journey station dot', 'border-strong idle · text-primary active · accent when it is a gate', 'The active station gets an ink ring, not an amber fill — amber is reserved for the gate badge.'],
+  ['Gate badge', 'danger #B23A32 border + text, transparent fill', 'Marks a refusal, never a warning. Warning tone is #B4741C and is not used on gates.'],
+  ['AI badge', 'accent-pressed #B88C21 border + text', 'Marks a MARBIM moment. Darker than accent so it reads as a label rather than an act-surface.'],
+  ['Draft card', 'surface · accent border · cut corner 12px top-right · sh3', 'The one place amber outlines a container. Confidence bars use text-primary; low confidence goes warning.'],
+  ['Selvage edge', '3px left rim, 5px when urgent', 'Carries status on every row and card: success, warning, danger, or border-subtle for neutral.'],
+  ['Dark section', 'canvas #0F131B · surface #181D29 · raised #212736', 'Owner section only. Surfaces lighten by elevation, shadows become hairlines, nothing is pure black.'],
+  ['Footer', 'surface · border-subtle · text-secondary', 'Language toggle repeats here. Links are text-secondary, hover accent-pressed — never browser blue.'],
+  ['Numerals', 'JetBrains Mono 400/500 · tabular', 'Every PO, LC, style code, quantity, money figure and percentage. Prose stays in the sans.']
+];
+
+const BUILD_NOTES = [
+  ['Framework', 'Next.js App Router, same repo, marketing pages in a /(marketing) route group so the product app and the site share components but not layout.'],
+  ['3D', 'react-three-fiber with drei. Three scenes only — hero weave, journey thread, MARBIM loop. Each behind a dynamic import with ssr:false and a static poster as the fallback.'],
+  ['Motion', 'Framer Motion for scroll and micro-motion. useReducedMotion at the root; every variant declares its reduced state explicitly rather than relying on a global disable.'],
+  ['i18n', 'next-intl with en and bn message catalogues. Bengali is authored, not machine-translated — the copy in this file is the source, and it needs a native review pass before launch.'],
+  ['Fonts', 'Archivo display, Plus Jakarta Sans body, JetBrains Mono numerals, Anek Bangla for Bengali. Self-hosted via next/font, subset, preloaded. Body face is the locked system\u2019s UI sans rather than Inter.'],
+  ['Screens', 'The UI cards are real component instances from the product app rendered at scale, not screenshots — so they never drift from what ships.']
+];
+
+const BUDGETS = [
+  ['JS on the landing route', '≤ 450 KB', 'gzipped, including the 3D bundle. The journey scene loads only when its section enters the viewport.', 'ok'],
+  ['LCP on mid-range Android, 4G', '< 2.5 s', 'The hero text and CTA render before any 3D initialises. The weave is an enhancement, never the LCP element.', 'ok'],
+  ['WebGL unavailable or low memory', 'static poster', 'navigator.deviceMemory under 4 or a failed context falls back to the composed still — the same frame reduced motion gets.', 'in'],
+  ['Motion fully off', '100% navigable', 'Every section reads and every link works with animation disabled. Nothing is revealed only by scroll.', 'in']
+];
+
+// Bengali content set. Identifiers stay Latin by design — PO-2044, LC-4471, FOB, $6.80, HS codes,
+// MARBIM — because the locked system treats them as codes, not words.
+const BNC = {
+  stations: [
+    ['ইনকোয়ারি', 'বায়ারের ইমেইল থেকে গোছানো আরএফকিউ।',
+      'বেস্টসেলার ইমেইলের ভেতরেই স্পেক পাঠায়, সঙ্গে টেক প্যাক। মারবিম দুটোই পড়ে আরএফকিউ খসড়া করে — কনস্ট্রাকশন, পরিমাণ, টার্গেট দাম, ডেলিভারির সময় — আর প্রতিটি ঘরের পাশে দেখায় সেটি কোন লাইন থেকে এসেছে।',
+      'এআই', 'ai', 'আরএফকিউ পাঠ · যাচাই', '৪২ সেকেন্ড · ১১টি ঘর · ২টিতে কম আস্থা',
+      [['40s পিকে ১৮০ গ্রাম', 'কনস্ট্রাকশন · 0.96', '', 'ok'], ['৪০,০০০ পিস', 'পরিমাণ · 0.98', '', 'ok'], ['$6.80 টার্গেট', 'দাম · 0.71 — স্ক্যান থেকে পড়া', '', 'warn']], ''],
+    ['কোটেশন', 'আগে কস্ট শিট, তারপর কোটেশন।',
+      'অনুমোদিত কস্ট শিট ছাড়া কোটেশনের খসড়াই হয় না। ফ্যাব্রিক, ট্রিমস, আসল এসএমভিতে সিএম, কমার্শিয়াল ও মার্জিন — আর মার্জিন ফ্লোরের নিচে নামলে পাঠানোর অনুরোধ বাইরে না গিয়ে মালিকের কাছে যায়।',
+      'গেট', 'gate', 'কস্টিং স্টুডিও · FOB হিসাব', 'FOB $6.80 · CM ৳48.20/pc · মার্জিন 19.2%',
+      [['ফ্যাব্রিক', '$3.41 · সুতো থেকে ডাইড', '', 'ink'], ['সিএম', '$1.12 · SMV 14.2', '', 'ink'], ['মার্জিন', '19.2% · ফ্লোরের ওপরে', '', 'ok']], ''],
+    ['অর্ডার ও টিএনএ', 'এগারোটি তারিখ, প্রতিটি এলসির সময়সীমা জানে।',
+      'অর্ডার টেমপ্লেট থেকে টিএনএ হয়ে যায় — নিট বেসিক, নাকি ওয়াশসহ ওভেন। প্রতিটি মাইলস্টোন তার নির্ভরতা বহন করে, ক্রিটিক্যাল পাথ মোটা দাগে আঁকা। এলসি ফ্লোট চিপ দেখে শেষ পরিকল্পিত তারিখ আর এলসির সর্বশেষ শিপমেন্ট তারিখের মধ্যে ফাঁক কতটুকু।',
+      '', '', 'অর্ডার ডেস্ক · টিএনএ টাইমলাইন', 'PO-2044 · শিপ ২০ নভেম্বর · LC-4471',
+      [['ল্যাব ডিপ অনুমোদিত', '০২ আগস্ট · প্রকৃত', '', 'ok'], ['ফ্যাব্রিক ইন হাউস', '১৮ সেপ্টেম্বর · পরিকল্পিত', '', 'ink'], ['এলসি ফ্লোট', '৮ দিন · ঠিক আছে', '', 'ok']], ''],
+    ['ম্যাটেরিয়ালস', 'ব্যাক-টু-ব্যাক এলসি ছাড়া ইমপোর্ট পিও নয়।',
+      'তিনটি স্পিনার সুতোর দাম দেয়, সবচেয়ে সস্তাটির লিডটাইম ২৬ দিন আর নিটিং শুরু ১৮ দিনে — তাই তুলনায় যেটি সময়মতো পৌঁছায় সেটিই দেখানো হয়, যেটি টাকা বাঁচায় সেটি নয়। বিটিবি যুক্ত না হওয়া পর্যন্ত ইমপোর্ট পিও ইস্যু হবে না।',
+      'গেট', 'gate', 'প্রকিউরমেন্ট · বিটিবি গেট', 'আটকানো · কিছু লেখা হয়নি',
+      [['প্রয়োজন', '$31,400 ব্যাক-টু-ব্যাক', '', 'ink'], ['হেডরুম', 'LC-4471-এ $24,000', '', 'dg'], ['ঘাটতি', '$7,400', '', 'dg']], ''],
+    ['কাটিং', 'পিপি অনুমোদিত, ফ্যাব্রিক ইস্যু। তারপর কাটা।',
+      'পিপি স্যাম্পল অনুমোদিত না হলে বা স্টোর থেকে ফ্যাব্রিক ইস্যু না হলে কাটিং স্ক্রিন লে খুলতে দেয় না। দুটি শর্তই কার্ডের ওপর চিপ হিসেবে থাকে, আর আটকে দিলে কোনটি বাকি তা নাম ধরে বলে।',
+      'গেট', 'gate', 'কাটিং · লে এন্ট্রি', 'ফ্লোর ঘনত্ব · ৫৬px সারি',
+      [['পিপি অনুমোদিত', '৩১ জুলাই · স্যাম্পলিং', '', 'ok'], ['ফ্যাব্রিক ইস্যু', 'ISS-0912 · 5,280 yd', '', 'ok'], ['লে ৪', '৮২ প্লাই · প্রস্তুত', '', 'ink']], 'লে খুলুন'],
+    ['সুইং', 'ফ্লোরের সত্যিটা, প্রতি ঘণ্টায়।',
+      'লাইন ৩ প্রতি ঘণ্টায় ট্যাবে বাংলায় আউটপুট তোলে, ডাউনটাইমের কারণ টাইপ না করে তালিকা থেকে বেছে নেয়। রান রেট থেকে শেষ হওয়ার তারিখ বেরোয়, আর তা এক্স-ফ্যাক্টরি তারিখ ছাড়িয়ে গেলে মার্চেন্ডাইজারকে জিজ্ঞেস করার আগেই অর্ডার ডেস্ক দেখে ফেলে।',
+      '', '', 'লাইন ট্র্যাকিং · ঘণ্টাভিত্তিক বোর্ড', 'L3 · দক্ষতা 74% · আভাস ১৪ নভেম্বর',
+      [['০৯:০০–১০:০০', '৪১২ পিস', '', 'ink'], ['১০:০০–১১:০০', '৩৮৮ পিস · সুতো ছেঁড়া ১২ মিনিট', '', 'warn'], ['আভাস', 'সেলাই শেষ ১৪ নভেম্বর', '', 'ok']], ''],
+    ['কিউসি', 'গণনার আগেই একিউএল নিয়ম দেখানো।',
+      'লট সাইজ থেকে স্যাম্পল সাইজ, গ্রহণ সংখ্যা আর বাতিল সংখ্যা বেরোয়, আর স্ক্রিন সেই নিয়ম গোনার আগেই দেখিয়ে দেয়। রায় টিএনএ মাইলস্টোন নিজেই পূরণ করে — তারিখ কেউ দুবার লেখে না।',
+      '', '', 'কোয়ালিটি · ফাইনাল ইন্সপেকশন', 'AQL 2.5 · লট ৪০,০০০ · স্যাম্পল ৩১৫',
+      [['গ্রহণ', '১৪টি ত্রুটিতে', '', 'ok'], ['বাতিল', '১৫টি ত্রুটিতে', '', 'dg'], ['পাওয়া গেছে', '৯টি · পাস', '', 'ok']], ''],
+    ['শিপমেন্ট', 'ব্যাংকের আগেই বিএলের অসঙ্গতি ধরা।',
+      'মারবিম খসড়া বিল অব লেডিং এলসির শর্তের সঙ্গে মিলিয়ে পড়ে আর ব্যাংক যা বাতিল করত তা চিহ্নিত করে — কনসাইনির নামে দুটি অক্ষর কম, FOB শিপমেন্টে ফ্রেইট প্রিপেইড লেখা। ঠিক করতে একটি ইমেইল লাগে। না ধরলে লাগে ডিসক্রেপেন্সি ফি আর তিন সপ্তাহ।',
+      'এআই', 'ai', 'শিপমেন্ট · এলসি ডকুমেন্ট যাচাই', '২টি অসঙ্গতি পাওয়া গেছে',
+      [['কনসাইনি', '46A অনুযায়ী "AB" কম', '', 'dg'], ['ফ্রেইট', 'FOB শিপমেন্টে প্রিপেইড লেখা', '', 'dg'], ['EXP', 'পূরণ · কাগজ যেতে পারে', '', 'ok']], ''],
+    ['পেমেন্ট', 'রিয়েলাইজেশন নিজেই খাতায় ওঠে।',
+      'ব্যাংক অ্যাডভাইস পিডিএফ রিয়েলাইজেশনের খসড়া হয়, মালিক অনুমোদন দেন, আর তা রিসিভেবলসে বসে যায়। অর্ডার বন্ধ হয় তার প্রকৃত মার্জিন আর কোট করা মার্জিনসহ, আর পার্থক্যটা ফ্যাব্রিক, সিএম না কমার্শিয়াল — তা দেখিয়ে দেওয়া হয়।',
+      '', '', 'ফাইন্যান্স · মুনাফা', 'কোট 19.2% · প্রকৃত 20.1%',
+      [['ফ্যাব্রিক', '+0.4 · সুতো কম দামে কেনা', '', 'ok'], ['সিএম', '+0.9 · চেঞ্জওভারে ক্ষতি নেই', '', 'ok'], ['প্রকৃত মার্জিন', '20.1%', '', 'ok']], '']
+  ],
+  problems: [
+    ['সমস্যা ০১', 'বায়ার যা পাঠিয়েছে, মার্চেন্ডাইজার তা আবার টাইপ করেন।',
+      'টেক প্যাক আসে পিডিএফে। পরিমাণ হাতে ওঠে এক্সেলে, সেখান থেকে হাতে কস্ট শিটে, তারপর হাতে টিএনএতে। তিনবার সংখ্যা উল্টে যাওয়ার সুযোগ, আর শেষেরটাই জাহাজে ওঠে।',
+      'সমাধান', 'কাগজ খসড়া হয়ে যায়, ডেটা এন্ট্রি নয়।',
+      'মারবিম · পাঠ যাচাই',
+      [['টেক প্যাক → বিওএম', '১৮ লাইন · গড় 0.94', 'ok'], ['সংশোধিত পিও → ডিফ', 'নেভি/L +২,০০০', 'ok'], ['চালান → জিআরএন', 'গেট থেকে তোলা ছবি', 'ok'], ['এলসি সুইফট → চেকলিস্ট', '46A ও 47A যুক্ত', 'ok']]],
+    ['সমস্যা ০২', 'দামি ভুলগুলো নিঃশব্দে ঘটে।',
+      'পিপি স্যাম্পল অনুমোদনের আগেই কাটিং শুরু। ব্যাক-টু-ব্যাক ছাড়াই ইমপোর্ট পিও ইস্যু। ইউডি ব্যালান্স ছাড়িয়ে বন্ডেড ফ্যাব্রিক স্টোর থেকে বেরিয়ে যায়। টাকা খসার আগে, বা কাস্টমস কর্মকর্তা ধরার আগে, কেউ টের পায় না।',
+      'সমাধান', 'চারটি গেট, যেগুলো কথা দিয়ে পার হওয়া যায় না।',
+      'গেটগুলো · আটকানোর কার্ড',
+      [['পিপি অনুমোদন', 'যেকোনো লে খোলার আগে', 'dg'], ['বিটিবি যুক্ত', 'ইমপোর্ট পিও ইস্যুর আগে', 'dg'], ['ইউডি ব্যালান্স', 'বন্ডেড মাল নড়ার আগে', 'dg'], ['জিআরএন মিল', 'কিছু পরিশোধযোগ্য হওয়ার আগে', 'dg']]],
+    ['সমস্যা ০৩', 'মালিক জানতে পারেন শুক্রবারে।',
+      'এলসির মেয়াদ শেষ, অথচ ব্যালান্স অশিপড। মেশিনের জন্য লাইনের দুদিন গেল, কেউ ওপরে জানায়নি। মালিকের কাছে পৌঁছাতে পৌঁছাতে সেটি আর সিদ্ধান্ত থাকে না, হয়ে যায় ক্ষতি মেনে নেওয়ার বিষয়।',
+      'সমাধান', 'ব্যতিক্রম সাজানো — ফেলে রাখলে কার খরচ বেশি।',
+      'মালিক · ব্যতিক্রম ফিড',
+      [['এলসি সংঘাত', '$214,500 আটকে ৯ দিন', 'dg'], ['পেরোল অনুমোদন', '৳4,182,000 · সোমবার ০৯:০০', 'warn'], ['ফ্যাব্রিক দেরি', 'কথার চেয়ে ১০ দিন পিছিয়ে', 'dg'], ['সিএপি বকেয়া', 'অডিট ২ দিন পরে', 'dg']]]
+  ],
+  loop: [
+    ['প্রস্তাব', 'মারবিম কাগজ পড়ে খসড়া করে। খসড়া অ্যাম্বার রঙে — দেখেই বোঝা যায় এটি কোনো মানুষের অপেক্ষায়, কারণ সত্যিই তাই।'],
+    ['অনুমোদন', 'যাঁর কাজ, তিনি ঘর ধরে ধরে অনুমোদন দেন বা কারণ লিখে বাতিল করেন। কে সেই ব্যক্তি, তা মডিউল ও অ্যাকশন অনুযায়ী অনুমোদনের নিয়ম ঠিক করে।'],
+    ['রেকর্ড', 'তারপরই কেবল কিছু খাতায় ওঠে — সঙ্গে খসড়া, অনুমোদনকারী আর কী বদলাল তা পাশে রাখা থাকে। রেভ ১ কখনো মুছে যায় না।']
+  ],
+  departments: [
+    ['অর্ডার ডেস্ক ও টিএনএ', 'মার্চেন্ডাইজার', 'এগারোটি মাইলস্টোন যারা এলসির সময়সীমা জানে, আর তারিখ নড়ার আগে রিপল প্রিভিউ।'],
+    ['আরএফকিউ ও কোটেশন', 'মার্চেন্ডাইজার · ম্যানেজার', 'বায়ারের ইমেইল ৪২ সেকেন্ডে গোছানো আরএফকিউ, প্রতিটি ঘরের উৎস দেখানো।'],
+    ['কস্টিং স্টুডিও', 'মার্চেন্ডাইজার · মালিক', 'ডলারে FOB-এর পাশে টাকায় সিএম, আর মার্জিন ফ্লোর — যা পেরোতে মালিকের সই লাগে।'],
+    ['প্ল্যানিং বোর্ড', 'প্ল্যানার', 'অর্ডার টেনে সরানোর আগেই রিপল দেখুন। সিনারিও আলাদা হয়, তারপর প্রয়োগ হয়।'],
+    ['স্টোর ও ইনভেন্টরি', 'স্টোরকিপার', 'শেড গ্রুপসহ রোল ও লট গ্রহণ, আর ইউডি ব্যালান্স যা বন্ডেড ইস্যু আটকে দেয়।'],
+    ['কাটিং', 'কাটিং ইনচার্জ', 'পিপি স্যাম্পল অনুমোদিত আর ফ্যাব্রিক সত্যিই ইস্যু না হলে লে খোলা যায় না।'],
+    ['লাইন ট্র্যাকিং', 'সুপারভাইজার', 'ট্যাবে বাংলায় ঘণ্টাভিত্তিক আউটপুট, আর রান রেট যা শেষের তারিখ বলে দেয়।'],
+    ['কোয়ালিটি', 'কিউসি', 'গোনার আগেই একিউএল নিয়ম দেখানো, আর রায় নিজেই টিএনএ পূরণ করে।'],
+    ['ফিনিশিং ও শিপমেন্ট', 'প্যাকিং · কমার্শিয়াল', 'ব্যাংক দেখার আগেই বিএল এলসির সঙ্গে মিলিয়ে দেখা, আর EXP ছাড়া পাঠানো বন্ধ।'],
+    ['এলসি ও কমার্শিয়াল', 'কমার্শিয়াল · অ্যাকাউন্টস', 'প্রতিটি এলসির দুটি কাউন্টডাউন, বিটিবি হেডরুম, আর কোথায় আটকে আছে তা দেখানো বোর্ড।'],
+    ['কর্মী ও পেরোল', 'এইচআর · মালিক', 'গেজেট গ্রেড, টাইপ করা মজুরি নয়। খোলা ব্যতিক্রম থাকলে পেরোল হিসাবই করে না।']
+  ],
+  bdItems: [
+    ['এলসি ও ব্যাক-টু-ব্যাক', 'মাস্টার এলসি, বিটিবি হেডরুম, সংশোধনীর ডিফ, আর একটি বোর্ড যা দেখায় ব্যাংকে কোনটি কতদিন আটকে আছে।'],
+    ['বন্ড ও ইউডি', 'প্রতি এইচএস কোডে ব্যালান্সসহ ইউটিলাইজেশন ডিক্লারেশন, বন্ড অফিসার যে বিবরণী পড়েন সেটি, আর ব্যালান্স ছাড়িয়ে গেলে ইস্যু আটকে দেওয়া।'],
+    ['গেজেট পেরোল', 'ন্যূনতম মজুরি গেজেট থেকে গ্রেড, সংস্করণের ইতিহাসসহ। গ্রেড বাছুন, হিসাব নিজেই আসে। মজুরি কেউ টাইপ করে না।'],
+    ['বাংলা ফ্লোর স্ক্রিন', 'কারখানা চাইলে বাংলা সংখ্যাসহ ফ্লোর বাংলায় চলে। অনুবাদের স্তর নয় — একই স্ক্রিন, দুবার লেখা।'],
+    ['ইন্টারনেট ছাড়াও চলে', 'ডাই হাউসের পাশে নিটিং হলে নেটওয়ার্ক পড়ে যায়। এন্ট্রি ট্যাবে সারিতে জমা থাকে, আর ফিরে এলে ক্রম অনুযায়ী উঠে যায়।']
+  ],
+  ownerFeed: [
+    ['এলসি সংঘাত', 'দুটি অসঙ্গতিতে $214,500 ব্যাংকে আটকে, এখন নয় দিন।', '৯ দিন', 'dg', false, ''],
+    ['অনুমোদন', '৳4,182,000 পেরোল আপনার অপেক্ষায়। ব্যাংক কাট-অফ সোমবার ০৯:০০।', 'সোমবার', 'ap', true, 'পেরোল অনুমোদন'],
+    ['ঝুঁকিতে অর্ডার', 'PO-88231-এর ফ্যাব্রিক মিলের কথার চেয়ে দশ দিন পিছিয়ে।', '১০ দিন', 'dg', false, '']
+  ],
+  draft: [
+    ['নেভি / L', '+২,০০০ পিস', 0.97], ['স্কাই / M', '−১,২০০ পিস', 0.96],
+    ['শিপ তারিখ', 'অপরিবর্তিত · ২০ নভেম্বর', 0.99], ['দাম', '$6.80 · অপরিবর্তিত', 0.74]
+  ],
+  productDepts: [
+    ['অর্ডার ডেস্ক ও টিএনএ', 'মার্চেন্ডাইজার', 'কারখানার দেওয়া কথাগুলো এখানে থাকে। প্রতিটি অর্ডার, তার অবস্থা, আর যে এগারোটি তারিখ রাখতেই হবে।',
+      ['নির্ভরতাসহ মাইলস্টোন টাইমলাইন, ক্রিটিক্যাল পাথ মোটা দাগে — টেমপ্লেট থেকে তৈরি, যা নিট আর ওভেনে আলাদা।',
+       'যেকোনো তারিখ নড়ার আগে রিপল প্রিভিউ — নিশ্চিত করার আগেই দেখেন পরে কী সরে যাবে, কিছুই নিঃশব্দে সরে না।',
+       'এলসি ফ্লোট চিপ: শেষ পরিকল্পিত তারিখ আর এলসির অনুমোদিত সর্বশেষ শিপমেন্টের মধ্যে ফাঁক, সবসময় নজরে।'],
+      'কাটিং পিপির অপেক্ষায়', 'সংশোধিত পিও → ডিফ খসড়া', 'অর্ডার ডেস্ক · টিএনএ টাইমলাইন',
+      [['ল্যাব ডিপ অনুমোদিত', '০২ আগস্ট · প্রকৃত', 'ok'], ['ফ্যাব্রিক ইন হাউস', '১৮ সেপ্টেম্বর · পরিকল্পিত', 'ink'], ['এলসি ফ্লোট', '৮ দিন · ঠিক আছে', 'ok']]],
+    ['স্টোর ও ইনভেন্টরি', 'স্টোরকিপার · কমার্শিয়াল', 'ভবনে আসলে কী আছে, রোল ধরে আর লট ধরে — আর কাস্টমসকে সে বিষয়ে কী বলা হয়েছে।',
+      ['শেড গ্রুপসহ রোল ও লট গ্রহণ, যাতে কাটিং ইস্যু শেড মিশ্রণ টেবিলে ধরা পড়ার বদলে আগেই আটকে দিতে পারে।',
+       'কম্পোজিট ইউনিটের জন্য সুতো ও গ্রেইজ গ্রহণ — একই ইউডি পরিমাণ নিটিং আর ডাইং হয়ে লট ধরে অনুসরণ করা হয়।',
+       'বন্ডেড ইস্যু ইউডি থেকে কাটে, আর ব্যালান্সে না কুলালে আটকে দিয়ে ঘাটতির অঙ্ক বলে দেয়।'],
+      'ইউডি ব্যালান্স ইস্যু আটকায়', 'চালানের ছবি → জিআরএন খসড়া', 'স্টোর · প্রোডাকশনে ইস্যু',
+      [['প্রয়োজন', '4,820 yd · REQ-0918', 'ink'], ['ইউডি ব্যালান্স', '2,300 yd', 'dg'], ['ঘাটতি', '2,520 yd', 'dg']]],
+    ['কোয়ালিটি', 'কিউসি · ম্যানেজার', 'তিন ট্যাপে ইনলাইন ত্রুটি, আর ফাইনাল ইন্সপেকশন যা গোনার আগেই নিয়ম দেখায়।',
+      ['অপারেশন স্ট্রিপ নির্বাচিত থাকা অবস্থায় হেডারে সরাসরি ডিএইচইউ — প্রতি ত্রুটিতে তিন ট্যাপ, টাইপ নেই।',
+       'একিউএল ধাপে লট সাইজ থেকে স্যাম্পল, গ্রহণ ও বাতিল সংখ্যা বেরোয় এবং ফলাফল নয়, নিয়ম হিসেবে দেখানো হয়।',
+       'রায় টিএনএ মাইলস্টোন পূরণ করে আর বায়ার রিপোর্ট প্যাক বানায়, তাই তারিখ কেউ দুবার তোলে না।'],
+      'পাস টিএনএ পূরণ করে', 'মেজারমেন্ট শিটের ছবি → টেবিল', 'কোয়ালিটি · ফাইনাল ইন্সপেকশন',
+      [['স্যাম্পল', '৪০,০০০-এর মধ্যে ৩১৫', 'ink'], ['গ্রহণ / বাতিল', '১৪ / ১৫', 'ink'], ['পাওয়া গেছে', '৯ · পাস', 'ok']]],
+    ['এলসি ও কমার্শিয়াল', 'কমার্শিয়াল · অ্যাকাউন্টস · মালিক', 'প্রতিটি লেটার অব ক্রেডিট, তাতে কী বাকি, আর ব্যাংকে কী আটকে আছে।',
+      ['প্রতি এলসিতে দুটি আলাদা কাউন্টডাউন — মেয়াদ আর সর্বশেষ শিপমেন্ট — কারণ যেটি কামড় দেয়, সেটি সাধারণত নজরে থাকা কাউন্টডাউন নয়।',
+       'হিসাব খুলে দেখানো বিটিবি হেডরুম, আর হেডরুমে না কুলালে বিটিবি খোলার অ্যাকশন সরাসরি আটকে দেয়।',
+       'সাবমিশন বোর্ডে অসঙ্গতি লাল হয়ে কত দিন আটকে তা দেখায়, আর মালিকের অনুমোদনে রিয়েলাইজেশন রিসিভেবলসে বসে।'],
+      'EXP ছাড়া ব্যাংকে যায় না', 'ব্যাংক অ্যাডভাইস → রিয়েলাইজেশন খসড়া', 'এলসি রেজিস্টার · সাবমিশন',
+      [['SUB-0158', 'অসঙ্গতি · ৯ দিন আটকে', 'dg'], ['SUB-0165', 'রিয়েলাইজড ০৮ সেপ্টেম্বর', 'ok'], ['SUB-0141', 'গৃহীত · ৩৮ দিন অপরিশোধিত', 'warn']]]
+  ],
+  roster: [
+    ['টেক প্যাক', 'কনজাম্পশনসহ বিওএম লাইন'], ['পারচেজ অর্ডার', 'অর্ডার ও ব্রেকডাউন'],
+    ['সংশোধিত পিও', 'রেভ ১-এর সঙ্গে ডিফ'], ['প্রোফর্মা ইনভয়েস', 'সরবরাহকারীর কোটেশন সারি'],
+    ['ডেলিভারি চালান', 'ছবি থেকে জিআরএন খসড়া'], ['এলসি সুইফট', '46A ও 47A ধরে ডকস চেকলিস্ট'],
+    ['ব্যাংক অ্যাডভাইস', 'রিয়েলাইজেশন খসড়া'], ['খসড়া বিএল', 'এলসির সঙ্গে অসঙ্গতি'],
+    ['অডিট রিপোর্ট', 'ফাইন্ডিংস ও সিএপি খসড়া'], ['বায়ার কমেন্ট শিট', 'প্রতি লাইনে একটি কমেন্ট পয়েন্ট'],
+    ['মেশিনের নেমপ্লেট', 'অ্যাসেট রেকর্ড'], ['মেজারমেন্ট শিট', 'পূরণ করা স্পেক টেবিল']
+  ],
+  never: [
+    'নিজে থেকে আপনার রেকর্ডে লেখে না — সবকিছু খসড়া হয়ে আসে, অনুমোদনকারীর নাম সহ',
+    'উৎস কাগজে দেখাতে পারে না, এমন সংখ্যা বানায় না',
+    'মানুষ পাঠান না চাপা পর্যন্ত বায়ার, ব্যাংক বা সরবরাহকারীকে কিছু পাঠায় না',
+    'কতটা নিশ্চিত তা লুকায় না — প্রতিটি ঘরে আস্থার মাত্রা থাকে, আর কম হলে কারণ বলে',
+    'অন্য কারখানার ডেটা থেকে শেখে না। আপনার অর্ডার, দাম ও মার্জিন আপনারই থাকে'
+  ],
+  chapters: [
+    ['0:00', 'অর্ডার আসে', 'বায়ারের ইমেইল ৪২ সেকেন্ডে গোছানো আরএফকিউ হয়ে যায়।'],
+    ['0:31', 'কস্টিং ও কোটেশন', 'আগে কস্ট শিট, আর মার্জিন ফ্লোর যা মালিকের কাছে পাঠায়।'],
+    ['1:04', 'অর্ডার ও টিএনএ', 'এগারোটি মাইলস্টোন, ক্রিটিক্যাল পাথ, আর এলসি ফ্লোট চিপ।'],
+    ['1:38', 'ম্যাটেরিয়ালস ও বিটিবি গেট', 'ব্যাক-টু-ব্যাক ছাড়া যে ইমপোর্ট পিও ইস্যু হবে না।'],
+    ['2:09', 'কাটিং', 'পিপি অনুমোদিত আর ফ্যাব্রিক ইস্যু — যে দুটি চিপ লে খোলে।'],
+    ['2:36', 'ফ্লোর, ঘণ্টায় ঘণ্টায়', 'বাংলায় এন্ট্রি, ডাউনটাইমের কারণ, আর শেষের আভাস।'],
+    ['3:05', 'কোয়ালিটি ও একিউএল নিয়ম', 'গোনার আগেই নিয়ম, আর পাস যেভাবে টিএনএ পূরণ করে।'],
+    ['3:32', 'শিপমেন্ট ও টাকা পাওয়া', 'বিএলের অসঙ্গতি ধরা, আর রিয়েলাইজেশন নিজেই বসে যাওয়া।']
+  ],
+  pilot: [
+    'একবারে একটি বিভাগ চালু, আগে প্রশিক্ষিত একজন চ্যাম্পিয়নের হাত ধরে।',
+    'আপনার নিজের ফাইল থেকে পাঠ করে আইটেম মাস্টার, স্টাইল, বিওএম ও মজুরি গ্রেড তোলা।',
+    'কিছু এর ওপর নির্ভর করার আগে দুই চক্র পেরোল সমান্তরালে চলে।',
+    'প্রতিটি বিভাগের প্রথম চক্রে আমরা কারখানাতেই থাকি।'
+  ],
+  demoFields: [
+    ['নাম', '', true, 'আবশ্যক', 'রশিদা আক্তার'],
+    ['কারখানার নাম', '', true, 'আবশ্যক', 'যেমন গাজীপুর অ্যাপারেলস লিমিটেড'],
+    ['আপনার পদ', '', false, '', 'মালিক · মার্চেন্ডাইজার · ম্যানেজার'],
+    ['কারখানার ধরন', 'chips', false, '', ''],
+    ['সেলাই লাইন', '', false, '', 'যেমন ১২'],
+    ['হোয়াটসঅ্যাপ নম্বর', '', true, 'এখানেই উত্তর দেব', '+880 1XXX XXXXXX']
+  ],
+  faqs: [
+    ['ডেটার মালিক কে?', 'আপনি। এটি আপনার কারখানার রেকর্ড — অর্ডার, দাম, মার্জিন, মজুরি। আমরা এর ওপর কিছু প্রশিক্ষণ দিই না, অন্য কারখানার সঙ্গে মেশাই না, আর সবকিছুর এক্সপোর্ট সেটিংস পাতায় এক ক্লিক দূরে। চলে গেলে খোলা ফরম্যাটে সব নিয়েই যাবেন।'],
+    ['ইন্টারনেট চলে গেলে কী হয়?', 'ফ্লোরের স্ক্রিন চলতেই থাকে। এন্ট্রি ট্যাবে দৃশ্যমান কাউন্টারসহ সারিতে জমা হয় আর সংযোগ ফিরলে ক্রম অনুযায়ী উঠে যায় — নিঃশব্দে হারায় না, আবার পাঠালে দুবারও হয় না। ডাই হাউসের পাশের নিটিং হল ঠিক এই কারণেই মাথায় রেখে বানানো।'],
+    ['আমাদের ইআরপি আছে। এটি কি সেটির জায়গা নেবে?', 'সাধারণত শুরু হয় পাশাপাশি। বেশিরভাগ কারখানায় হিসাবের প্যাকেজটি কাজ করে, ব্যথা থাকে মার্চেন্ডাইজিং, ফ্লোর আর কমপ্লায়েন্সে। আমরা সীমানায় যুক্ত হই — ডিসবার্সমেন্ট ফাইল বা লেজার এন্ট্রি এক্সপোর্ট করে — প্রথম দিনেই হিসাব সরাতে বলি না।'],
+    ['কোন কোন ভাষায় চলে?', 'সবখানে ইংরেজি ও বাংলা, সঙ্গে সংখ্যার টগল যাতে পে-স্লিপ আর ফ্লোর স্ক্রিনে বাংলা সংখ্যা ছাপা যায়। ফ্লোরের স্ক্রিন বাংলায় লেখা হয়েছে, বাংলায় অনুবাদ করা হয়নি — সুপারভাইজার ডাউনটাইমের কারণ বাছার সময় সুপারভাইজারের ব্যবহার করা শব্দই পড়েন।'],
+    ['চালু করতে কত সময় লাগে?', 'একবারে একটি বিভাগ, প্রতিটিতে মোটামুটি দুই সপ্তাহ — এর মধ্যে সমান্তরাল চলাও আছে, যেখানে পুরোনো পদ্ধতি নতুনটির পাশে চলতে থাকে। পুরো কারখানা একটি সিজনের কাজ, এক সপ্তাহান্তের নয়। যিনি তিন দিনের কথা বলছেন, তিনি আসল টেক প্যাক থেকে কখনো বিওএম তোলেননি।']
+  ]
+};
+
+class Component extends DCLogic {
+  state = { page: 'landing', vp: 'desktop', lang: 'en', motion: true, station: 0, faq: -1, ftype: 'knit-composite', sent: false, dept: 0, weave: 1 };
+
+  // weave = 1 is settled and is the DEFAULT render, reachable with no callback, no timeline and
+  // no transition. The entrance is stepped in JS on setTimeout — the only driver this runtime
+  // honours — so if timers never fire the mark simply never scatters instead of never appearing.
+  componentDidMount() {
+    if (!this.state.motion) return;
+    this._t0 = setTimeout(() => {
+      this.setState({ weave: 0 });
+      this._iv = setInterval(() => {
+        this.setState(x => {
+          const next = Math.min(1, x.weave + 0.04);
+          if (next >= 1) clearInterval(this._iv);
+          return { weave: next };
+        });
+      }, 84);
+    }, 40);
+  }
+
+  componentWillUnmount() {
+    clearTimeout(this._t0);
+    clearInterval(this._iv);
+  }
+
+  // Template refs do not bind in this runtime, so both the scroller and its blocks are
+  // resolved from the document by data attribute at click time. Direct scrollTop assignment —
+  // smooth behaviour is unreliable here and never settles.
+  jumpToDept(i) {
+    this.setState({ dept: i });
+    const box = document.querySelector('[data-scroll="depts"]');
+    const el = box && box.querySelector('[data-dept="' + i + '"]');
+    if (!box || !el) return;
+    box.scrollTop = Math.max(0, el.offsetTop - 16);
+  }
+
+  pill(active) {
+    return {
+      background: active ? '#FFFFFF' : 'transparent',
+      color: active ? '#181D29' : '#4C5364',
+      border: '1px solid ' + (active ? '#D6D2C9' : 'transparent'),
+      borderRadius: '6px', padding: '9px 11px', cursor: 'pointer',
+      font: "600 12.5px/1 'Plus Jakarta Sans',sans-serif", whiteSpace: 'nowrap'
+    };
+  }
+
+  ghost(on) {
+    return {
+      background: on ? '#181D29' : 'transparent',
+      color: on ? '#FBFAF8' : '#4C5364',
+      border: '1px solid ' + (on ? '#181D29' : '#D6D2C9'),
+      borderRadius: '8px', padding: '10px 13px', cursor: 'pointer', minHeight: '44px',
+      font: "500 12px/1 'JetBrains Mono',monospace", whiteSpace: 'nowrap'
+    };
+  }
+
+  tone(k) {
+    return k === 'ok' ? 'var(--ok)' : k === 'warn' ? 'var(--wn)' : k === 'dg' ? 'var(--dg)'
+      : k === 'ap' ? 'var(--ap)' : k === 'in' ? 'var(--in)' : 'var(--bt)';
+  }
+
+  renderVals() {
+    const s = this.state;
+    const bn = s.lang === 'bn';
+    const t = bn ? BN : EN;
+    const vp = VIEWPORTS.find(v => v[0] === s.vp) || VIEWPORTS[0];
+    const W = vp[2];
+    const wide = W >= 900;
+    const mid = W >= 700;
+    const sans = bn ? "'Anek Bangla','Plus Jakarta Sans',sans-serif" : "'Plus Jakarta Sans',sans-serif";
+    const disp = bn ? "'Anek Bangla',sans-serif" : "'Archivo',sans-serif";
+    const pad = wide ? '78px 64px' : mid ? '56px 40px' : '44px 22px';
+
+    const h1Size = wide ? 64 : mid ? 46 : 34;
+    const h2Size = wide ? 38 : mid ? 30 : 25;
+
+    // content sets follow the language the same way `t` does
+    const C_STA = bn ? BNC.stations : STATIONS;
+    const C_PRB = bn ? BNC.problems : PROBLEMS;
+    const C_LOOP = bn ? BNC.loop : LOOP;
+    const C_DEP = bn ? BNC.departments : DEPARTMENTS;
+    const C_BD = bn ? BNC.bdItems : BD_ITEMS;
+    const C_OWF = bn ? BNC.ownerFeed : OWNER_FEED;
+    const C_PD = bn ? BNC.productDepts : PRODUCT_DEPTS;
+    const C_ROS = bn ? BNC.roster : ROSTER;
+    const C_NVR = bn ? BNC.never : NEVER;
+    const C_CHP = bn ? BNC.chapters : CHAPTERS;
+    const C_PLT = bn ? BNC.pilot : PILOT_POINTS;
+    const C_FAQ = bn ? BNC.faqs : FAQS;
+    const C_DEMO = bn ? BNC.demoFields : DEMO_FIELDS;
+    const C_DRAFT = bn ? BNC.draft : [
+      ['Navy / L', '+2,000 pcs', 0.97], ['Sky / M', '−1,200 pcs', 0.96],
+      ['Ship date', 'unchanged · 20 Nov', 0.99], ['Price', '$6.80 · unchanged', 0.74]
+    ];
+
+    const st = C_STA[s.station];
+
+    return {
+      pages: PAGES.map(p => ({
+        label: p[1], pick: () => this.setState({ page: p[0] }), style: this.pill(s.page === p[0])
+      })),
+      viewports: VIEWPORTS.map(v => ({
+        label: v[1], pick: () => this.setState({ vp: v[0] }), style: this.pill(s.vp === v[0])
+      })),
+      langs: [['en', 'EN'], ['bn', 'বাংলা']].map(l => ({
+        label: l[1], pick: () => this.setState({ lang: l[0] }), style: this.pill(s.lang === l[0])
+      })),
+      motionBtn: this.ghost(!s.motion), motionLabel: s.motion ? 'on' : 'reduced',
+      motionAttr: s.motion ? 'on' : 'off',
+      toggleMotion: () => this.setState(x => ({ motion: !x.motion, weave: 1 })),
+      draftWord: bn ? 'খসড়া' : 'draft',
+      photoWord: bn ? 'ছবি' : 'photo',
+      vpNote: (PAGES.find(p => p[0] === s.page) || PAGES[0])[1] + ' · ' + W + 'px · ' + (s.motion ? 'motion on' : 'reduced motion'),
+      route: (PAGES.find(p => p[0] === s.page) || PAGES[0])[2],
+      sizeLabel: W + ' × auto',
+      t, wide, narrow: !wide,
+
+      // the artboard is ALWAYS laid out at its real width; the wrapper scrolls rather than squeezing it
+      frameStyle: {
+        width: W + 'px', flexShrink: 0, background: '#FFFFFF',
+        border: '1px solid var(--bd)', borderRadius: '12px', overflow: 'hidden', boxShadow: 'var(--sh3)'
+      },
+      // "safe center" keeps the start edge reachable when the artboard is wider than the pane;
+      // plain center makes overflow on the left unscrollable
+      shellStyle: {
+        padding: '26px 20px 60px', display: 'flex', justifyContent: 'safe center',
+        background: 'var(--sk)', overflowX: 'auto'
+      },
+      navStyle: {
+        display: 'flex', alignItems: 'center', gap: '28px',
+        padding: wide ? '18px 64px' : mid ? '16px 40px' : '14px 22px',
+        borderBottom: '1px solid var(--bs)', background: 'rgba(251,250,248,.92)', position: 'relative', zIndex: 5
+      },
+      navLinks: [['product', bn ? 'প্রোডাক্ট' : 'Product'], ['marbim', bn ? 'মারবিম' : 'MARBIM'],
+        ['walk', bn ? 'ওয়াকথ্রু' : 'Walkthrough'], ['pricing', bn ? 'মূল্য' : 'Pricing'], ['about', bn ? 'পরিচিতি' : 'About']].map(n => ({
+        label: n[1], pick: () => this.setState({ page: n[0] }),
+        style: {
+          font: '500 14.5px/1 ' + sans, cursor: 'pointer', whiteSpace: 'nowrap',
+          color: s.page === n[0] ? 'var(--t1)' : 'var(--t2)',
+          borderBottom: '2px solid ' + (s.page === n[0] ? 'var(--a)' : 'transparent'), paddingBottom: '3px'
+        }
+      })),
+      enChip: {
+        font: "600 11.5px/1 'JetBrains Mono',monospace", padding: '4px 5px', borderRadius: '3px',
+        color: bn ? 'var(--t3)' : 'var(--t1)', background: bn ? 'transparent' : 'var(--sk)'
+      },
+      bnChip: {
+        font: "600 12px/1 'Anek Bangla',sans-serif", padding: '4px 5px', borderRadius: '3px',
+        color: bn ? 'var(--t1)' : 'var(--t3)', background: bn ? 'var(--sk)' : 'transparent'
+      },
+
+      isLanding: s.page === 'landing', isProduct: s.page === 'product', isMarbim: s.page === 'marbim',
+      isWalk: s.page === 'walk', isPricing: s.page === 'pricing', isDemo: s.page === 'demo',
+      isAbout: s.page === 'about', isStory: s.page === 'story', isHandoff: s.page === 'handoff',
+      goDemo: () => this.setState({ page: 'demo', sent: false }),
+      goWalk: () => this.setState({ page: 'walk' }),
+      goProduct: () => this.setState({ page: 'product' }),
+
+      sectionPad: { padding: pad, display: 'flex', flexDirection: 'column', gap: wide ? '26px' : '20px' },
+      footPad: { padding: wide ? '56px 64px 44px' : mid ? '44px 40px 36px' : '36px 22px 30px' },
+      h1Style: { font: '700 ' + h1Size + 'px/1.08 ' + disp, letterSpacing: '-0.025em', textWrap: 'pretty' },
+      h1Small: { font: '700 ' + (wide ? 48 : mid ? 38 : 30) + 'px/1.12 ' + disp, letterSpacing: '-0.022em', textWrap: 'pretty' },
+      h2Style: { font: '700 ' + h2Size + 'px/1.18 ' + disp, letterSpacing: '-0.02em', textWrap: 'pretty' },
+      h2Dark: { font: '700 ' + h2Size + 'px/1.18 ' + disp, letterSpacing: '-0.02em', color: '#F4F3F0', textWrap: 'pretty' },
+      h3Style: { font: '600 ' + (wide ? 23 : 20) + 'px/1.3 ' + sans, textWrap: 'pretty' },
+      leadStyle: { font: '400 ' + (wide ? 19 : 17) + 'px/1.6 ' + sans, color: 'var(--t2)', maxWidth: '54ch', textWrap: 'pretty' },
+      bodyStyle: { font: '400 ' + (wide ? 15.5 : 15) + 'px/1.65 ' + sans, color: 'var(--t2)', maxWidth: '62ch', textWrap: 'pretty' },
+      ctaRow: { display: 'flex', gap: '12px', flexWrap: 'wrap', flexDirection: mid ? 'row' : 'column' },
+      ctaPrimary: {
+        background: 'var(--a)', color: 'var(--t1)', border: 'none', borderRadius: '8px',
+        padding: '17px 24px', font: '600 16px/1 ' + sans, cursor: 'pointer', minHeight: '54px'
+      },
+      ctaOutline: {
+        background: 'transparent', color: 'var(--t1)', border: '1px solid var(--bt)', borderRadius: '8px',
+        padding: '16px 22px', font: '600 16px/1 ' + sans, cursor: 'pointer', minHeight: '54px'
+      },
+
+      heroWrap: {
+        display: 'grid', gridTemplateColumns: wide ? '1.05fr .95fr' : '1fr',
+        gap: wide ? '48px' : '32px', alignItems: 'center', padding: wide ? '76px 64px 84px' : mid ? '56px 40px 60px' : '40px 22px 46px'
+      },
+      weaveStage: {
+        position: 'relative', width: wide ? '340px' : '220px', height: wide ? '360px' : '234px',
+        justifySelf: wide ? 'center' : 'start', flexShrink: 0
+      },
+      // painted as backgrounds, not <img src>, so streaming placeholders never fetch a literal hole
+      weaveLayers: SCATTER.map((v, i) => {
+        // per-strand stagger, then ease-out — computed, never interpolated by the browser
+        const raw = Math.min(1, Math.max(0, (s.weave - i * 0.02) / 0.86));
+        const e = 1 - Math.pow(1 - raw, 3);
+        const settled = e >= 0.999;
+        return {
+          style: {
+            position: 'absolute', inset: 0,
+            backgroundImage: 'url(assets/mark/i-' + (i + 1) + '.png)',
+            backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'center',
+            transform: settled ? 'none' : 'translate(' + (v[0] * (1 - e)).toFixed(1) + 'px,'
+              + (v[1] * (1 - e)).toFixed(1) + 'px) rotate(' + (v[2] * (1 - e)).toFixed(2) + 'deg)',
+            opacity: Math.min(1, e * 2.2)
+          }
+        };
+      }),
+
+      trustedBy: t.trustedBy,
+      trustSlots: bn
+        ? ['পাইলট কারখানা', 'বিজিএমইএ', 'বিকেএমইএ', 'বায়িং হাউস', 'অংশীদার']
+        : ['pilot factory', 'BGMEA', 'BKMEA', 'buying house', 'partner'],
+      logoStrip: { display: 'grid', gridTemplateColumns: 'repeat(' + (wide ? 5 : mid ? 3 : 2) + ', 1fr)', gap: '12px', flex: 1, minWidth: 0 },
+
+      stationRow: { display: 'grid', gridTemplateColumns: 'repeat(9, 1fr)', gap: mid ? '6px' : '2px', position: 'relative' },
+      stations: C_STA.map((x, i) => {
+        const on = s.station === i;
+        return {
+          name: mid ? x[0] : String(i + 1),
+          pick: () => this.setState({ station: i }),
+          wrap: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', cursor: 'pointer', minWidth: 0 },
+          dot: {
+            width: on ? '15px' : '10px', height: on ? '15px' : '10px', borderRadius: '999px', flexShrink: 0,
+            background: on ? 'var(--t1)' : 'var(--s)',
+            border: '2px solid ' + (on ? 'var(--t1)' : 'var(--bt)'),
+            boxShadow: on ? '0 0 0 4px rgba(24,29,41,.08)' : 'none'
+          },
+          label: {
+            font: '500 ' + (mid ? 11.5 : 11) + 'px/1.25 ' + sans, textAlign: 'center',
+            color: on ? 'var(--t1)' : 'var(--t3)', whiteSpace: mid ? 'normal' : 'nowrap'
+          }
+        };
+      }),
+      journeyGrid: {
+        display: 'grid', gridTemplateColumns: wide ? '.85fr 1.15fr' : '1fr',
+        gap: wide ? '44px' : '28px', alignItems: 'center', paddingTop: '10px'
+      },
+      station: {
+        step: bn ? 'ধাপ ' + (s.station + 1) + ' / ৯' : 'Station ' + (s.station + 1) + ' of 9',
+        caption: st[1], detail: st[2], meta: st[5 + 1] ? st[6] : '',
+        hasBadge: !!st[3], badge: st[3],
+        badgeStyle: {
+          font: "500 11px/1 'JetBrains Mono',monospace", letterSpacing: '.05em', textTransform: 'uppercase',
+          borderRadius: '4px', padding: '6px 8px',
+          color: st[4] === 'gate' ? 'var(--dg)' : 'var(--ap)',
+          border: '1px solid ' + (st[4] === 'gate' ? 'var(--dg)' : 'var(--ap)')
+        },
+        screen: st[5], rows: st[7].map(r => ({
+          a: r[0], b: r[1], c: r[2],
+          sel: { width: '3px', flexShrink: 0, background: this.tone(r[3]) },
+          valStyle: { font: "500 12.5px/1.3 'JetBrains Mono',monospace", color: this.tone(r[3]), marginLeft: 'auto' }
+        })),
+        hasAct: !!st[8], act: st[8],
+        cardWrap: { minWidth: 0, perspective: '1400px' },
+        cardStyle: {
+          background: 'var(--s)', border: '1px solid var(--bs)', borderRadius: '10px',
+          boxShadow: 'var(--sh3)', overflow: 'hidden',
+          transform: wide ? 'perspective(1400px) rotateY(-8deg) rotateX(3deg)' : 'none',
+          transformOrigin: 'left center'
+        }
+      },
+
+      tripGrid: { display: 'grid', gridTemplateColumns: wide ? 'repeat(3, 1fr)' : '1fr', gap: wide ? '36px' : '40px', paddingTop: '30px' },
+      problems: C_PRB.map(p => ({
+        tag: p[0], pain: p[1], painNote: p[2], answerTag: p[3], answer: p[4], screen: p[5],
+        cardWrap: { minWidth: 0, animation: 'fx-bob 6s ease-in-out infinite', transformStyle: 'preserve-3d' },
+        items: p[6].map(i => ({
+          a: i[0], b: i[1],
+          dot: { width: '8px', height: '8px', borderRadius: '999px', background: this.tone(i[2]), flexShrink: 0 }
+        }))
+      })),
+
+      trustLoopGrid: { display: 'grid', gridTemplateColumns: wide ? '.9fr 1.1fr' : '1fr', gap: wide ? '48px' : '32px', alignItems: 'center' },
+      loopSteps: C_LOOP.map((l, i) => ({
+        n: String(i + 1), name: l[0], note: l[1],
+        num: {
+          width: '30px', height: '30px', borderRadius: '999px', flexShrink: 0,
+          background: i === 1 ? 'var(--a)' : 'var(--sk)', color: 'var(--t1)',
+          border: '1px solid ' + (i === 1 ? 'var(--a)' : 'var(--bd)'),
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          font: "600 14px/1 'JetBrains Mono',monospace"
+        }
+      })),
+      draftWrap: { minWidth: 0, animation: 'fx-bob 7s ease-in-out infinite' },
+      draftFields: C_DRAFT.map(f => ({
+        k: f[0], v: f[1], conf: f[2].toFixed(2),
+        confColor: {
+          font: "500 11.5px/1.3 'JetBrains Mono',monospace", marginLeft: 'auto',
+          color: f[2] < 0.85 ? 'var(--wn)' : 'var(--t3)'
+        },
+        sel: { width: '3px', flexShrink: 0, background: f[2] < 0.85 ? 'var(--wn)' : 'var(--ok)' },
+        bar: { height: '100%', width: (f[2] * 100) + '%', background: f[2] < 0.85 ? 'var(--wn)' : 'var(--t1)' }
+      })),
+
+      deptGrid: { display: 'grid', gridTemplateColumns: 'repeat(' + (wide ? 3 : mid ? 2 : 1) + ', 1fr)', gap: '16px', paddingTop: '26px' },
+      departments: C_DEP.map(d => ({ name: d[0], who: d[1], killer: d[2] })),
+
+      bdGrid: { display: 'grid', gridTemplateColumns: 'repeat(' + (wide ? 5 : mid ? 2 : 1) + ', 1fr)', gap: wide ? '24px' : '22px', paddingTop: '28px' },
+      bdItems: C_BD.map(b => ({ name: b[0], note: b[1] })),
+      typeBadges: bn ? ['ওভেন', 'নিট', 'নিট-কম্পোজিট'] : ['woven', 'knit', 'knit-composite'],
+
+      ownerGrid: { display: 'grid', gridTemplateColumns: wide ? '1fr .8fr' : '1fr', gap: wide ? '48px' : '32px', alignItems: 'center' },
+      ownerPoints: bn
+        ? ['একটি স্ক্রিনে দশ সেকেন্ডে বোঝা যায় কী দরকার।', 'অনুমোদন সেখান থেকেই দেওয়া যায় — ইনবক্সে যাওয়া লাগে না।', 'কিছু না থাকলে স্ক্রিন বলে: কিছু দরকার নেই, কারখানা চলছে।']
+        : ['Ten seconds to know what needs you, on one screen.',
+           'Approvals act in place — no inbox to open, no second app.',
+           'When nothing is wrong it says so: nothing needs you, factory is running.'],
+      ownerFeed: C_OWF.map(f => ({
+        kind: f[0], truth: f[1], age: f[2],
+        kindStyle: {
+          font: "500 10px/1 'JetBrains Mono',monospace", letterSpacing: '.05em', textTransform: 'uppercase',
+          borderRadius: '3px', padding: '5px 6px',
+          color: f[3] === 'dg' ? '#E0665C' : '#F2D077',
+          border: '1px solid ' + (f[3] === 'dg' ? '#E0665C' : '#F2D077')
+        },
+        ageColor: f[3] === 'dg' ? '#E0665C' : '#7C8497',
+        sel: { width: f[4] ? '5px' : '3px', flexShrink: 0, background: f[3] === 'dg' ? '#E0665C' : '#E1B334' },
+        act: f[4], actLabel: f[5]
+      })),
+      phoneWrap: { display: 'flex', justifyContent: wide ? 'center' : 'flex-start', minWidth: 0 },
+
+      finalCta: {
+        display: 'flex', gap: '28px', alignItems: wide ? 'center' : 'flex-start',
+        justifyContent: 'space-between', flexDirection: wide ? 'row' : 'column', flexWrap: 'wrap'
+      },
+
+      productGrid: {
+        display: 'grid', gridTemplateColumns: wide ? '220px 1fr' : '1fr',
+        gap: wide ? '48px' : '0', padding: wide ? '0 64px 40px' : '0', alignItems: 'start',
+        maxHeight: wide ? '760px' : 'none', overflowY: wide ? 'auto' : 'visible',
+        position: 'relative'
+      },
+      sideNav: { position: 'sticky', top: '0', display: 'flex', flexDirection: 'column', gap: '4px', paddingTop: '4px' },
+      productNav: C_PD.map((d, i) => ({
+        label: d[0], pick: () => this.jumpToDept(i),
+        style: {
+          font: '500 13.5px/1.4 ' + sans, color: s.dept === i ? 'var(--t1)' : 'var(--t2)',
+          padding: '10px 12px', borderRadius: '6px', cursor: 'pointer', minHeight: '44px',
+          display: 'flex', alignItems: 'center',
+          background: s.dept === i ? 'rgba(225,179,52,.12)' : 'transparent',
+          boxShadow: s.dept === i ? 'inset 2px 0 0 var(--a)' : 'none'
+        }
+      })),
+      productDepts: C_PD.map((d, i) => ({
+        name: d[0], who: d[1], promise: d[2], caps: d[3], idx: String(i),
+        hasGate: !!d[4], gate: d[4], hasAi: !!d[5], ai: d[5], screen: d[6],
+        rows: d[7].map(r => ({
+          a: r[0], b: r[1],
+          sel: { width: '3px', flexShrink: 0, background: this.tone(r[2]) },
+          valStyle: { font: "500 12px/1.3 'JetBrains Mono',monospace", color: this.tone(r[2]), marginLeft: 'auto' }
+        })),
+        wrap: {
+          background: i % 2 ? 'var(--s)' : 'transparent',
+          borderTop: '1px solid var(--bs)',
+          padding: wide ? '52px 0' : mid ? '44px 40px' : '36px 22px'
+        },
+        inner: {
+          display: 'grid', gridTemplateColumns: wide ? '1fr .9fr' : '1fr',
+          gap: wide ? '40px' : '26px', alignItems: 'center', maxWidth: '1040px'
+        },
+        cardWrap: { minWidth: 0, animation: 'fx-bob ' + (6 + i * 0.4) + 's ease-in-out infinite' }
+      })),
+
+      marbimHero: { display: 'grid', gridTemplateColumns: wide ? '1.1fr .9fr' : '1fr', gap: wide ? '48px' : '30px', alignItems: 'center' },
+      breatheStage: {
+        position: 'relative', width: wide ? '260px' : '180px', height: wide ? '276px' : '191px',
+        animation: 'fx-breathe 2.4s ease-in-out infinite', flexShrink: 0
+      },
+      markLayers: [0, 1, 2, 3, 4, 5, 6, 7].map(i => ({
+        style: {
+          position: 'absolute', inset: 0,
+          backgroundImage: 'url(assets/mark/i-' + (i + 1) + '.png)',
+          backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'center'
+        }
+      })),
+      rosterGrid: { display: 'grid', gridTemplateColumns: 'repeat(' + (wide ? 3 : mid ? 2 : 1) + ', 1fr)', gap: '12px', paddingTop: '24px' },
+      roster: C_ROS.map(r => ({ doc: r[0], out: '→ ' + r[1] })),
+      neverGrid: { display: 'grid', gridTemplateColumns: wide ? '.85fr 1.15fr' : '1fr', gap: wide ? '48px' : '28px', alignItems: 'start' },
+      neverList: C_NVR, neverWord: bn ? 'কখনো নয়' : 'never',
+
+      chapterGrid: { display: 'grid', gridTemplateColumns: 'repeat(' + (wide ? 2 : 1) + ', 1fr)', gap: '14px' },
+      chapters: C_CHP.map(c => ({ time: c[0], name: c[1], note: c[2] })),
+
+      pricingGrid: { display: 'grid', gridTemplateColumns: wide ? '1.15fr .85fr' : '1fr', gap: '20px', paddingTop: '26px', alignItems: 'start' },
+      pilotPoints: C_PLT,
+      faqs: C_FAQ.map((f, i) => ({
+        q: f[0], a: f[1], open: s.faq === i, sign: s.faq === i ? '−' : '+',
+        toggle: () => this.setState(x => ({ faq: x.faq === i ? -1 : i }))
+      })),
+
+      demoGrid: { display: 'grid', gridTemplateColumns: wide ? '.9fr 1.1fr' : '1fr', gap: wide ? '48px' : '30px', alignItems: 'start' },
+      demoPromise: bn
+        ? ['এক কর্মদিবসের মধ্যে হোয়াটসঅ্যাপে ফিরব।', 'ডেমো চলবে আপনার স্টাইল আর এলসি শর্তে, নমুনা ডেটায় নয়।', 'চল্লিশ মিনিট, কাজে না লাগলে যেকোনো সময় থামিয়ে দিতে পারেন।']
+        : DEMO_PROMISE,
+      demoFields: C_DEMO.map(f => ({
+        label: f[0], req: !!f[3], hint: f[3], placeholder: f[4],
+        isChips: f[1] === 'chips', isInput: f[1] !== 'chips',
+        chips: (f[1] === 'chips' ? (bn ? ['ওভেন', 'নিট', 'নিট-কম্পোজিট'] : ['woven', 'knit', 'knit-composite']) : []).map((c, ci) => {
+          const key = ['woven', 'knit', 'knit-composite'][ci];
+          return {
+            label: c, pick: () => this.setState({ ftype: key }),
+            style: {
+              padding: '12px 15px', borderRadius: '6px', cursor: 'pointer', minHeight: '48px',
+              display: 'flex', alignItems: 'center', font: '600 13.5px/1 ' + sans,
+              border: '1px solid ' + (s.ftype === key ? 'var(--t1)' : 'var(--bd)'),
+              background: s.ftype === key ? 'rgba(225,179,52,.12)' : 'var(--s)'
+            }
+          };
+        })
+      })),
+      demoSent: s.sent, demoForm: !s.sent,
+      sendDemo: () => this.setState({ sent: true }),
+      resetDemo: () => this.setState({ sent: false }),
+
+      aboutGrid: { display: 'grid', gridTemplateColumns: wide ? '1.15fr .85fr' : '1fr', gap: wide ? '48px' : '30px', alignItems: 'start', paddingTop: '20px' },
+      aboutParas: bn
+        ? ['একটি রপ্তানি অর্ডার আসলে শত শত ছোট প্রতিশ্রুতি — ভিন্ন ভিন্ন মানুষ ভিন্ন ভিন্ন পক্ষকে দেয়, আর প্রায় কোনোটাই একই জায়গায় লেখা থাকে না। মার্চেন্ডাইজার তারিখ দেন, কমার্শিয়াল ম্যানেজার কাগজ দেন, সুপারভাইজার আউটপুট দেন, আর এলসি চুপচাপ ব্যাংককে কথা দেয় যে এসব একটা তারিখের মধ্যে হবে — যে তারিখ ফ্লোরের কেউ পড়েনি।',
+           'এর প্রতিটি প্রতিশ্রুতি একেকটি আলগা সুতো। আলাদা করে কিছুই ধরে না। যেসব কারখানা সময়মতো শিপ করে, তাদের সুতো ভালো বলে নয় — কেউ একজন, সাধারণত ক্লান্ত এক মার্চেন্ডাইজার, রাত এগারোটায় মাথায় আর স্প্রেডশিটে সেগুলো বুনে রাখেন বলে।',
+           'ফেব্রিক্স সেই বোনার কাজটিকে সিস্টেমে পরিণত করে। কাজের ওপরে বসানো ড্যাশবোর্ড নয়, বরং যেখানে কাজটি আসলে লেখা হয় — ভুল ব্যয়বহুল হলে সেখানে গেট, কাগজ পড়া যায় সেখানে খসড়া, আর টাকা নড়লে সেখানে অনুমোদনের হিসাব।',
+           'আমরা প্রকাশ্যে তৈরি করি, কারণ কেনার আগে কারখানার জিনিসটি দেখা উচিত। এই সাইটের প্রতিটি স্ক্রিন এখনকার চালু প্রোডাক্ট। কিছু এখনো তৈরি না হলে আমরা তা বলে দিই।']
+        : ABOUT_PARAS,
+
+      storyboards: STORYBOARDS.map(sb => ({
+        no: sb[0], name: sb[1], spec: sb[2], reduced: sb[4],
+        frames: sb[3].map((f, fi) => ({
+          t: f[0], title: f[1], note: f[2],
+          vis: {
+            width: '58%', height: '58%', borderRadius: '4px',
+            background: 'repeating-linear-gradient(115deg, rgba(225,179,52,' + (0.25 + fi * 0.16) + ') 0 2px, transparent 2px 9px)',
+            border: '1px solid var(--bs)',
+            transform: 'rotate(' + (10 - fi * 5) + 'deg)'
+          }
+        }))
+      })),
+      frameGrid: { display: 'grid', gridTemplateColumns: 'repeat(' + (wide ? 5 : mid ? 3 : 2) + ', 1fr)', gap: '14px' },
+
+      buildNotes: BUILD_NOTES.map(b => ({ k: b[0], v: b[1] })),
+      inventory: INVENTORY.map(c => ({ name: c[0], tokens: c[1], note: c[2] })),
+      budgetGrid: { display: 'grid', gridTemplateColumns: 'repeat(' + (wide ? 2 : 1) + ', 1fr)', gap: '16px' },
+      budgets: BUDGETS.map(b => ({
+        k: b[0], v: b[1], note: b[2],
+        sel: { width: '3px', flexShrink: 0, background: this.tone(b[3]) }
+      })),
+
+      footGrid: { display: 'grid', gridTemplateColumns: wide ? '1.4fr 1fr 1fr 1fr' : mid ? '1fr 1fr' : '1fr', gap: '30px' },
+      footCols: [
+        { head: bn ? 'প্রোডাক্ট' : 'Product', links: bn ? ['বিভাগসমূহ', 'মারবিম', 'ওয়াকথ্রু', 'মূল্য'] : ['Departments', 'MARBIM', 'Walkthrough', 'Pricing'] },
+        { head: bn ? 'প্রতিষ্ঠান' : 'Company', links: bn ? ['পরিচিতি', 'যোগাযোগ', 'লিংকডইন', 'ইউটিউব'] : ['About', 'Contact', 'LinkedIn', 'YouTube'] },
+        { head: bn ? 'যোগাযোগ' : 'Get in touch', links: bn ? ['ডেমো দেখতে চাই', 'হোয়াটসঅ্যাপ', 'hello@fabricxai.com'] : ['Request a demo', 'WhatsApp', 'hello@fabricxai.com'] }
+      ]
+    };
+  }
+}
+
+</script>
+</body>
+</html>

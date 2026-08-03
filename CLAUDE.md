@@ -22,6 +22,9 @@ Next.js 16 (app router, server actions) + Drizzle + PostgreSQL 16 + Redis/BullMQ
 - `pnpm db:generate` / `pnpm db:migrate` — drizzle (uses DIRECT_DATABASE_URL)
 - `pnpm test` / `pnpm test:integration` — vitest / + testcontainers
 - `pnpm seed` — factory-scale seed (also used by k6 and demos)
+- `pnpm demo [orders|rfqs|leads]` — the screen-walkthrough scenario, through the
+  real services; idempotent, so re-running it is safe. Set `DEMO_COMPANY_ID` when
+  more than one company has an owner.
 - `pnpm k6 <scenario>` — load scenarios in `k6/`
 
 ## Architecture rules (violations = PR rejected)

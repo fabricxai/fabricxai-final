@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Anek+Bangla:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #F3F1EC; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  [data-mode="dark"] { --fx-bg-canvas:#0F131B !important; --fx-bg-surface:#181D29 !important; --fx-bg-raised:#212736 !important; --fx-bg-sunken:#0B0E15 !important; --fx-bg-hover:rgba(255,255,255,.05) !important; --fx-bg-selected:rgba(225,179,52,.17) !important; --fx-border-subtle:#252B3A !important; --fx-border-default:#343B4C !important; --fx-border-strong:#4E576B !important; --fx-text-primary:#F4F3F0 !important; --fx-text-secondary:#AEB5C4 !important; --fx-text-tertiary:#7C8497 !important; --fx-text-disabled:#565E71 !important; --fx-text-inverse:#181D29 !important; --fx-accent-hover:#EBC352 !important; --fx-accent-pressed:#F2D077 !important; --fx-accent-subtle:rgba(225,179,52,.14) !important; --fx-success:#4FA97D !important; --fx-warning:#D99A3F !important; --fx-danger:#E0665C !important; --fx-info:#6D9BE8 !important; --fx-focus:#E1B334 !important; --fx-sh1:0 0 0 1px #252B3A !important; --fx-sh2:0 0 0 1px #252B3A !important; --fx-sh3:0 0 0 1px #343B4C !important; }
+  body:has([data-mode="dark"]) { background: #0B0E15; }
+  a { color: #181D29; text-decoration: underline; text-underline-offset: 3px; }
+  a:hover { color: #B88C21; }
+</style>
+</helmet>
+
+<div data-mode="{{ mode }}" style="--fx-bg-canvas:#FBFAF8; --fx-bg-surface:#FFFFFF; --fx-bg-sunken:#F3F1EC; --fx-bg-hover:rgba(24,29,41,.035); --fx-bg-selected:rgba(225,179,52,.12); --fx-border-subtle:#E7E4DE; --fx-border-default:#D6D2C9; --fx-border-strong:#A9A49A; --fx-text-primary:#181D29; --fx-text-secondary:#4C5364; --fx-text-tertiary:#767E90; --fx-text-disabled:#A8AEBB; --fx-text-inverse:#FBFAF8; --fx-accent:#E1B334; --fx-accent-hover:#CFA22B; --fx-accent-pressed:#B88C21; --fx-accent-subtle:#FAF1DA; --fx-accent-on:#181D29; --fx-success:#2F7D5B; --fx-warning:#B4741C; --fx-danger:#B23A32; --fx-info:#2F5FA8; --fx-focus:#181D29; --fx-sh1:0 1px 2px rgba(24,29,41,.06); --fx-sh2:0 4px 12px rgba(24,29,41,.08); --fx-sh3:0 12px 32px rgba(24,29,41,.12); font-family:'Plus Jakarta Sans',system-ui,sans-serif; color:var(--fx-text-primary); min-height:100vh; background:var(--fx-bg-sunken);">
+
+<div style="position:sticky; top:0; z-index:60; background:var(--fx-bg-surface); border-bottom:1px solid var(--fx-border-default); padding:10px 20px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+  <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Prototype bar</div>
+  <div style="display:flex; gap:2px; background:var(--fx-bg-sunken); border-radius:8px; padding:3px; flex-wrap:wrap;">
+    <sc-for list="{{ screens }}" as="s" hint-placeholder-count="4">
+      <button onClick="{{ s.pick }}" style="{{ s.style }}">{{ s.label }}</button>
+    </sc-for>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px;">
+    <span style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">role</span>
+    <select onChange="{{ setRole }}" value="{{ role }}" style="background:var(--fx-bg-surface); color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:4px; padding:7px 9px; font:500 12px/1 'JetBrains Mono',monospace;">
+      <option value="compliance">compliance</option>
+      <option value="owner">owner</option>
+      <option value="manager">manager</option>
+      <option value="hr">hr</option>
+      <option value="merchandiser">merchandiser</option>
+    </select>
+  </div>
+  <div style="display:flex; align-items:center; gap:10px; margin-left:auto;">
+    <button onClick="{{ toggleMode }}" style="{{ modeBtn }}">{{ modeLabel }}</button>
+    <button onClick="{{ toggleAnnot }}" style="{{ annotBtn }}">actions {{ annotLabel }}</button>
+  </div>
+</div>
+
+<div style="display:flex; align-items:stretch; min-height:calc(100vh - 49px);">
+
+  <div style="width:236px; flex-shrink:0; background:var(--fx-bg-surface); border-right:1px solid var(--fx-border-subtle); padding:20px 14px; display:flex; flex-direction:column; gap:20px;">
+    <img src="{{ logoSrc }}" alt="FabricX AI" style="height:26px; width:auto; align-self:flex-start; max-width:100%; object-fit:contain;" />
+    <sc-if value="{{ hasNav }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex; flex-direction:column; gap:2px;">
+        <sc-for list="{{ nav }}" as="n" hint-placeholder-count="4">
+          <div onClick="{{ n.pick }}" style="{{ n.style }}">
+            <div style="{{ n.marker }}"></div>{{ n.label }}
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:9px;">
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Next audit</div>
+        <div style="font:600 15px/1.25 'Plus Jakarta Sans',sans-serif;">{{ nextAudit }}</div>
+        <div style="font:500 13px/1.3 'JetBrains Mono',monospace; color:{{ nextAuditColor }};">{{ nextAuditIn }}</div>
+        <div style="font:400 12.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ nextAuditNote }}</div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ noNav }}" hint-placeholder-val="{{ false }}">
+      <div style="font:400 12.5px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary); text-wrap:pretty;">Compliance does not appear in your navigation.</div>
+    </sc-if>
+    <div style="margin-top:auto; display:flex; flex-direction:column; gap:7px;">
+      <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Signed in</div>
+      <div style="font:500 14px/1.3 'Plus Jakarta Sans',sans-serif;">{{ userName }}</div>
+      <div style="font:400 12px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ role }} · 31 Jul 2026</div>
+    </div>
+  </div>
+
+  <div style="flex:1; min-width:0; background:var(--fx-bg-canvas); position:relative; padding:0 0 90px;">
+
+  <sc-if value="{{ locked }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:26px 28px; display:flex; flex-direction:column; gap:16px; max-width:560px;">
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:32px; display:flex; flex-direction:column; gap:14px; box-shadow:var(--fx-sh1);">
+        <div style="font:600 22px/1.25 'Plus Jakarta Sans',sans-serif;">You don't have access to compliance</div>
+        <div style="font:400 15px/1.6 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">Findings name people and buyers name factories. If you need something from a report, the compliance officer can send it.</div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP1 }}" hint-placeholder-val="{{ true }}">
+    <div style="padding:26px 28px; display:flex; flex-direction:column; gap:20px; max-width:1320px;">
+      <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex-wrap:wrap;">
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Compliance</div>
+          <div style="font:700 34px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">{{ dashTitle }}</div>
+          <div style="font:400 15px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:68ch; text-wrap:pretty;">{{ dashLead }}</div>
+        </div>
+        <sc-if value="{{ canEdit }}" hint-placeholder-val="{{ true }}">
+          <button onClick="{{ recordAudit }}" style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:11px 18px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-accent-hover)">Record an audit</button>
+        </sc-if>
+      </div>
+      <div style="height:9px; background-image:repeating-linear-gradient(115deg, var(--fx-accent) 0 2px, transparent 2px 9px);"></div>
+
+      <div style="display:flex; gap:16px; flex-wrap:wrap;">
+        <sc-for list="{{ sevCards }}" as="c" hint-placeholder-count="4">
+          <div onClick="{{ c.open }}" style="{{ c.style }}">
+            <div style="width:{{ c.selW }}; flex-shrink:0; background:{{ c.c }};"></div>
+            <div style="padding:16px 18px; display:flex; flex-direction:column; gap:6px; flex:1; min-width:0;">
+              <div style="font:400 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">{{ c.label }}</div>
+              <div style="font:700 30px/1.05 'JetBrains Mono',monospace; color:{{ c.c }};">{{ c.count }}</div>
+              <div style="font:400 12.5px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ c.note }}</div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(420px, 1fr)); gap:18px; align-items:start;">
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+          <div style="display:flex; align-items:center; gap:12px; padding:16px 20px 13px; border-bottom:1px solid var(--fx-border-subtle); flex-wrap:wrap;">
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Certificates · expiry ladder</div>
+            <div style="font:400 11.5px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-left:auto;">90 · 60 · 30 days</div>
+          </div>
+          <sc-for list="{{ ladder }}" as="l" hint-placeholder-count="4">
+            <div style="display:flex; align-items:stretch; border-bottom:1px solid var(--fx-border-subtle);">
+              <div style="width:{{ l.selW }}; flex-shrink:0; background:{{ l.c }};"></div>
+              <div style="flex:1; min-width:0; padding:13px 18px 13px 15px; display:flex; flex-direction:column; gap:8px;">
+                <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">
+                  <div style="font:500 14px/1.3 'Plus Jakarta Sans',sans-serif;">{{ l.name }}</div>
+                  <div style="font:500 13px/1.2 'JetBrains Mono',monospace; color:{{ l.c }}; margin-left:auto;">{{ l.days }}</div>
+                </div>
+                <div style="height:7px; border-radius:999px; background:var(--fx-bg-sunken); overflow:hidden;">
+                  <div style="{{ l.bar }}"></div>
+                </div>
+                <div style="font:400 12px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ l.meta }}</div>
+              </div>
+            </div>
+          </sc-for>
+          <div style="padding:13px 18px; font:400 12px/1.45 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ ladderFoot }}</div>
+        </div>
+
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+          <div style="display:flex; align-items:center; gap:12px; padding:16px 20px 13px; border-bottom:1px solid var(--fx-border-subtle);">
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Audits ahead</div>
+          </div>
+          <sc-for list="{{ upcoming }}" as="u" hint-placeholder-count="3">
+            <div onClick="{{ u.open }}" style="display:flex; align-items:stretch; border-bottom:1px solid var(--fx-border-subtle); cursor:pointer;" style-hover="background:var(--fx-bg-hover)">
+              <div style="width:{{ u.selW }}; flex-shrink:0; background:{{ u.c }};"></div>
+              <div style="flex:1; min-width:0; padding:14px 18px 14px 15px; display:flex; flex-direction:column; gap:7px;">
+                <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">
+                  <div style="font:600 15px/1.3 'Plus Jakarta Sans',sans-serif;">{{ u.name }}</div>
+                  <div style="font:500 12.5px/1.2 'JetBrains Mono',monospace; color:{{ u.c }}; margin-left:auto;">{{ u.when }}</div>
+                </div>
+                <div style="font:400 12.5px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ u.kind }}</div>
+                <div style="font:400 13px/1.5 'Plus Jakarta Sans',sans-serif; color:{{ u.readyColor }}; text-wrap:pretty;">{{ u.ready }}</div>
+              </div>
+            </div>
+          </sc-for>
+          <div style="padding:14px 18px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            <div style="font:400 12px/1.45 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); flex:1 1 220px; min-width:0;">an unannounced audit is the only honest test — everything here assumes one lands tomorrow</div>
+          </div>
+        </div>
+      </div>
+
+      <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">every severity card opens the findings filtered to it</div>
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">owner sees this dashboard and critical alerts only — no CAP editing</div>
+        </div>
+      </sc-if>
+
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Role access — compliance</div>
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden;">
+          <sc-for list="{{ access }}" as="a" hint-placeholder-count="5">
+            <div style="display:grid; grid-template-columns:1fr 116px 1.5fr; gap:16px; padding:11px 18px; align-items:center; border-bottom:1px solid var(--fx-border-subtle);">
+              <div style="font:500 13px/1.4 'JetBrains Mono',monospace;">{{ a.role }}</div>
+              <div><span style="{{ a.chip }}">{{ a.level }}</span></div>
+              <div style="font:400 13px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ a.note }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP2 }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:26px 28px; display:flex; flex-direction:column; gap:18px; max-width:1360px;">
+      <div style="display:flex; align-items:center; gap:8px; font:400 13px/1 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">
+        <span onClick="{{ goP1 }}" style="cursor:pointer;">Compliance</span><span style="opacity:.5;">/</span><span style="color:var(--fx-text-primary); font-weight:500; font-family:'JetBrains Mono',monospace; font-size:12.5px;">{{ audit.id }}</span>
+      </div>
+      <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex-wrap:wrap;">
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <div style="font:700 30px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">{{ audit.name }}</div>
+          <div style="font:400 14.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">{{ audit.sub }}</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <div style="display:flex; flex-direction:column; gap:3px; align-items:flex-end;">
+            <div style="font:400 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">Open CAPs</div>
+            <div style="font:700 24px/1.05 'JetBrains Mono',monospace; color:{{ audit.openColor }};">{{ audit.openCount }}</div>
+          </div>
+        </div>
+      </div>
+      <div style="height:9px; background-image:repeating-linear-gradient(115deg, var(--fx-accent) 0 2px, transparent 2px 9px);"></div>
+
+      <sc-if value="{{ showExtract }}" hint-placeholder-val="{{ true }}">
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-accent); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh2); clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);">
+          <div style="display:flex; align-items:center; gap:12px; padding:15px 20px; background:var(--fx-accent-subtle); flex-wrap:wrap;">
+            <div style="width:26px; height:26px; border-radius:999px; background:#181D29; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+              <img src="uploads/MARBIM_logo.png" alt="" style="width:14px; height:14px;" />
+            </div>
+            <div style="font:600 15px/1.3 'Plus Jakarta Sans',sans-serif;">{{ extract.headline }}</div>
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-accent-pressed); border:1px solid var(--fx-accent-pressed); border-radius:4px; padding:5px 7px;">draft</div>
+            <div style="font:400 12px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-secondary); margin-left:auto;">{{ extract.file }}</div>
+          </div>
+          <sc-for list="{{ extract.rows }}" as="r" hint-placeholder-count="4">
+            <div style="display:flex; align-items:stretch; border-bottom:1px solid var(--fx-border-subtle);">
+              <div style="width:3px; flex-shrink:0; background:{{ r.sel }};"></div>
+              <div style="flex:1; min-width:0; display:grid; grid-template-columns:1fr 132px 88px; gap:14px; padding:12px 20px 12px 17px; align-items:center; min-height:44px;">
+                <div style="font:500 13.5px/1.4 'Plus Jakarta Sans',sans-serif; text-wrap:pretty;">{{ r.finding }}</div>
+                <div style="font:500 12px/1.3 'JetBrains Mono',monospace; color:{{ r.sevColor }};">{{ r.sev }}</div>
+                <div style="font:500 12px/1.3 'JetBrains Mono',monospace; color:{{ r.confColor }}; text-align:right;">{{ r.conf }}</div>
+              </div>
+            </div>
+          </sc-for>
+          <div style="padding:16px 20px; display:flex; flex-direction:column; gap:12px;">
+            <div style="font:400 13px/1.6 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ extract.caveat }}</div>
+            <sc-if value="{{ canEdit }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <button onClick="{{ acceptExtract }}" style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:12px 18px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-accent-hover)">Open a CAP for each</button>
+                <button onClick="{{ dropExtract }}" style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:8px; padding:11px 16px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;">Dismiss</button>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+      </sc-if>
+
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+        <div style="display:flex; align-items:center; gap:12px; padding:14px 20px; border-bottom:1px solid var(--fx-border-subtle); flex-wrap:wrap;">
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">{{ findingCount }}</div>
+          <div style="display:flex; align-items:center; gap:7px; margin-left:auto;">
+            <div style="width:5px; height:13px; background:var(--fx-danger);"></div>
+            <div style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">5px = zero-tolerance, or a CAP past its deadline</div>
+          </div>
+        </div>
+        <div style="overflow-x:auto;">
+        <div style="min-width:1120px;">
+          <div style="display:grid; grid-template-columns:96px 1fr 132px 148px 132px 128px; gap:14px; padding:11px 20px; background:var(--fx-bg-sunken); border-bottom:1px solid var(--fx-border-subtle); font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">
+            <div>Finding</div><div>What was seen</div><div>Severity</div><div>Owner</div><div>Deadline</div><div style="text-align:right;">Status</div>
+          </div>
+          <sc-for list="{{ findings }}" as="f" hint-placeholder-count="5">
+            <div>
+              <div onClick="{{ f.toggle }}" style="{{ f.rowStyle }}">
+                <div style="width:{{ f.selW }}; flex-shrink:0; background:{{ f.sel }};"></div>
+                <div style="flex:1; min-width:0; display:grid; grid-template-columns:96px 1fr 132px 148px 132px 128px; gap:14px; padding:12px 20px 12px 17px; align-items:center; min-height:44px;">
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <div style="font:500 12px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ f.chev }}</div>
+                    <div style="font:500 12.5px/1.3 'JetBrains Mono',monospace;">{{ f.id }}</div>
+                  </div>
+                  <div style="display:flex; flex-direction:column; gap:3px; min-width:0;">
+                    <div style="font:500 13.5px/1.35 'Plus Jakarta Sans',sans-serif; text-wrap:pretty;">{{ f.title }}</div>
+                    <div style="font:400 11.5px/1.2 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ f.clause }}</div>
+                  </div>
+                  <div><span style="{{ f.sevChip }}">{{ f.sev }}</span></div>
+                  <div style="font:400 13px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">{{ f.owner }}</div>
+                  <div style="display:flex; flex-direction:column; gap:3px;">
+                    <div style="font:500 12.5px/1.3 'JetBrains Mono',monospace; color:{{ f.dueColor }};">{{ f.due }}</div>
+                    <div style="font:400 11.5px/1.2 'JetBrains Mono',monospace; color:{{ f.dueColor }};">{{ f.dueNote }}</div>
+                  </div>
+                  <div style="display:flex; justify-content:flex-end;"><span style="{{ f.statusChip }}">{{ f.status }}</span></div>
+                </div>
+              </div>
+              <sc-if value="{{ f.open }}" hint-placeholder-val="{{ false }}">
+                <div style="background:var(--fx-bg-sunken); border-bottom:1px solid var(--fx-border-subtle); padding:18px 20px 20px 34px; display:flex; flex-direction:column; gap:16px;">
+                  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:20px; align-items:start;">
+                    <div style="display:flex; flex-direction:column; gap:10px;">
+                      <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Corrective action</div>
+                      <div style="font:400 13.5px/1.6 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ f.cap }}</div>
+                      <div style="display:flex; flex-direction:column; gap:7px;">
+                        <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Evidence · {{ f.evidenceCount }}</div>
+                        <div style="display:flex; flex-wrap:wrap; gap:8px;">
+                          <sc-for list="{{ f.evidence }}" as="ev" hint-placeholder-count="2">
+                            <div style="display:flex; align-items:center; gap:9px; border:1px solid var(--fx-border-default); border-radius:4px; padding:9px 11px; background:var(--fx-bg-surface);">
+                              <div style="width:7px; height:7px; border-radius:999px; background:{{ ev.c }}; flex-shrink:0;"></div>
+                              <div style="font:500 12.5px/1.3 'Plus Jakarta Sans',sans-serif;">{{ ev.name }}</div>
+                              <div style="font:400 11.5px/1.2 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ ev.when }}</div>
+                            </div>
+                          </sc-for>
+                          <sc-if value="{{ f.needsEvidence }}" hint-placeholder-val="{{ false }}">
+                            <div style="display:flex; align-items:center; gap:9px; border:1px dashed var(--fx-border-strong); border-radius:4px; padding:9px 11px;">
+                              <div style="font:400 12.5px/1.3 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">{{ f.evidenceGap }}</div>
+                            </div>
+                          </sc-if>
+                        </div>
+                      </div>
+                    </div>
+
+                    <sc-if value="{{ f.hasMilestones }}" hint-placeholder-val="{{ false }}">
+                      <div style="display:flex; flex-direction:column; gap:11px;">
+                        <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">{{ f.milestoneLabel }}</div>
+                        <sc-for list="{{ f.milestones }}" as="m" hint-placeholder-count="4">
+                          <div style="display:flex; align-items:flex-start; gap:11px;">
+                            <div style="display:flex; flex-direction:column; align-items:center; gap:3px; flex-shrink:0;">
+                              <div style="{{ m.dot }}"></div>
+                              <div style="{{ m.line }}"></div>
+                            </div>
+                            <div style="display:flex; flex-direction:column; gap:2px; min-width:0; padding-bottom:8px;">
+                              <div style="display:flex; align-items:baseline; gap:9px; flex-wrap:wrap;">
+                                <div style="font:500 13px/1.35 'Plus Jakarta Sans',sans-serif; color:{{ m.textColor }};">{{ m.what }}</div>
+                                <div style="font:400 11.5px/1.2 'JetBrains Mono',monospace; color:{{ m.c }};">{{ m.when }}</div>
+                              </div>
+                              <div style="font:400 12px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary); text-wrap:pretty;">{{ m.note }}</div>
+                            </div>
+                          </div>
+                        </sc-for>
+                      </div>
+                    </sc-if>
+                  </div>
+
+                  <sc-if value="{{ canEdit }}" hint-placeholder-val="{{ true }}">
+                    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                      <sc-if value="{{ f.canClose }}" hint-placeholder-val="{{ false }}">
+                        <button onClick="{{ f.close }}" style="background:var(--fx-text-primary); color:var(--fx-text-inverse); border:none; border-radius:8px; padding:13px 18px; font:600 13.5px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:48px;">Close this CAP</button>
+                      </sc-if>
+                      <sc-if value="{{ f.blockedClose }}" hint-placeholder-val="{{ true }}">
+                        <div style="display:flex; align-items:center; gap:10px; border:1px solid var(--fx-border-default); border-radius:8px; padding:13px 16px; min-height:48px;">
+                          <div style="font:500 13px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ f.closeBlock }}</div>
+                        </div>
+                      </sc-if>
+                      <button onClick="{{ f.upload }}" style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-strong); border-radius:8px; padding:13px 17px; font:600 13.5px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:48px;" style-hover="background:var(--fx-bg-hover)">Add evidence</button>
+                      <button onClick="{{ f.update }}" style="background:transparent; color:var(--fx-text-secondary); border:1px solid var(--fx-border-default); border-radius:8px; padding:13px 17px; font:600 13.5px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:48px;">Change owner or date</button>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ readOnly }}" hint-placeholder-val="{{ false }}">
+                    <div style="font:500 12.5px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ readOnlyNote }}</div>
+                  </sc-if>
+                </div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+        </div>
+        <div style="padding:14px 20px; font:400 12px/1.45 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">a CAP without evidence cannot be closed — the buyer\u2019s auditor asks for the photograph, not for the tick</div>
+      </div>
+
+      <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">compliance.recordAudit · marbim.extractAuditReport</div>
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">compliance.updateCap · compliance.closeCap — evidence required, enforced not advised</div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP3 }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:26px 28px; display:flex; flex-direction:column; gap:18px; max-width:1280px;">
+      <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex-wrap:wrap;">
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Compliance · certificates</div>
+          <div style="font:700 30px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">What the factory is licensed to do</div>
+          <div style="font:400 14.5px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:68ch; text-wrap:pretty;">A lapsed certificate is not a paperwork problem. Buyers audit the date, banks ask for the copy, and one expiry can hold a shipment that has nothing to do with it.</div>
+        </div>
+        <sc-if value="{{ canEdit }}" hint-placeholder-val="{{ true }}">
+          <button onClick="{{ addCert }}" style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-strong); border-radius:8px; padding:11px 16px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-bg-hover)">Add a certificate</button>
+        </sc-if>
+      </div>
+      <div style="height:9px; background-image:repeating-linear-gradient(115deg, var(--fx-accent) 0 2px, transparent 2px 9px);"></div>
+
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+        <div style="overflow-x:auto;">
+        <div style="min-width:1080px;">
+          <div style="display:grid; grid-template-columns:1fr 168px 132px 148px 148px 152px; gap:14px; padding:11px 20px; background:var(--fx-bg-sunken); border-bottom:1px solid var(--fx-border-subtle); font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">
+            <div>Certificate</div><div>Issued by</div><div>Number</div><div>Valid to</div><div>Countdown</div><div style="text-align:right;">Renewal</div>
+          </div>
+          <sc-for list="{{ certs }}" as="c" hint-placeholder-count="6">
+            <div style="display:flex; align-items:stretch; border-bottom:1px solid var(--fx-border-subtle);">
+              <div style="width:{{ c.selW }}; flex-shrink:0; background:{{ c.c }};"></div>
+              <div style="flex:1; min-width:0; display:grid; grid-template-columns:1fr 168px 132px 148px 148px 152px; gap:14px; padding:13px 20px 13px 17px; align-items:center; min-height:44px;">
+                <div style="display:flex; flex-direction:column; gap:3px; min-width:0;">
+                  <div style="font:500 13.5px/1.3 'Plus Jakarta Sans',sans-serif;">{{ c.name }}</div>
+                  <div style="font:400 11.5px/1.3 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary); text-wrap:pretty;">{{ c.what }}</div>
+                </div>
+                <div style="font:400 12.5px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">{{ c.issuer }}</div>
+                <div style="font:400 12px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-secondary);">{{ c.no }}</div>
+                <div style="font:400 12.5px/1.3 'JetBrains Mono',monospace;">{{ c.validTo }}</div>
+                <div style="display:flex; flex-direction:column; gap:3px;">
+                  <div style="font:600 13px/1.2 'JetBrains Mono',monospace; color:{{ c.c }};">{{ c.days }}</div>
+                  <div style="font:400 11.5px/1.2 'JetBrains Mono',monospace; color:{{ c.c }};">{{ c.band }}</div>
+                </div>
+                <div style="display:flex; justify-content:flex-end;">
+                  <sc-if value="{{ c.showRenew }}" hint-placeholder-val="{{ false }}">
+                    <button onClick="{{ c.renew }}" style="{{ c.renewStyle }}">{{ c.renewLabel }}</button>
+                  </sc-if>
+                  <sc-if value="{{ c.quiet }}" hint-placeholder-val="{{ true }}">
+                    <div style="font:400 12px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); text-align:right;">{{ c.quietNote }}</div>
+                  </sc-if>
+                </div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        </div>
+        <div style="padding:14px 20px; font:400 12px/1.45 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ certFoot }}</div>
+      </div>
+
+      <sc-if value="{{ renewOpen }}" hint-placeholder-val="{{ false }}">
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-default); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh2); max-width:720px;">
+          <div style="display:flex; align-items:center; gap:12px; padding:16px 20px; border-bottom:1px solid var(--fx-border-subtle);">
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Renewal · {{ renew.name }}</div>
+            <button onClick="{{ closeRenew }}" style="margin-left:auto; background:transparent; border:1px solid var(--fx-border-default); border-radius:8px; padding:9px 12px; font:600 12.5px/1 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); cursor:pointer; min-height:44px;">Close</button>
+          </div>
+          <sc-for list="{{ renew.steps }}" as="st" hint-placeholder-count="4">
+            <div style="display:flex; align-items:stretch; border-bottom:1px solid var(--fx-border-subtle);">
+              <div style="width:3px; flex-shrink:0; background:{{ st.c }};"></div>
+              <div style="flex:1; min-width:0; display:grid; grid-template-columns:1fr 160px; gap:14px; padding:14px 20px 14px 17px; align-items:center; min-height:44px;">
+                <div style="display:flex; flex-direction:column; gap:3px;">
+                  <div style="font:500 13.5px/1.35 'Plus Jakarta Sans',sans-serif;">{{ st.what }}</div>
+                  <div style="font:400 12.5px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ st.note }}</div>
+                </div>
+                <div style="font:500 12.5px/1.3 'JetBrains Mono',monospace; color:{{ st.c }}; text-align:right;">{{ st.state }}</div>
+              </div>
+            </div>
+          </sc-for>
+          <div style="padding:16px 20px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            <div style="font:400 12.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); flex:1 1 300px; min-width:0; text-wrap:pretty;">{{ renew.note }}</div>
+            <button onClick="{{ submitRenew }}" style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:13px 18px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:48px;" style-hover="background:var(--fx-accent-hover)">Book the inspection</button>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">compliance.addCertificate · compliance.renewCertificate</div>
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">the renew control appears at 90 days, not before — earlier and it becomes background noise</div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP4 }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:26px 28px; display:flex; flex-direction:column; gap:18px; max-width:1280px;">
+      <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex-wrap:wrap;">
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Compliance · trainings</div>
+          <div style="font:700 30px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">Drills and training on record</div>
+          <div style="font:400 14.5px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:68ch; text-wrap:pretty;">Coverage is the number auditors check and the number that saves people. A drill with 71% of the floor is a drill that missed a shift.</div>
+        </div>
+        <sc-if value="{{ canRecord }}" hint-placeholder-val="{{ true }}">
+          <button onClick="{{ recordTraining }}" style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:11px 18px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-accent-hover)">Record a session</button>
+        </sc-if>
+      </div>
+      <div style="height:9px; background-image:repeating-linear-gradient(115deg, var(--fx-accent) 0 2px, transparent 2px 9px);"></div>
+
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(360px, 1fr)); gap:18px;">
+        <sc-for list="{{ trainings }}" as="t" hint-placeholder-count="4">
+          <div style="display:flex; background:var(--fx-bg-surface); border:1px solid {{ t.border }}; border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+            <div style="width:{{ t.selW }}; flex-shrink:0; background:{{ t.c }};"></div>
+            <div style="flex:1; min-width:0; padding:18px 20px; display:flex; flex-direction:column; gap:13px;">
+              <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">
+                <div style="font:600 16px/1.3 'Plus Jakarta Sans',sans-serif;">{{ t.name }}</div>
+                <div style="font:400 11.5px/1.2 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-left:auto;">{{ t.cadence }}</div>
+              </div>
+              <div style="display:flex; align-items:baseline; gap:12px;">
+                <div style="font:700 28px/1 'JetBrains Mono',monospace; color:{{ t.c }};">{{ t.coverage }}</div>
+                <div style="font:400 12.5px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">{{ t.attended }}</div>
+              </div>
+              <div style="height:8px; border-radius:999px; background:var(--fx-bg-sunken); overflow:hidden;">
+                <div style="{{ t.bar }}"></div>
+              </div>
+              <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:12px;">
+                <div style="display:flex; flex-direction:column; gap:3px;">
+                  <div style="font:400 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">Last held</div>
+                  <div style="font:500 13px/1.3 'JetBrains Mono',monospace;">{{ t.last }}</div>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:3px;">
+                  <div style="font:400 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">Next due</div>
+                  <div style="font:500 13px/1.3 'JetBrains Mono',monospace; color:{{ t.dueColor }};">{{ t.next }}</div>
+                </div>
+              </div>
+              <div style="font:400 13px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); padding-top:2px; border-top:1px solid var(--fx-border-subtle); text-wrap:pretty;">{{ t.note }}</div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:20px; display:flex; flex-direction:column; gap:12px; box-shadow:var(--fx-sh1); clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);">
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Where the gap always is</div>
+        <div style="font:400 14px/1.6 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:74ch; text-wrap:pretty;">{{ trainingVerdict }}</div>
+      </div>
+
+      <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">compliance.recordTraining — attendance reads the same roll as payroll</div>
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">hr can record a session and read coverage · everything else on this module is read-only to them</div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <div style="position:absolute; right:22px; bottom:22px; display:flex; align-items:center; gap:11px;">
+    <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">MARBIM · rest</div>
+    <div role="img" aria-label="MARBIM" style="{{ markStage }}">
+      <sc-for list="{{ markSlashes }}" as="s" hint-placeholder-count="8">
+        <img src="{{ s.src }}" alt="" style="{{ s.style }}" />
+      </sc-for>
+    </div>
+  </div>
+
+  </div>
+</div>
+
+<sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed; left:50%; bottom:28px; transform:translateX(-50%); z-index:90; background:var(--fx-text-primary); color:var(--fx-text-inverse); border-radius:8px; box-shadow:var(--fx-sh3); padding:14px 18px; display:flex; align-items:center; gap:14px; max-width:92vw;">
+    <div style="font:500 13.5px/1.4 'Plus Jakarta Sans',sans-serif;">{{ toast }}</div>
+    <button onClick="{{ clearToast }}" style="background:transparent; border:none; color:var(--fx-accent); font:600 12px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer;">Dismiss</button>
+  </div>
+</sc-if>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;role&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;compliance&quot;,&quot;owner&quot;,&quot;manager&quot;,&quot;hr&quot;,&quot;merchandiser&quot;],&quot;default&quot;:&quot;compliance&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Access&quot;},&quot;showActionNames&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Annotation&quot;}}">
+const SLASH_VEC = [
+  { dx: -0.896, dy: 0.444 }, { dx: -0.271, dy: 0.963 }, { dx: -0.97, dy: -0.243 }, { dx: 0.415, dy: 0.91 },
+  { dx: -0.512, dy: -0.859 }, { dx: 0.936, dy: 0.352 }, { dx: 0.282, dy: -0.96 }, { dx: 0.908, dy: -0.419 }
+];
+
+const TODAY = new Date(2026, 6, 31);
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const fmt = d => String(d.getDate()).padStart(2, '0') + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear();
+const short = d => String(d.getDate()).padStart(2, '0') + ' ' + MONTHS[d.getMonth()];
+const days = d => Math.round((d - TODAY) / 86400000);
+
+const USERS = {
+  compliance: 'Sabrina Haque', owner: 'M. A. Chowdhury', manager: 'Shafiq Alam',
+  hr: 'Farhana Islam', merchandiser: 'Nabila Rahman'
+};
+
+// id, title, clause, severity, owner, deadline, status, cap, evidence[[name, when, ok]], evidenceGap, milestones
+const FINDINGS = [
+  ['F-01', 'Three machines on Line 4 running without needle guards', 'RSC structural and electrical · guarding', 'zero tolerance', 'Rafiq Ahmed · mechanic', [2026, 6, 7], 'open',
+    'Fit guards on the three machines, then a standing weekly check by the mechanic with a signed sheet. A guard that comes off after the audit is the same finding twice.',
+    [['Purchase order for 3 guards', '12 Jul', true]], 'photograph of each machine with the guard fitted, and the first signed weekly sheet',
+    null],
+  ['F-02', 'Fire exit on the second floor blocked by carton storage', 'RSC fire · egress', 'zero tolerance', 'Jamal Uddin · storekeeper', [2026, 6, 3], 'closed',
+    'Cartons moved to the ground-floor bay and the corridor marked with floor tape. Storekeeper briefed that the corridor is not overflow space at any volume.',
+    [['Photograph · corridor clear', '02 Jul', true], ['Photograph · floor marking', '02 Jul', true], ['Briefing sheet, signed', '03 Jul', true]], '',
+    null],
+  ['F-03', 'Electrical panel room without a rated door', 'RSC electrical · panel enclosure', 'major', 'Shafiq Alam · manager', [2026, 9, 15], 'in progress',
+    'A two-hour fire-rated door on the panel room, fitted by an approved contractor with the certificate lodged. This is one item on the multi-year RSC remediation plan, not a same-week fix.',
+    [['Contractor quotation', '18 Jul', true]], 'installation certificate from the approved contractor',
+    [['Quotation obtained', '18 Jul 2026', 'done', 'Three approved contractors quoted, lowest accepted.'],
+     ['Order placed', '05 Aug 2026', 'next', 'Deposit released once the owner signs the capital item.'],
+     ['Door fitted', '28 Sep 2026', 'planned', 'Two days, done over a Friday so no line stops.'],
+     ['Certificate lodged with RSC', '15 Oct 2026', 'planned', 'Closes the item on the remediation plan.']]],
+  ['F-04', 'Chemical store without secondary containment', 'RSC chemical handling', 'major', 'Sabrina Haque · compliance', [2026, 7, 20], 'in progress',
+    'Bunded pallets under every drum in the dye chemical store, and the MSDS folder moved to the door where it can be read without entering.',
+    [['Bunded pallets delivered', '24 Jul', true], ['Photograph · drums on pallets', '28 Jul', true]], '',
+    null],
+  ['F-05', 'Two first-aid boxes missing three listed items', 'Buyer code · welfare', 'minor', 'Farhana Islam · hr', [2026, 7, 25], 'closed',
+    'Both boxes restocked and the monthly check moved onto the HR calendar rather than living in one person\u2019s memory.',
+    [['Photograph · both boxes', '22 Jul', true], ['Restock invoice', '22 Jul', true]], '',
+    null],
+  ['F-06', 'Drinking water points not tested this quarter', 'Buyer code · welfare', 'observation', 'Farhana Islam · hr', [2026, 8, 30], 'open',
+    'Quarterly potability test from an accredited lab, results posted at each point in Bengali.',
+    [], 'lab report for all six points',
+    null]
+];
+
+const SEV_ORDER = ['zero tolerance', 'major', 'minor', 'observation'];
+const SEV_COLOR = {
+  'zero tolerance': 'var(--fx-danger)', major: 'var(--fx-warning)',
+  minor: 'var(--fx-info)', observation: 'var(--fx-text-tertiary)'
+};
+const SEV_NOTE = {
+  'zero tolerance': 'fails the audit on its own, whatever else is in the file',
+  major: 'must be closed before the next audit or it escalates',
+  minor: 'closed on the normal cycle with evidence',
+  observation: 'noted, no deadline pressure — still needs a record'
+};
+
+// name, issuer, number, validTo, what
+const CERTS = [
+  ['Fire safety licence', 'Fire Service and Civil Defence', 'FSCD/GAZ/2214', [2026, 8, 24], 'the licence the fire service inspects against'],
+  ['Factory licence', 'Department of Inspection for Factories', 'DIFE/1188/2019', [2026, 9, 12], 'the licence to operate the premises at all'],
+  ['Bond licence · 04/GAZ/2019', 'Customs Bond Commissionerate', '04/GAZ/2019', [2026, 11, 30], 'duty-free import of shell fabric and trims'],
+  ['Environmental clearance', 'Department of Environment', 'DoE/GAZ/4471', [2027, 0, 18], 'effluent discharge from the dye house'],
+  ['BSCI audit standing', 'amfori BSCI', 'BSCI-2025-8817', [2027, 2, 4], 'the social audit buyers ask to see first'],
+  ['Group insurance · workers', 'Delta Life Insurance', 'DLI/GRP/22841', [2027, 5, 21], 'required cover for every worker on the roll']
+];
+
+// name, cadence, attended, roll, lastHeld, nextDue, note
+const TRAININGS = [
+  ['Fire drill · all floors', 'quarterly', 912, 1284, [2026, 5, 18], [2026, 8, 18],
+    'Held at 11:40 on a Thursday, which is why the night-shift finishing crew is not in the number. The next one has to be at shift change or it will miss them again.'],
+  ['Fire drill · night shift', 'quarterly', 168, 172, [2026, 6, 2], [2026, 9, 2],
+    'Run separately after the last one missed them. Four absent, all on approved leave, and all four are on the list for the next session.'],
+  ['Chemical handling · dye house', 'half-yearly', 46, 48, [2026, 3, 22], [2026, 9, 22],
+    'Two new operators joined the dye house in June and have not been trained. They are working under supervision until the next session, which is the correct answer but not a permanent one.'],
+  ['Harassment and grievance', 'yearly', 1284, 1284, [2026, 1, 9], [2027, 1, 9],
+    'Everyone on the roll, run line by line over four days in Bengali. The grievance box was opened twice since and both complaints were logged.']
+];
+
+const AUDITS = [
+  ['RSC follow-up inspection', 'structural, fire and electrical', [2026, 8, 14], 'announced'],
+  ['H&M sustainability audit', 'social and environmental', [2026, 9, 6], 'announced'],
+  ['amfori BSCI re-audit', 'social', [2026, 11, 19], 'semi-announced window']
+];
+
+const ACCESS = [
+  ['compliance', 'edit', 'Records audits, owns every CAP, renews certificates, runs the training register.'],
+  ['owner', 'view', 'The dashboard and every finding. Zero-tolerance items reach them as an alert the same hour.'],
+  ['manager', 'view', 'Reads everything and owns CAPs assigned to them — the update comes from compliance, not from here.'],
+  ['hr', 'trainings', 'The training register only. Records a session, reads coverage, sees no findings.'],
+  ['merchandiser · planner · qc · storekeeper · commercial · accounts · viewer', 'none', 'HIDDEN — buyers name factories in these reports, and findings name people.']
+];
+
+class Component extends DCLogic {
+  state = { screen: 'p1', role: 'compliance', annot: true, openFinding: 0, sevFilter: '', showExtract: true, renewOpen: false, toast: '' };
+
+  componentWillUnmount() { clearTimeout(this._t); }
+
+  flash(msg) {
+    clearTimeout(this._t);
+    this.setState({ toast: msg });
+    this._t = setTimeout(() => this.setState({ toast: '' }), 4400);
+  }
+
+  pill(active) {
+    return {
+      background: active ? 'var(--fx-bg-surface)' : 'transparent',
+      color: active ? 'var(--fx-text-primary)' : 'var(--fx-text-secondary)',
+      border: '1px solid ' + (active ? 'var(--fx-border-default)' : 'transparent'),
+      borderRadius: '6px', padding: '9px 12px', cursor: 'pointer',
+      font: "600 12.5px/1 'Plus Jakarta Sans',sans-serif", whiteSpace: 'nowrap'
+    };
+  }
+
+  ghost(on) {
+    return {
+      background: on ? 'var(--fx-text-primary)' : 'transparent',
+      color: on ? 'var(--fx-text-inverse)' : 'var(--fx-text-secondary)',
+      border: '1px solid ' + (on ? 'var(--fx-text-primary)' : 'var(--fx-border-default)'),
+      borderRadius: '8px', padding: '10px 13px', cursor: 'pointer', minHeight: '44px',
+      font: "500 12px/1 'JetBrains Mono',monospace", whiteSpace: 'nowrap'
+    };
+  }
+
+  chip(level) {
+    const base = {
+      font: "500 11px/1 'JetBrains Mono',monospace", letterSpacing: '.05em', textTransform: 'uppercase',
+      borderRadius: '4px', padding: '6px 8px', display: 'inline-block', whiteSpace: 'nowrap'
+    };
+    if (level === 'none') return { ...base, color: 'var(--fx-text-tertiary)', border: '1px solid var(--fx-border-subtle)' };
+    if (level === 'view' || level === 'trainings') return { ...base, color: 'var(--fx-text-secondary)', background: 'var(--fx-bg-sunken)', border: '1px solid transparent' };
+    if (level === 'edit') return { ...base, color: 'var(--fx-text-primary)', border: '1px solid var(--fx-border-strong)' };
+    return { ...base, color: 'var(--fx-text-primary)', border: '1px solid var(--fx-text-primary)', boxShadow: 'inset 3px 0 0 var(--fx-accent)', paddingLeft: '12px' };
+  }
+
+  statusChip(st, overdue) {
+    const base = {
+      font: "500 11px/1 'JetBrains Mono',monospace", letterSpacing: '.05em', textTransform: 'uppercase',
+      borderRadius: '4px', padding: '6px 8px', display: 'inline-block', whiteSpace: 'nowrap'
+    };
+    if (st === 'closed') return { ...base, color: 'var(--fx-success)', border: '1px solid var(--fx-success)' };
+    if (overdue) return { ...base, color: 'var(--fx-danger)', border: '1px solid var(--fx-danger)' };
+    if (st === 'in progress') return { ...base, color: 'var(--fx-text-primary)', border: '1px solid var(--fx-border-strong)' };
+    return { ...base, color: 'var(--fx-text-secondary)', border: '1px solid var(--fx-border-default)' };
+  }
+
+  renderVals() {
+    const s = this.state;
+    const mode = s.mode || 'light';
+    const role = s.role, screen = s.screen;
+    const isCompliance = role === 'compliance';
+    const isHr = role === 'hr';
+    const locked = role === 'merchandiser';
+    const trainingsOnly = isHr;
+    const allowed = !locked;
+    const canEdit = isCompliance;
+
+    const open = FINDINGS.filter(f => f[6] !== 'closed');
+    const sevCount = SEV_ORDER.map(sv => open.filter(f => f[3] === sv).length);
+    const overdueOf = f => f[6] !== 'closed' && days(new Date(f[5][0], f[5][1], f[5][2])) < 0;
+    const overdueCount = open.filter(overdueOf).length;
+
+    const list = s.sevFilter ? FINDINGS.filter(f => f[3] === s.sevFilter) : FINDINGS;
+
+    const findings = list.map(f => {
+      const due = new Date(f[5][0], f[5][1], f[5][2]);
+      const dDue = days(due);
+      const closed = f[6] === 'closed';
+      const od = overdueOf(f);
+      const zero = f[3] === 'zero tolerance';
+      const idx = FINDINGS.indexOf(f);
+      const evidence = f[8];
+      const needs = !!f[9];
+      return {
+        id: f[0], title: f[1], clause: f[2], sev: f[3], owner: f[4],
+        due: short(due) + ' ' + due.getFullYear(),
+        dueNote: closed ? 'closed ' + (evidence.length ? evidence[evidence.length - 1][1] : '') : dDue < 0 ? Math.abs(dDue) + ' d overdue' : dDue + ' d left',
+        dueColor: closed ? 'var(--fx-text-tertiary)' : od ? 'var(--fx-danger)' : dDue <= 21 ? 'var(--fx-warning)' : 'var(--fx-text-primary)',
+        sevChip: {
+          font: "500 11px/1 'JetBrains Mono',monospace", letterSpacing: '.05em', textTransform: 'uppercase',
+          borderRadius: '4px', padding: '6px 8px', display: 'inline-block', whiteSpace: 'nowrap',
+          color: SEV_COLOR[f[3]], border: '1px solid ' + SEV_COLOR[f[3]]
+        },
+        status: f[6], statusChip: this.statusChip(f[6], od),
+        sel: closed ? 'var(--fx-success)' : od || zero ? 'var(--fx-danger)' : SEV_COLOR[f[3]],
+        selW: !closed && (od || zero) ? '5px' : '3px',
+        chev: s.openFinding === idx ? '▾' : '▸',
+        open: s.openFinding === idx,
+        toggle: () => this.setState(x => ({ openFinding: x.openFinding === idx ? -1 : idx })),
+        rowStyle: {
+          display: 'flex', alignItems: 'stretch', borderBottom: '1px solid var(--fx-border-subtle)',
+          cursor: 'pointer', background: s.openFinding === idx ? 'var(--fx-bg-hover)' : 'transparent'
+        },
+        cap: f[7],
+        evidence: evidence.map(e => ({ name: e[0], when: e[1], c: e[2] ? 'var(--fx-success)' : 'var(--fx-warning)' })),
+        evidenceCount: evidence.length === 0 ? 'nothing uploaded' : evidence.length === 1 ? '1 file' : evidence.length + ' files',
+        needsEvidence: needs, evidenceGap: 'still needed: ' + f[9],
+        canClose: !closed && !needs,
+        blockedClose: closed || needs,
+        closeBlock: closed ? 'closed ' + (evidence.length ? evidence[evidence.length - 1][1] : '') : 'cannot close · ' + f[9] + ' missing',
+        close: () => this.flash(f[0] + ' closed · ' + evidence.length + ' files of evidence attached to the RSC record'),
+        upload: () => this.flash('Evidence added to ' + f[0] + ' · photographs are stamped with time and who took them'),
+        update: () => this.flash(f[0] + ' · owner and deadline changed, the previous pair stays in the history'),
+        hasMilestones: !!f[10],
+        milestoneLabel: 'RSC remediation plan · ' + (f[10] ? f[10].length : 0) + ' milestones',
+        milestones: (f[10] || []).map((m, mi, arr) => ({
+          what: m[0], when: m[1], note: m[3],
+          c: m[2] === 'done' ? 'var(--fx-success)' : m[2] === 'next' ? 'var(--fx-warning)' : 'var(--fx-text-tertiary)',
+          textColor: m[2] === 'planned' ? 'var(--fx-text-secondary)' : 'var(--fx-text-primary)',
+          dot: {
+            width: '11px', height: '11px', borderRadius: '999px', flexShrink: 0, marginTop: '4px',
+            background: m[2] === 'done' ? 'var(--fx-success)' : m[2] === 'next' ? 'var(--fx-warning)' : 'transparent',
+            border: m[2] === 'planned' ? '2px solid var(--fx-border-strong)' : 'none'
+          },
+          line: {
+            width: '2px', flex: 1, minHeight: mi === arr.length - 1 ? '0' : '22px',
+            background: mi === arr.length - 1 ? 'transparent' : 'var(--fx-border-default)'
+          }
+        }))
+      };
+    });
+
+    const certs = CERTS.map(c => {
+      const to = new Date(c[3][0], c[3][1], c[3][2]);
+      const d = days(to);
+      const band = d <= 30 ? 'inside 30' : d <= 60 ? 'inside 60' : d <= 90 ? 'inside 90' : 'clear';
+      const col = d <= 30 ? 'var(--fx-danger)' : d <= 60 ? 'var(--fx-warning)' : d <= 90 ? 'var(--fx-info)' : 'var(--fx-success)';
+      return {
+        name: c[0], issuer: c[1], no: c[2], what: c[4],
+        validTo: fmt(to), days: d + ' days', band, c: col,
+        selW: d <= 30 ? '5px' : '3px',
+        showRenew: canEdit && d <= 90,
+        quiet: !(canEdit && d <= 90),
+        quietNote: d <= 90 ? 'compliance renews' : 'nothing due',
+        renewLabel: d <= 30 ? 'Renew now' : 'Start renewal',
+        renewStyle: d <= 30
+          ? { background: 'var(--fx-accent)', color: 'var(--fx-accent-on)', border: 'none', borderRadius: '8px', padding: '11px 14px', font: "600 12.5px/1 'Plus Jakarta Sans',sans-serif", cursor: 'pointer', minHeight: '44px', whiteSpace: 'nowrap' }
+          : { background: 'transparent', color: 'var(--fx-text-primary)', border: '1px solid var(--fx-border-strong)', borderRadius: '8px', padding: '11px 14px', font: "600 12.5px/1 'Plus Jakarta Sans',sans-serif", cursor: 'pointer', minHeight: '44px', whiteSpace: 'nowrap' },
+        renew: () => this.setState({ renewOpen: true })
+      };
+    });
+    const inside90 = certs.filter(c => c.band !== 'clear').length;
+    const soonest = certs.reduce((a, c) => (days(new Date(0)) , parseInt(c.days) < parseInt(a.days) ? c : a), certs[0]);
+
+    const ladder = certs.filter(c => c.band !== 'clear').map(c => {
+      const d = parseInt(c.days, 10);
+      return {
+        name: c.name, days: c.days, c: c.c, selW: c.selW,
+        meta: c.issuer + ' · valid to ' + c.validTo,
+        bar: { height: '100%', width: Math.max(4, Math.min(100, (1 - d / 90) * 100)) + '%', background: c.c }
+      };
+    });
+
+    const upcoming = AUDITS.map(a => {
+      const on = new Date(a[2][0], a[2][1], a[2][2]);
+      const d = days(on);
+      const blockers = open.filter(f => f[3] === 'zero tolerance').length;
+      return {
+        name: a[0], kind: a[1] + ' · ' + a[3],
+        when: fmt(on), c: d <= 21 ? 'var(--fx-danger)' : d <= 60 ? 'var(--fx-warning)' : 'var(--fx-text-primary)',
+        selW: d <= 21 ? '5px' : '3px',
+        ready: d <= 21 && blockers
+          ? blockers + (blockers === 1 ? ' zero-tolerance finding is' : ' zero-tolerance findings are') + ' still open — that is the audit, before anything else is looked at'
+          : d <= 60
+            ? open.length + ' CAPs open, ' + overdueCount + ' of them past deadline'
+            : 'nothing due before this one that is not already scheduled',
+        readyColor: d <= 21 && blockers ? 'var(--fx-danger)' : 'var(--fx-text-secondary)',
+        open: () => this.setState({ screen: 'p2' })
+      };
+    });
+
+    const nextA = AUDITS[0];
+    const nextOn = new Date(nextA[2][0], nextA[2][1], nextA[2][2]);
+    const nextIn = days(nextOn);
+
+    const trainings = TRAININGS.map(t => {
+      const pct = Math.round(t[2] / t[3] * 100);
+      const last = new Date(t[4][0], t[4][1], t[4][2]);
+      const next = new Date(t[5][0], t[5][1], t[5][2]);
+      const dNext = days(next);
+      const col = pct >= 98 ? 'var(--fx-success)' : pct >= 90 ? 'var(--fx-warning)' : 'var(--fx-danger)';
+      return {
+        name: t[0], cadence: t[1], coverage: pct + '%',
+        attended: t[2].toLocaleString('en-US') + ' of ' + t[3].toLocaleString('en-US') + ' on the roll',
+        c: col, selW: pct < 90 ? '5px' : '3px',
+        border: pct < 90 ? 'var(--fx-danger)' : 'var(--fx-border-subtle)',
+        bar: { height: '100%', width: pct + '%', background: col },
+        last: fmt(last), next: fmt(next),
+        dueColor: dNext < 0 ? 'var(--fx-danger)' : dNext <= 30 ? 'var(--fx-warning)' : 'var(--fx-text-primary)',
+        note: t[6]
+      };
+    });
+    const worst = trainings.reduce((a, t) => (parseInt(t.coverage) < parseInt(a.coverage) ? t : a), trainings[0]);
+
+    return {
+      screens: [['p1', 'P1 dashboard'], ['p2', 'P2 audit + CAPs'], ['p3', 'P3 certificates'], ['p4', 'P4 trainings']].map(x => ({
+        label: x[1], pick: () => this.setState({ screen: x[0] }), style: this.pill(screen === x[0])
+      })),
+      role, userName: USERS[role],
+      setRole: (e) => this.setState({ role: e.target.value, screen: e.target.value === 'hr' ? 'p4' : 'p1' }),
+      annot: s.annot, annotLabel: s.annot ? 'on' : 'off', annotBtn: this.ghost(s.annot),
+      mode, modeLabel: mode === 'dark' ? 'dark' : 'light', modeBtn: this.ghost(mode === 'dark'),
+      logoSrc: 'uploads/fabricxai-logo-' + (mode === 'dark' ? 'dark' : 'light') + '.png',
+      toggleMode: () => this.setState(x => ({ mode: x.mode === 'dark' ? 'light' : 'dark' })),
+      toggleAnnot: () => this.setState(x => ({ annot: !x.annot })),
+
+      locked, hasNav: allowed, noNav: !allowed,
+      isP1: allowed && !trainingsOnly && screen === 'p1',
+      isP2: allowed && !trainingsOnly && screen === 'p2',
+      isP3: allowed && !trainingsOnly && screen === 'p3',
+      isP4: allowed && screen === 'p4',
+      canEdit, readOnly: !canEdit, canRecord: isCompliance || isHr,
+      readOnlyNote: role === 'owner'
+        ? 'You are read-only here · a zero-tolerance finding reaches you as an alert the hour it is raised'
+        : 'Compliance owns the CAP record · you own the fix, not the entry',
+      goP1: () => this.setState({ screen: 'p1' }),
+
+      nav: [['p1', 'Dashboard'], ['p2', 'Audits and CAPs'], ['p3', 'Certificates'], ['p4', 'Trainings']]
+        .filter(x => !trainingsOnly || x[0] === 'p4')
+        .map(x => ({
+          label: x[1], pick: () => this.setState({ screen: x[0] }),
+          style: {
+            display: 'flex', alignItems: 'center', gap: '11px', padding: '11px 12px', borderRadius: '8px', cursor: 'pointer',
+            minHeight: '44px', font: "500 14px/1 'Plus Jakarta Sans',sans-serif",
+            background: screen === x[0] ? 'var(--fx-bg-selected)' : 'transparent',
+            color: screen === x[0] ? 'var(--fx-text-primary)' : 'var(--fx-text-secondary)'
+          },
+          marker: { width: '2px', height: '15px', transform: 'skewX(-34deg)', background: screen === x[0] ? 'var(--fx-accent)' : 'transparent', flexShrink: 0 }
+        })),
+      nextAudit: nextA[0],
+      nextAuditIn: fmt(nextOn) + ' · ' + nextIn + ' days',
+      nextAuditColor: nextIn <= 21 ? 'var(--fx-danger)' : 'var(--fx-text-primary)',
+      nextAuditNote: sevCount[0] + ' zero-tolerance ' + (sevCount[0] === 1 ? 'finding is' : 'findings are') + ' still open against it.',
+
+      dashTitle: overdueCount
+        ? overdueCount + (overdueCount === 1 ? ' CAP is past its deadline' : ' CAPs are past their deadline')
+        : open.length + ' CAPs open, none overdue',
+      dashLead: 'Open corrective actions by severity, what expires next, and who is coming. A zero-tolerance finding is the whole audit — everything else is arithmetic.',
+      sevCards: SEV_ORDER.map((sv, i) => ({
+        label: sv, count: String(sevCount[i]), note: SEV_NOTE[sv],
+        c: SEV_COLOR[sv], selW: sv === 'zero tolerance' && sevCount[i] ? '5px' : '3px',
+        style: {
+          flex: '1 1 220px', minWidth: '210px', display: 'flex', background: 'var(--fx-bg-surface)',
+          border: '1px solid ' + (sv === 'zero tolerance' && sevCount[i] ? 'var(--fx-danger)' : 'var(--fx-border-subtle)'),
+          borderRadius: '8px', overflow: 'hidden', boxShadow: 'var(--fx-sh1)', cursor: 'pointer'
+        },
+        open: () => this.setState({ screen: 'p2', sevFilter: sv, openFinding: -1 })
+      })),
+      ladder,
+      ladderFoot: inside90 + ' of ' + CERTS.length + ' certificates sit inside the 90-day ladder · ' + soonest.name.toLowerCase() + ' is the nearest at ' + soonest.days,
+      upcoming,
+
+      audit: {
+        id: 'AUD-2026-014', name: 'RSC follow-up · June inspection',
+        sub: 'Inspected 24–25 Jun 2026 · Gazipur unit 2 · report received 28 Jun',
+        openCount: String(open.length),
+        openColor: overdueCount ? 'var(--fx-danger)' : 'var(--fx-text-primary)'
+      },
+      findingCount: (s.sevFilter ? list.length + ' ' + s.sevFilter + ' findings' : FINDINGS.length + ' findings')
+        + ' · ' + open.length + ' still open',
+      findings,
+
+      showExtract: s.showExtract && canEdit,
+      extract: {
+        headline: 'Six findings read from the RSC report',
+        file: 'RSC-follow-up-Jun2026.pdf · 14 pages',
+        rows: [
+          ['Needle guards missing · Line 4', 'zero tolerance', 0.97],
+          ['Fire exit blocked · second floor', 'zero tolerance', 0.96],
+          ['Panel room door not fire-rated', 'major', 0.91],
+          ['Chemical store containment', 'major', 0.74]
+        ].map(r => ({
+          finding: r[0], sev: r[1], sevColor: SEV_COLOR[r[1]],
+          conf: r[2].toFixed(2),
+          confColor: r[2] < 0.85 ? 'var(--fx-warning)' : 'var(--fx-text-primary)',
+          sel: r[2] < 0.85 ? 'var(--fx-warning)' : 'var(--fx-success)'
+        })),
+        caveat: 'The severities are printed on the report and I have copied them. The chemical store one I am less sure of — the report describes it under observations but the wording matches their major criteria, and RSC has graded the same wording both ways before. Read that page before the CAP deadline is set from it.'
+      },
+      acceptExtract: () => { this.setState({ showExtract: false }); this.flash('6 CAPs opened · owners unassigned, deadlines from the RSC matrix'); },
+      dropExtract: () => this.setState({ showExtract: false }),
+      recordAudit: () => this.flash('New audit · drop the report and MARBIM drafts the findings, or enter them by hand'),
+
+      certs,
+      certFoot: 'the bond licence sits here as well as in the UD workbench — one record, read by both',
+      renewOpen: s.renewOpen,
+      closeRenew: () => this.setState({ renewOpen: false }),
+      renew: {
+        name: 'Fire safety licence · FSCD/GAZ/2214',
+        steps: [
+          ['Application lodged', 'Form and fee submitted to the Gazipur office.', 'done', 'var(--fx-success)'],
+          ['Fee paid', 'Treasury challan attached to the application.', 'done', 'var(--fx-success)'],
+          ['Inspection booked', 'The fire service inspects before it renews. Their next Gazipur slot is 11 Aug.', 'next', 'var(--fx-warning)'],
+          ['Licence issued', 'Typically 8 working days after a clear inspection.', 'planned', 'var(--fx-text-tertiary)']
+        ].map(x => ({ what: x[0], note: x[1], state: x[2], c: x[3] })),
+        note: 'Twenty-four days of validity left and the inspection is not booked. Book it today and there is room for one re-inspection; book it next week and there is not.'
+      },
+      submitRenew: () => { this.setState({ renewOpen: false }); this.flash('Inspection requested for 11 Aug · reminder set for 04 Aug if unconfirmed'); },
+      addCert: () => this.flash('New certificate · number, issuer and validity, then it joins the ladder'),
+
+      trainings,
+      trainingVerdict: 'The lowest coverage is ' + worst.coverage + ' on ' + worst.name.toLowerCase()
+        + ', and it is the same gap every time: a session held mid-shift misses whoever is not on that shift. The night-shift drill exists because that gap was found in April, and the dye-house session will need the same treatment for the two operators who joined in June.',
+      recordTraining: () => this.flash('Session recorded · attendance ticked against the roll, not typed as a number'),
+
+      access: ACCESS.map(a => ({ role: a[0], level: a[1], note: a[2], chip: this.chip(a[1]) })),
+      toast: s.toast, clearToast: () => this.setState({ toast: '' }),
+      markStage: { position: 'relative', width: '32px', height: '32px', flexShrink: 0 },
+      markSlashes: SLASH_VEC.map((v, i) => ({
+        src: 'assets/mark/' + (mode === 'dark' ? 'w-' : 'i-') + (i + 1) + '.png',
+        style: { position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', transformOrigin: 'center' }
+      }))
+    };
+  }
+}
+
+</script>
+</body>
+</html>

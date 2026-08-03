@@ -1,0 +1,1299 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Anek+Bangla:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #FBFAF8; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: #181D29; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+  a:hover { color: #B88C21; }
+  @keyframes fx-spread { to { transform: translate(calc(var(--dx) * 6%), calc(var(--dy) * 6%)); } }
+  @keyframes fx-breathe { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(calc(var(--dx) * 3.5%), calc(var(--dy) * 3.5%)); } }
+  @keyframes fx-orbit { 0%, 100% { transform: rotate(-13deg); opacity: .45; } 50% { transform: rotate(13deg); opacity: 1; } }
+  @keyframes fx-travel { 0% { transform: translate(-10%, 10%); opacity: .25; } 40% { transform: translate(0, 0); opacity: 1; } 100% { transform: translate(10%, -10%); opacity: .25; } }
+  @keyframes fx-converge { 0% { transform: translate(calc(var(--dx) * 26%), calc(var(--dy) * 26%)) scale(.82); opacity: 0; } 62% { transform: translate(0, 0) scale(1.15); opacity: 1; } 100% { transform: translate(0, 0) scale(1); opacity: 1; } }
+  @keyframes fx-shimmer { 0% { background-position: -180% 0; } 100% { background-position: 280% 0; } }
+  @keyframes fx-caret { 0%, 45% { opacity: 1; } 55%, 100% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
+</style>
+</helmet>
+
+<div style="--fx-bg-canvas:#FBFAF8; --fx-bg-surface:#FFFFFF; --fx-bg-raised:#FFFFFF; --fx-bg-sunken:#F3F1EC; --fx-bg-hover:rgba(24,29,41,.035); --fx-bg-selected:rgba(225,179,52,.12); --fx-border-subtle:#E7E4DE; --fx-border-default:#D6D2C9; --fx-border-strong:#A9A49A; --fx-text-primary:#181D29; --fx-text-secondary:#4C5364; --fx-text-tertiary:#767E90; --fx-text-disabled:#A8AEBB; --fx-text-inverse:#FBFAF8; --fx-accent:#E1B334; --fx-accent-hover:#CFA22B; --fx-accent-pressed:#B88C21; --fx-accent-subtle:#FAF1DA; --fx-accent-on:#181D29; --fx-success:#2F7D5B; --fx-warning:#B4741C; --fx-danger:#B23A32; --fx-info:#2F5FA8; --fx-focus:#181D29; --fx-sh1:0 1px 2px rgba(24,29,41,.06); --fx-sh2:0 4px 12px rgba(24,29,41,.08); --fx-sh3:0 12px 32px rgba(24,29,41,.12); --fx-pad:56px; font-family:'Plus Jakarta Sans',system-ui,sans-serif;">
+<div style="{{ shellStyle }}">
+<div style="background:var(--fx-bg-canvas); color:var(--fx-text-primary); min-height:100vh; padding:0 48px 120px;">
+<div style="max-width:1180px; margin:0 auto;">
+
+<header style="display:flex; align-items:flex-start; justify-content:space-between; gap:48px; padding:72px 0 var(--fx-pad);">
+  <div style="max-width:620px; display:flex; flex-direction:column; gap:26px;">
+    <img src="{{ lockupSrc }}" alt="FabricX AI" style="height:44px; width:auto; display:block; align-self:flex-start; max-width:100%; object-fit:contain;" />
+    <div style="display:flex; flex-direction:column; gap:14px;">
+      <div style="font:500 12px/1 'JetBrains Mono',monospace; letter-spacing:.09em; text-transform:uppercase; color:var(--fx-text-tertiary);">Design system · v1.0 foundation</div>
+      <h1 style="font:700 44px/1.1 'Plus Jakarta Sans',sans-serif; letter-spacing:-.022em; margin:0; color:var(--fx-text-primary);">Tokens, signature elements and core components</h1>
+      <p style="font:400 18px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); margin:0; text-wrap:pretty;">Both modes work from the same markup. Amber is a signal, never a surface — this page shows one specimen of each, so it carries more amber than any real screen should.</p>
+    </div>
+  </div>
+  <div style="display:flex; flex-direction:column; gap:10px; align-items:flex-end; flex-shrink:0;">
+    <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Mode</div>
+    <div style="display:flex; gap:0; border:1px solid var(--fx-border-default); border-radius:8px; overflow:hidden; background:var(--fx-bg-surface);">
+      <button onClick="{{ setLight }}" style="{{ lightBtn }}">Light</button>
+      <button onClick="{{ setDark }}" style="{{ darkBtn }}">Dark</button>
+    </div>
+  </div>
+</header>
+
+<section style="border-top:1px solid var(--fx-border-subtle); padding:var(--fx-pad) 0;">
+  <div style="display:flex; align-items:center; gap:16px; margin-bottom:12px;">
+    <div style="display:flex; gap:4px; transform:skewX(-34deg);">
+      <div style="width:2px; height:15px; background:var(--fx-accent);"></div>
+      <div style="width:2px; height:15px; background:var(--fx-accent);"></div>
+      <div style="width:2px; height:15px; background:var(--fx-accent);"></div>
+    </div>
+    <h2 style="font:600 26px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.012em; margin:0;">Brand assets</h2>
+  </div>
+  <p style="font:400 16px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); margin:0 0 30px; max-width:64ch; text-wrap:pretty;">The supplied files are the official assets — use them directly, never redraw or recolor. The X-mark is the source for the MARBIM mark and all icon derivatives.</p>
+  <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:20px;">
+    <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden;">
+      <div style="height:132px; background:#FFFFFF; display:flex; align-items:center; justify-content:center; padding:24px;">
+        <img src="assets/fabricxai-logo-light-onwhite.png" alt="FabricX AI lockup, ink on white" style="max-width:100%; height:auto; display:block;" />
+      </div>
+      <div style="padding:16px 18px; display:flex; flex-direction:column; gap:6px;">
+        <div style="font:500 12px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-primary);">fabricxai-logo-light-onwhite.png</div>
+        <div style="font:400 14px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">Full lockup, white background baked in</div>
+      </div>
+    </div>
+    <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden;">
+      <div style="height:132px; background:#181D29; display:flex; align-items:center; justify-content:center; padding:24px;">
+        <img src="uploads/fabricxai-logo-dark.png" alt="FabricX AI lockup, white" style="max-width:100%; height:auto; display:block;" />
+      </div>
+      <div style="padding:16px 18px; display:flex; flex-direction:column; gap:6px;">
+        <div style="font:500 12px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-primary);">fabricxai-logo-dark.png</div>
+        <div style="font:400 14px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">Full lockup on dark surfaces</div>
+      </div>
+    </div>
+    <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden;">
+      <div style="height:132px; background:#FFFFFF; display:flex; align-items:center; justify-content:center;">
+        <img src="assets/MARBIM_logo-onwhite.png" alt="MARBIM X-mark on white" style="width:86px; height:auto; display:block;" />
+      </div>
+      <div style="padding:16px 18px; display:flex; flex-direction:column; gap:6px;">
+        <div style="font:500 12px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-primary);">MARBIM_logo-onwhite.png</div>
+        <div style="font:400 14px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">Ink slashes for light surfaces, favicon</div>
+      </div>
+    </div>
+    <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden;">
+      <div style="height:132px; background:#181D29; display:flex; align-items:center; justify-content:center;">
+        <img src="uploads/MARBIM_logo.png" alt="MARBIM X-mark" style="width:56px; height:auto; display:block;" />
+      </div>
+      <div style="padding:16px 18px; display:flex; flex-direction:column; gap:6px;">
+        <div style="font:500 12px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-primary);">MARBIM_logo.png</div>
+        <div style="font:400 14px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">Transparent source — app icon, avatar, animated mark</div>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:20px;">
+    <div style="font:400 13px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-secondary); background:var(--fx-bg-sunken); border-radius:4px; padding:8px 12px;">Clearspace = 0.25× lockup height</div>
+    <div style="font:400 13px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-secondary); background:var(--fx-bg-sunken); border-radius:4px; padding:8px 12px;">Min lockup 120px · min mark 20px</div>
+    <div style="font:400 13px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-secondary); background:var(--fx-bg-sunken); border-radius:4px; padding:8px 12px;">No stretch · no outline · no gradient</div>
+  </div>
+</section>
+
+<section style="border-top:1px solid var(--fx-border-subtle); padding:var(--fx-pad) 0;">
+  <div style="display:flex; align-items:center; gap:16px; margin-bottom:12px;">
+    <div style="display:flex; gap:4px; transform:skewX(-34deg);">
+      <div style="width:2px; height:15px; background:var(--fx-accent);"></div>
+      <div style="width:2px; height:15px; background:var(--fx-accent);"></div>
+      <div style="width:2px; height:15px; background:var(--fx-accent);"></div>
+    </div>
+    <h2 style="font:600 26px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.012em; margin:0;">Color tokens</h2>
+  </div>
+  <p style="font:400 16px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); margin:0 0 30px; max-width:64ch; text-wrap:pretty;">Reference tokens semantically in components, never raw hex. Dark mode is not an inversion: elevation goes lighter, shadows become hairlines, no surface is pure black.</p>
+  <sc-for list="{{ tokenGroups }}" as="group" hint-placeholder-count="3">
+    <div style="margin-bottom:34px;">
+      <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.09em; text-transform:uppercase; color:var(--fx-text-tertiary); padding-bottom:12px; border-bottom:1px solid var(--fx-border-subtle); margin-bottom:14px;">{{ group.name }}</div>
+      <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px 20px;">
+        <sc-for list="{{ group.tokens }}" as="t" hint-placeholder-count="8">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <div style="width:36px; height:36px; border-radius:4px; border:1px solid var(--fx-border-default); flex-shrink:0; background:{{ t.sw }};"></div>
+            <div style="display:flex; flex-direction:column; gap:3px; min-width:0;">
+              <div style="font:500 12px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ t.name }}</div>
+              <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); white-space:nowrap;">{{ t.light }} / {{ t.dark }}</div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-for>
+</section>
+
+<section style="border-top:1px solid var(--fx-border-subtle); padding:var(--fx-pad) 0;">
+  <div style="display:flex; align-items:center; gap:16px; margin-bottom:12px;">
+    <div style="display:flex; gap:4px; transform:skewX(-34deg);">
+      <div style="width:2px; height:15px; background:var(--fx-accent);"></div>
+      <div style="width:2px; height:15px; background:var(--fx-accent);"></div>
+      <div style="width:2px; height:15px; background:var(--fx-accent);"></div>
+    </div>
+    <h2 style="font:600 26px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.012em; margin:0;">The amber rule</h2>
+  </div>
+  <div style="display:grid; grid-template-columns:1.15fr .85fr; gap:28px; align-items:start;">
+    <div style="display:flex; flex-direction:column; gap:2px;">
+      <sc-for list="{{ amberRules }}" as="r" hint-placeholder-count="6">
+        <div style="display:flex; gap:16px; padding:15px 0; border-bottom:1px solid var(--fx-border-subtle);">
+          <div style="font:500 13px/1.5 'JetBrains Mono',monospace; color:var(--fx-accent-pressed); flex-shrink:0; width:20px;">{{ r.n }}</div>
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <div style="font:600 15px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-primary);">{{ r.title }}</div>
+            <div style="font:400 14px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ r.body }}</div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:16px;">
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:20px; display:flex; flex-direction:column; gap:14px;">
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-success);">Do</div>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <button style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:10px 18px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer;">Deploy model</button>
+          <button style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:8px; padding:10px 18px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer;">Cancel</button>
+        </div>
+        <div style="font:400 13px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">Ink on amber. One amber moment.</div>
+      </div>
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:20px; display:flex; flex-direction:column; gap:14px;">
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-danger);">Don't</div>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <button style="background:#E1B334; color:#FFFFFF; border:none; border-radius:8px; padding:10px 18px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:not-allowed; opacity:.9;">Deploy model</button>
+          <button style="background:#E1B334; color:#FFFFFF; border:none; border-radius:8px; padding:10px 18px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:not-allowed; opacity:.9;">Cancel</button>
+        </div>
+        <div style="font:400 13px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">White on amber fails contrast; two amber fills compete.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="border-top:1px solid var(--fx-border-subtle); padding:var(--fx-pad) 0;">
+  <div style="display:flex; align-items:center; gap:16px; margin-bottom:12px;">
+    <div style="display:flex; gap:4px; transform:skewX(-34deg);">
+      <div style="width:2px; height:15px; background:var(--fx-accent);"></div>
+      <div style="width:2px; height:15px; background:var(--fx-accent);"></div>
+      <div style="width:2px; height:15px; background:var(--fx-accent);"></div>
+    </div>
+    <h2 style="font:600 26px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.012em; margin:0;">Signature elements</h2>
+  </div>
+  <p style="font:400 16px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); margin:0 0 30px; max-width:64ch; text-wrap:pretty;">At least one per screen, never all four in the same viewport.</p>
+
+  <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:14px; padding:32px; margin-bottom:20px;">
+    <div style="display:flex; align-items:baseline; gap:14px; margin-bottom:24px;">
+      <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; color:var(--fx-text-tertiary);">01</div>
+      <h3 style="font:600 20px/1.2 'Plus Jakarta Sans',sans-serif; margin:0;">The MARBIM mark — six animated states</h3>
+    </div>
+    <div style="display:grid; grid-template-columns:220px 1fr; gap:36px; align-items:center;">
+      <div style="background:var(--fx-bg-sunken); border-radius:8px; height:190px; display:flex; align-items:center; justify-content:center;">
+        <div role="img" aria-label="MARBIM mark" style="{{ markStage }}">
+          <sc-for list="{{ slashes }}" as="s" hint-placeholder-count="8">
+            <img src="{{ s.src }}" alt="" style="{{ s.style }}" />
+          </sc-for>
+        </div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:2px;">
+        <sc-for list="{{ markStates }}" as="s" hint-placeholder-count="6">
+          <button onClick="{{ s.pick }}" style="{{ s.style }}">
+            <span style="font:500 12px/1 'JetBrains Mono',monospace; width:16px; flex-shrink:0; opacity:.55;">{{ s.n }}</span>
+            <span style="font:600 14px/1 'Plus Jakarta Sans',sans-serif; width:88px; flex-shrink:0; text-align:left;">{{ s.label }}</span>
+            <span style="font:400 13px/1.4 'Plus Jakarta Sans',sans-serif; opacity:.72; text-align:left;">{{ s.desc }}</span>
+          </button>
+        </sc-for>
+        <div style="display:flex; gap:10px; align-items:center; margin-top:14px;">
+          <button onClick="{{ runSequence }}" style="background:var(--fx-text-primary); color:var(--fx-text-inverse); border:none; border-radius:8px; padding:10px 16px; font:600 13px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer;">Run 3 → 6</button>
+          <div style="font:400 13px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">Blocked never animates — mark desaturates and holds.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:20px;">
+    <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:24px; display:flex; flex-direction:column; gap:18px;">
+      <div style="display:flex; align-items:baseline; gap:12px;">
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">02</div>
+        <h3 style="font:600 17px/1.2 'Plus Jakarta Sans',sans-serif; margin:0;">Slash rule</h3>
+      </div>
+      <div style="background:var(--fx-bg-sunken); border-radius:4px; height:78px; display:flex; align-items:center; justify-content:center; gap:5px;">
+        <div style="display:flex; gap:5px; transform:skewX(-34deg);">
+          <div style="width:2px; height:20px; background:var(--fx-border-strong);"></div>
+          <div style="width:2px; height:20px; background:var(--fx-border-strong);"></div>
+          <div style="width:2px; height:20px; background:var(--fx-border-strong);"></div>
+        </div>
+      </div>
+      <div style="font:400 14px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">Three 2px strokes at the wordmark's 34°. Replaces horizontal rules, and fills left-to-right as the progress bar.</div>
+    </div>
+    <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:24px; display:flex; flex-direction:column; gap:18px;">
+      <div style="display:flex; align-items:baseline; gap:12px;">
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">03</div>
+        <h3 style="font:600 17px/1.2 'Plus Jakarta Sans',sans-serif; margin:0;">Weave field</h3>
+      </div>
+      <div style="border-radius:4px; height:78px; background-color:var(--fx-bg-sunken); background-image:repeating-linear-gradient(146deg, transparent 0 6px, var(--fx-border-subtle) 6px 8px, transparent 8px 15px);"></div>
+      <div style="font:400 14px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">34° hatch at 3–5% opacity. Empty states, auth washes, scrims. Never behind body copy.</div>
+    </div>
+    <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:24px; display:flex; flex-direction:column; gap:18px;">
+      <div style="display:flex; align-items:baseline; gap:12px;">
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">04</div>
+        <h3 style="font:600 17px/1.2 'Plus Jakarta Sans',sans-serif; margin:0;">Cut corner</h3>
+      </div>
+      <div style="background:var(--fx-bg-sunken); border-radius:4px; height:78px; display:flex; align-items:center; justify-content:center;">
+        <div style="width:96px; height:46px; background:var(--fx-text-primary); clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);"></div>
+      </div>
+      <div style="font:400 14px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">A single 12px notch — top-right on containers, bottom-left on chips. One per group, never on inputs.</div>
+    </div>
+  </div>
+</section>
+
+<section style="border-top:1px solid var(--fx-border-subtle); padding:var(--fx-pad) 0;">
+  <div style="display:flex; align-items:center; gap:16px; margin-bottom:30px;">
+    <div style="display:flex; gap:4px; transform:skewX(-34deg);">
+      <div style="width:2px; height:15px; background:var(--fx-accent);"></div>
+      <div style="width:2px; height:15px; background:var(--fx-accent);"></div>
+      <div style="width:2px; height:15px; background:var(--fx-accent);"></div>
+    </div>
+    <h2 style="font:600 26px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.012em; margin:0;">Foundations</h2>
+  </div>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+    <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:26px; display:flex; flex-direction:column; gap:18px;">
+      <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Type — Plus Jakarta Sans / JetBrains Mono</div>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div style="display:flex; align-items:baseline; gap:16px;"><div style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); width:76px; flex-shrink:0;">display 44</div><div style="font:700 44px/1.1 'Plus Jakarta Sans',sans-serif; letter-spacing:-.022em;">Weave</div></div>
+        <div style="display:flex; align-items:baseline; gap:16px;"><div style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); width:76px; flex-shrink:0;">h1 34</div><div style="font:700 34px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em;">Weave the model</div></div>
+        <div style="display:flex; align-items:baseline; gap:16px;"><div style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); width:76px; flex-shrink:0;">h2 26</div><div style="font:600 26px/1.15 'Plus Jakarta Sans',sans-serif;">Weave the model</div></div>
+        <div style="display:flex; align-items:baseline; gap:16px;"><div style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); width:76px; flex-shrink:0;">h3 20</div><div style="font:600 20px/1.2 'Plus Jakarta Sans',sans-serif;">Weave the model</div></div>
+        <div style="display:flex; align-items:baseline; gap:16px;"><div style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); width:76px; flex-shrink:0;">body 16</div><div style="font:400 16px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">Retrieval grounded in your own corpus.</div></div>
+        <div style="display:flex; align-items:baseline; gap:16px;"><div style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); width:76px; flex-shrink:0;">sm 14</div><div style="font:400 14px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">Retrieval grounded in your own corpus.</div></div>
+        <div style="display:flex; align-items:baseline; gap:16px;"><div style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); width:76px; flex-shrink:0;">mono 13</div><div style="font:400 13px/1.5 'JetBrains Mono',monospace; color:var(--fx-text-secondary);">run_4f2a · 128k ctx · 0.42s</div></div>
+      </div>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:20px;">
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:26px; display:flex; flex-direction:column; gap:16px;">
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Spacing — 4px base</div>
+        <div style="display:flex; align-items:flex-end; gap:8px;">
+          <sc-for list="{{ spacing }}" as="sp" hint-placeholder-count="9">
+            <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
+              <div style="width:16px; background:var(--fx-accent-subtle); border:1px solid var(--fx-border-default); border-radius:2px; height:{{ sp.h }};"></div>
+              <div style="font:400 10px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ sp.v }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:26px; display:flex; flex-direction:column; gap:16px;">
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Radius &amp; elevation</div>
+        <div style="display:flex; gap:14px; flex-wrap:wrap;">
+          <div style="width:66px; height:52px; background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:4px; box-shadow:var(--fx-sh1); display:flex; align-items:flex-end; justify-content:center; padding-bottom:6px; font:400 10px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">sm 4 / e1</div>
+          <div style="width:66px; height:52px; background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; box-shadow:var(--fx-sh2); display:flex; align-items:flex-end; justify-content:center; padding-bottom:6px; font:400 10px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">md 8 / e2</div>
+          <div style="width:66px; height:52px; background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:14px; box-shadow:var(--fx-sh3); display:flex; align-items:flex-end; justify-content:center; padding-bottom:6px; font:400 10px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">lg 14 / e3</div>
+          <div style="width:52px; height:52px; background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:999px; display:flex; align-items:center; justify-content:center; font:400 10px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">full</div>
+        </div>
+        <div style="font:400 13px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">Motion: 120 state · 180 enter · 260 overlay · 400 page. Enter <span style="font-family:'JetBrains Mono',monospace; font-size:12px;">cubic-bezier(.2,.8,.2,1)</span>.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="border-top:1px solid var(--fx-border-subtle); padding:var(--fx-pad) 0;">
+  <div style="display:flex; align-items:center; gap:16px; margin-bottom:30px;">
+    <div style="display:flex; gap:4px; transform:skewX(-34deg);">
+      <div style="width:2px; height:15px; background:var(--fx-accent);"></div>
+      <div style="width:2px; height:15px; background:var(--fx-accent);"></div>
+      <div style="width:2px; height:15px; background:var(--fx-accent);"></div>
+    </div>
+    <h2 style="font:600 26px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.012em; margin:0;">Core components</h2>
+  </div>
+
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px;">
+    <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:26px; display:flex; flex-direction:column; gap:20px;">
+      <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Actions</div>
+      <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+        <button style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:10px 18px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer;" style-hover="background:var(--fx-accent-hover)">Primary</button>
+        <button style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:8px; padding:10px 18px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer;" style-hover="border-color:var(--fx-border-strong); background:var(--fx-bg-hover)">Secondary</button>
+        <button style="background:transparent; color:var(--fx-text-primary); border:1px solid transparent; border-radius:8px; padding:10px 14px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer;" style-hover="background:var(--fx-bg-hover)">Ghost</button>
+        <button style="background:var(--fx-danger); color:#FFFFFF; border:none; border-radius:8px; padding:10px 18px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer;">Danger</button>
+        <button style="background:transparent; color:var(--fx-text-disabled); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:10px 18px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:not-allowed;">Disabled</button>
+      </div>
+      <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+        <button style="width:38px; height:38px; background:transparent; border:1px solid var(--fx-border-default); border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center;" style-hover="background:var(--fx-bg-hover)">
+          <img src="{{ markOnSurface }}" alt="" style="width:16px; height:16px;" />
+        </button>
+        <div style="display:flex; border:1px solid var(--fx-border-default); border-radius:8px; overflow:hidden;">
+          <button style="background:var(--fx-bg-surface); color:var(--fx-text-primary); border:none; border-right:1px solid var(--fx-border-default); padding:10px 16px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer;">Export</button>
+          <button style="background:var(--fx-bg-surface); color:var(--fx-text-secondary); border:none; padding:10px 12px; font:600 12px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer;">▾</button>
+        </div>
+        <div style="display:flex; border:1px solid var(--fx-border-default); border-radius:8px; overflow:hidden; background:var(--fx-bg-surface);">
+          <sc-for list="{{ segments }}" as="sg" hint-placeholder-count="3">
+            <button onClick="{{ sg.pick }}" style="{{ sg.style }}">{{ sg.label }}</button>
+          </sc-for>
+        </div>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <div style="font:400 13px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">Focus ring</div>
+        <button style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:8px; padding:10px 18px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; outline:2px solid var(--fx-focus); outline-offset:2px;">Focused</button>
+      </div>
+    </div>
+
+    <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:26px; display:flex; flex-direction:column; gap:18px;">
+      <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Forms</div>
+      <div style="display:flex; flex-direction:column; gap:7px;">
+        <label style="font:500 13px/1 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-primary);">Corpus name</label>
+        <input value="policy-docs-2026" style="background:var(--fx-bg-surface); color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:4px; padding:11px 13px; font:400 14px/1.2 'Plus Jakarta Sans',sans-serif; width:100%;" />
+        <div style="font:400 12px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">Lowercase, hyphens only.</div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:7px;">
+        <label style="font:500 13px/1 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-primary);">Endpoint</label>
+        <input value="notaurl" style="background:var(--fx-bg-surface); color:var(--fx-text-primary); border:1px solid var(--fx-danger); border-radius:4px; padding:11px 13px; font:400 14px/1.2 'Plus Jakarta Sans',sans-serif; width:100%;" />
+        <div style="font:400 12px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-danger);">Must be a fully qualified https URL.</div>
+      </div>
+      <div style="display:flex; gap:12px;">
+        <select style="background:var(--fx-bg-surface); color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:4px; padding:11px 13px; font:400 14px/1.2 'Plus Jakarta Sans',sans-serif; flex:1;">
+          <option>marbim-large</option>
+          <option>marbim-fast</option>
+        </select>
+        <input placeholder="Search corpora…" style="background:var(--fx-bg-sunken); color:var(--fx-text-primary); border:1px solid transparent; border-radius:4px; padding:11px 13px; font:400 14px/1.2 'Plus Jakarta Sans',sans-serif; flex:1;" />
+      </div>
+      <div style="display:flex; flex-wrap:wrap; gap:20px; align-items:center;">
+        <label style="display:flex; align-items:center; gap:9px; cursor:pointer; font:400 14px/1 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-primary);">
+          <span onClick="{{ toggleChk }}" style="{{ chkStyle }}">✓</span>Cite sources
+        </label>
+        <label style="display:flex; align-items:center; gap:9px; cursor:pointer; font:400 14px/1 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-primary);">
+          <span style="width:17px; height:17px; border-radius:999px; border:1px solid var(--fx-accent); display:flex; align-items:center; justify-content:center;"><span style="width:8px; height:8px; border-radius:999px; background:var(--fx-accent);"></span></span>Streaming
+        </label>
+        <div onClick="{{ toggleSw }}" style="{{ swTrack }}"><div style="{{ swKnob }}"></div></div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <div style="display:flex; justify-content:space-between; font:400 12px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);"><span>temperature</span><span>{{ sliderLabel }}</span></div>
+        <input type="range" min="0" max="100" value="{{ slider }}" onChange="{{ setSlider }}" style="width:100%; accent-color:#E1B334;" />
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:270px 1fr; gap:20px; margin-bottom:20px;">
+    <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:20px; display:flex; flex-direction:column; gap:14px;">
+      <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Sidebar nav</div>
+      <div style="display:flex; flex-direction:column; gap:2px;">
+        <sc-for list="{{ nav }}" as="n" hint-placeholder-count="5">
+          <div onClick="{{ n.pick }}" style="{{ n.style }}">
+            <div style="{{ n.marker }}"></div>{{ n.label }}
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:20px 26px 26px; display:flex; flex-direction:column; gap:18px;">
+      <div style="display:flex; align-items:center; gap:8px; font:400 13px/1 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">
+        <span>Workspace</span><span style="opacity:.5;">/</span><span>Corpora</span><span style="opacity:.5;">/</span><span style="color:var(--fx-text-primary); font-weight:500;">policy-docs-2026</span>
+      </div>
+      <div style="display:flex; gap:26px; border-bottom:1px solid var(--fx-border-subtle);">
+        <sc-for list="{{ tabs }}" as="tb" hint-placeholder-count="3">
+          <button onClick="{{ tb.pick }}" style="{{ tb.style }}">{{ tb.label }}</button>
+        </sc-for>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:14px;">
+        <div style="font:400 15px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); margin:0; text-wrap:pretty;">{{ tabBody }}</div>
+        <div style="display:flex; gap:12px;">
+          <div style="flex:1; background:var(--fx-bg-sunken); border-radius:8px; padding:16px 18px; display:flex; flex-direction:column; gap:6px;">
+            <div style="font:400 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Documents</div>
+            <div style="font:600 26px/1.1 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-primary);">12,408</div>
+          </div>
+          <div style="flex:1; background:var(--fx-bg-sunken); border-radius:8px; padding:16px 18px; display:flex; flex-direction:column; gap:6px;">
+            <div style="font:400 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Recall @10</div>
+            <div style="font:600 26px/1.1 'Plus Jakarta Sans',sans-serif; color:var(--fx-accent-pressed);">0.94</div>
+          </div>
+          <div style="flex:1; background:var(--fx-bg-sunken); border-radius:8px; padding:16px 18px; display:flex; flex-direction:column; gap:6px;">
+            <div style="font:400 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">p95 latency</div>
+            <div style="font:600 26px/1.1 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-primary);">412ms</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; font:400 13px/1 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">
+          <button style="background:transparent; border:1px solid var(--fx-border-default); border-radius:4px; width:30px; height:30px; cursor:pointer; color:var(--fx-text-secondary); font-size:12px;">‹</button>
+          <span style="color:var(--fx-text-primary); font-weight:600; background:var(--fx-bg-selected); border-radius:4px; padding:7px 11px;">1</span>
+          <span style="padding:7px 11px;">2</span><span style="padding:7px 11px;">3</span><span>…</span><span style="padding:7px 11px;">28</span>
+          <button style="background:transparent; border:1px solid var(--fx-border-default); border-radius:4px; width:30px; height:30px; cursor:pointer; color:var(--fx-text-secondary); font-size:12px;">›</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:1.35fr 1fr; gap:20px; margin-bottom:20px;">
+    <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden;">
+      <div style="padding:20px 22px 14px; font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Data table</div>
+      <div style="display:grid; grid-template-columns:1.6fr 1fr .8fr .7fr; padding:10px 22px; background:var(--fx-bg-sunken); font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">
+        <div>Run</div><div>Model</div><div>Status</div><div style="text-align:right;">Cost</div>
+      </div>
+      <sc-for list="{{ rows }}" as="r" hint-placeholder-count="4">
+        <div style="display:grid; grid-template-columns:1.6fr 1fr .8fr .7fr; padding:14px 22px; border-bottom:1px solid var(--fx-border-subtle); align-items:center; font:400 14px/1.3 'Plus Jakarta Sans',sans-serif;" style-hover="background:var(--fx-bg-hover)">
+          <div style="font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--fx-text-primary);">{{ r.id }}</div>
+          <div style="color:var(--fx-text-secondary);">{{ r.model }}</div>
+          <div><span style="{{ r.badge }}">{{ r.status }}</span></div>
+          <div style="text-align:right; font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--fx-text-secondary);">{{ r.cost }}</div>
+        </div>
+      </sc-for>
+      <div style="padding:16px 22px; display:flex; flex-direction:column; gap:9px;">
+        <div style="height:11px; width:64%; background:var(--fx-bg-sunken); border-radius:4px; background-image:linear-gradient(90deg, transparent, var(--fx-bg-hover), transparent); background-size:200% 100%; animation:fx-shimmer 1.6s linear infinite;"></div>
+        <div style="height:11px; width:42%; background:var(--fx-bg-sunken); border-radius:4px; background-image:linear-gradient(90deg, transparent, var(--fx-bg-hover), transparent); background-size:200% 100%; animation:fx-shimmer 1.6s linear infinite;"></div>
+      </div>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:20px;">
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:24px; clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%); display:flex; flex-direction:column; gap:14px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+          <div style="font:600 17px/1.2 'Plus Jakarta Sans',sans-serif;">Primary card</div>
+          <span style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; background:var(--fx-accent-subtle); color:var(--fx-accent-pressed); padding:6px 9px; clip-path:polygon(0 0, 100% 0, 100% 100%, 10px 100%, 0 calc(100% - 10px));">Active</span>
+        </div>
+        <div style="font:400 14px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">Cut corner marks the one card in a group that matters. Radius is dropped on that corner, never doubled.</div>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <div style="display:flex;">
+            <div style="width:26px; height:26px; border-radius:999px; background:var(--fx-bg-sunken); border:2px solid var(--fx-bg-surface); display:flex; align-items:center; justify-content:center; font:600 10px/1 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">AR</div>
+            <div style="width:26px; height:26px; border-radius:999px; background:var(--fx-bg-sunken); border:2px solid var(--fx-bg-surface); margin-left:-8px; display:flex; align-items:center; justify-content:center; font:600 10px/1 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">JK</div>
+            <div style="width:26px; height:26px; border-radius:999px; background:#181D29; border:2px solid var(--fx-bg-surface); margin-left:-8px; display:flex; align-items:center; justify-content:center;"><img src="uploads/MARBIM_logo.png" alt="" style="width:13px; height:13px;" /></div>
+          </div>
+          <span style="font:400 13px/1 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">+4 collaborators</span>
+        </div>
+      </div>
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:20px 24px; display:flex; flex-direction:column;">
+        <sc-for list="{{ accordion }}" as="a" hint-placeholder-count="3">
+          <div style="border-bottom:1px solid var(--fx-border-subtle);">
+            <button onClick="{{ a.pick }}" style="width:100%; background:transparent; border:none; padding:14px 0; display:flex; align-items:center; justify-content:space-between; gap:12px; cursor:pointer; font:600 14px/1.3 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-primary); text-align:left;">
+              {{ a.q }}<span style="{{ a.chev }}">▾</span>
+            </button>
+            <sc-if value="{{ a.open }}" hint-placeholder-val="{{ false }}">
+              <div style="font:400 14px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); padding:0 0 16px; text-wrap:pretty;">{{ a.body }}</div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:20px; margin-bottom:20px;">
+    <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:24px; display:flex; flex-direction:column; gap:16px;">
+      <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Feedback</div>
+      <div style="display:flex; align-items:flex-start; gap:12px; background:var(--fx-bg-sunken); border-radius:8px; padding:14px 16px;">
+        <div style="width:7px; height:7px; border-radius:999px; background:var(--fx-info); margin-top:6px; flex-shrink:0;"></div>
+        <div style="font:400 13px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">Index rebuilt. 412 documents added.</div>
+      </div>
+      <div style="display:flex; align-items:flex-start; gap:12px; border:1px solid var(--fx-danger); border-radius:8px; padding:14px 16px;">
+        <div style="width:7px; height:7px; border-radius:999px; background:var(--fx-danger); margin-top:6px; flex-shrink:0;"></div>
+        <div style="font:400 13px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">Two shards failed to embed. Retry required.</div>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px; background:var(--fx-text-primary); color:var(--fx-text-inverse); border-radius:8px; padding:13px 16px; box-shadow:var(--fx-sh2);">
+        <div style="font:500 13px/1.4 'Plus Jakarta Sans',sans-serif;">Corpus saved</div>
+        <button style="margin-left:auto; background:transparent; border:none; color:var(--fx-accent); font:600 12px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer;">Undo</button>
+      </div>
+      <button onClick="{{ openModal }}" style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:8px; padding:10px 16px; font:600 13px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer;">Open modal</button>
+    </div>
+
+    <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:24px; display:flex; flex-direction:column; gap:20px;">
+      <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Progress</div>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div style="display:flex; justify-content:space-between; font:400 12px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);"><span>embedding</span><span>68%</span></div>
+        <div style="display:flex; gap:5px; overflow:hidden; height:20px; align-items:center;">
+          <sc-for list="{{ progressTicks }}" as="p" hint-placeholder-count="22">
+            <div style="width:2px; height:16px; transform:skewX(-34deg); flex-shrink:0; background:{{ p.c }};"></div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:18px;">
+        <div style="width:62px; height:62px; border-radius:999px; background:conic-gradient(var(--fx-accent) 0 68%, var(--fx-bg-sunken) 68% 100%); display:flex; align-items:center; justify-content:center;">
+          <div style="width:46px; height:46px; border-radius:999px; background:var(--fx-bg-surface); display:flex; align-items:center; justify-content:center; font:600 13px/1 'JetBrains Mono',monospace; color:var(--fx-text-primary);">68%</div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div style="font:400 13px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">Ring for compact contexts.</div>
+          <div style="display:flex; gap:6px; align-items:center;">
+            <span style="font:500 11px/1 'JetBrains Mono',monospace; background:var(--fx-bg-sunken); border:1px solid var(--fx-border-subtle); border-radius:4px; padding:5px 7px; color:var(--fx-text-secondary);">⌘</span>
+            <span style="font:500 11px/1 'JetBrains Mono',monospace; background:var(--fx-bg-sunken); border:1px solid var(--fx-border-subtle); border-radius:4px; padding:5px 7px; color:var(--fx-text-secondary);">K</span>
+          </div>
+        </div>
+      </div>
+      <div style="background:var(--fx-bg-sunken); border-radius:8px; padding:14px 16px; font:400 12.5px/1.7 'JetBrains Mono',monospace; color:var(--fx-text-secondary); overflow:hidden;">fx.corpus.query(<br />&nbsp;&nbsp;"retention policy",<br />&nbsp;&nbsp;cite=True<br />)</div>
+    </div>
+
+    <div style="border:1px solid var(--fx-border-subtle); border-radius:8px; padding:34px 24px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; text-align:center; background-color:var(--fx-bg-surface); background-image:repeating-linear-gradient(146deg, transparent 0 7px, var(--fx-border-subtle) 7px 9px, transparent 9px 17px);">
+      <img src="{{ markOnSurface }}" alt="" style="width:44px; height:44px; opacity:.9;" />
+      <div style="font:600 17px/1.25 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-primary);">No corpora yet</div>
+      <div style="font:400 14px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:26ch; text-wrap:pretty;">Empty states pair the weave field with the mark — the one place both appear together.</div>
+      <button style="background:var(--fx-accent); color:var(--fx-accent-on); border:none; border-radius:8px; padding:10px 18px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer;">Add a corpus</button>
+    </div>
+  </div>
+</section>
+
+<section style="border-top:1px solid var(--fx-border-subtle); padding:var(--fx-pad) 0 0;">
+  <div style="display:flex; align-items:center; gap:16px; margin-bottom:30px;">
+    <div style="display:flex; gap:4px; transform:skewX(-34deg);">
+      <div style="width:2px; height:15px; background:var(--fx-accent);"></div>
+      <div style="width:2px; height:15px; background:var(--fx-accent);"></div>
+      <div style="width:2px; height:15px; background:var(--fx-accent);"></div>
+    </div>
+    <h2 style="font:600 26px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.012em; margin:0;">AI surfaces</h2>
+    <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary); margin-left:auto;">v1.0</div>
+  </div>
+  <div style="display:grid; grid-template-columns:1.25fr 1fr; gap:20px;">
+    <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:14px; padding:26px; display:flex; flex-direction:column; gap:20px;">
+      <div style="display:flex; justify-content:flex-end;">
+        <div style="background:var(--fx-bg-sunken); border-radius:14px 14px 4px 14px; padding:13px 17px; font:400 15px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-primary); max-width:72%;">What's our retention window for signed contracts?</div>
+      </div>
+      <div style="display:flex; gap:14px;">
+        <div style="width:30px; height:30px; border-radius:999px; background:#181D29; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+          <img src="uploads/MARBIM_logo.png" alt="" style="width:15px; height:15px;" />
+        </div>
+        <div style="display:flex; flex-direction:column; gap:14px; min-width:0;">
+          <div style="font:400 15px/1.6 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-primary); text-wrap:pretty;">Signed contracts are retained for seven years from termination, then purged on the quarterly cycle<span style="display:inline-flex; align-items:center; gap:4px; vertical-align:baseline; margin:0 4px;"><span style="font:500 11px/1 'JetBrains Mono',monospace; background:var(--fx-accent-subtle); color:var(--fx-accent-pressed); border-radius:4px; padding:4px 6px;">RET-04 §2</span></span>. Litigation holds suspend the purge<span style="display:inline-block; width:2px; height:15px; background:var(--fx-accent); margin-left:3px; vertical-align:-2px; animation:fx-caret 1s steps(1) infinite;"></span></div>
+          <div style="border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden;">
+            <div style="display:flex; align-items:center; gap:10px; padding:11px 14px; background:var(--fx-bg-sunken); font:500 12px/1 'JetBrains Mono',monospace; color:var(--fx-text-secondary);">
+              <span style="color:var(--fx-success);">✓</span>retrieve · 3 sources · 240ms<span style="margin-left:auto; opacity:.6;">▾</span>
+            </div>
+            <div style="padding:12px 14px; display:flex; flex-direction:column; gap:8px;">
+              <div style="font:400 13px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">RET-04 Records Retention Standard · 0.94</div>
+              <div style="font:400 13px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">MSA Template v9 · 0.81</div>
+            </div>
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button style="background:transparent; border:1px solid var(--fx-border-default); border-radius:999px; padding:8px 14px; font:500 13px/1 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); cursor:pointer;" style-hover="border-color:var(--fx-border-strong); color:var(--fx-text-primary)">Show the purge schedule</button>
+            <button style="background:transparent; border:1px solid var(--fx-border-default); border-radius:999px; padding:8px 14px; font:500 13px/1 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); cursor:pointer;" style-hover="border-color:var(--fx-border-strong); color:var(--fx-text-primary)">Who owns holds?</button>
+          </div>
+        </div>
+      </div>
+      <div style="border:1px solid var(--fx-border-default); border-radius:14px; padding:14px 16px; display:flex; flex-direction:column; gap:12px; background:var(--fx-bg-surface);">
+        <div style="font:400 15px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">Ask across policy-docs-2026…</div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <button style="background:transparent; border:1px solid var(--fx-border-subtle); border-radius:4px; padding:7px 11px; font:500 12px/1 'JetBrains Mono',monospace; color:var(--fx-text-secondary); cursor:pointer;">＋ attach</button>
+          <button style="background:transparent; border:1px solid var(--fx-border-subtle); border-radius:4px; padding:7px 11px; font:500 12px/1 'JetBrains Mono',monospace; color:var(--fx-text-secondary); cursor:pointer;">marbim-large ▾</button>
+          <button onClick="{{ runSequence }}" style="margin-left:auto; width:36px; height:36px; border-radius:8px; background:var(--fx-accent); border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--fx-accent-on); font:600 15px/1 'Plus Jakarta Sans',sans-serif;">↑</button>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:20px;">
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:24px; display:flex; flex-direction:column; gap:14px;">
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Usage meter</div>
+        <div style="display:flex; justify-content:space-between; font:400 13px/1 'JetBrains Mono',monospace; color:var(--fx-text-secondary);"><span>84,210 / 128,000 ctx</span><span>66%</span></div>
+        <div style="height:6px; border-radius:999px; background:var(--fx-bg-sunken); overflow:hidden;"><div style="width:66%; height:100%; background:var(--fx-text-primary);"></div></div>
+        <div style="font:400 13px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary); text-wrap:pretty;">Neutral until 90%, then <span style="color:var(--fx-warning); font-weight:600;">warning</span> — not amber.</div>
+      </div>
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:24px; display:flex; flex-direction:column; gap:14px;">
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Refusal notice</div>
+        <div style="display:flex; gap:12px; align-items:flex-start;">
+          <img src="{{ markOnSurface }}" alt="" style="width:22px; height:22px; filter:grayscale(1); opacity:.5; flex-shrink:0; margin-top:2px;" />
+          <div style="font:400 14px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">This corpus has no HR records, so I can't answer questions about individual employees. The mark holds desaturated — blocked never animates.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="border-top:1px solid var(--fx-border-subtle); padding:var(--fx-pad) 0;">
+  <div style="display:flex; align-items:center; gap:16px; margin-bottom:12px;">
+    <div style="display:flex; gap:4px; transform:skewX(-34deg);">
+      <div style="width:2px; height:15px; background:var(--fx-accent);"></div>
+      <div style="width:2px; height:15px; background:var(--fx-accent);"></div>
+      <div style="width:2px; height:15px; background:var(--fx-accent);"></div>
+    </div>
+    <h2 style="font:600 26px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.012em; margin:0;">Selvage edge</h2>
+    <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-accent-pressed); margin-left:auto;">addendum · 05</div>
+  </div>
+  <p style="font:400 16px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); margin:0 0 30px; max-width:64ch; text-wrap:pretty;">A 3px stripe on the left rim of a card or table row, carrying one status colour — the finished edge of a fabric roll. The selvage replaces status-tinted backgrounds entirely: the surface stays neutral, the edge carries the verdict, and a wall of rows stays readable because only 3px of it is coloured.</p>
+
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px;">
+
+    <div style="--fx-bg-canvas:#FBFAF8; --fx-bg-surface:#FFFFFF; --fx-bg-sunken:#F3F1EC; --fx-bg-hover:rgba(24,29,41,.035); --fx-border-subtle:#E7E4DE; --fx-border-default:#D6D2C9; --fx-border-strong:#A9A49A; --fx-text-primary:#181D29; --fx-text-secondary:#4C5364; --fx-text-tertiary:#767E90; --fx-accent:#E1B334; --fx-accent-pressed:#B88C21; --fx-success:#2F7D5B; --fx-warning:#B4741C; --fx-danger:#B23A32; background:var(--fx-bg-canvas); border:1px solid var(--fx-border-subtle); border-radius:14px; padding:22px; display:flex; flex-direction:column; gap:16px;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Light — order desk</div>
+        <div style="display:flex; align-items:center; gap:7px; margin-left:auto;">
+          <div style="width:5px; height:13px; background:var(--fx-danger); flex-shrink:0;"></div>
+          <div style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">5px = critical path</div>
+        </div>
+      </div>
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden;">
+        <div style="display:grid; grid-template-columns:3px 1.15fr 1.5fr .95fr; background:var(--fx-bg-sunken); font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">
+          <div></div><div style="padding:10px 0 10px 15px;">Order</div><div style="padding:10px 0;">Milestone</div><div style="padding:10px 18px 10px 0; text-align:right;">Status</div>
+        </div>
+        <div style="display:flex; align-items:stretch; border-top:1px solid var(--fx-border-subtle);" style-hover="background:var(--fx-bg-hover)">
+          <div style="width:3px; background:var(--fx-success); flex-shrink:0;"></div>
+          <div style="display:grid; grid-template-columns:1.15fr 1.5fr .95fr; align-items:center; padding:13px 18px 13px 15px; flex:1; min-width:0;">
+            <div style="font:400 13px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-primary);">PO-88214</div>
+            <div style="font:400 14px/1.3 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">Fabric in-house</div>
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-success); text-align:right;">on track</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:stretch; border-top:1px solid var(--fx-border-subtle);" style-hover="background:var(--fx-bg-hover)">
+          <div style="width:3px; background:var(--fx-warning); flex-shrink:0;"></div>
+          <div style="display:grid; grid-template-columns:1.15fr 1.5fr .95fr; align-items:center; padding:13px 18px 13px 15px; flex:1; min-width:0;">
+            <div style="font:400 13px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-primary);">PO-88219</div>
+            <div style="font:400 14px/1.3 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">Lab dip approval</div>
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-warning); text-align:right;">at risk</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:stretch; border-top:1px solid var(--fx-border-subtle);" style-hover="background:var(--fx-bg-hover)">
+          <div style="width:5px; background:var(--fx-danger); flex-shrink:0;"></div>
+          <div style="display:grid; grid-template-columns:1.15fr 1.5fr .95fr; align-items:center; padding:13px 18px 13px 13px; flex:1; min-width:0;">
+            <div style="font:400 13px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-primary);">PO-88203</div>
+            <div style="font:400 14px/1.3 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">PP sample</div>
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-danger); text-align:right;">4 days late</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:stretch; border-top:1px solid var(--fx-border-subtle);" style-hover="background:var(--fx-bg-hover)">
+          <div style="width:3px; background:var(--fx-border-strong); flex-shrink:0;"></div>
+          <div style="display:grid; grid-template-columns:1.15fr 1.5fr .95fr; align-items:center; padding:13px 18px 13px 15px; flex:1; min-width:0;">
+            <div style="font:400 13px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">PO-88190</div>
+            <div style="font:400 14px/1.3 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">Ex-factory</div>
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary); text-align:right;">done</div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex; background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:0 1px 2px rgba(24,29,41,.06);">
+        <div style="width:3px; background:var(--fx-danger); flex-shrink:0;"></div>
+        <div style="padding:17px 20px; display:flex; flex-direction:column; gap:7px; flex:1;">
+          <div style="font:400 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Late milestones</div>
+          <div style="font:600 34px/1.05 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em; color:var(--fx-text-primary);">7</div>
+          <div style="font:400 13px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">3 on the critical path</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="--fx-bg-canvas:#0F131B; --fx-bg-surface:#181D29; --fx-bg-raised:#212736; --fx-bg-sunken:#0B0E15; --fx-bg-hover:rgba(255,255,255,.05); --fx-border-subtle:#252B3A; --fx-border-default:#343B4C; --fx-border-strong:#4E576B; --fx-text-primary:#F4F3F0; --fx-text-secondary:#AEB5C4; --fx-text-tertiary:#7C8497; --fx-accent:#E1B334; --fx-accent-pressed:#F2D077; --fx-success:#4FA97D; --fx-warning:#D99A3F; --fx-danger:#E0665C; background:var(--fx-bg-canvas); border:1px solid var(--fx-border-subtle); border-radius:14px; padding:22px; display:flex; flex-direction:column; gap:16px;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Dark — same markup</div>
+        <div style="display:flex; align-items:center; gap:7px; margin-left:auto;">
+          <div style="width:5px; height:13px; background:var(--fx-danger); flex-shrink:0;"></div>
+          <div style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">5px = critical path</div>
+        </div>
+      </div>
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden;">
+        <div style="display:grid; grid-template-columns:3px 1.15fr 1.5fr .95fr; background:var(--fx-bg-sunken); font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">
+          <div></div><div style="padding:10px 0 10px 15px;">Order</div><div style="padding:10px 0;">Milestone</div><div style="padding:10px 18px 10px 0; text-align:right;">Status</div>
+        </div>
+        <div style="display:flex; align-items:stretch; border-top:1px solid var(--fx-border-subtle);" style-hover="background:var(--fx-bg-hover)">
+          <div style="width:3px; background:var(--fx-success); flex-shrink:0;"></div>
+          <div style="display:grid; grid-template-columns:1.15fr 1.5fr .95fr; align-items:center; padding:13px 18px 13px 15px; flex:1; min-width:0;">
+            <div style="font:400 13px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-primary);">PO-88214</div>
+            <div style="font:400 14px/1.3 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">Fabric in-house</div>
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-success); text-align:right;">on track</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:stretch; border-top:1px solid var(--fx-border-subtle);" style-hover="background:var(--fx-bg-hover)">
+          <div style="width:3px; background:var(--fx-warning); flex-shrink:0;"></div>
+          <div style="display:grid; grid-template-columns:1.15fr 1.5fr .95fr; align-items:center; padding:13px 18px 13px 15px; flex:1; min-width:0;">
+            <div style="font:400 13px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-primary);">PO-88219</div>
+            <div style="font:400 14px/1.3 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">Lab dip approval</div>
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-warning); text-align:right;">at risk</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:stretch; border-top:1px solid var(--fx-border-subtle);" style-hover="background:var(--fx-bg-hover)">
+          <div style="width:5px; background:var(--fx-danger); flex-shrink:0;"></div>
+          <div style="display:grid; grid-template-columns:1.15fr 1.5fr .95fr; align-items:center; padding:13px 18px 13px 13px; flex:1; min-width:0;">
+            <div style="font:400 13px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-primary);">PO-88203</div>
+            <div style="font:400 14px/1.3 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">PP sample</div>
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-danger); text-align:right;">4 days late</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:stretch; border-top:1px solid var(--fx-border-subtle);" style-hover="background:var(--fx-bg-hover)">
+          <div style="width:3px; background:var(--fx-border-strong); flex-shrink:0;"></div>
+          <div style="display:grid; grid-template-columns:1.15fr 1.5fr .95fr; align-items:center; padding:13px 18px 13px 15px; flex:1; min-width:0;">
+            <div style="font:400 13px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">PO-88190</div>
+            <div style="font:400 14px/1.3 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">Ex-factory</div>
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary); text-align:right;">done</div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex; background:var(--fx-bg-raised); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden;">
+        <div style="width:3px; background:var(--fx-danger); flex-shrink:0;"></div>
+        <div style="padding:17px 20px; display:flex; flex-direction:column; gap:7px; flex:1;">
+          <div style="font:400 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Late milestones</div>
+          <div style="font:600 34px/1.05 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em; color:var(--fx-text-primary);">7</div>
+          <div style="font:400 13px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">3 on the critical path</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:20px;">
+    <div style="display:flex; flex-direction:column; gap:7px;">
+      <div style="font:600 14px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-primary);">3px, full height</div>
+      <div style="font:400 13px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">The stripe runs the whole row or card, flush to the rim, inside the radius. Never inset, never a floating pill.</div>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:7px;">
+      <div style="font:600 14px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-primary);">5px = critical path</div>
+      <div style="font:400 13px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">A thicker selvage is the only permitted variation. It marks milestones that move the ship date, readable at a glance down a column.</div>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:7px;">
+      <div style="font:600 14px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-primary);">Status set only</div>
+      <div style="font:400 13px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">success · warning · danger · done (<span style="font-family:'JetBrains Mono',monospace; font-size:12px;">border-strong</span>). Never amber — the selvage is a verdict, not an action.</div>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:7px;">
+      <div style="font:600 14px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-primary);">Paired with a label</div>
+      <div style="font:400 13px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">Colour never carries state alone — every selvage repeats itself in the status column in mono caps.</div>
+    </div>
+  </div>
+</section>
+
+<section style="border-top:1px solid var(--fx-border-subtle); padding:var(--fx-pad) 0;">
+  <div style="display:flex; align-items:center; gap:16px; margin-bottom:12px;">
+    <div style="display:flex; gap:4px; transform:skewX(-34deg);">
+      <div style="width:2px; height:15px; background:var(--fx-accent);"></div>
+      <div style="width:2px; height:15px; background:var(--fx-accent);"></div>
+      <div style="width:2px; height:15px; background:var(--fx-accent);"></div>
+    </div>
+    <h2 style="font:600 26px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.012em; margin:0;">Thread rule</h2>
+    <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-accent-pressed); margin-left:auto;">addendum · 06</div>
+  </div>
+  <p style="font:400 16px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); margin:0 0 30px; max-width:64ch; text-wrap:pretty;">A dashed divider of 2px strokes repeating at 115° — the counter-thread of the X mark, where the slash rule takes the 34° warp. It closes a page header and separates sections. Two variants only: accent under the header, muted between sections.</p>
+
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px;">
+    <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:26px; display:flex; flex-direction:column; gap:18px;">
+      <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Accent variant — under a page header</div>
+      <div style="display:flex; flex-direction:column; gap:16px;">
+        <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:20px;">
+          <div style="display:flex; flex-direction:column; gap:5px;">
+            <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Order desk</div>
+            <div style="font:700 34px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em; color:var(--fx-text-primary);">PO-88203</div>
+          </div>
+          <div style="font:400 13px/1.5 'JetBrains Mono',monospace; color:var(--fx-text-secondary);">ship 04 Sep</div>
+        </div>
+        <div style="height:9px; background-image:repeating-linear-gradient(115deg, var(--fx-accent) 0 2px, transparent 2px 9px);"></div>
+      </div>
+      <div style="font:400 14px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;"><span style="font-family:'JetBrains Mono',monospace; font-size:12.5px;">repeating-linear-gradient(115deg, accent 0 2px, transparent 2px 9px)</span> at 9px tall. Full content width, once per page, directly under the h1 block. It counts as the view's amber moment — a header carrying a thread rule does not also get an amber button.</div>
+    </div>
+    <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:26px; display:flex; flex-direction:column; gap:18px;">
+      <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Muted variant — between sections</div>
+      <div style="display:flex; flex-direction:column; gap:14px;">
+        <div style="font:400 14px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">Cutting closed 11 Aug. Sewing lines 3 and 4 are loaded.</div>
+        <div style="height:7px; background-image:repeating-linear-gradient(115deg, var(--fx-border-default) 0 2px, transparent 2px 9px);"></div>
+        <div style="font:600 20px/1.2 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-primary);">Finishing</div>
+        <div style="font:400 14px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">Wash and press start once the PP sample clears.</div>
+      </div>
+      <div style="font:400 14px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">Same geometry in <span style="font-family:'JetBrains Mono',monospace; font-size:12.5px;">border-default</span>, 7px tall. Use it wherever a 1px horizontal rule would otherwise appear inside a card. Repeatable, unlike the accent variant.</div>
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:20px;">
+    <div style="display:flex; flex-direction:column; gap:7px;">
+      <div style="font:600 14px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-primary);">115°, not 34°</div>
+      <div style="font:400 13px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">The slash rule and the progress bar own the 34° warp. The thread rule takes the crossing weft so the two never read as the same element.</div>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:7px;">
+      <div style="font:600 14px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-primary);">Never a border</div>
+      <div style="font:400 13px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">It is a spanning divider, not an outline. Never wrap a container, never run vertically, never fill as progress.</div>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:7px;">
+      <div style="font:600 14px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-primary);">One accent per page</div>
+      <div style="font:400 13px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">Two amber thread rules in one viewport breaks the amber rule. Demote the second to muted.</div>
+    </div>
+  </div>
+</section>
+
+<section style="border-top:1px solid var(--fx-border-subtle); padding:var(--fx-pad) 0;">
+  <div style="display:flex; align-items:center; gap:16px; margin-bottom:12px;">
+    <div style="display:flex; gap:4px; transform:skewX(-34deg);">
+      <div style="width:2px; height:15px; background:var(--fx-accent);"></div>
+      <div style="width:2px; height:15px; background:var(--fx-accent);"></div>
+      <div style="width:2px; height:15px; background:var(--fx-accent);"></div>
+    </div>
+    <h2 style="font:600 26px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.012em; margin:0;">Bengali type</h2>
+    <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-accent-pressed); margin-left:auto;">addendum · bn</div>
+  </div>
+  <p style="font:400 16px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); margin:0 0 30px; max-width:64ch; text-wrap:pretty;">Anek Bangla is the Bengali companion to Plus Jakarta Sans — a low-contrast humanist face with the same optical size, so the two sit at identical px values without one looking set larger. Every string in the product exists in both; the layout is built for the longer one.</p>
+
+  <div style="display:grid; grid-template-columns:1.1fr .9fr; gap:20px; margin-bottom:20px;">
+    <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:26px; display:flex; flex-direction:column; gap:20px;">
+      <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Pairing ladder — same px, one line-height step looser</div>
+      <div style="display:flex; flex-direction:column; gap:18px;">
+        <div style="display:grid; grid-template-columns:82px 1fr 1fr; gap:16px; align-items:baseline;">
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">h1 34<br />1.15 / 1.3</div>
+          <div style="font:700 34px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em; color:var(--fx-text-primary);">Order desk</div>
+          <div style="font:600 34px/1.3 'Anek Bangla','Plus Jakarta Sans',sans-serif; color:var(--fx-text-primary);">অর্ডার ডেস্ক</div>
+        </div>
+        <div style="display:grid; grid-template-columns:82px 1fr 1fr; gap:16px; align-items:baseline;">
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">h3 20<br />1.2 / 1.35</div>
+          <div style="font:600 20px/1.2 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-primary);">Fabric in-house</div>
+          <div style="font:600 20px/1.35 'Anek Bangla','Plus Jakarta Sans',sans-serif; color:var(--fx-text-primary);">ফ্যাব্রিক ইন-হাউস</div>
+        </div>
+        <div style="display:grid; grid-template-columns:82px 1fr 1fr; gap:16px; align-items:baseline;">
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">body 16<br />1.55 / 1.7</div>
+          <div style="font:400 16px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">The cutting date moved, and the ship date holds.</div>
+          <div style="font:400 16px/1.7 'Anek Bangla','Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">কাটিংয়ের তারিখ পরিবর্তিত হয়েছে, শিপমেন্টের তারিখ অপরিবর্তিত আছে।</div>
+        </div>
+        <div style="display:grid; grid-template-columns:82px 1fr 1fr; gap:16px; align-items:baseline;">
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">mono 13<br />latin only</div>
+          <div style="font:400 13px/1.5 'JetBrains Mono',monospace; color:var(--fx-text-secondary);">PO-88203 · 04 Sep</div>
+          <div style="font:400 13px/1.5 'JetBrains Mono',monospace; color:var(--fx-text-secondary);">PO-88203 · 04 Sep</div>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:20px;">
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:24px; display:flex; flex-direction:column; gap:16px;">
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Bengali digits</div>
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
+          <div style="font:400 22px/1.4 'Anek Bangla','Plus Jakarta Sans',sans-serif; color:var(--fx-text-primary);">০১২৩৪৫৬৭৮৯</div>
+          <div onClick="{{ toggleBn }}" role="switch" aria-checked="{{ bnDigits }}" style="{{ bnTrack }}"><div style="{{ bnKnob }}"></div></div>
+        </div>
+        <div style="font:400 13px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">On for dates, counts and durations inside Bengali prose. Off — and always off — for identifiers, money, quantities in tables and anything in mono: <span style="font-family:'JetBrains Mono',monospace; font-size:12.5px;">PO-88203</span> never becomes <span style="font-family:'Anek Bangla',sans-serif;">পিও-৮৮২০৩</span>. Never mix scripts inside one token.</div>
+      </div>
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:24px; display:flex; flex-direction:column; gap:12px;">
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Three hard rules</div>
+        <div style="font:400 13px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">No tracking on Bengali — the −0.02em display tracking is Latin-only; matra clusters break at negative values.</div>
+        <div style="font:400 13px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">No 700 headings — Anek Bangla's 600 already carries the weight of Jakarta's 700. 400 / 500 / 600, nothing above.</div>
+        <div style="font:400 13px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">No uppercase transform — Bengali has no case. Eyebrow labels stay mono Latin in both languages.</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px;">
+    <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Same card, both languages — the Bengali string runs ≈1.4× the English</div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; align-items:start;">
+      <div style="display:flex; background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden;">
+        <div style="width:5px; background:var(--fx-danger); flex-shrink:0;"></div>
+        <div style="padding:20px 22px; display:flex; flex-direction:column; gap:12px; flex:1; min-width:0;">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+            <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">PO-88203 · en</div>
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-danger);">4 days late</div>
+          </div>
+          <div style="font:600 20px/1.2 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-primary);">PP sample not approved</div>
+          <div style="font:400 15px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">Fabric came in four days late. Cutting now starts 12 Aug, and the ship date still holds if sewing runs two extra lines.</div>
+          <div style="display:flex; gap:20px; padding-top:2px;">
+            <div style="display:flex; flex-direction:column; gap:4px;">
+              <div style="font:400 12px/1 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">Owner</div>
+              <div style="font:500 14px/1.3 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-primary);">Nabila Rahman</div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:4px;">
+              <div style="font:400 12px/1 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">Due</div>
+              <div style="font:500 14px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-primary);">12 Aug</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex; background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden;">
+        <div style="width:5px; background:var(--fx-danger); flex-shrink:0;"></div>
+        <div style="padding:20px 22px; display:flex; flex-direction:column; gap:12px; flex:1; min-width:0;">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+            <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">PO-88203 · bn</div>
+            <div style="font:500 13px/1.3 'Anek Bangla','Plus Jakarta Sans',sans-serif; color:var(--fx-danger);">{{ bnLate }} দেরি</div>
+          </div>
+          <div style="font:600 20px/1.35 'Anek Bangla','Plus Jakarta Sans',sans-serif; color:var(--fx-text-primary);">প্রি-প্রোডাকশন স্যাম্পল অনুমোদিত হয়নি</div>
+          <div style="font:400 15px/1.7 'Anek Bangla','Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">ফ্যাব্রিক {{ bnFour }} দিন দেরিতে এসেছে। কাটিং এখন {{ bnDue }} তারিখে শুরু হবে। দুটি অতিরিক্ত সিউইং লাইন যোগ করা গেলে শিপমেন্টের তারিখ অপরিবর্তিত থাকবে। ফিনিশিং একই সপ্তাহে শেষ হবে।</div>
+          <div style="display:flex; gap:20px; padding-top:2px;">
+            <div style="display:flex; flex-direction:column; gap:4px;">
+              <div style="font:400 12px/1.4 'Anek Bangla','Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">দায়িত্বপ্রাপ্ত</div>
+              <div style="font:500 14px/1.4 'Anek Bangla','Plus Jakarta Sans',sans-serif; color:var(--fx-text-primary);">নাবিলা রহমান</div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:4px;">
+              <div style="font:400 12px/1.4 'Anek Bangla','Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">নির্ধারিত তারিখ</div>
+              <div style="font:500 14px/1.4 'Anek Bangla','Plus Jakarta Sans',sans-serif; color:var(--fx-text-primary);">{{ bnDue }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex; flex-wrap:wrap; gap:10px;">
+      <div style="font:400 13px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-secondary); background:var(--fx-bg-sunken); border-radius:4px; padding:8px 12px;">{{ bnRatio }}</div>
+      <div style="font:400 13px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-secondary); background:var(--fx-bg-sunken); border-radius:4px; padding:8px 12px;">Cards grow down, never sideways — no fixed heights on bilingual content</div>
+      <div style="font:400 13px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-secondary); background:var(--fx-bg-sunken); border-radius:4px; padding:8px 12px;">Order id stays Latin mono in both</div>
+    </div>
+  </div>
+</section>
+
+<section style="border-top:1px solid var(--fx-border-subtle); padding:var(--fx-pad) 0 0;">
+  <div style="display:flex; align-items:center; gap:16px; margin-bottom:12px;">
+    <div style="display:flex; gap:4px; transform:skewX(-34deg);">
+      <div style="width:2px; height:15px; background:var(--fx-accent);"></div>
+      <div style="width:2px; height:15px; background:var(--fx-accent);"></div>
+      <div style="width:2px; height:15px; background:var(--fx-accent);"></div>
+    </div>
+    <h2 style="font:600 26px/1.15 'Plus Jakarta Sans',sans-serif; letter-spacing:-.012em; margin:0;">Dark token set</h2>
+    <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-accent-pressed); margin-left:auto;">addendum · dark</div>
+  </div>
+  <p style="font:400 16px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); margin:0 0 30px; max-width:64ch; text-wrap:pretty;">Dark is a first-class mode, not an inversion — it runs the factory TV wall board and the owner's night view. Three rules govern the whole set: surfaces lighten as they rise, shadows are replaced by hairlines, and nothing is pure black. The panel below is always dark, whichever mode the page is in.</p>
+
+  <div style="--fx-bg-canvas:#0F131B; --fx-bg-surface:#181D29; --fx-bg-raised:#212736; --fx-bg-sunken:#0B0E15; --fx-bg-hover:rgba(255,255,255,.05); --fx-bg-selected:rgba(225,179,52,.17); --fx-border-subtle:#252B3A; --fx-border-default:#343B4C; --fx-border-strong:#4E576B; --fx-text-primary:#F4F3F0; --fx-text-secondary:#AEB5C4; --fx-text-tertiary:#7C8497; --fx-text-disabled:#565E71; --fx-accent:#E1B334; --fx-accent-hover:#EBC352; --fx-accent-pressed:#F2D077; --fx-accent-subtle:rgba(225,179,52,.14); --fx-accent-on:#181D29; --fx-success:#4FA97D; --fx-warning:#D99A3F; --fx-danger:#E0665C; --fx-info:#6D9BE8; --fx-focus:#E1B334; background:var(--fx-bg-canvas); border:1px solid var(--fx-border-subtle); border-radius:14px; padding:32px; display:flex; flex-direction:column; gap:32px;">
+
+    <sc-for list="{{ darkGroups }}" as="g" hint-placeholder-count="6">
+      <div style="display:flex; flex-direction:column; gap:14px;">
+        <div style="display:flex; align-items:baseline; gap:14px; padding-bottom:12px; border-bottom:1px solid var(--fx-border-subtle);">
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.09em; text-transform:uppercase; color:var(--fx-text-tertiary);">{{ g.name }}</div>
+          <div style="font:400 13px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ g.note }}</div>
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px 24px;">
+          <sc-for list="{{ g.tokens }}" as="t" hint-placeholder-count="6">
+            <div style="display:flex; align-items:center; gap:12px; min-width:0;">
+              <div style="width:34px; height:34px; border-radius:4px; border:1px solid var(--fx-border-default); flex-shrink:0; background:{{ t.sw }};"></div>
+              <div style="display:flex; flex-direction:column; gap:3px; min-width:0;">
+                <div style="font:500 12px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ t.name }}</div>
+                <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ t.value }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-for>
+
+    <div style="display:grid; grid-template-columns:1.5fr 1fr; gap:20px;">
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden;">
+        <div style="padding:20px 22px 14px; display:flex; align-items:baseline; gap:12px;">
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">SmartTable — wall board</div>
+          <div style="font:400 12px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-left:auto;">floor density · 1.25× type</div>
+        </div>
+        <div style="display:grid; grid-template-columns:3px 1.1fr 1.4fr .9fr .8fr; background:var(--fx-bg-sunken); font:500 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">
+          <div></div><div style="padding:12px 0 12px 15px;">Order</div><div style="padding:12px 0;">Milestone</div><div style="padding:12px 0;">Line</div><div style="padding:12px 20px 12px 0; text-align:right;">Status</div>
+        </div>
+        <div style="display:flex; align-items:stretch; border-top:1px solid var(--fx-border-subtle); background:var(--fx-bg-selected);">
+          <div style="width:5px; background:var(--fx-danger); flex-shrink:0;"></div>
+          <div style="display:grid; grid-template-columns:1.1fr 1.4fr .9fr .8fr; align-items:center; padding:16px 20px 16px 13px; flex:1; min-width:0;">
+            <div style="font:400 15px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-primary);">PO-88203</div>
+            <div style="font:400 16px/1.3 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-primary);">PP sample</div>
+            <div style="font:400 15px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-secondary);">L3</div>
+            <div style="font:500 13px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-danger); text-align:right;">4 d late</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:stretch; border-top:1px solid var(--fx-border-subtle);">
+          <div style="width:3px; background:var(--fx-warning); flex-shrink:0;"></div>
+          <div style="display:grid; grid-template-columns:1.1fr 1.4fr .9fr .8fr; align-items:center; padding:16px 20px 16px 15px; flex:1; min-width:0;">
+            <div style="font:400 15px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-primary);">PO-88219</div>
+            <div style="font:400 16px/1.3 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">Lab dip approval</div>
+            <div style="font:400 15px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-secondary);">L1</div>
+            <div style="font:500 13px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-warning); text-align:right;">at risk</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:stretch; border-top:1px solid var(--fx-border-subtle);">
+          <div style="width:3px; background:var(--fx-success); flex-shrink:0;"></div>
+          <div style="display:grid; grid-template-columns:1.1fr 1.4fr .9fr .8fr; align-items:center; padding:16px 20px 16px 15px; flex:1; min-width:0;">
+            <div style="font:400 15px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-primary);">PO-88214</div>
+            <div style="font:400 16px/1.3 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">Fabric in-house</div>
+            <div style="font:400 15px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-secondary);">L4</div>
+            <div style="font:500 13px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-success); text-align:right;">on track</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:stretch; border-top:1px solid var(--fx-border-subtle);">
+          <div style="width:3px; background:var(--fx-border-strong); flex-shrink:0;"></div>
+          <div style="display:grid; grid-template-columns:1.1fr 1.4fr .9fr .8fr; align-items:center; padding:16px 20px 16px 15px; flex:1; min-width:0;">
+            <div style="font:400 15px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">PO-88190</div>
+            <div style="font:400 16px/1.3 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-tertiary);">Ex-factory</div>
+            <div style="font:400 15px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">—</div>
+            <div style="font:500 13px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary); text-align:right;">done</div>
+          </div>
+        </div>
+        <div style="padding:14px 20px; display:flex; align-items:center; gap:12px; border-top:1px solid var(--fx-border-subtle);">
+          <div style="font:400 13px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">Selected row uses <span style="color:var(--fx-text-secondary);">bg-selected</span> — amber at 17%, never a fill</div>
+          <button style="margin-left:auto; background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:8px; padding:9px 15px; font:600 13px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; outline:2px solid var(--fx-focus); outline-offset:2px;">Focused</button>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:20px;">
+        <div style="display:flex; background:var(--fx-bg-raised); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden;">
+          <div style="width:3px; background:var(--fx-danger); flex-shrink:0;"></div>
+          <div style="padding:20px 22px; display:flex; flex-direction:column; gap:8px; flex:1;">
+            <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Late milestones</div>
+            <div style="font:600 44px/1.05 'Plus Jakarta Sans',sans-serif; letter-spacing:-.022em; color:var(--fx-text-primary);">7</div>
+            <div style="font:400 14px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary);">3 on the critical path</div>
+            <div style="display:flex; gap:5px; align-items:center; padding-top:6px;">
+              <div style="width:2px; height:15px; transform:skewX(-34deg); background:var(--fx-accent);"></div>
+              <div style="width:2px; height:15px; transform:skewX(-34deg); background:var(--fx-accent);"></div>
+              <div style="width:2px; height:15px; transform:skewX(-34deg); background:var(--fx-accent);"></div>
+              <div style="width:2px; height:15px; transform:skewX(-34deg); background:var(--fx-border-default);"></div>
+              <div style="width:2px; height:15px; transform:skewX(-34deg); background:var(--fx-border-default);"></div>
+              <div style="font:400 12px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-left:8px;">3 of 5 cleared today</div>
+            </div>
+          </div>
+        </div>
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:22px; display:flex; flex-direction:column; gap:12px;">
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Elevation without shadow</div>
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <div style="background:var(--fx-bg-sunken); border:1px solid var(--fx-border-subtle); border-radius:4px; padding:11px 13px; font:400 12px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">bg-sunken · #0B0E15</div>
+            <div style="background:var(--fx-bg-canvas); border:1px solid var(--fx-border-subtle); border-radius:4px; padding:11px 13px; font:400 12px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">bg-canvas · #0F131B</div>
+            <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:4px; padding:11px 13px; font:400 12px/1 'JetBrains Mono',monospace; color:var(--fx-text-secondary);">bg-surface · #181D29</div>
+            <div style="background:var(--fx-bg-raised); border:1px solid var(--fx-border-default); border-radius:4px; padding:11px 13px; font:400 12px/1 'JetBrains Mono',monospace; color:var(--fx-text-primary);">bg-raised · #212736</div>
+          </div>
+          <div style="font:400 13px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">Each step is +4 to +6 in lightness plus a border one stop stronger. <span style="font-family:'JetBrains Mono',monospace; font-size:12px;">sh1</span> resolves to <span style="font-family:'JetBrains Mono',monospace; font-size:12px;">none</span>; only overlays keep a shadow, to detach from the scrim.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</div>
+</div>
+<sc-if value="{{ modal }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closeModal }}" style="position:fixed; inset:0; z-index:60; display:flex; align-items:center; justify-content:center; padding:24px; background-color:rgba(24,29,41,.55); background-image:repeating-linear-gradient(146deg, transparent 0 7px, rgba(255,255,255,.06) 7px 9px, transparent 9px 17px);">
+    <div style="background:var(--fx-bg-raised); border:1px solid var(--fx-border-subtle); border-radius:14px; box-shadow:var(--fx-sh3); padding:32px; width:440px; max-width:100%; display:flex; flex-direction:column; gap:16px; clip-path:polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);">
+      <h3 style="font:600 22px/1.2 'Plus Jakarta Sans',sans-serif; margin:0; color:var(--fx-text-primary);">Purge this corpus?</h3>
+      <p style="font:400 15px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); margin:0; text-wrap:pretty;">12,408 documents and their embeddings are deleted. Runs referencing them keep their citations but lose source links.</p>
+      <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:6px;">
+        <button onClick="{{ closeModal }}" style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:8px; padding:10px 18px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer;">Keep it</button>
+        <button onClick="{{ closeModal }}" style="background:var(--fx-danger); color:#FFFFFF; border:none; border-radius:8px; padding:10px 18px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer;">Purge</button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'light' | 'dark'&quot;,&quot;section&quot;:&quot;Display&quot;},&quot;density&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;comfortable&quot;,&quot;compact&quot;],&quot;default&quot;:&quot;comfortable&quot;,&quot;tsType&quot;:&quot;'comfortable' | 'compact'&quot;,&quot;section&quot;:&quot;Display&quot;},&quot;markSize&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:96,&quot;min&quot;:48,&quot;max&quot;:140,&quot;step&quot;:4,&quot;unit&quot;:&quot;px&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;MARBIM mark&quot;}}">
+const DARK = {
+  '--fx-bg-canvas': '#0F131B', '--fx-bg-surface': '#181D29', '--fx-bg-raised': '#212736',
+  '--fx-bg-sunken': '#0B0E15', '--fx-bg-hover': 'rgba(255,255,255,.05)', '--fx-bg-selected': 'rgba(225,179,52,.17)',
+  '--fx-border-subtle': '#252B3A', '--fx-border-default': '#343B4C', '--fx-border-strong': '#4E576B',
+  '--fx-text-primary': '#F4F3F0', '--fx-text-secondary': '#AEB5C4', '--fx-text-tertiary': '#7C8497',
+  '--fx-text-disabled': '#565E71', '--fx-text-inverse': '#181D29',
+  '--fx-accent': '#E1B334', '--fx-accent-hover': '#EBC352', '--fx-accent-pressed': '#F2D077',
+  '--fx-accent-subtle': 'rgba(225,179,52,.14)', '--fx-accent-on': '#181D29',
+  '--fx-success': '#4FA97D', '--fx-warning': '#D99A3F', '--fx-danger': '#E0665C', '--fx-info': '#6D9BE8',
+  '--fx-focus': '#E1B334', '--fx-sh1': 'none', '--fx-sh2': '0 6px 20px rgba(0,0,0,.45)', '--fx-sh3': '0 18px 44px rgba(0,0,0,.55)'
+};
+
+// Addendum: the dark set, enumerated with the rule each group follows.
+const DARKSET = [
+  { name: 'Surfaces — lighten by elevation', note: 'Rising means lighter. bg-sunken sits below canvas; nothing reaches #000.', tokens: [
+    ['bg-canvas', '#0F131B'], ['bg-surface', '#181D29'], ['bg-raised', '#212736'],
+    ['bg-sunken', '#0B0E15'], ['bg-hover', 'rgba(255,255,255,.05)'], ['bg-selected', 'rgba(225,179,52,.17)']
+  ]},
+  { name: 'Text tiers', note: 'Off-white primary, never #FFF — pure white on near-black vibrates on a wall screen.', tokens: [
+    ['text-primary', '#F4F3F0'], ['text-secondary', '#AEB5C4'], ['text-tertiary', '#7C8497'], ['text-disabled', '#565E71']
+  ]},
+  { name: 'Borders — the shadow replacement', note: 'A hairline one stop stronger does the work sh1 does in light.', tokens: [
+    ['border-subtle', '#252B3A'], ['border-default', '#343B4C'], ['border-strong', '#4E576B']
+  ]},
+  { name: 'Accent on dark', note: 'Base amber is unchanged; hover and pressed go lighter, the reverse of light mode. accent-on stays ink.', tokens: [
+    ['accent', '#E1B334'], ['accent-hover', '#EBC352'], ['accent-pressed', '#F2D077'],
+    ['accent-subtle', 'rgba(225,179,52,.14)'], ['accent-on', '#181D29']
+  ]},
+  { name: 'Status — lifted for contrast', note: 'Each hue is desaturated and lightened to clear 4.5:1 on bg-surface.', tokens: [
+    ['success', '#4FA97D'], ['warning', '#D99A3F'], ['danger', '#E0665C'], ['info', '#6D9BE8']
+  ]},
+  { name: 'Focus', note: 'Ink is invisible here, so the ring inverts to amber — the one amber that may repeat per view.', tokens: [
+    ['focus', '#E1B334'], ['sh1', 'none'], ['sh2', '0 6px 20px rgba(0,0,0,.45)'], ['sh3', '0 18px 44px rgba(0,0,0,.55)']
+  ]}
+];
+
+const BN_EN_BODY = 'Fabric came in four days late. Cutting now starts 12 Aug, and the ship date still holds if sewing runs two extra lines.';
+const BN_BN_BODY = 'ফ্যাব্রিক ৪ দিন দেরিতে এসেছে। কাটিং এখন ১২ অগাস্ট তারিখে শুরু হবে। দুটি অতিরিক্ত সিউইং লাইন যোগ করা গেলে শিপমেন্টের তারিখ অপরিবর্তিত থাকবে। ফিনিশিং একই সপ্তাহে শেষ হবে।';
+
+const GROUPS = [
+  { name: 'Surfaces', tokens: [
+    ['bg-canvas', '#FBFAF8', '#0F131B'], ['bg-surface', '#FFFFFF', '#181D29'],
+    ['bg-raised', '#FFFFFF', '#212736'], ['bg-sunken', '#F3F1EC', '#0B0E15'],
+    ['bg-hover', 'ink 3.5%', 'white 5%'], ['bg-selected', 'amber 12%', 'amber 17%']
+  ]},
+  { name: 'Borders & text', tokens: [
+    ['border-subtle', '#E7E4DE', '#252B3A'], ['border-default', '#D6D2C9', '#343B4C'],
+    ['border-strong', '#A9A49A', '#4E576B'], ['text-primary', '#181D29', '#F4F3F0'],
+    ['text-secondary', '#4C5364', '#AEB5C4'], ['text-tertiary', '#767E90', '#7C8497'],
+    ['text-disabled', '#A8AEBB', '#565E71'], ['text-inverse', '#FBFAF8', '#181D29']
+  ]},
+  { name: 'Accent & semantic', tokens: [
+    ['accent', '#E1B334', '#E1B334'], ['accent-hover', '#CFA22B', '#EBC352'],
+    ['accent-pressed', '#B88C21', '#F2D077'], ['accent-subtle', '#FAF1DA', 'amber 14%'],
+    ['accent-on', '#181D29', '#181D29'], ['success', '#2F7D5B', '#4FA97D'],
+    ['warning', '#B4741C', '#D99A3F'], ['danger', '#B23A32', '#E0665C'],
+    ['info', '#2F5FA8', '#6D9BE8'], ['focus', '#181D29', '#E1B334']
+  ]}
+];
+
+const RULES = [
+  ['1', 'One amber moment per view', 'At most one amber fill larger than 24px per screen state. The primary action owns it — unless the mark is animating, then the mark does.'],
+  ['2', 'Never a large fill', 'No amber backgrounds, heroes, sidebars, headers or full-width bars. Amber stays under ~5% of visible surface.'],
+  ['3', 'Never body text', 'Amber type only at ≥16px semibold, on a non-amber surface, for a single emphasised token.'],
+  ['4', 'Text on amber is always ink', 'White on amber is prohibited — it fails contrast at every size.'],
+  ['5', 'Amber is not warning', 'Warnings use --fx-warning. Amber means FabricX and active, nothing else.'],
+  ['6', 'Sanctioned uses only', 'The mark; the single primary action; active/selected indicators; one data highlight per chart; the four signature elements.']
+];
+
+// Eight strokes, split from the source asset and ordered along the 34° travel axis.
+// dx/dy = outward unit vector from the mark's centre, used by the keyframes.
+const SLASHES = [
+  { dx: -0.896, dy: 0.444 }, { dx: -0.271, dy: 0.963 }, { dx: -0.97, dy: -0.243 }, { dx: 0.415, dy: 0.91 },
+  { dx: -0.512, dy: -0.859 }, { dx: 0.936, dy: 0.352 }, { dx: 0.282, dy: -0.96 }, { dx: 0.908, dy: -0.419 }
+];
+
+// [key, number, label, description, per-stroke animation builder]
+const MARK_STATES = [
+  ['rest', '1', 'Rest', 'All eight strokes in registration, static', () => 'none'],
+  ['awake', '2', 'Awake', 'Each stroke pushes 6% out along its own axis, 30ms apart, holds', i => `fx-spread 220ms cubic-bezier(.2,.8,.2,1) ${i * 30}ms 1 forwards`],
+  ['listen', '3', 'Listening', 'Strokes swell outward and back, phase-offset — a slow travelling breath', i => `fx-breathe 2.4s ease-in-out ${-i * 150}ms infinite`],
+  ['think', '4', 'Thinking', 'Strokes orbit the centre ±13°, staggered 90ms, opacity dipping per stroke', i => `fx-orbit 1.4s ease-in-out ${-i * 90}ms infinite`],
+  ['stream', '5', 'Streaming', 'Strokes travel their 34° axis in sequence — a shimmer crossing the mark', i => `fx-travel .8s ease-in-out ${-i * 90}ms infinite`],
+  ['resolve', '6', 'Resolved', 'Strokes converge from outside with a 15% overshoot, then settle', i => `fx-converge 440ms cubic-bezier(.2,.8,.2,1) ${i * 35}ms 1 forwards`]
+];
+
+const ROWS = [
+  ['run_4f2a91', 'marbim-large', 'Complete', 'success', '$0.42'],
+  ['run_4f2a90', 'marbim-large', 'Streaming', 'accent', '$0.31'],
+  ['run_4f2a8e', 'marbim-fast', 'Queued', 'neutral', '—'],
+  ['run_4f2a8b', 'marbim-fast', 'Failed', 'danger', '$0.08']
+];
+
+const ACC = [
+  ['How is the mark used as a spinner?', 'The animated mark is the product\u2019s only loading affordance. Generic circular spinners are not part of the system.'],
+  ['Can the weave field sit behind text?', 'No. It is a wash for empty states, auth screens, card backs and scrims — never behind body copy or tables.'],
+  ['Does dark mode use shadows?', 'No. Elevation steps surface → raised and adds a subtle hairline instead.']
+];
+
+const TABS = [
+  ['overview', 'Overview', 'Tabs use an amber underline for the active item — the one selected-state exception to the single-amber-moment rule, because it is under 24px.'],
+  ['sources', 'Sources', '12,408 documents across 9 connectors. Retention and access follow the workspace policy set at the org level.'],
+  ['settings', 'Settings', 'Chunk size, overlap, embedding model and reranker. Changes trigger a full reindex.']
+];
+
+const NAV = [['Corpora', 1], ['Runs', 0], ['Evaluations', 0], ['Connectors', 0], ['Settings', 0]];
+
+class Component extends DCLogic {
+  state = { theme: null, mark: 'rest', tab: 'overview', acc: 0, modal: false, chk: true, sw: true, slider: 62, seg: 'all', nav: 'Corpora', bnDigits: true };
+
+  get theme() { return this.state.theme || this.props.theme || 'light'; }
+
+  componentWillUnmount() { clearTimeout(this._t1); clearTimeout(this._t2); clearTimeout(this._t3); }
+
+  runSequence = () => {
+    clearTimeout(this._t1); clearTimeout(this._t2); clearTimeout(this._t3);
+    this.setState({ mark: 'listen' });
+    this._t1 = setTimeout(() => this.setState({ mark: 'think' }), 1600);
+    this._t2 = setTimeout(() => this.setState({ mark: 'stream' }), 4000);
+    this._t3 = setTimeout(() => this.setState({ mark: 'resolve' }), 6400);
+  };
+
+  segBtn(active) {
+    return {
+      background: active ? 'var(--fx-bg-selected)' : 'transparent',
+      color: active ? 'var(--fx-text-primary)' : 'var(--fx-text-secondary)',
+      border: 'none', padding: '10px 16px', cursor: 'pointer',
+      font: "600 13px/1 'Plus Jakarta Sans',sans-serif"
+    };
+  }
+
+  renderVals() {
+    const dark = this.theme === 'dark';
+    const compact = (this.props.density || 'comfortable') === 'compact';
+    const markSize = this.props.markSize || 96;
+    const st = MARK_STATES.find(m => m[0] === this.state.mark) || MARK_STATES[0];
+    const badge = (kind, label) => {
+      const map = {
+        success: ['var(--fx-success)', 'transparent'],
+        danger: ['var(--fx-danger)', 'transparent'],
+        accent: ['var(--fx-accent-pressed)', 'var(--fx-accent-subtle)'],
+        neutral: ['var(--fx-text-tertiary)', 'transparent']
+      }[kind];
+      return {
+        font: "500 11px/1 'JetBrains Mono',monospace", letterSpacing: '.05em', textTransform: 'uppercase',
+        color: map[0], background: map[1], border: '1px solid ' + (map[1] === 'transparent' ? 'var(--fx-border-subtle)' : 'transparent'),
+        borderRadius: '4px', padding: '5px 8px', display: 'inline-block'
+      };
+    };
+    const modeBtn = (on) => ({
+      background: on ? 'var(--fx-text-primary)' : 'transparent',
+      color: on ? 'var(--fx-text-inverse)' : 'var(--fx-text-secondary)',
+      border: 'none', padding: '9px 18px', cursor: 'pointer', font: "600 13px/1 'Plus Jakarta Sans',sans-serif"
+    });
+
+    return {
+      shellStyle: { ...(dark ? DARK : {}), '--fx-pad': compact ? '36px' : '56px' },
+      lockupSrc: dark ? 'uploads/fabricxai-logo-dark.png' : 'uploads/fabricxai-logo-light.png',
+      markOnSurface: dark ? 'uploads/MARBIM_logo.png' : 'assets/MARBIM_logo-ink.png',
+      setLight: () => this.setState({ theme: 'light' }),
+      setDark: () => this.setState({ theme: 'dark' }),
+      lightBtn: modeBtn(!dark),
+      darkBtn: modeBtn(dark),
+
+      tokenGroups: GROUPS.map(g => ({ name: g.name, tokens: g.tokens.map(t => ({ name: '--fx-' + t[0], light: t[1], dark: t[2], sw: 'var(--fx-' + t[0] + ')' })) })),
+      amberRules: RULES.map(r => ({ n: r[0], title: r[1], body: r[2] })),
+      spacing: [4, 8, 12, 16, 24, 32, 48, 64, 96].map(v => ({ v: String(v), h: Math.round(v * 0.62) + 'px' })),
+
+      markStage: { position: 'relative', width: markSize + 'px', height: markSize + 'px', flexShrink: 0 },
+      slashes: SLASHES.map((s, i) => ({
+        src: `assets/mark/${dark ? 'w' : 'i'}-${i + 1}.png`,
+        style: {
+          position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block',
+          '--dx': s.dx, '--dy': s.dy, transformOrigin: 'center', willChange: 'transform, opacity',
+          animation: st[4](i)
+        }
+      })),
+      markStates: MARK_STATES.map(m => ({
+        n: m[1], label: m[2], desc: m[3],
+        pick: () => this.setState({ mark: m[0] }),
+        style: {
+          display: 'flex', alignItems: 'center', gap: '12px', width: '100%', textAlign: 'left', cursor: 'pointer',
+          background: this.state.mark === m[0] ? 'var(--fx-bg-selected)' : 'transparent',
+          border: '1px solid ' + (this.state.mark === m[0] ? 'var(--fx-accent)' : 'transparent'),
+          borderRadius: '8px', padding: '10px 12px', color: 'var(--fx-text-primary)'
+        }
+      })),
+      runSequence: this.runSequence,
+
+      segments: [['all', 'All'], ['mine', 'Mine'], ['shared', 'Shared']].map(s => ({
+        label: s[1], pick: () => this.setState({ seg: s[0] }), style: this.segBtn(this.state.seg === s[0])
+      })),
+      toggleChk: () => this.setState(s => ({ chk: !s.chk })),
+      chkStyle: {
+        width: '17px', height: '17px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        font: "700 11px/1 'Plus Jakarta Sans',sans-serif",
+        background: this.state.chk ? 'var(--fx-accent)' : 'transparent',
+        border: '1px solid ' + (this.state.chk ? 'var(--fx-accent)' : 'var(--fx-border-default)'),
+        color: this.state.chk ? 'var(--fx-accent-on)' : 'transparent'
+      },
+      toggleSw: () => this.setState(s => ({ sw: !s.sw })),
+      swTrack: {
+        width: '40px', height: '23px', borderRadius: '999px', padding: '3px', cursor: 'pointer',
+        display: 'flex', justifyContent: this.state.sw ? 'flex-end' : 'flex-start',
+        background: this.state.sw ? 'var(--fx-accent)' : 'var(--fx-border-default)', transition: 'background 120ms'
+      },
+      swKnob: { width: '17px', height: '17px', borderRadius: '999px', background: '#FFFFFF', boxShadow: '0 1px 2px rgba(24,29,41,.3)' },
+      slider: this.state.slider,
+      sliderLabel: (this.state.slider / 100).toFixed(2),
+      setSlider: (e) => this.setState({ slider: Number(e.target.value) }),
+
+      nav: NAV.map(n => ({
+        label: n[0], pick: () => this.setState({ nav: n[0] }),
+        style: {
+          display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer',
+          font: "500 14px/1 'Plus Jakarta Sans',sans-serif",
+          background: this.state.nav === n[0] ? 'var(--fx-bg-selected)' : 'transparent',
+          color: this.state.nav === n[0] ? 'var(--fx-text-primary)' : 'var(--fx-text-secondary)'
+        },
+        marker: { width: '2px', height: '15px', transform: 'skewX(-34deg)', background: this.state.nav === n[0] ? 'var(--fx-accent)' : 'transparent' }
+      })),
+      tabs: TABS.map(t => ({
+        label: t[1], pick: () => this.setState({ tab: t[0] }),
+        style: {
+          background: 'transparent', border: 'none', padding: '0 0 13px', cursor: 'pointer',
+          font: "600 14px/1 'Plus Jakarta Sans',sans-serif",
+          color: this.state.tab === t[0] ? 'var(--fx-text-primary)' : 'var(--fx-text-tertiary)',
+          borderBottom: '2px solid ' + (this.state.tab === t[0] ? 'var(--fx-accent)' : 'transparent'),
+          marginBottom: '-1px'
+        }
+      })),
+      tabBody: (TABS.find(t => t[0] === this.state.tab) || TABS[0])[2],
+
+      rows: ROWS.map(r => ({ id: r[0], model: r[1], status: r[2], cost: r[4], badge: badge(r[3]) })),
+      progressTicks: Array.from({ length: 22 }, (_, i) => ({ c: i < 15 ? 'var(--fx-accent)' : 'var(--fx-border-default)' })),
+      accordion: ACC.map((a, i) => ({
+        q: a[0], body: a[1], open: this.state.acc === i,
+        pick: () => this.setState(s => ({ acc: s.acc === i ? -1 : i })),
+        chev: { font: "400 11px/1 'Plus Jakarta Sans',sans-serif", color: 'var(--fx-text-tertiary)', transform: this.state.acc === i ? 'rotate(180deg)' : 'none', transition: 'transform 120ms' }
+      })),
+      darkGroups: DARKSET.map(g => ({
+        name: g.name, note: g.note,
+        tokens: g.tokens.map(t => ({ name: '--fx-' + t[0], value: t[1], sw: t[1] === 'none' ? 'var(--fx-bg-sunken)' : t[1] }))
+      })),
+      bnDigits: this.state.bnDigits,
+      toggleBn: () => this.setState(s => ({ bnDigits: !s.bnDigits })),
+      bnTrack: {
+        width: '40px', height: '23px', borderRadius: '999px', padding: '3px', cursor: 'pointer', flexShrink: 0,
+        display: 'flex', justifyContent: this.state.bnDigits ? 'flex-end' : 'flex-start',
+        background: this.state.bnDigits ? 'var(--fx-accent)' : 'var(--fx-border-default)', transition: 'background 120ms'
+      },
+      bnKnob: { width: '17px', height: '17px', borderRadius: '999px', background: '#FFFFFF', boxShadow: '0 1px 2px rgba(24,29,41,.3)' },
+      bnDue: this.state.bnDigits ? '১২ অগাস্ট' : '12 অগাস্ট',
+      bnLate: this.state.bnDigits ? '৪ দিন' : '4 দিন',
+      bnFour: this.state.bnDigits ? '৪' : '4',
+      bnRatio: `en ${BN_EN_BODY.length} ch · bn ${BN_BN_BODY.length} ch · ${(BN_BN_BODY.length / BN_EN_BODY.length).toFixed(2)}×`,
+
+      modal: this.state.modal,
+      openModal: () => this.setState({ modal: true }),
+      closeModal: () => this.setState({ modal: false })
+    };
+  }
+}
+</script>
+</body>
+</html>

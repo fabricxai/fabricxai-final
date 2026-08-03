@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #F3F1EC; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  [data-mode="dark"] { --fx-bg-canvas:#0F131B !important; --fx-bg-surface:#181D29 !important; --fx-bg-raised:#212736 !important; --fx-bg-sunken:#0B0E15 !important; --fx-bg-hover:rgba(255,255,255,.05) !important; --fx-bg-selected:rgba(225,179,52,.17) !important; --fx-border-subtle:#252B3A !important; --fx-border-default:#343B4C !important; --fx-border-strong:#4E576B !important; --fx-text-primary:#F4F3F0 !important; --fx-text-secondary:#AEB5C4 !important; --fx-text-tertiary:#7C8497 !important; --fx-text-disabled:#565E71 !important; --fx-text-inverse:#181D29 !important; --fx-accent-hover:#EBC352 !important; --fx-accent-pressed:#F2D077 !important; --fx-accent-subtle:rgba(225,179,52,.14) !important; --fx-success:#4FA97D !important; --fx-warning:#D99A3F !important; --fx-danger:#E0665C !important; --fx-info:#6D9BE8 !important; --fx-focus:#E1B334 !important; --fx-sh1:0 0 0 1px #252B3A !important; --fx-sh2:0 0 0 1px #252B3A !important; --fx-sh3:0 0 0 1px #343B4C !important; }
+  body:has([data-mode="dark"]) { background: #0B0E15; }
+  a { color: #181D29; text-decoration: underline; text-underline-offset: 3px; }
+  a:hover { color: #B88C21; }
+</style>
+</helmet>
+
+<div data-mode="{{ mode }}" style="--fx-bg-canvas:#FBFAF8; --fx-bg-surface:#FFFFFF; --fx-bg-sunken:#F3F1EC; --fx-bg-hover:rgba(24,29,41,.035); --fx-bg-selected:rgba(225,179,52,.12); --fx-border-subtle:#E7E4DE; --fx-border-default:#D6D2C9; --fx-border-strong:#A9A49A; --fx-text-primary:#181D29; --fx-text-secondary:#4C5364; --fx-text-tertiary:#767E90; --fx-text-disabled:#A8AEBB; --fx-text-inverse:#FBFAF8; --fx-accent:#E1B334; --fx-accent-hover:#CFA22B; --fx-accent-pressed:#B88C21; --fx-accent-subtle:#FAF1DA; --fx-accent-on:#181D29; --fx-success:#2F7D5B; --fx-warning:#B4741C; --fx-danger:#B23A32; --fx-info:#2F5FA8; --fx-focus:#181D29; --fx-sh1:0 1px 2px rgba(24,29,41,.06); --fx-sh2:0 4px 12px rgba(24,29,41,.08); --fx-sh3:0 12px 32px rgba(24,29,41,.12); font-family:'Plus Jakarta Sans',system-ui,sans-serif; color:var(--fx-text-primary); min-height:100vh; background:var(--fx-bg-sunken);">
+
+<div style="position:sticky; top:0; z-index:60; background:var(--fx-bg-surface); border-bottom:1px solid var(--fx-border-default); padding:10px 20px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+  <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Prototype bar</div>
+  <div style="display:flex; gap:2px; background:var(--fx-bg-sunken); border-radius:8px; padding:3px; flex-wrap:wrap;">
+    <sc-for list="{{ screens }}" as="s" hint-placeholder-count="5">
+      <button onClick="{{ s.pick }}" style="{{ s.style }}">{{ s.label }}</button>
+    </sc-for>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px;">
+    <span style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">device</span>
+    <select onChange="{{ setDevice }}" value="{{ device }}" style="background:var(--fx-bg-surface); color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:4px; padding:7px 9px; font:500 12px/1 'JetBrains Mono',monospace;">
+      <option value="desk">desk</option>
+      <option value="phone">phone</option>
+    </select>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px;">
+    <span style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">role</span>
+    <select onChange="{{ setRole }}" value="{{ role }}" style="background:var(--fx-bg-surface); color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:4px; padding:7px 9px; font:500 12px/1 'JetBrains Mono',monospace;">
+      <option value="owner">owner</option>
+      <option value="manager">manager</option>
+      <option value="viewer">viewer</option>
+      <option value="planner">planner</option>
+    </select>
+  </div>
+  <sc-if value="{{ isP1 }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex; align-items:center; gap:8px;">
+      <span style="font:400 11px/1 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">feed</span>
+      <select onChange="{{ setFeed }}" value="{{ feed }}" style="background:var(--fx-bg-surface); color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:4px; padding:7px 9px; font:500 12px/1 'JetBrains Mono',monospace;">
+        <option value="live">as it stands</option>
+        <option value="clear">nothing needs you</option>
+      </select>
+    </div>
+  </sc-if>
+  <div style="display:flex; align-items:center; gap:10px; margin-left:auto;">
+    <button onClick="{{ toggleMode }}" style="{{ modeBtn }}">{{ modeLabel }}</button>
+    <button onClick="{{ toggleAnnot }}" style="{{ annotBtn }}">actions {{ annotLabel }}</button>
+  </div>
+</div>
+
+<div style="{{ frameOuter }}">
+<div style="{{ frameInner }}">
+
+  <sc-if value="{{ isDesk }}" hint-placeholder-val="{{ true }}">
+    <div style="width:236px; flex-shrink:0; background:var(--fx-bg-surface); border-right:1px solid var(--fx-border-subtle); padding:20px 14px; display:flex; flex-direction:column; gap:20px; min-height:calc(100vh - 49px);">
+      <img src="{{ logoSrc }}" alt="FabricX AI" style="height:26px; width:auto; align-self:flex-start; max-width:100%; object-fit:contain;" />
+      <div style="display:flex; flex-direction:column; gap:2px;">
+        <sc-for list="{{ nav }}" as="n" hint-placeholder-count="5">
+          <div onClick="{{ n.pick }}" style="{{ n.style }}">
+            <div style="{{ n.marker }}"></div>{{ n.label }}
+            <sc-if value="{{ n.badge }}" hint-placeholder-val="{{ false }}">
+              <div style="{{ n.badgeStyle }}">{{ n.count }}</div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:9px;">
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">This module</div>
+        <div style="font:400 12.5px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">Read-only. The only thing you can change from here is an approval that was already waiting for you.</div>
+      </div>
+      <div style="margin-top:auto; display:flex; flex-direction:column; gap:7px;">
+        <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Signed in</div>
+        <div style="font:500 14px/1.3 'Plus Jakarta Sans',sans-serif;">{{ userName }}</div>
+        <div style="font:400 12px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ role }} · 12 Sep, 07:40</div>
+      </div>
+    </div>
+  </sc-if>
+
+  <div style="{{ mainStyle }}">
+
+  <sc-if value="{{ isPhone }}" hint-placeholder-val="{{ false }}">
+    <div style="position:sticky; top:0; z-index:20; background:var(--fx-bg-surface); border-bottom:1px solid var(--fx-border-subtle); padding:12px 18px 11px; display:flex; align-items:center; gap:12px;">
+      <img src="{{ logoSrc }}" alt="FabricX AI" style="height:20px; width:auto; align-self:center; object-fit:contain;" />
+      <div style="margin-left:auto; display:flex; flex-direction:column; gap:2px; align-items:flex-end;">
+        <div style="font:500 12px/1.2 'Plus Jakarta Sans',sans-serif;">{{ userName }}</div>
+        <div style="font:400 10.5px/1.2 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">Saturday · 07:40</div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ noAccess }}" hint-placeholder-val="{{ false }}">
+    <div style="{{ padStyle }}">
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:30px; display:flex; flex-direction:column; gap:13px; box-shadow:var(--fx-sh1); background-image:repeating-linear-gradient(146deg, transparent 0 8px, rgba(24,29,41,.028) 8px 10px, transparent 10px 18px);">
+        <div style="font:600 21px/1.25 'Plus Jakarta Sans',sans-serif;">This dashboard isn't for your role</div>
+        <div style="font:400 14.5px/1.6 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">You are signed in as <span style="font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--fx-text-primary);">{{ role }}</span>. Your work has its own screens with the detail this one deliberately leaves out.</div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP1 }}" hint-placeholder-val="{{ true }}">
+    <div style="{{ padStyle }}">
+      <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:20px; flex-wrap:wrap;">
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">{{ greeting }}</div>
+          <div style="{{ h1Style }}">{{ feedTitle }}</div>
+          <div style="font:400 14.5px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:64ch; text-wrap:pretty;">{{ feedLead }}</div>
+        </div>
+      </div>
+      <div style="height:9px; background-image:repeating-linear-gradient(115deg, var(--fx-accent) 0 2px, transparent 2px 9px);"></div>
+
+      <sc-if value="{{ feedEmpty }}" hint-placeholder-val="{{ false }}">
+        <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; padding:44px 32px; display:flex; flex-direction:column; align-items:center; gap:18px; box-shadow:var(--fx-sh1); background-image:repeating-linear-gradient(146deg, transparent 0 9px, rgba(24,29,41,.03) 9px 11px, transparent 11px 20px);">
+          <div role="img" aria-label="MARBIM" style="{{ bigMarkStage }}">
+            <sc-for list="{{ bigMark }}" as="m" hint-placeholder-count="8">
+              <img src="{{ m.src }}" alt="" style="{{ m.style }}" />
+            </sc-for>
+          </div>
+          <div style="font:600 24px/1.25 'Plus Jakarta Sans',sans-serif; text-align:center;">Nothing needs you. Factory is running.</div>
+          <div style="font:400 14.5px/1.6 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:52ch; text-align:center; text-wrap:pretty;">Six lines running, no LC inside 21 days, no approval waiting. The numbers are on the next screen if you want them.</div>
+          <button onClick="{{ goP2 }}" style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-strong); border-radius:8px; padding:13px 18px; font:600 14px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:48px;" style-hover="background:var(--fx-bg-hover)">See the numbers</button>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ feedHas }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; flex-direction:column; gap:14px;">
+          <sc-for list="{{ exceptions }}" as="e" hint-placeholder-count="5">
+            <div style="display:flex; background:var(--fx-bg-surface); border:1px solid {{ e.border }}; border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+              <div style="width:{{ e.selW }}; flex-shrink:0; background:{{ e.sel }};"></div>
+              <div style="{{ e.bodyStyle }}">
+                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                  <div style="font:500 10.5px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:{{ e.kindColor }}; border:1px solid {{ e.kindColor }}; border-radius:3px; padding:5px 6px;">{{ e.kind }}</div>
+                  <div style="font:400 11.5px/1.2 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ e.ref }}</div>
+                  <div style="font:400 11.5px/1.2 'JetBrains Mono',monospace; color:{{ e.ageColor }}; margin-left:auto;">{{ e.age }}</div>
+                </div>
+                <div style="{{ e.truthStyle }}">{{ e.truth }}</div>
+                <div style="font:400 13.5px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ e.because }}</div>
+                <div style="{{ e.actionsStyle }}">
+                  <sc-if value="{{ e.isApproval }}" hint-placeholder-val="{{ false }}">
+                    <button onClick="{{ e.approve }}" style="{{ e.approveStyle }}">{{ e.approveLabel }}</button>
+                  </sc-if>
+                  <button onClick="{{ e.drill }}" style="{{ e.drillStyle }}">{{ e.drillLabel }}</button>
+                </div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">pending.approve — the only write in this module</div>
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">amber goes to the top-ranked approval only · the second one is ink</div>
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">manager sees production and quality only · viewer has no feed at all</div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isDesk }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Role access — owner dashboard</div>
+          <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden;">
+            <sc-for list="{{ access }}" as="a" hint-placeholder-count="4">
+              <div style="display:grid; grid-template-columns:1fr 116px 1.5fr; gap:16px; padding:11px 18px; align-items:center; border-bottom:1px solid var(--fx-border-subtle);">
+                <div style="font:500 13px/1.4 'JetBrains Mono',monospace;">{{ a.role }}</div>
+                <div><span style="{{ a.chip }}">{{ a.level }}</span></div>
+                <div style="font:400 13px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ a.note }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP2 }}" hint-placeholder-val="{{ false }}">
+    <div style="{{ padStyle }}">
+      <div style="display:flex; flex-direction:column; gap:5px;">
+        <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Numbers</div>
+        <div style="{{ h1Style }}">Where the factory stands</div>
+        <div style="font:400 14.5px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:64ch; text-wrap:pretty;">Six numbers, each with the twelve periods behind it. Tap any one and it tells you which orders, lines or buyers moved it — a number without contributors is a rumour.</div>
+        <div style="height:9px; background-image:repeating-linear-gradient(115deg, var(--fx-accent) 0 2px, transparent 2px 9px);"></div>
+      </div>
+
+      <div style="{{ kpiGrid }}">
+        <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="6">
+          <div style="display:flex; flex-direction:column; background:var(--fx-bg-surface); border:1px solid {{ k.border }}; border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+            <div style="display:flex; flex:1; min-width:0;">
+              <div style="width:3px; flex-shrink:0; background:{{ k.c }};"></div>
+              <div style="padding:18px 20px; display:flex; flex-direction:column; gap:12px; flex:1; min-width:0;">
+                <div style="font:400 11.5px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">{{ k.label }}</div>
+                <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">
+                  <div style="{{ k.valueStyle }}">{{ k.value }}</div>
+                  <div style="font:400 12.5px/1.3 'JetBrains Mono',monospace; color:{{ k.deltaColor }};">{{ k.delta }}</div>
+                </div>
+                <div style="font:400 12.5px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ k.sub }}</div>
+                <div style="display:flex; align-items:flex-end; gap:3px; height:40px;">
+                  <sc-for list="{{ k.spark }}" as="b" hint-placeholder-count="12">
+                    <div style="{{ b.style }}"></div>
+                  </sc-for>
+                </div>
+                <div style="font:400 11.5px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ k.periods }}</div>
+              </div>
+            </div>
+            <button onClick="{{ k.ask }}" style="{{ k.askStyle }}">{{ k.askLabel }}</button>
+            <sc-if value="{{ k.open }}" hint-placeholder-val="{{ false }}">
+              <div style="background:var(--fx-bg-sunken); border-top:1px solid var(--fx-border-subtle); padding:15px 20px 17px; display:flex; flex-direction:column; gap:11px;">
+                <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">What moved it</div>
+                <sc-for list="{{ k.contributors }}" as="c" hint-placeholder-count="3">
+                  <div style="display:flex; align-items:stretch; background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:4px; overflow:hidden;">
+                    <div style="width:3px; flex-shrink:0; background:{{ c.c }};"></div>
+                    <div style="flex:1; min-width:0; padding:11px 13px; display:flex; flex-direction:column; gap:3px;">
+                      <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">
+                        <div style="font:500 12.5px/1.3 'JetBrains Mono',monospace;">{{ c.ref }}</div>
+                        <div style="font:600 12.5px/1.3 'JetBrains Mono',monospace; color:{{ c.c }}; margin-left:auto;">{{ c.amount }}</div>
+                      </div>
+                      <div style="font:400 12.5px/1.45 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ c.what }}</div>
+                    </div>
+                  </div>
+                </sc-for>
+                <div style="font:400 12px/1.45 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ k.source }}</div>
+              </div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+
+      <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">analytics.drill — read-only, opens contributors in place</div>
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">no amber on this screen — nothing here needs acting on</div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP3 }}" hint-placeholder-val="{{ false }}">
+    <div style="{{ padStyle }}">
+      <div style="display:flex; flex-direction:column; gap:5px;">
+        <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Buyers</div>
+        <div style="{{ h1Style }}">Who is worth the capacity</div>
+        <div style="font:400 14.5px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:64ch; text-wrap:pretty;">Volume is the number everyone quotes. Margin after claims, and how long the money takes to arrive, are the two that decide who gets next season's lines.</div>
+        <div style="height:9px; background-image:repeating-linear-gradient(115deg, var(--fx-accent) 0 2px, transparent 2px 9px);"></div>
+      </div>
+
+      <div style="{{ buyerGrid }}">
+        <sc-for list="{{ buyers }}" as="b" hint-placeholder-count="4">
+          <div style="display:flex; background:var(--fx-bg-surface); border:1px solid {{ b.border }}; border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+            <div style="width:{{ b.selW }}; flex-shrink:0; background:{{ b.sel }};"></div>
+            <div style="padding:20px; display:flex; flex-direction:column; gap:15px; flex:1; min-width:0;">
+              <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
+                <div style="font:600 18px/1.25 'Plus Jakarta Sans',sans-serif;">{{ b.name }}</div>
+                <div style="font:400 11.5px/1.2 'JetBrains Mono',monospace; color:var(--fx-text-tertiary); margin-left:auto;">{{ b.since }}</div>
+              </div>
+              <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:14px;">
+                <sc-for list="{{ b.stats }}" as="s" hint-placeholder-count="4">
+                  <div style="display:flex; flex-direction:column; gap:4px;">
+                    <div style="font:400 11px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">{{ s.k }}</div>
+                    <div style="font:600 19px/1.05 'JetBrains Mono',monospace; color:{{ s.c }};">{{ s.v }}</div>
+                    <div style="font:400 11.5px/1.35 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ s.note }}</div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="font:400 13px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); padding-top:2px; border-top:1px solid var(--fx-border-subtle); text-wrap:pretty;">{{ b.verdict }}</div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP4 }}" hint-placeholder-val="{{ false }}">
+    <div style="{{ padStyle }}">
+      <div style="display:flex; flex-direction:column; gap:5px;">
+        <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Ask</div>
+        <div style="{{ h1Style }}">Ask for a report in words</div>
+        <div style="font:400 14.5px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:64ch; text-wrap:pretty;">Say what you want and how you want to send it. What comes back is a card sized for a phone screen, because that is where these get forwarded.</div>
+        <div style="height:9px; background-image:repeating-linear-gradient(115deg, var(--fx-accent) 0 2px, transparent 2px 9px);"></div>
+      </div>
+
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-default); border-radius:8px; padding:18px 20px; display:flex; flex-direction:column; gap:14px; box-shadow:var(--fx-sh1);">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="width:30px; height:30px; border-radius:999px; background:#181D29; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <img src="uploads/MARBIM_logo.png" alt="" style="width:16px; height:16px;" />
+          </div>
+          <div style="font:500 13px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-secondary);">{{ askPrompt }}</div>
+        </div>
+        <div style="background:var(--fx-bg-sunken); border-radius:4px; padding:14px 16px; font:400 15px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-primary); text-wrap:pretty;">{{ askText }}</div>
+        <div style="display:flex; gap:9px; flex-wrap:wrap;">
+          <sc-for list="{{ askPresets }}" as="p" hint-placeholder-count="3">
+            <button onClick="{{ p.pick }}" style="{{ p.style }}">{{ p.label }}</button>
+          </sc-for>
+        </div>
+      </div>
+
+      <sc-if value="{{ report }}" hint-placeholder-val="{{ true }}">
+        <div style="{{ reportWrap }}">
+          <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-default); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh2); clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);">
+            <div style="padding:18px 20px 14px; display:flex; flex-direction:column; gap:6px; border-bottom:1px solid var(--fx-border-subtle);">
+              <div style="font:600 16.5px/1.3 'Plus Jakarta Sans',sans-serif;">{{ report.title }}</div>
+              <div style="font:400 12px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ report.stamp }}</div>
+            </div>
+            <div style="padding:4px 0;">
+              <div style="display:grid; grid-template-columns:1fr 84px 84px 92px; gap:10px; padding:10px 20px; font:500 10.5px/1 'JetBrains Mono',monospace; letter-spacing:.05em; text-transform:uppercase; color:var(--fx-text-tertiary);">
+                <div>{{ report.c0 }}</div><div style="text-align:right;">{{ report.c1 }}</div><div style="text-align:right;">{{ report.c2 }}</div><div style="text-align:right;">{{ report.c3 }}</div>
+              </div>
+              <sc-for list="{{ report.rows }}" as="r" hint-placeholder-count="6">
+                <div style="display:grid; grid-template-columns:1fr 84px 84px 92px; gap:10px; padding:11px 20px; border-top:1px solid var(--fx-border-subtle); align-items:center;">
+                  <div style="display:flex; flex-direction:column; gap:3px; min-width:0;">
+                    <div style="font:500 13px/1.3 'Plus Jakarta Sans',sans-serif;">{{ r.line }}</div>
+                    <sc-if value="{{ r.hasSub }}" hint-placeholder-val="{{ false }}">
+                      <div style="font:400 11.5px/1.4 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ r.sub }}</div>
+                    </sc-if>
+                  </div>
+                  <div style="font:400 13px/1.3 'JetBrains Mono',monospace; text-align:right; color:var(--fx-text-secondary);">{{ r.may }}</div>
+                  <div style="font:500 13px/1.3 'JetBrains Mono',monospace; text-align:right;">{{ r.june }}</div>
+                  <div style="font:600 13px/1.3 'JetBrains Mono',monospace; text-align:right; color:{{ r.c }};">{{ r.chg }}</div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="padding:14px 20px 16px; border-top:1px solid var(--fx-border-strong); display:flex; flex-direction:column; gap:9px;">
+              <div style="font:400 13px/1.6 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); text-wrap:pretty;">{{ report.note }}</div>
+              <div style="font:400 11px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ report.foot }}</div>
+            </div>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            <div style="font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Send it</div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <sc-for list="{{ shareTargets }}" as="t" hint-placeholder-count="4">
+                <button onClick="{{ t.act }}" style="{{ t.style }}">{{ t.label }}</button>
+              </sc-for>
+            </div>
+            <div style="font:400 12.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:60ch; text-wrap:pretty;">The card carries the stamp — who asked, when, and which records it counted. A screenshot forwarded without that is how a wrong number outlives its correction.</div>
+            <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">marbim.ask · analytics.saveReport</div>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isP5 }}" hint-placeholder-val="{{ false }}">
+    <div style="{{ padStyle }}">
+      <div style="display:flex; flex-direction:column; gap:5px;">
+        <div style="font:400 12px/1 'JetBrains Mono',monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--fx-text-tertiary);">Reports</div>
+        <div style="{{ h1Style }}">Saved and scheduled</div>
+        <div style="font:400 14.5px/1.55 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); max-width:64ch; text-wrap:pretty;">A report worth asking for twice becomes a saved one. A saved one worth reading on a schedule becomes an export that arrives without anyone opening the app.</div>
+        <div style="height:9px; background-image:repeating-linear-gradient(115deg, var(--fx-accent) 0 2px, transparent 2px 9px);"></div>
+      </div>
+
+      <div style="background:var(--fx-bg-surface); border:1px solid var(--fx-border-subtle); border-radius:8px; overflow:hidden; box-shadow:var(--fx-sh1);">
+        <div style="padding:14px 20px; border-bottom:1px solid var(--fx-border-subtle); font:500 11px/1 'JetBrains Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-text-tertiary);">Saved reports</div>
+        <sc-for list="{{ saved }}" as="r" hint-placeholder-count="4">
+          <div style="display:flex; align-items:stretch; border-bottom:1px solid var(--fx-border-subtle);">
+            <div style="width:3px; flex-shrink:0; background:{{ r.c }};"></div>
+            <div style="{{ r.rowStyle }}">
+              <div style="display:flex; flex-direction:column; gap:3px; min-width:0;">
+                <div style="font:500 14px/1.35 'Plus Jakarta Sans',sans-serif;">{{ r.name }}</div>
+                <div style="font:400 11.5px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">{{ r.asked }}</div>
+              </div>
+              <div style="font:400 12.5px/1.4 'JetBrains Mono',monospace; color:var(--fx-text-secondary);">{{ r.last }}</div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <div style="{{ r.schedChip }}">{{ r.sched }}</div>
+              </div>
+              <div style="display:flex; justify-content:flex-end;">
+                <button onClick="{{ r.open }}" style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-default); border-radius:8px; padding:11px 14px; font:600 12.5px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px; white-space:nowrap;" style-hover="background:var(--fx-bg-hover)">Open</button>
+              </div>
+            </div>
+          </div>
+        </sc-for>
+        <div style="padding:15px 20px; display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+          <div style="font:400 12.5px/1.5 'Plus Jakarta Sans',sans-serif; color:var(--fx-text-secondary); flex:1 1 320px; min-width:0; text-wrap:pretty;">Scheduling is not editing — a scheduled export sends the same read-only card on a clock. Nothing about the underlying records changes.</div>
+          <button onClick="{{ schedule }}" style="background:transparent; color:var(--fx-text-primary); border:1px solid var(--fx-border-strong); border-radius:8px; padding:12px 17px; font:600 13.5px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer; min-height:44px;" style-hover="background:var(--fx-bg-hover)">Schedule an export</button>
+        </div>
+      </div>
+
+      <sc-if value="{{ annot }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">analytics.saveReport · analytics.scheduleExport</div>
+          <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-info); border:1px dashed var(--fx-info); border-radius:4px; padding:4px 7px;">no edit action exists in this module — approvals are surfaced from the inbox, not created here</div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isPhone }}" hint-placeholder-val="{{ false }}">
+    <div style="position:sticky; bottom:0; z-index:20; background:var(--fx-bg-surface); border-top:1px solid var(--fx-border-subtle); padding:8px 8px 12px; display:grid; grid-template-columns:repeat(5, 1fr); gap:4px;">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="5">
+        <div onClick="{{ t.pick }}" style="{{ t.style }}">
+          <div style="{{ t.marker }}"></div>
+          <div style="font:500 10.5px/1.2 'Plus Jakarta Sans',sans-serif; text-align:center;">{{ t.label }}</div>
+          <sc-if value="{{ t.badge }}" hint-placeholder-val="{{ false }}">
+            <div style="{{ t.badgeStyle }}">{{ t.count }}</div>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isDesk }}" hint-placeholder-val="{{ true }}">
+    <div style="position:absolute; right:22px; bottom:22px; display:flex; align-items:center; gap:11px;">
+      <div style="font:400 11px/1.3 'JetBrains Mono',monospace; color:var(--fx-text-tertiary);">MARBIM · rest</div>
+      <div role="img" aria-label="MARBIM" style="{{ markStage }}">
+        <sc-for list="{{ markSlashes }}" as="s" hint-placeholder-count="8">
+          <img src="{{ s.src }}" alt="" style="{{ s.style }}" />
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  </div>
+</div>
+</div>
+
+<sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed; left:50%; bottom:28px; transform:translateX(-50%); z-index:90; background:var(--fx-text-primary); color:var(--fx-text-inverse); border-radius:8px; box-shadow:var(--fx-sh3); padding:14px 18px; display:flex; align-items:center; gap:14px; max-width:92vw;">
+    <div style="font:500 13.5px/1.4 'Plus Jakarta Sans',sans-serif;">{{ toast }}</div>
+    <button onClick="{{ clearToast }}" style="background:transparent; border:none; color:var(--fx-accent); font:600 12px/1 'Plus Jakarta Sans',sans-serif; cursor:pointer;">Dismiss</button>
+  </div>
+</sc-if>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1400,&quot;height&quot;:900},&quot;role&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;owner&quot;,&quot;manager&quot;,&quot;viewer&quot;,&quot;planner&quot;],&quot;default&quot;:&quot;owner&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Access&quot;},&quot;device&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;desk&quot;,&quot;phone&quot;],&quot;default&quot;:&quot;desk&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Layout&quot;},&quot;showActionNames&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Annotation&quot;}}">
+const SLASH_VEC = [
+  { dx: -0.896, dy: 0.444 }, { dx: -0.271, dy: 0.963 }, { dx: -0.97, dy: -0.243 }, { dx: 0.415, dy: 0.91 },
+  { dx: -0.512, dy: -0.859 }, { dx: 0.936, dy: 0.352 }, { dx: 0.282, dy: -0.96 }, { dx: 0.908, dy: -0.419 }
+];
+
+const USERS = { owner: 'M. A. Chowdhury', manager: 'Shafiq Alam', viewer: 'Audit (external)', planner: 'Ruhul Amin' };
+
+// kind, dept, ref, truth, because, age, ageUrgent, rank, approval, approveLabel, drillLabel, severity
+const EXCEPTIONS = [
+  ['LC conflict', 'commercial', 'LC 0231-24-000401 · C&A',
+    '$214,500 is stuck at the bank on two discrepancies, and it has been stuck for nine days.',
+    'Consignee name is short of "AB" and the freight term says prepaid on an FOB shipment. Both are the forwarder\u2019s errors, both are fixable, and neither has been answered since 03 Sep.',
+    '9 days', true, 1, false, '', 'Open the LC', 'danger'],
+  ['Approval', 'hr', 'Payroll · September first half',
+    '৳4,182,000 of payroll is waiting on you, and the bank cut-off is Monday 09:00.',
+    '1,284 workers across six lines. Overtime is 8.4% of the total, which is inside the month\u2019s pattern. HR closed the register 11 Sep.',
+    'due Monday', true, 2, true, 'Approve payroll', 'See the register', 'approval'],
+  ['At-risk order', 'production', 'PO-88231 · H&M · SH-4488',
+    'Cutting is meant to start 02 Sep and the fabric is still on the water, ten days past the mill\u2019s promise.',
+    'Ningbo confirmed weaving 14 Jul and has not shipped. On a 38-day leadtime nothing recovers this by itself — either the buyer moves the date or the order loses two weeks of line time.',
+    '10 days', true, 3, false, '', 'Open the order', 'danger'],
+  ['Approval', 'finance', 'Square Yarns · FX-PO-2026-0304',
+    '$31,400 is ready to pay against a GRN that matches the PO exactly.',
+    '2,100 kg received 11 Aug on the promised date, weighed at the gate, no shortfall. Accounts prepared it; the term is at sight against the BTB.',
+    'due 14 Sep', false, 4, true, 'Approve payment', 'See the GRN', 'approval'],
+  ['Critical CAP', 'quality', 'CAP-2026-0114 · needle guards',
+    'Three machines on L4 are running without needle guards and the buyer audit is 14 Sep.',
+    'Raised 28 Aug by internal compliance, due 07 Sep, still open. This is the finding that fails an audit on its own regardless of everything else in the file.',
+    '5 days overdue', true, 5, false, '', 'Open the CAP', 'danger'],
+  ['Run-rate miss', 'production', 'PO-88203 · H&M',
+    'At 850 pieces a day this ships 07 Sep against an ex-factory date of 04 Sep.',
+    '17,900 pieces left of 26,000. The rate is finishing and packing throughput, not sewing output — sewing is 340 ahead. Three days of slack existed on 01 Sep and it has been spent.',
+    '3 days short', false, 6, false, '', 'Open the order', 'warning']
+];
+
+// label, value, delta, deltaGood, sub, spark, periods, source, contributors[[ref, what, amount, good]]
+const KPIS = [
+  ['Order book', '$1.42m', '+$186k vs Aug', true, '11 confirmed orders · 74% of Q4 capacity covered',
+    [1.02, 1.11, 1.18, 1.09, 1.24, 1.31, 1.22, 1.28, 1.35, 1.29, 1.24, 1.42], '12 months to Sep 2026',
+    'computed from 11 confirmed orders on the order book',
+    [['PO-88231 · H&M', 'confirmed 04 Sep, ships November', '+$97,200', true],
+     ['PO-88240 · Primark', 'confirmed 28 Aug, ships October', '+$118,600', true],
+     ['Q4 gap', 'weeks 46–48 have two lines unbooked', '−$164,000', false]]],
+  ['On-time delivery', '86%', '−4 pts vs Aug', false, '19 of 22 shipments left on the ex-factory date',
+    [88, 91, 84, 90, 93, 89, 92, 88, 90, 87, 90, 86], '12 months to Sep 2026',
+    'computed from 22 shipments against 22 ex-factory dates',
+    [['PO-88214 · Primark', 'two days late · needle-bar failure on L4', '−2 shipments', false],
+     ['PO-88190 · C&A', 'four days late · dye house slot moved', '−1 shipment', false],
+     ['L3 and L6', 'every shipment on the date, eight in the month', 'held the 86%', true]]],
+  ['Efficiency', '68%', '+2 pts vs Aug', true, 'six lines, weighted by sewing minutes',
+    [61, 63, 62, 65, 64, 67, 66, 65, 68, 66, 66, 68], '12 months to Sep 2026',
+    'computed from 132 line-days of hourly output',
+    [['L3', 'same style all month, no changeover', '74%', true],
+     ['L4', 'two stoppages, 3.4 days lost', '58%', false],
+     ['L6', 'changeover assumption in the template is 1.5 days, real is 2.4', '63%', false]]],
+  ['DHU', '3.4', '−0.6 vs Aug', true, 'defects per hundred units, target 4.0',
+    [4.8, 4.4, 4.6, 4.1, 4.2, 3.9, 4.0, 3.8, 3.6, 3.9, 3.7, 3.4], '12 months to Sep 2026',
+    'computed from 18,400 garments checked inline',
+    [['Skipped stitch', '31% of all defects · four machines', '1.06', false],
+     ['Open seam', '18% of all defects', '0.61', false],
+     ['New starts', 'the two style starts account for the mid-month spike', '+0.4 for 3 days', false]]],
+  ['Cash position', '+$168k', 'net over 8 weeks', true, 'realizations in against payables due',
+    [42, -18, 96, 57, -27, 53, -62, 57, 31, -14, 88, 24], '8 weeks forward, 4 back',
+    'computed from 6 submissions on the LC register and 5 open payables',
+    [['SUB-0141 · C&A', 'accepted 12 Aug, 90 d sight matures W40', '+$141,000', true],
+     ['W39 and W44', 'payroll weeks with nothing coming in', '−$154,900', false],
+     ['BTB at sight', 'three fabric and yarn BTBs fall inside the window', '−$125,600', false]]],
+  ['Shipped this month', '68,400', '+11% vs Aug', true, 'pieces on board, four shipments',
+    [52, 61, 58, 64, 59, 66, 62, 71, 64, 60, 62, 68], '12 months to Sep 2026',
+    'computed from 4 bills of lading and their packing lists',
+    [['PO-88219 · Bestseller', '42,000 pcs on board 06 Sep', '42,000', true],
+     ['PO-88214 · Primark', '18,400 pcs on board 28 Aug', '18,400', true],
+     ['PO-88203 · H&M', '8,000 of 26,000 · partial, balance in W40', '8,000', false]]]
+];
+
+// name, since, stats[[k, v, note, tone]], verdict, tone
+const BUYERS = [
+  ['H&M', 'since 2019', [
+    ['Volume', '$486k', '3 orders this year', 'n'],
+    ['Margin', '16.8%', 'after claims', 'good'],
+    ['Claims', '0.4%', 'one shade claim in three years', 'good'],
+    ['Payment lag', '9 d', 'presentation to credit', 'good']
+  ], 'The buyer to give capacity to. Pays fastest, claims least, and their tech packs arrive complete — which is worth more in avoided rework than the half point of margin Bestseller pays over them.', 'good'],
+  ['Bestseller', 'since 2021', [
+    ['Volume', '$392k', '2 orders this year', 'n'],
+    ['Margin', '20.1%', 'best margin we run', 'good'],
+    ['Claims', '1.1%', 'two measurement claims', 'n'],
+    ['Payment lag', '14 d', 'on top of 90 d sight', 'warn']
+  ], 'Best margin on the book, and the 90-day tenor is the price of it. Fine while the BTBs have headroom; the first month they do not, this is the order that squeezes.', 'good'],
+  ['Primark', 'since 2018', [
+    ['Volume', '$318k', '4 orders this year', 'n'],
+    ['Margin', '13.1%', 'below the 15% floor', 'bad'],
+    ['Claims', '0.9%', 'one packing claim', 'n'],
+    ['Payment lag', '12 d', 'never varies', 'n']
+  ], 'Reliable and under the floor. The last order lost two points to a maintenance failure rather than to the price — but at 13.1% there is no room left for a bad month, which is an argument for re-quoting, not for dropping them.', 'warn'],
+  ['C&A', 'since 2022', [
+    ['Volume', '$214k', '1 order this year', 'n'],
+    ['Margin', '11.9%', 'worst on the book', 'bad'],
+    ['Claims', '2.8%', 'four claims on one order', 'bad'],
+    ['Payment lag', '31 d', '3.4× H&M', 'bad']
+  ], 'One order, four claims, and money that takes a month longer than anyone else\u2019s. The stale denim template cost three points and that is fixable — the 31-day lag is not, and it should be priced into the next quote rather than discovered again.', 'bad']
+];
+
+// each ask returns its own report — title, column headers, rows [name, sub, a, b, delta, tone], note, stamp
+const REPORTS = [
+  {
+    title: 'Efficiency by line · June against May',
+    cols: ['Line', 'May', 'June', 'Change'],
+    rows: [
+      ['L1 · woven floor', '', '64%', '66%', '+2 pts', 'good'],
+      ['L2 · woven floor', '', '62%', '61%', '−1 pt', 'bad'],
+      ['L3 · woven floor', '', '69%', '74%', '+5 pts', 'good'],
+      ['L4 · knit floor', '', '66%', '58%', '−8 pts', 'bad'],
+      ['L5 · knit floor', '', '65%', '67%', '+2 pts', 'good'],
+      ['L6 · knit floor', '', '60%', '63%', '+3 pts', 'good']
+    ],
+    note: 'L4 lost eight points to two needle-bar failures on the same head. L3 gained five by running one style all month. Everything else moved inside its normal range.',
+    stamp: '132 line-days',
+    foot: 'computed from hourly output records · weighted by sewing minutes, not by pieces'
+  },
+  {
+    title: 'Late orders · why each one slipped',
+    cols: ['Order', 'Late by', 'Ships', 'State'],
+    rows: [
+      ['PO-88231 · H&M', 'fabric still on the water · mill 10 days past its promise', '10 d', '19 Sep', 'open', 'bad'],
+      ['PO-88203 · H&M', 'finishing runs 850 a day against the 1,050 the date needs', '3 d', '07 Sep', 'open', 'bad'],
+      ['PO-88214 · Primark', 'needle-bar failure on L4 · two days of line time lost', '2 d', 'shipped', 'closed', 'warn'],
+      ['PO-88190 · C&A', 'dye house moved our slot by four days', '4 d', 'shipped', 'closed', 'warn']
+    ],
+    note: 'Two are still open and both need a phone call rather than a plan — H&M allows five days of tolerance on SH-4488, and PO-88203 has none left.',
+    stamp: '4 of 11 orders late',
+    foot: 'computed from ex-factory dates against bills of lading and current run rates'
+  },
+  {
+    title: 'DHU by line · September against target',
+    cols: ['Line', 'DHU', 'Target', 'vs'],
+    rows: [
+      ['L1 · woven floor', '', '3.1', '4.0', '−0.9', 'good'],
+      ['L2 · woven floor', '', '3.8', '4.0', '−0.2', 'good'],
+      ['L3 · woven floor', '', '2.6', '4.0', '−1.4', 'good'],
+      ['L4 · knit floor', '', '5.2', '4.0', '+1.2', 'bad'],
+      ['L5 · knit floor', '', '3.4', '4.0', '−0.6', 'good'],
+      ['L6 · knit floor', '', '3.9', '4.0', '−0.1', 'good']
+    ],
+    note: 'Only L4 is over target, and 31% of its defects are skipped stitch on four machines — that is a maintenance signal, not a training one.',
+    stamp: '18,400 garments checked inline',
+    foot: 'computed from inline QC records · every defect logged against an operation'
+  }
+];
+
+const SAVED = [
+  ['Efficiency by line, month on month', 'first asked 14 Jun · run 4 times', 'run 12 Sep, 07:12', 'every Monday 07:00', 'sched'],
+  ['DHU and top five defects', 'first asked 02 Jul · run 9 times', 'run 12 Sep, 06:40', 'every Monday 07:00', 'sched'],
+  ['Order book against Q4 capacity', 'first asked 21 Aug · run 2 times', 'run 09 Sep, 18:20', 'not scheduled', 'off'],
+  ['Buyer payment lag, twelve months', 'first asked 30 Aug · run 1 time', 'run 30 Aug, 11:05', 'not scheduled', 'off']
+];
+
+const ACCESS = [
+  ['owner', 'full', 'The whole feed, every number, every buyer. Approvals act in place.'],
+  ['manager', 'scoped', 'Exceptions from their own departments only — production and quality here, not commercial, finance or HR.'],
+  ['viewer', 'kpis only', 'The numbers screen and nothing else. No exceptions feed, because an exception names a person.'],
+  ['planner · merchandiser · qc · storekeeper · commercial · accounts · hr', 'none', 'HIDDEN — their own screens carry the detail this one summarises.']
+];
+
+const DEPT_SCOPE = { manager: ['production', 'quality'] };
+
+class Component extends DCLogic {
+  state = { screen: 'p1', role: 'owner', device: 'desk', feed: 'live', annot: true, openKpi: -1, askIdx: 0, toast: '' };
+
+  componentWillUnmount() { clearTimeout(this._t); }
+
+  flash(msg) {
+    clearTimeout(this._t);
+    this.setState({ toast: msg });
+    this._t = setTimeout(() => this.setState({ toast: '' }), 4400);
+  }
+
+  pill(active) {
+    return {
+      background: active ? 'var(--fx-bg-surface)' : 'transparent',
+      color: active ? 'var(--fx-text-primary)' : 'var(--fx-text-secondary)',
+      border: '1px solid ' + (active ? 'var(--fx-border-default)' : 'transparent'),
+      borderRadius: '6px', padding: '9px 12px', cursor: 'pointer',
+      font: "600 12.5px/1 'Plus Jakarta Sans',sans-serif", whiteSpace: 'nowrap'
+    };
+  }
+
+  ghost(on) {
+    return {
+      background: on ? 'var(--fx-text-primary)' : 'transparent',
+      color: on ? 'var(--fx-text-inverse)' : 'var(--fx-text-secondary)',
+      border: '1px solid ' + (on ? 'var(--fx-text-primary)' : 'var(--fx-border-default)'),
+      borderRadius: '8px', padding: '10px 13px', cursor: 'pointer', minHeight: '44px',
+      font: "500 12px/1 'JetBrains Mono',monospace", whiteSpace: 'nowrap'
+    };
+  }
+
+  chip(level) {
+    const base = {
+      font: "500 11px/1 'JetBrains Mono',monospace", letterSpacing: '.05em', textTransform: 'uppercase',
+      borderRadius: '4px', padding: '6px 8px', display: 'inline-block', whiteSpace: 'nowrap'
+    };
+    if (level === 'none') return { ...base, color: 'var(--fx-text-tertiary)', border: '1px solid var(--fx-border-subtle)' };
+    if (level === 'kpis only') return { ...base, color: 'var(--fx-text-secondary)', background: 'var(--fx-bg-sunken)', border: '1px solid transparent' };
+    if (level === 'scoped') return { ...base, color: 'var(--fx-text-primary)', border: '1px solid var(--fx-border-strong)' };
+    return { ...base, color: 'var(--fx-text-primary)', border: '1px solid var(--fx-text-primary)', boxShadow: 'inset 3px 0 0 var(--fx-accent)', paddingLeft: '12px' };
+  }
+
+  tone(t) {
+    return t === 'good' ? 'var(--fx-success)' : t === 'warn' ? 'var(--fx-warning)' : t === 'bad' ? 'var(--fx-danger)' : 'var(--fx-text-primary)';
+  }
+
+  renderVals() {
+    const s = this.state;
+    const mode = s.mode || 'light';
+    const role = s.role, screen = s.screen;
+    const ph = s.device === 'phone';
+    const isViewer = role === 'viewer';
+    const hasFeed = role === 'owner' || role === 'manager';
+    const noAccess = role === 'planner';
+
+    const scope = DEPT_SCOPE[role];
+    const visible = EXCEPTIONS
+      .filter(e => !scope || scope.indexOf(e[1]) >= 0)
+      .sort((a, b) => a[7] - b[7]);
+    const feedEmpty = s.feed === 'clear' || visible.length === 0;
+    const firstApprovalRef = (visible.find(e => e[8]) || [])[2];
+
+    const exceptions = visible.map(e => {
+      const sev = e[11];
+      const c = sev === 'danger' ? 'var(--fx-danger)' : sev === 'warning' ? 'var(--fx-warning)' : 'var(--fx-accent-pressed)';
+      const primaryApproval = e[8] && e[2] === firstApprovalRef;
+      return {
+        kind: e[0], ref: e[2], truth: e[3], because: e[4], age: e[5],
+        kindColor: c,
+        ageColor: e[6] ? 'var(--fx-danger)' : 'var(--fx-text-tertiary)',
+        sel: c, selW: sev === 'danger' || e[8] ? '5px' : '3px',
+        border: sev === 'danger' ? 'var(--fx-danger)' : 'var(--fx-border-subtle)',
+        bodyStyle: {
+          flex: 1, minWidth: 0, padding: ph ? '16px 17px' : '18px 22px',
+          display: 'flex', flexDirection: 'column', gap: ph ? '11px' : '12px'
+        },
+        truthStyle: {
+          font: (ph ? "600 17px/1.35 " : "600 19px/1.35 ") + "'Plus Jakarta Sans',sans-serif",
+          textWrap: 'pretty'
+        },
+        actionsStyle: {
+          display: 'flex', gap: '10px', flexWrap: 'wrap',
+          flexDirection: ph ? 'column' : 'row', alignItems: ph ? 'stretch' : 'center'
+        },
+        isApproval: e[8], approveLabel: e[9],
+        approveStyle: primaryApproval
+          ? { background: 'var(--fx-accent)', color: 'var(--fx-accent-on)', border: 'none', borderRadius: '8px', padding: ph ? '15px 18px' : '13px 18px', font: "600 14.5px/1 'Plus Jakarta Sans',sans-serif", cursor: 'pointer', minHeight: ph ? '52px' : '48px' }
+          : { background: 'transparent', color: 'var(--fx-text-primary)', border: '1px solid var(--fx-text-primary)', borderRadius: '8px', padding: ph ? '15px 18px' : '13px 18px', font: "600 14.5px/1 'Plus Jakarta Sans',sans-serif", cursor: 'pointer', minHeight: ph ? '52px' : '48px' },
+        approve: () => this.flash(e[9] + ' · approved by ' + USERS[role] + ' · the request came from the inbox, not from here'),
+        drillLabel: e[10],
+        drillStyle: {
+          background: 'transparent', color: 'var(--fx-text-secondary)',
+          border: '1px solid var(--fx-border-default)', borderRadius: '8px',
+          padding: ph ? '15px 18px' : '13px 17px', font: "600 14px/1 'Plus Jakarta Sans',sans-serif",
+          cursor: 'pointer', minHeight: ph ? '52px' : '48px'
+        },
+        drill: () => this.flash(e[10] + ' · ' + e[2])
+      };
+    });
+
+    const kpis = KPIS.map((x, i) => {
+      const vals = x[5];
+      const max = Math.max.apply(null, vals.map(Math.abs));
+      const open = s.openKpi === i;
+      return {
+        label: x[0], value: x[1], delta: x[2], sub: x[4], periods: x[6], source: x[7],
+        deltaColor: x[3] ? 'var(--fx-success)' : 'var(--fx-danger)',
+        c: x[3] ? 'var(--fx-success)' : 'var(--fx-warning)',
+        border: 'var(--fx-border-subtle)',
+        valueStyle: { font: (ph ? "700 30px/1 " : "700 34px/1 ") + "'JetBrains Mono',monospace", letterSpacing: '-.02em' },
+        spark: vals.map(v => ({
+          style: {
+            flex: 1, minWidth: '4px',
+            height: Math.max(3, Math.abs(v) / max * 100) + '%',
+            borderRadius: '2px 2px 0 0',
+            background: v < 0 ? 'var(--fx-danger)' : x[3] ? 'var(--fx-success)' : 'var(--fx-warning)',
+            opacity: v < 0 ? 0.85 : 1
+          }
+        })),
+        open,
+        askLabel: open ? 'Close' : 'Why?',
+        askStyle: {
+          background: open ? 'var(--fx-bg-sunken)' : 'transparent',
+          color: open ? 'var(--fx-text-primary)' : 'var(--fx-info)',
+          border: 'none', borderTop: '1px solid var(--fx-border-subtle)',
+          padding: '14px 20px', textAlign: 'left', cursor: 'pointer',
+          font: "600 13.5px/1 'Plus Jakarta Sans',sans-serif", minHeight: '48px'
+        },
+        ask: () => this.setState(y => ({ openKpi: y.openKpi === i ? -1 : i })),
+        contributors: x[8].map(cn => ({
+          ref: cn[0], what: cn[1], amount: cn[2],
+          c: cn[3] ? 'var(--fx-success)' : 'var(--fx-danger)'
+        }))
+      };
+    });
+
+    const asks = [
+      'efficiency by line June vs May as a table I can WhatsApp',
+      'which orders are late and why, one line each',
+      'DHU by line this month against target'
+    ];
+    const rep = REPORTS[s.askIdx];
+
+    return {
+      screens: [['p1', 'P1 exceptions'], ['p2', 'P2 numbers'], ['p3', 'P3 buyers'], ['p4', 'P4 ask'], ['p5', 'P5 reports']].map(x => ({
+        label: x[1], pick: () => this.setState({ screen: x[0] }), style: this.pill(screen === x[0])
+      })),
+      role, userName: USERS[role],
+      setRole: (e) => this.setState({ role: e.target.value, screen: e.target.value === 'viewer' ? 'p2' : 'p1' }),
+      device: s.device, setDevice: (e) => this.setState({ device: e.target.value }),
+      feed: s.feed, setFeed: (e) => this.setState({ feed: e.target.value }),
+      annot: s.annot, annotLabel: s.annot ? 'on' : 'off', annotBtn: this.ghost(s.annot),
+      mode, modeLabel: mode === 'dark' ? 'dark' : 'light', modeBtn: this.ghost(mode === 'dark'),
+      logoSrc: 'uploads/fabricxai-logo-' + (mode === 'dark' ? 'dark' : 'light') + '.png',
+      toggleMode: () => this.setState(x => ({ mode: x.mode === 'dark' ? 'light' : 'dark' })),
+      toggleAnnot: () => this.setState(x => ({ annot: !x.annot })),
+
+      isDesk: !ph, isPhone: ph,
+      frameOuter: ph
+        ? { display: 'flex', justifyContent: 'center', padding: '28px 20px 40px', background: 'var(--fx-bg-sunken)' }
+        : { display: 'flex', alignItems: 'stretch' },
+      frameInner: ph
+        ? { width: '390px', maxWidth: '100%', minHeight: '780px', background: 'var(--fx-bg-canvas)', border: '1px solid var(--fx-border-default)', borderRadius: '14px', overflow: 'hidden', boxShadow: 'var(--fx-sh3)', display: 'flex', flexDirection: 'column' }
+        : { display: 'flex', alignItems: 'stretch', width: '100%' },
+      mainStyle: ph
+        ? { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', background: 'var(--fx-bg-canvas)' }
+        : { flex: 1, minWidth: 0, background: 'var(--fx-bg-canvas)', position: 'relative', paddingBottom: '90px' },
+      padStyle: {
+        padding: ph ? '18px 16px 24px' : '26px 28px',
+        display: 'flex', flexDirection: 'column', gap: ph ? '16px' : '20px',
+        maxWidth: ph ? 'none' : '1280px', flex: ph ? 1 : 'none'
+      },
+      h1Style: {
+        font: (ph ? "700 25px/1.18 " : "700 32px/1.15 ") + "'Plus Jakarta Sans',sans-serif",
+        letterSpacing: '-.02em', textWrap: 'pretty'
+      },
+      kpiGrid: {
+        display: 'grid',
+        gridTemplateColumns: ph ? '1fr' : 'repeat(auto-fit, minmax(320px, 1fr))',
+        gap: ph ? '14px' : '18px'
+      },
+      buyerGrid: {
+        display: 'grid',
+        gridTemplateColumns: ph ? '1fr' : 'repeat(auto-fit, minmax(420px, 1fr))',
+        gap: ph ? '14px' : '18px'
+      },
+      reportWrap: {
+        display: 'grid',
+        gridTemplateColumns: ph ? '1fr' : 'minmax(0, 460px) minmax(0, 1fr)',
+        gap: ph ? '18px' : '24px', alignItems: 'start'
+      },
+
+      noAccess,
+      isP1: !noAccess && hasFeed && screen === 'p1',
+      isP2: !noAccess && screen === 'p2',
+      isP3: !noAccess && !isViewer && screen === 'p3',
+      isP4: !noAccess && !isViewer && screen === 'p4',
+      isP5: !noAccess && !isViewer && screen === 'p5',
+      goP2: () => this.setState({ screen: 'p2' }),
+
+      nav: [['p1', 'Exceptions'], ['p2', 'Numbers'], ['p3', 'Buyers'], ['p4', 'Ask'], ['p5', 'Reports']]
+        .filter(x => !noAccess && (hasFeed || x[0] !== 'p1') && (!isViewer || x[0] === 'p2'))
+        .map(x => ({
+          label: x[1], pick: () => this.setState({ screen: x[0] }),
+          badge: x[0] === 'p1' && !feedEmpty, count: String(visible.length),
+          badgeStyle: {
+            marginLeft: 'auto', font: "600 11px/1 'JetBrains Mono',monospace",
+            color: 'var(--fx-text-inverse)', background: 'var(--fx-danger)',
+            borderRadius: '999px', padding: '5px 7px', minWidth: '20px', textAlign: 'center'
+          },
+          style: {
+            display: 'flex', alignItems: 'center', gap: '11px', padding: '11px 12px', borderRadius: '8px', cursor: 'pointer',
+            minHeight: '44px', font: "500 14px/1 'Plus Jakarta Sans',sans-serif",
+            background: screen === x[0] ? 'var(--fx-bg-selected)' : 'transparent',
+            color: screen === x[0] ? 'var(--fx-text-primary)' : 'var(--fx-text-secondary)'
+          },
+          marker: { width: '2px', height: '15px', transform: 'skewX(-34deg)', background: screen === x[0] ? 'var(--fx-accent)' : 'transparent', flexShrink: 0 }
+        })),
+      tabs: [['p1', 'Needs you'], ['p2', 'Numbers'], ['p3', 'Buyers'], ['p4', 'Ask'], ['p5', 'Reports']]
+        .filter(x => !noAccess && (hasFeed || x[0] !== 'p1') && (!isViewer || x[0] === 'p2'))
+        .map(x => ({
+          label: x[1], pick: () => this.setState({ screen: x[0] }),
+          badge: x[0] === 'p1' && !feedEmpty, count: String(visible.length),
+          badgeStyle: {
+            position: 'absolute', top: '4px', right: '10px',
+            font: "600 10px/1 'JetBrains Mono',monospace", color: 'var(--fx-text-inverse)',
+            background: 'var(--fx-danger)', borderRadius: '999px', padding: '4px 5px', minWidth: '17px', textAlign: 'center'
+          },
+          style: {
+            position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px',
+            padding: '9px 4px 7px', borderRadius: '8px', cursor: 'pointer', minHeight: '52px',
+            background: screen === x[0] ? 'var(--fx-bg-selected)' : 'transparent',
+            color: screen === x[0] ? 'var(--fx-text-primary)' : 'var(--fx-text-tertiary)'
+          },
+          marker: {
+            width: '14px', height: '2px', transform: 'skewX(-34deg)',
+            background: screen === x[0] ? 'var(--fx-accent)' : 'transparent'
+          }
+        })),
+
+      greeting: 'Saturday 12 September · 07:40',
+      feedTitle: feedEmpty ? 'Nothing needs you' : (visible.length + (visible.length === 1 ? ' thing needs you' : ' things need you')),
+      feedLead: feedEmpty
+        ? 'The feed is empty because nothing crossed a threshold, not because nobody looked.'
+        : role === 'manager'
+          ? 'Production and quality only — the exceptions your departments own. Ranked by what it costs to leave alone until Monday.'
+          : 'Ranked by what it costs to leave alone until Monday, not by when it arrived. Two of these you can settle from this screen.',
+      feedEmpty, feedHas: !feedEmpty,
+      exceptions,
+
+      kpis,
+
+      buyers: BUYERS.map(b => ({
+        name: b[0], since: b[1], verdict: b[3],
+        stats: b[2].map(x => ({ k: x[0], v: x[1], note: x[2], c: this.tone(x[3]) })),
+        sel: this.tone(b[4]), selW: b[4] === 'bad' ? '5px' : '3px',
+        border: b[4] === 'bad' ? 'var(--fx-danger)' : 'var(--fx-border-subtle)'
+      })),
+
+      askPrompt: 'Ask MARBIM for a report',
+      askText: asks[s.askIdx],
+      askPresets: asks.map((a, i) => ({
+        label: i === 0 ? 'efficiency by line' : i === 1 ? 'late orders' : 'DHU by line',
+        pick: () => this.setState({ askIdx: i }),
+        style: {
+          background: s.askIdx === i ? 'var(--fx-bg-selected)' : 'transparent',
+          color: 'var(--fx-text-primary)',
+          border: '1px solid ' + (s.askIdx === i ? 'var(--fx-text-primary)' : 'var(--fx-border-default)'),
+          borderRadius: '8px', padding: '11px 14px', cursor: 'pointer', minHeight: '44px',
+          font: "600 13px/1 'Plus Jakarta Sans',sans-serif"
+        }
+      })),
+      report: {
+        title: rep.title,
+        c0: rep.cols[0], c1: rep.cols[1], c2: rep.cols[2], c3: rep.cols[3],
+        stamp: 'asked by ' + USERS[role] + ' · 12 Sep 07:41 · ' + rep.stamp,
+        rows: rep.rows.map(r => ({
+          line: r[0], sub: r[1], hasSub: !!r[1],
+          may: r[2], june: r[3], chg: r[4],
+          c: r[5] === 'good' ? 'var(--fx-success)' : r[5] === 'bad' ? 'var(--fx-danger)' : 'var(--fx-warning)'
+        })),
+        note: rep.note, foot: rep.foot
+      },
+      shareTargets: [
+        ['WhatsApp', 'as an image, sized for a phone'],
+        ['Email', 'as a PDF attachment'],
+        ['Copy link', 'expires in 7 days'],
+        ['Save report', 'keeps the question, not the answer']
+      ].map((t, i) => ({
+        label: t[0],
+        act: () => this.flash(t[0] === 'Save report'
+          ? 'Saved · the question re-runs on demand, so the numbers are never stale'
+          : t[0] + ' · ' + t[1]),
+        style: {
+          background: 'transparent', color: 'var(--fx-text-primary)',
+          border: '1px solid ' + (i === 0 ? 'var(--fx-text-primary)' : 'var(--fx-border-default)'),
+          borderRadius: '8px', padding: '13px 17px', cursor: 'pointer', minHeight: '48px',
+          font: "600 13.5px/1 'Plus Jakarta Sans',sans-serif", whiteSpace: 'nowrap'
+        }
+      })),
+
+      saved: SAVED.map(r => ({
+        name: r[0], asked: r[1], last: r[2], sched: r[3],
+        c: r[4] === 'sched' ? 'var(--fx-info)' : 'var(--fx-border-subtle)',
+        rowStyle: {
+          flex: 1, minWidth: 0, display: 'grid',
+          gridTemplateColumns: ph ? '1fr' : '1fr 170px 180px 96px',
+          gap: ph ? '9px' : '14px', padding: '14px 20px 14px 17px', alignItems: ph ? 'start' : 'center', minHeight: '44px'
+        },
+        schedChip: {
+          font: "500 11px/1 'JetBrains Mono',monospace", letterSpacing: '.04em',
+          borderRadius: '4px', padding: '6px 8px', whiteSpace: 'nowrap',
+          color: r[4] === 'sched' ? 'var(--fx-info)' : 'var(--fx-text-tertiary)',
+          border: '1px solid ' + (r[4] === 'sched' ? 'var(--fx-info)' : 'var(--fx-border-subtle)')
+        },
+        open: () => this.flash('Opening ' + r[0].toLowerCase())
+      })),
+      schedule: () => this.flash('Schedule set · Monday 07:00 to your WhatsApp, same read-only card'),
+
+      access: ACCESS.map(a => ({ role: a[0], level: a[1], note: a[2], chip: this.chip(a[1]) })),
+      toast: s.toast, clearToast: () => this.setState({ toast: '' }),
+      markStage: { position: 'relative', width: '32px', height: '32px', flexShrink: 0 },
+      markSlashes: SLASH_VEC.map((v, i) => ({
+        src: 'assets/mark/' + (mode === 'dark' ? 'w-' : 'i-') + (i + 1) + '.png',
+        style: { position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', transformOrigin: 'center' }
+      })),
+      bigMarkStage: { position: 'relative', width: '72px', height: '72px', flexShrink: 0, opacity: 0.5 },
+      bigMark: SLASH_VEC.map((v, i) => ({
+        src: 'assets/mark/' + (mode === 'dark' ? 'w-' : 'i-') + (i + 1) + '.png',
+        style: { position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', transformOrigin: 'center' }
+      }))
+    };
+  }
+}
+
+</script>
+</body>
+</html>
