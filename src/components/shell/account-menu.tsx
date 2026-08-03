@@ -6,6 +6,8 @@ import { useEffect, useRef, useState } from 'react'
 import { Avatar } from '@/components/fx/primitives'
 import { signOut } from '@/lib/auth-client'
 
+import { LanguagePicker } from './language-picker'
+
 /**
  * Who is signed in, and the way out.
  *
@@ -138,6 +140,32 @@ export function AccountMenu({
             >
               {roleLabel} · {companyName}
             </span>
+          </div>
+
+          <div
+            style={{
+              borderTop: '1px solid var(--fx-border-subtle)',
+              padding: '12px 16px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8,
+            }}
+          >
+            <span
+              style={{
+                font: "500 11.5px/1.4 var(--fx-font-mono)",
+                color: 'var(--fx-text-tertiary)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+              }}
+            >
+              Language · ভাষা
+            </span>
+            {/* Here rather than in Settings because it is needed by people who may not be
+                able to READ their way to Settings — and because on a shared floor tablet
+                it is a per-device switch somebody flips at shift change, not a
+                configuration task. */}
+            <LanguagePicker />
           </div>
 
           <div
