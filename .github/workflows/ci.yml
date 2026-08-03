@@ -17,6 +17,7 @@ jobs:
   static:
     name: lint · typecheck · unit
     runs-on: ubuntu-latest
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -28,8 +29,11 @@ jobs:
 
       # Includes the two rules that are the ONLY enforcement behind CLAUDE.md rules 4
       # and 9 (no-float-money, analytics-no-writes). Their own tests run under `unit`.
+      # --max-warnings=0: eslint-config-next ships warn-level rules (react-hooks
+      # exhaustive-deps among them) which otherwise cannot fail a build, so the gate
+      # silently weakens as warnings accumulate.
       - name: Lint
-        run: pnpm lint
+        run: pnpm lint --max-warnings=0
 
       - name: Typecheck
         run: pnpm typecheck
@@ -41,6 +45,7 @@ jobs:
   migrations:
     name: migrate-check
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     services:
       postgres:
         image: pgvector/pgvector:pg16
@@ -95,6 +100,7 @@ jobs:
   integration:
     name: integration
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     services:
       postgres:
         image: pgvector/pgvector:pg16
@@ -115,7 +121,7 @@ jobs:
       # MinIO is NOT a service container: it needs `server /data` as its command, and
       # GitHub service containers cannot override one. It is started as a step below.
       mailpit:
-        image: axllent/mailpit:latest
+        image: axllent/mailpit:v1.21
         env:
           MP_SMTP_AUTH_ACCEPT_ANY: '1'
           MP_SMTP_AUTH_ALLOW_INSECURE: '1'
@@ -152,7 +158,7 @@ jobs:
           docker run -d --name minio -p 9000:9000 \
             -e MINIO_ROOT_USER=fabricxai \
             -e MINIO_ROOT_PASSWORD=fabricxai-dev-secret \
-            minio/minio:latest server /data
+            minio/minio:RELEASE.2025-04-22T22-12-26Z server /data
 
           for i in $(seq 1 40); do
             curl -sf http://localhost:9000/minio/health/live >/dev/null && break
@@ -163,7 +169,7 @@ jobs:
 
           # `minio/mc` has `mc` as its entrypoint, so a shell has to be asked for
           # explicitly. No public buckets, ever (dev-plan §6).
-          docker run --rm --network host --entrypoint sh minio/mc:latest -c "
+          docker run --rm --network host --entrypoint sh minio/mc:RELEASE.2025-04-16T18-13-26Z -c "
             mc alias set local http://localhost:9000 fabricxai fabricxai-dev-secret &&
             mc mb --ignore-existing local/fabricxai-documents &&
             mc anonymous set none local/fabricxai-documents"
@@ -185,9 +191,42 @@ jobs:
           pnpm seed --scale=pilot
 
   # ── Image builds ───────────────────────────────────────────────────────────
-  docker:
-    name: docker build
+  # ── Supply chain ───────────────────────────────────────────────────────────
+  #
+  # An ERP holding payroll and LC data, deployed to a VPS a factory's own IT keeps
+  # running. Neither of these existed before, so a known-vulnerable transitive
+  # dependency or a committed key would have shipped unremarked.
+  supply-chain:
+    name: audit · secrets
     runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # gitleaks needs history to scan commits, not just the tree — a secret that
+          # was committed and then removed is still a leaked secret.
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # Production dependencies only. A dev-only advisory is worth knowing about and is
+      # not worth blocking a deploy on: it never reaches the factory's runtime.
+      - name: Audit production dependencies
+        run: pnpm audit --prod --audit-level=high
+
+      - name: Scan history for secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  docker:
+    name: docker build · scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -200,3 +239,28 @@ jobs:
           tags: fabricxai:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # The image is what actually runs in the factory, so it is what gets scanned —
+      # `pnpm audit` cannot see the Debian base layer, and the base is where an
+      # unpatched OpenSSL would live.
+      - name: Scan image for known vulnerabilities
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: fabricxai:ci
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+
+      # Prove the image can actually start and answer, not merely that it compiled.
+      # A build that produces an image which exits on boot passed CI before this.
+      - name: Refuse to boot without a valid environment
+        run: |
+          set -o pipefail
+          # No env supplied at all: lib/env.ts must reject it and name every problem.
+          # An image that starts happily with no configuration is one that will start
+          # happily with the wrong configuration.
+          if docker run --rm fabricxai:ci next start 2>&1 | tee /tmp/boot.log; then
+            echo '::error::the image started with no environment — env validation is not running'
+            exit 1
+          fi
+          grep -q 'Invalid environment' /tmp/boot.log
