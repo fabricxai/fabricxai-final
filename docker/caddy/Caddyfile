@@ -1,0 +1,58 @@
+# TLS termination for the single-factory deployment.
+#
+# Caddy is here for one reason that matters and one that is convenience: it gets and
+# renews a Let's Encrypt certificate without anybody remembering to, and it is the only
+# container with a published port. Everything else on this host talks over the compose
+# network.
+
+{
+	email {$TLS_EMAIL}
+	# Certificates and OCSP staples live in the caddy-data volume, so a container
+	# rebuild does not mean a new certificate and a rate-limit problem.
+}
+
+{$APP_DOMAIN} {
+	encode zstd gzip
+
+	# ── Object storage ─────────────────────────────────────────────────────────
+	#
+	# Presigned URLs are generated for {$APP_DOMAIN}/s3 (S3_PUBLIC_ENDPOINT) and must
+	# arrive at MinIO with that path prefix intact: SigV4 signs the Host header AND the
+	# path, so stripping the prefix here invalidates every signature. `to` without a
+	# rewrite is deliberate.
+	#
+	# This route exists because a floor tablet cannot resolve `minio:9000`, which is
+	# what the server-side endpoint is — the audit's INFRA-H1.
+	handle_path /s3/* {
+		reverse_proxy minio:9000 {
+			# Uploads are up to 25MB (core/documents.ts); do not buffer them in Caddy.
+			flush_interval -1
+		}
+	}
+
+	# ── The application ────────────────────────────────────────────────────────
+	reverse_proxy app:3000 {
+		# The app sets its own security headers in next.config.ts, deliberately, so
+		# that a deployment which bypasses this proxy still ships them. Nothing is
+		# added here — two sources for one header is how a CSP ends up doubled and
+		# silently ignored by the browser.
+		header_up X-Forwarded-Proto {scheme}
+	}
+
+	# A floor tablet posting a shift's worth of offline rows, plus a 25MB challan photo,
+	# against a body limit that is generous but not unbounded (audit INFRA-M4: route
+	# handlers have no ceiling of their own, only server actions do).
+	request_body {
+		max_size 30MB
+	}
+
+	log {
+		output file /data/access.log {
+			roll_size 20MB
+			roll_keep 5
+		}
+		# The floor posts every hour of every shift; logging each one at INFO fills a
+		# disk and hides the requests that matter.
+		level WARN
+	}
+}

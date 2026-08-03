@@ -41,7 +41,17 @@ ENV NODE_ENV=production
 ENV PATH=/app/node_modules/.bin:$PATH
 
 # Do not run as root. A container that does is one file-write bug from a bad day.
-RUN groupadd --system --gid 1001 fabricxai \
+#
+# dumb-init is PID 1 for a specific reason (audit INFRA-H4): the worker's entry runs
+# under `tsx`, which spawns a child Node process. As PID 1, tsx does not reliably
+# forward SIGTERM to that child, so the careful graceful drain in
+# `src/worker/index.ts` — stop the relay, close workers before queues so in-flight
+# jobs are interrupted rather than marked failed — never ran on a deploy. Every
+# rolling restart hard-killed jobs mid-transaction and left them stalled.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends dumb-init \
+ && rm -rf /var/lib/apt/lists/* \
+ && groupadd --system --gid 1001 fabricxai \
  && useradd --system --uid 1001 --gid fabricxai --home-dir /app fabricxai
 
 COPY --from=deps  --chown=fabricxai:fabricxai /app/node_modules ./node_modules
@@ -56,8 +66,19 @@ EXPOSE 3000
 
 # Uptime Kuma and the orchestrator both poll this; it exercises Postgres through
 # PgBouncer and Redis, so a green check means the real paths work.
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+#
+# 60s start-period, not 20s: a cold Next 16 boot on a loaded VPS validates the whole
+# environment, warms the module registry and asserts the database role before it
+# serves anything, and a check that fires before that finishes restarts a container
+# that was about to be fine.
+#
+# The WORKER SERVICE MUST SET `healthcheck: disable: true` — it serves no HTTP, so it
+# inherits this check and reports unhealthy forever. docker-compose.prod.yml does.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+
+# dumb-init reaps zombies and forwards signals; see the note above the install.
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 
 # The worker container overrides this with:  ["tsx", "src/worker/index.ts"]
 CMD ["next", "start"]

@@ -37,6 +37,17 @@ const baseSchema = z.object({
 
   // Object storage: MinIO in dev/prod, any S3 API later — all code uses @aws-sdk/client-s3.
   S3_ENDPOINT: z.url(),
+  /**
+   * Browser-facing object-storage base, used ONLY to sign presigned URLs.
+   *
+   * `S3_ENDPOINT` is the server's route to storage — on a compose deployment that is
+   * `http://minio:9000`, which a floor tablet cannot resolve. SigV4 signs the Host
+   * header and the path, so a URL signed for the internal name cannot be rewritten in
+   * the browser: without this split every upload and download fails in production
+   * (audit INFRA-H1). Optional, and falls back to `S3_ENDPOINT`, because in dev the two
+   * are genuinely the same address.
+   */
+  S3_PUBLIC_ENDPOINT: z.url().optional(),
   S3_REGION: z.string().min(1).default('us-east-1'),
   S3_ACCESS_KEY_ID: z.string().min(1),
   S3_SECRET_ACCESS_KEY: z.string().min(1),

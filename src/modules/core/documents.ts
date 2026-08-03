@@ -18,7 +18,7 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { documents } from '@/db/schema/core'
 import { env } from '@/lib/env'
 import { objectKey as newObjectKey } from '@/lib/ids'
-import { getS3 } from '@/lib/s3'
+import { getS3, getS3ForSigning } from '@/lib/s3'
 
 import type { AnyCtx } from './ctx'
 import { AppError, notFound } from './errors'
@@ -116,7 +116,8 @@ export async function createUploadUrl(
   })
 
   const uploadUrl = await getSignedUrl(
-    getS3(),
+    // Signed for the address the DEVICE will open, not the one the server uses.
+    getS3ForSigning(),
     new PutObjectCommand({
       Bucket: env.S3_BUCKET,
       Key: key,
@@ -209,7 +210,7 @@ export async function createDownloadUrl(
   }
 
   const url = await getSignedUrl(
-    getS3(),
+    getS3ForSigning(),
     new GetObjectCommand({
       Bucket: doc.bucket,
       Key: doc.objectKey,
