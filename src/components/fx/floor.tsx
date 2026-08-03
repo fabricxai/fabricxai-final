@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react'
 
+import { useT } from './locale'
 import { MarbimMark } from './mark'
 import { Button } from './primitives'
 import type { QueuedWrite } from '@/lib/offline/queue'
@@ -37,6 +38,7 @@ export function SyncPill({
   syncing: boolean
   onSync: () => void
 }) {
+  const t = useT()
   const tone = !online ? 'var(--fx-warning)' : queued > 0 ? 'var(--fx-info)' : 'var(--fx-success)'
 
   return (
@@ -64,14 +66,14 @@ export function SyncPill({
       {syncing ? (
         <>
           <MarbimMark state="streaming" size={20} label={null} />
-          sending
+          {t('ui.floor.sync_sending')}
         </>
       ) : !online ? (
-        <>offline · {queued} saved here</>
+        <>{t('ui.floor.sync_offline', { queued })}</>
       ) : queued > 0 ? (
-        <>{queued} to send · tap to retry</>
+        <>{t('ui.floor.sync_pending', { queued })}</>
       ) : (
-        <>all sent</>
+        <>{t('ui.floor.sync_all_sent')}</>
       )}
     </button>
   )
@@ -90,6 +92,7 @@ export function RejectedWrites({
   refused: QueuedWrite[]
   onDismiss: (offlineKey: string) => void
 }) {
+  const t = useT()
   if (refused.length === 0) return null
 
   return (
@@ -106,18 +109,29 @@ export function RejectedWrites({
       }}
     >
       <div style={{ font: "600 16px/1.3 var(--fx-font-sans)", color: 'var(--fx-text-primary)' }}>
-        {refused.length} {refused.length === 1 ? 'entry was' : 'entries were'} refused
+        {t.plural('ui.floor.refused', refused.length)}
       </div>
       {refused.map((entry) => (
         <div
           key={entry.offlineKey}
           style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}
         >
+          {/* The KEY was being rendered here — `store.errors.bonded_requires_ud` in front
+              of a storekeeper. Resolved through the catalogue instead, which is the whole
+              point of the keys, with the operation kept as a quotable prefix so a
+              supervisor can say which entry. */}
           <span style={{ font: "400 14px/1.5 var(--fx-font-sans)", color: 'var(--fx-text-secondary)' }}>
-            {entry.operation.replace(/_/g, ' ')} — {entry.rejection?.errorKey}
+            {entry.operation.replace(/_/g, ' ')} —{' '}
+            {entry.rejection?.errorKey
+              ? t(entry.rejection.errorKey) === entry.rejection.errorKey
+                ? // No copy for this key: show the key rather than a shrug, so it is
+                  // greppable in a bug report. Same rule as the notification catalogue.
+                  entry.rejection.errorKey
+                : t(entry.rejection.errorKey)
+              : t('ui.floor.refused_unknown_reason')}
           </span>
           <Button variant="ghost" size="sm" onClick={() => onDismiss(entry.offlineKey)}>
-            Dismiss
+            {t('ui.common.dismiss')}
           </Button>
         </div>
       ))}

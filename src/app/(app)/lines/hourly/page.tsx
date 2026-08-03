@@ -5,6 +5,8 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { EmptyState } from '@/components/fx/feedback'
 import { FloorScreen } from '@/components/fx/floor'
 import { PageHeader } from '@/components/shell/page-shell'
+import { tui } from '@/lib/i18n-ui'
+import { requestLocale } from '@/lib/ui-locale'
 import { getCtx } from '@/modules/core/session'
 import { withTenantRead } from '@/modules/core/tenancy'
 import { lines } from '@/modules/planning/schema'
@@ -35,6 +37,8 @@ const SHIFT_START = 8
 export default async function HourlyPage() {
   const ctx = await getCtx(await headers())
   if (!ctx) redirect('/login')
+
+  const locale = await requestLocale()
 
   const today = new Date().toISOString().slice(0, 10)
 
@@ -69,10 +73,14 @@ export default async function HourlyPage() {
   if (rows.length === 0) {
     return (
       <FloorScreen>
-        <PageHeader eyebrow="Line tracking · hourly" title="No lines set up" ownsAmber />
+        <PageHeader
+          eyebrow={tui(locale, 'ui.production.hourly_eyebrow')}
+          title={tui(locale, 'ui.production.no_lines_title')}
+          ownsAmber
+        />
         <EmptyState
-          title="Nothing to count"
-          body="Hourly output is entered against a line. Planning sets the floor up before the floor can report on it."
+          title={tui(locale, 'ui.production.hourly_empty_title')}
+          body={tui(locale, 'ui.production.hourly_empty_body')}
         />
       </FloorScreen>
     )
@@ -91,11 +99,17 @@ export default async function HourlyPage() {
   return (
     <FloorScreen>
       <PageHeader
-        eyebrow={`Line tracking · hourly · ${today}`}
-        title={`Hour ${currentHour}:00`}
+        eyebrow={tui(locale, 'ui.production.hourly_eyebrow_dated', { date: today })}
+        title={tui(locale, 'ui.production.hour_title', { hour: currentHour })}
         meta={
           openStoppages.length > 0
-            ? `${openStoppages.length} line${openStoppages.length === 1 ? '' : 's'} stopped`
+            ? tui(
+                locale,
+                openStoppages.length === 1
+                  ? 'ui.production.lines_stopped_one'
+                  : 'ui.production.lines_stopped_other',
+                { count: openStoppages.length },
+              )
             : undefined
         }
         ownsAmber

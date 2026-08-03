@@ -5,6 +5,8 @@ import { eq } from 'drizzle-orm'
 import { EmptyState } from '@/components/fx/feedback'
 import { FloorScreen } from '@/components/fx/floor'
 import { PageHeader } from '@/components/shell/page-shell'
+import { tui } from '@/lib/i18n-ui'
+import { requestLocale } from '@/lib/ui-locale'
 import { getCtx } from '@/modules/core/session'
 import { withTenantRead } from '@/modules/core/tenancy'
 import { lines } from '@/modules/planning/schema'
@@ -28,6 +30,8 @@ export const dynamic = 'force-dynamic'
 export default async function EndlinePage() {
   const ctx = await getCtx(await headers())
   if (!ctx) redirect('/login')
+
+  const locale = await requestLocale()
 
   const today = new Date().toISOString().slice(0, 10)
 
@@ -58,10 +62,14 @@ export default async function EndlinePage() {
   if (lineRows.length === 0) {
     return (
       <FloorScreen>
-        <PageHeader eyebrow="Line tracking · endline" title="No lines set up" ownsAmber />
+        <PageHeader
+          eyebrow={tui(locale, 'ui.production.endline_eyebrow')}
+          title={tui(locale, 'ui.production.no_lines_title')}
+          ownsAmber
+        />
         <EmptyState
-          title="Nothing to check"
-          body="Endline QC is counted against a line. Planning sets the floor up before the floor can report on it."
+          title={tui(locale, 'ui.production.endline_empty_title')}
+          body={tui(locale, 'ui.production.endline_empty_body')}
         />
       </FloorScreen>
     )
@@ -72,9 +80,12 @@ export default async function EndlinePage() {
   return (
     <FloorScreen>
       <PageHeader
-        eyebrow={`Line tracking · endline · ${today}`}
-        title="What the checkers found"
-        meta={`${counts.length} of ${lineRows.length} lines counted`}
+        eyebrow={tui(locale, 'ui.production.endline_eyebrow_dated', { date: today })}
+        title={tui(locale, 'ui.production.endline_title')}
+        meta={tui(locale, 'ui.production.endline_meta', {
+          counted: counts.length,
+          total: lineRows.length,
+        })}
         ownsAmber
       />
       <EndlineClient

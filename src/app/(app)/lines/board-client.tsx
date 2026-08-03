@@ -4,11 +4,33 @@ import { useState } from 'react'
 
 import { Card } from '@/components/fx/data'
 import { FloorScreen, NumpadInput, RejectedWrites, SyncPill } from '@/components/fx/floor'
+import { useT } from '@/components/fx/locale'
 import { Button } from '@/components/fx/primitives'
 import { Eyebrow } from '@/components/fx/signature'
 import { Modal } from '@/components/fx/feedback'
 import { useOfflineQueue } from '@/lib/offline/use-offline-queue'
+import type { Translator } from '@/lib/i18n-ui'
 import type { LineRow } from '@/modules/production/queries'
+
+/**
+ * A `downtime_reason` as the word a supervisor reads, not as the column value.
+ *
+ * `openDowntime.reason` arrives as a plain string, so a sixth value added to the enum
+ * without touching this screen renders raw rather than as a missing key — wrong-looking but
+ * readable, which on a floor tablet is the safer failure.
+ */
+const DOWNTIME_REASON_COPY: Record<string, string> = {
+  machine: 'ui.production.downtime_machine',
+  feeding: 'ui.production.downtime_feeding',
+  absent: 'ui.production.downtime_absent',
+  power: 'ui.production.downtime_power',
+  other: 'ui.production.downtime_other',
+}
+
+function downtimeReason(t: Translator, reason: string): string {
+  const key = DOWNTIME_REASON_COPY[reason]
+  return key ? t(key) : reason
+}
 
 /**
  * The hourly board.
@@ -18,17 +40,19 @@ import type { LineRow } from '@/modules/production/queries'
  * it is the system's problem. The pill is the only honest signal of what has
  * actually reached the server.
  */
+// `lines` used to be a prop here and was consumed by nothing but a
+// `{lines.length === 0 ? null : null}` left over from an earlier draft. The page still
+// needs the list for its own header count; this component works entirely from `rows`.
 export function LineBoard({
   rows,
-  lines,
   producedOn,
   shiftHours,
 }: {
   rows: LineRow[]
-  lines: { id: string; code: string; name: string }[]
   producedOn: string
   shiftHours: number
 }) {
+  const t = useT()
   const { online, queued, refused, syncing, capture, sync, clear } = useOfflineQueue()
   const [entry, setEntry] = useState<{ line: LineRow; hour: number } | null>(null)
 
@@ -40,7 +64,7 @@ export function LineBoard({
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
           <SyncPill online={online} queued={queued} syncing={syncing} onSync={() => void sync()} />
           <span style={{ font: "400 14px/1.4 var(--fx-font-mono)", color: 'var(--fx-text-tertiary)' }}>
-            entries are saved on this tablet first, then sent
+            {t('ui.production.saved_here_first')}
           </span>
         </div>
 
@@ -62,13 +86,13 @@ export function LineBoard({
                   color: 'var(--fx-text-tertiary)',
                 }}
               >
-                <div>Line</div>
+                <div>{t('ui.production.col_line')}</div>
                 {hourSlots.map((h) => (
                   <div key={h} style={{ textAlign: 'center' }}>
                     {h}:00
                   </div>
                 ))}
-                <div style={{ textAlign: 'right' }}>Day</div>
+                <div style={{ textAlign: 'right' }}>{t('ui.production.col_day')}</div>
               </div>
 
               {rows.map((row) => (
@@ -97,7 +121,9 @@ export function LineBoard({
                         <span
                           style={{ font: "400 12px/1.3 var(--fx-font-mono)", color: 'var(--fx-danger)' }}
                         >
-                          stopped · {row.openDowntime.reason}
+                          {t('ui.production.stopped_reason', {
+                            reason: downtimeReason(t, row.openDowntime.reason),
+                          })}
                         </span>
                       ) : null}
                     </div>
@@ -182,7 +208,7 @@ export function LineBoard({
                         }}
                       >
                         {row.target === 0
-                          ? 'no target'
+                          ? t('ui.production.no_target')
                           : `${row.variance >= 0 ? '+' : ''}${row.variance} · ${row.achievedPct}%`}
                       </span>
                     </div>
@@ -200,7 +226,7 @@ export function LineBoard({
               color: 'var(--fx-text-tertiary)',
             }}
           >
-            an empty hour is an hour nobody has counted — it is never read as zero output
+            {t('ui.production.empty_hour_note')}
           </div>
         </Card>
       </div>
@@ -230,8 +256,6 @@ export function LineBoard({
           setEntry(null)
         }}
       />
-
-      {lines.length === 0 ? null : null}
     </FloorScreen>
   )
 }
@@ -247,6 +271,7 @@ function HourEntry({
   onClose: () => void
   onSave: (target: string, actual: string) => Promise<void>
 }) {
+  const t = useT()
   const existing = entry?.line.hours.find((c) => c.hourSlot === entry.hour)
   const [target, setTarget] = useState(existing ? String(existing.target) : '')
   const [actual, setActual] = useState(existing ? String(existing.actual) : '')
@@ -265,7 +290,7 @@ function HourEntry({
       footer={
         <>
           <Button variant="secondary" size="lg" onClick={onClose} disabled={busy}>
-            Cancel
+            {t('ui.common.cancel')}
           </Button>
           <Button
             variant="primary"
@@ -280,17 +305,28 @@ function HourEntry({
               }
             }}
           >
-            Save
+            {t('ui.common.save')}
           </Button>
         </>
       }
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
         <Eyebrow>{producedOn}</Eyebrow>
-        <NumpadInput label="Target this hour" value={target} onChange={setTarget} unit="pcs" autoFocus />
-        <NumpadInput label="Actually made" value={actual} onChange={setActual} unit="pcs" />
+        <NumpadInput
+          label={t('ui.production.field_target_hour')}
+          value={target}
+          onChange={setTarget}
+          unit={t('ui.production.unit_pcs')}
+          autoFocus
+        />
+        <NumpadInput
+          label={t('ui.production.field_actual')}
+          value={actual}
+          onChange={setActual}
+          unit={t('ui.production.unit_pcs')}
+        />
         <span style={{ font: "400 13px/1.5 var(--fx-font-sans)", color: 'var(--fx-text-tertiary)' }}>
-          Saved on this tablet straight away. It goes to the office when there is a network.
+          {t('ui.production.saved_on_tablet_note')}
         </span>
       </div>
     </Modal>

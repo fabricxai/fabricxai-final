@@ -5,8 +5,10 @@ import { useState } from 'react'
 
 import { InlineAlert, Modal } from '@/components/fx/feedback'
 import { NumpadInput, SyncPill } from '@/components/fx/floor'
+import { useT } from '@/components/fx/locale'
 import { Badge, Button } from '@/components/fx/primitives'
 import { SectionHeading } from '@/components/fx/signature'
+import type { Translator } from '@/lib/i18n-ui'
 import { useOfflineQueue } from '@/lib/offline/use-offline-queue'
 
 interface LineRow {
@@ -28,12 +30,32 @@ interface Stoppage {
 }
 
 const REASONS = [
-  { code: 'machine', label: 'Machine — raises a maintenance ticket' },
-  { code: 'feeding', label: 'Feeding — no work at the line' },
-  { code: 'absent', label: 'Absent — operators short' },
-  { code: 'power', label: 'Power' },
-  { code: 'other', label: 'Other' },
+  { code: 'machine', labelKey: 'ui.production.reason_machine' },
+  { code: 'feeding', labelKey: 'ui.production.reason_feeding' },
+  { code: 'absent', labelKey: 'ui.production.reason_absent' },
+  { code: 'power', labelKey: 'ui.production.reason_power' },
+  { code: 'other', labelKey: 'ui.production.reason_other' },
 ] as const
+
+/**
+ * A `downtime_reason` as the word a supervisor reads, not as the column value.
+ *
+ * The short form, because it goes in a badge next to the line code. A sixth value added to
+ * the enum without touching this screen renders raw rather than as a missing key — wrong but
+ * readable, which on a floor tablet is the safer failure.
+ */
+const DOWNTIME_REASON_COPY: Record<string, string> = {
+  machine: 'ui.production.downtime_machine',
+  feeding: 'ui.production.downtime_feeding',
+  absent: 'ui.production.downtime_absent',
+  power: 'ui.production.downtime_power',
+  other: 'ui.production.downtime_other',
+}
+
+function downtimeReason(t: Translator, reason: string): string {
+  const key = DOWNTIME_REASON_COPY[reason]
+  return key ? t(key) : reason
+}
 
 /** Whole minutes since a stoppage opened. */
 function minutesSince(iso: string): number {
@@ -62,6 +84,7 @@ export function HourlyClient({
   lines: readonly LineRow[]
   stoppages: readonly Stoppage[]
 }) {
+  const t = useT()
   const router = useRouter()
   const { capture, online, queued, syncing, refused, sync, clear } = useOfflineQueue()
 
@@ -95,7 +118,7 @@ export function HourlyClient({
       },
     })
 
-    setSent(`${filled.length} line${filled.length === 1 ? '' : 's'} · ${total} pieces`)
+    setSent(t.plural('ui.production.counted_summary', filled.length, { total }))
     setEntries({})
     if (online) await sync()
     router.refresh()
@@ -131,7 +154,10 @@ export function HourlyClient({
           ...(note.trim() ? { note: note.trim() } : {}),
         },
       },
-      `${line.code} logged as stopped · ${reason}`,
+      t('ui.production.stoppage_logged', {
+        line: line.code,
+        reason: downtimeReason(t, reason),
+      }),
     )
   }
 
@@ -141,7 +167,10 @@ export function HourlyClient({
         operation: 'close_downtime',
         payload: { downtimeId: stoppage.id, endedAt: new Date().toISOString() },
       },
-      `${stoppage.lineCode} running again after ${minutesSince(stoppage.startedAt)} min`,
+      t('ui.production.stoppage_resolved', {
+        line: stoppage.lineCode,
+        minutes: minutesSince(stoppage.startedAt),
+      }),
     )
   }
 
@@ -151,7 +180,7 @@ export function HourlyClient({
 
       {refused.length > 0 ? (
         <InlineAlert tone="danger">
-          {refused.length} entr{refused.length === 1 ? 'y' : 'ies'} the server refused.
+          {t.plural('ui.production.entries_refused', refused.length)}
           {refused.map((r) => (
             <button
               key={r.offlineKey}
@@ -165,7 +194,7 @@ export function HourlyClient({
                 font: 'inherit',
               }}
             >
-              dismiss
+              {t('ui.common.dismiss')}
             </button>
           ))}
         </InlineAlert>
@@ -175,12 +204,16 @@ export function HourlyClient({
 
       {sent ? (
         <InlineAlert tone="success">
-          Counted {sent}.{' '}
-          {online ? 'Sent.' : 'Held on this tablet until you are back online.'}
+          {t('ui.production.counted_done', { summary: sent })}{' '}
+          {online ? t('ui.production.sent') : t('ui.production.held_offline')}
         </InlineAlert>
       ) : null}
 
-      <SectionHeading eyebrow={`hour ${hour}:00–${hour + 1}:00`}>What each line made</SectionHeading>
+      <SectionHeading
+        eyebrow={t('ui.production.hour_range', { from: hour, to: hour + 1 })}
+      >
+        {t('ui.production.hourly_heading')}
+      </SectionHeading>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         {lines.map((line) => {
@@ -210,21 +243,27 @@ export function HourlyClient({
                     color: 'var(--fx-text-tertiary)',
                   }}
                 >
-                  target {line.target}
+                  {t('ui.production.target_value', { target: line.target })}
                 </div>
               </div>
 
               <div>
                 {stopped ? (
                   <span style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                    <Badge tone="danger">stopped · {stopped.reason}</Badge>
+                    <Badge tone="danger">
+                      {t('ui.production.stopped_reason', {
+                        reason: downtimeReason(t, stopped.reason),
+                      })}
+                    </Badge>
                     <span
                       style={{
                         font: "400 12.5px/1.3 var(--fx-font-mono)",
                         color: 'var(--fx-text-secondary)',
                       }}
                     >
-                      {minutesSince(stopped.startedAt)} min
+                      {t('ui.production.minutes_value', {
+                        minutes: minutesSince(stopped.startedAt),
+                      })}
                     </span>
                   </span>
                 ) : line.alreadyEntered ? (
@@ -234,13 +273,13 @@ export function HourlyClient({
                       color: 'var(--fx-text-tertiary)',
                     }}
                   >
-                    this hour already counted — entering again corrects it
+                    {t('ui.production.already_counted')}
                   </span>
                 ) : null}
               </div>
 
               <NumpadInput
-                label={`${line.code} output`}
+                label={t('ui.production.line_output_label', { line: line.code })}
                 value={entries[line.lineId] ?? ''}
                 onChange={(next) => setEntries((e) => ({ ...e, [line.lineId]: next }))}
               />
@@ -248,11 +287,11 @@ export function HourlyClient({
               <div style={{ textAlign: 'right' }}>
                 {stopped ? (
                   <Button variant="ghost" onClick={() => void resolveStoppage(stopped)}>
-                    Line running again
+                    {t('ui.production.line_running_again')}
                   </Button>
                 ) : (
                   <Button variant="ghost" onClick={() => setStopping(line)}>
-                    Log a stoppage
+                    {t('ui.production.log_stoppage')}
                   </Button>
                 )}
               </div>
@@ -264,8 +303,8 @@ export function HourlyClient({
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <span style={{ font: "400 12px/1.4 var(--fx-font-mono)", color: 'var(--fx-text-tertiary)' }}>
           {filled.length === 0
-            ? 'an hour nobody counts stays empty — it is never read as zero'
-            : `${filled.length} line${filled.length === 1 ? '' : 's'} · ${total} pieces`}
+            ? t('ui.production.uncounted_hour_note')
+            : t.plural('ui.production.counted_summary', filled.length, { total })}
         </span>
         <span style={{ marginLeft: 'auto' }}>
           <Button
@@ -274,7 +313,7 @@ export function HourlyClient({
             disabled={filled.length === 0}
             onClick={() => void submit()}
           >
-            Save hour {hour}:00
+            {t('ui.production.save_hour_button', { hour })}
           </Button>
         </span>
       </div>
@@ -299,6 +338,7 @@ function StoppageDialog({
   onClose: () => void
   onLog: (reason: string, note: string) => void
 }) {
+  const t = useT()
   const [reason, setReason] = useState<string>(REASONS[0].code)
   const [note, setNote] = useState('')
 
@@ -306,21 +346,23 @@ function StoppageDialog({
     <Modal
       open
       onClose={onClose}
-      title={`${line.code} has stopped`}
+      title={t('ui.production.stoppage_title', { line: line.code })}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            Cancel
+            {t('ui.common.cancel')}
           </Button>
           <Button variant="primary" onClick={() => onLog(reason, note)}>
-            Log the stoppage
+            {t('ui.production.log_stoppage_button')}
           </Button>
         </>
       }
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span style={{ font: "500 13px/1.3 var(--fx-font-sans)" }}>Why</span>
+          <span style={{ font: "500 13px/1.3 var(--fx-font-sans)" }}>
+            {t('ui.production.field_why')}
+          </span>
           <select
             value={reason}
             onChange={(e) => setReason(e.target.value)}
@@ -336,19 +378,21 @@ function StoppageDialog({
           >
             {REASONS.map((r) => (
               <option key={r.code} value={r.code}>
-                {r.label}
+                {t(r.labelKey)}
               </option>
             ))}
           </select>
         </label>
 
         <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span style={{ font: "500 13px/1.3 var(--fx-font-sans)" }}>What happened</span>
+          <span style={{ font: "500 13px/1.3 var(--fx-font-sans)" }}>
+            {t('ui.production.field_what_happened')}
+          </span>
           <textarea
             rows={3}
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="Needle bar seized on the 4-thread overlock."
+            placeholder={t('ui.production.note_placeholder')}
             style={{
               padding: '10px 12px',
               border: '1px solid var(--fx-border-default)',
@@ -361,10 +405,7 @@ function StoppageDialog({
           />
         </label>
 
-        <InlineAlert tone="info">
-          The clock starts now. A machine stoppage also raises a maintenance ticket — a
-          supervisor with a dead line should not have to file paperwork twice.
-        </InlineAlert>
+        <InlineAlert tone="info">{t('ui.production.stoppage_note')}</InlineAlert>
       </div>
     </Modal>
   )

@@ -4,10 +4,12 @@ import { redirect } from 'next/navigation'
 
 import { EmptyState } from '@/components/fx/feedback'
 import { PageHeader } from '@/components/shell/page-shell'
+import { tui } from '@/lib/i18n-ui'
+import { requestLocale } from '@/lib/ui-locale'
 import { getCtx } from '@/modules/core/session'
 import type { ProductionPolicy } from '@/modules/production/service'
 import { getPolicy } from '@/modules/settings/service'
-import { activeLines, board } from '@/modules/production/queries'
+import { board } from '@/modules/production/queries'
 
 import { LineBoard } from './board-client'
 
@@ -27,10 +29,15 @@ export default async function LinesPage() {
   const ctx = await getCtx(await headers())
   if (!ctx) redirect('/login')
 
+  const locale = await requestLocale()
+
   const today = new Date().toISOString().slice(0, 10)
-  const [rows, lines, policy] = await Promise.all([
+  // `activeLines(ctx)` used to be fetched here and passed to LineBoard, which consumed it
+  // in a `{lines.length === 0 ? null : null}` left from an earlier draft — so it was a
+  // database round trip on every load of a floor screen, feeding nothing. The header's
+  // count comes from `rows`, which is the board itself.
+  const [rows, policy] = await Promise.all([
     board(ctx, { producedOn: today, shiftHours: SHIFT_HOURS }),
-    activeLines(ctx),
     getPolicy<ProductionPolicy>(ctx, 'production'),
   ])
 
@@ -48,9 +55,21 @@ export default async function LinesPage() {
   return (
     <>
       <PageHeader
-        eyebrow={`Line tracking · ${today}`}
-        title={rows.length === 0 ? 'No lines set up' : `${rows.length} lines`}
-        meta={behind > 0 ? `${behind} behind target` : undefined}
+        eyebrow={tui(locale, 'ui.production.lines_eyebrow', { date: today })}
+        title={
+          rows.length === 0
+            ? tui(locale, 'ui.production.no_lines_title')
+            : tui(
+                locale,
+                rows.length === 1
+                  ? 'ui.production.lines_count_one'
+                  : 'ui.production.lines_count_other',
+                { count: rows.length },
+              )
+        }
+        meta={
+          behind > 0 ? tui(locale, 'ui.production.behind_target_meta', { count: behind }) : undefined
+        }
         ownsAmber={false}
       />
 
@@ -69,7 +88,7 @@ export default async function LinesPage() {
             textDecoration: 'none',
           }}
         >
-          Endline QC
+          {tui(locale, 'ui.production.nav_endline')}
         </Link>
         <Link
           href="/lines/hourly"
@@ -85,7 +104,7 @@ export default async function LinesPage() {
             textDecoration: 'none',
           }}
         >
-          Enter this hour
+          {tui(locale, 'ui.production.nav_hourly')}
         </Link>
         {/* Opens outside the app shell — the wall board has no navigation, so the only way
             back is the browser. A new tab is the honest affordance, and it is also how this
@@ -106,17 +125,17 @@ export default async function LinesPage() {
             textDecoration: 'none',
           }}
         >
-          Wall board ↗
+          {tui(locale, 'ui.production.nav_wall_board')}
         </a>
       </nav>
 
       {rows.length === 0 ? (
         <EmptyState
-          title="No production lines yet"
-          body="Lines are set up on the planning board. Once they exist, this screen is where the hourly count goes in — on the floor, on a tablet, with or without a network."
+          title={tui(locale, 'ui.production.lines_empty_title')}
+          body={tui(locale, 'ui.production.lines_empty_body')}
         />
       ) : (
-        <LineBoard rows={rows} lines={lines} producedOn={today} shiftHours={SHIFT_HOURS} />
+        <LineBoard rows={rows} producedOn={today} shiftHours={SHIFT_HOURS} />
       )}
     </>
   )

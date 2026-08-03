@@ -3,6 +3,9 @@
 import { useRouter } from 'next/navigation'
 import { useEffect, useSyncExternalStore } from 'react'
 
+import { useT } from '@/components/fx/locale'
+import type { Translator } from '@/lib/i18n-ui'
+
 interface BoardLine {
   code: string
   target: number
@@ -55,6 +58,27 @@ function clock(d: Date): string {
 }
 
 /**
+ * A `downtime_reason` as a word, not as the column value.
+ *
+ * The shortest true form of each, because this is read from thirty feet: a reason that wraps
+ * onto a second line inside the stoppage banner pushes the line codes below it off the board.
+ * A sixth enum value added without touching this file renders raw rather than as a missing
+ * key — wrong-looking, but still legible from where the supervisor is standing.
+ */
+const DOWNTIME_REASON_COPY: Record<string, string> = {
+  machine: 'ui.production.downtime_machine',
+  feeding: 'ui.production.downtime_feeding',
+  absent: 'ui.production.downtime_absent',
+  power: 'ui.production.downtime_power',
+  other: 'ui.production.downtime_other',
+}
+
+function downtimeReason(t: Translator, reason: string): string {
+  const key = DOWNTIME_REASON_COPY[reason]
+  return key ? t(key) : reason
+}
+
+/**
  * The wall board.
  *
  * Two behaviours worth naming, because both are the difference between a board people
@@ -82,6 +106,7 @@ export function TvBoard({
   floorEfficiency: string | null
   stoppages: readonly Stoppage[]
 }) {
+  const t = useT()
   const router = useRouter()
 
   const minute = useSyncExternalStore(subscribeToClock, currentMinute, noClockOnTheServer)
@@ -123,7 +148,7 @@ export function TvBoard({
       {/* ── Who and when ─────────────────────────────────────────────────── */}
       <header style={{ display: 'flex', alignItems: 'baseline', gap: 20 }}>
         <h1 style={{ font: "600 34px/1 var(--fx-font-sans)", letterSpacing: '-.01em' }}>
-          Sewing floor
+          {t('ui.production.board_title')}
         </h1>
         <span
           style={{
@@ -143,21 +168,31 @@ export function TvBoard({
               background: 'var(--fx-success)',
             }}
           />
-          live · hour {now ? `${now.getHours()}–${now.getHours() + 1}` : '—'}
+          {t('ui.production.board_live', {
+            range: now ? `${now.getHours()}–${now.getHours() + 1}` : '—',
+          })}
         </span>
       </header>
 
       {/* ── The two numbers ──────────────────────────────────────────────── */}
       <div style={{ display: 'flex', gap: 72, flexWrap: 'wrap' }}>
         {[
-          { label: 'Target · day so far', value: target, tone: 'var(--fx-text-secondary)' },
+          // `id` rather than the label as the React key — the label is translated, and a key
+          // that changes with the language remounts both figures on a language switch.
           {
-            label: 'Made',
+            id: 'target',
+            label: t('ui.production.board_target'),
+            value: target,
+            tone: 'var(--fx-text-secondary)',
+          },
+          {
+            id: 'made',
+            label: t('ui.production.board_made'),
             value: actual,
             tone: behind > 0 ? 'var(--fx-warning)' : 'var(--fx-success)',
           },
         ].map((cell) => (
-          <div key={cell.label}>
+          <div key={cell.id}>
             <div
               style={{
                 font: "400 14px/1 var(--fx-font-mono)",
@@ -183,10 +218,17 @@ export function TvBoard({
         ))}
 
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 56 }}>
-          <Stat label="Floor efficiency" value={floorEfficiency ? `${floorEfficiency}%` : '—'} />
           <Stat
-            label="Lost to stoppages"
-            value={stoppages.length > 0 ? `${lostMinutes} min` : '—'}
+            label={t('ui.production.board_efficiency')}
+            value={floorEfficiency ? `${floorEfficiency}%` : '—'}
+          />
+          <Stat
+            label={t('ui.production.board_lost')}
+            value={
+              stoppages.length > 0
+                ? t('ui.production.minutes_value', { minutes: lostMinutes })
+                : '—'
+            }
             tone={stoppages.length > 0 ? 'var(--fx-danger)' : undefined}
           />
         </div>
@@ -203,9 +245,12 @@ export function TvBoard({
             font: "500 30px/1.2 var(--fx-font-sans)",
           }}
         >
-          {s.lineCode} stopped —{' '}
-          {now ? Math.max(0, Math.floor((now.getTime() - Date.parse(s.startedAt)) / MINUTE)) : 0}{' '}
-          minutes
+          {t('ui.production.board_stopped', {
+            line: s.lineCode,
+            minutes: now
+              ? Math.max(0, Math.floor((now.getTime() - Date.parse(s.startedAt)) / MINUTE))
+              : 0,
+          })}
           <span
             style={{
               marginLeft: 14,
@@ -213,7 +258,7 @@ export function TvBoard({
               color: 'var(--fx-text-secondary)',
             }}
           >
-            {s.reason}
+            {downtimeReason(t, s.reason)}
           </span>
         </div>
       ))}
@@ -262,8 +307,10 @@ export function TvBoard({
                   color: 'var(--fx-text-tertiary)',
                 }}
               >
-                of {line.target.toLocaleString()}
-                {short > 0 ? ` · ${short.toLocaleString()} short` : ''}
+                {t('ui.production.board_of_target', { target: line.target.toLocaleString() })}
+                {short > 0
+                  ? t('ui.production.board_short', { count: short.toLocaleString() })
+                  : ''}
               </div>
             </div>
           )
@@ -277,7 +324,9 @@ export function TvBoard({
           color: 'var(--fx-text-tertiary)',
         }}
       >
-        {now ? `updated ${clock(now)} · refreshes every hour on the hour` : 'updated —'}
+        {now
+          ? t('ui.production.board_updated', { time: clock(now) })
+          : t('ui.production.board_updated_pending')}
       </footer>
     </div>
   )

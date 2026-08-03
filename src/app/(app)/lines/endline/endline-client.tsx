@@ -5,6 +5,7 @@ import { useState } from 'react'
 
 import { InlineAlert } from '@/components/fx/feedback'
 import { NumpadInput, SyncPill } from '@/components/fx/floor'
+import { useT } from '@/components/fx/locale'
 import { Button } from '@/components/fx/primitives'
 import { SectionHeading } from '@/components/fx/signature'
 import { useOfflineQueue } from '@/lib/offline/use-offline-queue'
@@ -50,6 +51,7 @@ export function EndlineClient({
   countedOn: string
   lines: readonly LineCount[]
 }) {
+  const t = useT()
   const router = useRouter()
   const { capture, online, queued, syncing, refused, sync, clear } = useOfflineQueue()
 
@@ -93,7 +95,9 @@ export function EndlineClient({
       },
     })
 
-    setSaved(`${line.code} · ${checked} checked · DHU ${dhu ?? '—'}`)
+    setSaved(
+      t('ui.production.count_summary', { line: line.code, checked, dhu: dhu ?? '—' }),
+    )
     setDraft(EMPTY)
     if (online) await sync()
     router.refresh()
@@ -105,7 +109,7 @@ export function EndlineClient({
 
       {refused.length > 0 ? (
         <InlineAlert tone="danger">
-          {refused.length} count{refused.length === 1 ? '' : 's'} the server refused.
+          {t.plural('ui.production.counts_refused', refused.length)}
           {refused.map((r) => (
             <button
               key={r.offlineKey}
@@ -119,7 +123,7 @@ export function EndlineClient({
                 font: 'inherit',
               }}
             >
-              dismiss
+              {t('ui.common.dismiss')}
             </button>
           ))}
         </InlineAlert>
@@ -127,7 +131,8 @@ export function EndlineClient({
 
       {saved ? (
         <InlineAlert tone="success">
-          Saved {saved}. {online ? 'Sent.' : 'Held on this tablet until you are back online.'}
+          {t('ui.production.count_saved', { summary: saved })}{' '}
+          {online ? t('ui.production.sent') : t('ui.production.held_offline')}
         </InlineAlert>
       ) : null}
 
@@ -159,7 +164,9 @@ export function EndlineClient({
             >
               {l.code}
               <span style={{ font: "400 10.5px/1.2 var(--fx-font-mono)", opacity: 0.8 }}>
-                {l.checked === null ? 'not counted' : `${l.checked} checked`}
+                {l.checked === null
+                  ? t('ui.production.not_counted')
+                  : t('ui.production.checked_value', { count: l.checked })}
               </span>
             </button>
           )
@@ -171,8 +178,8 @@ export function EndlineClient({
           <SectionHeading
             eyebrow={
               line.lastWrittenAt
-                ? `QC last wrote ${clockTime(line.lastWrittenAt)}`
-                : 'nothing counted yet today'
+                ? t('ui.production.qc_last_wrote', { time: clockTime(line.lastWrittenAt) })
+                : t('ui.production.nothing_counted_today')
             }
           >
             {line.code} · {line.name}
@@ -191,41 +198,41 @@ export function EndlineClient({
             }}
           >
             <NumpadInput
-              label="Checked"
+              label={t('ui.production.field_checked')}
               value={draft.checked}
               onChange={(v) => setDraft((d) => ({ ...d, checked: v }))}
             />
             <NumpadInput
-              label="Defective garments"
+              label={t('ui.production.field_defective')}
               value={draft.defective}
               onChange={(v) => setDraft((d) => ({ ...d, defective: v }))}
             />
             <NumpadInput
-              label="Defects found"
+              label={t('ui.production.field_defects')}
               value={draft.defects}
               onChange={(v) => setDraft((d) => ({ ...d, defects: v }))}
             />
             <NumpadInput
-              label="Sent to rework"
+              label={t('ui.production.field_rework')}
               value={draft.rework}
               onChange={(v) => setDraft((d) => ({ ...d, rework: v }))}
             />
           </div>
 
           <span style={{ font: "400 12px/1.4 var(--fx-font-mono)", color: 'var(--fx-text-tertiary)' }}>
-            one garment can carry several defects — defects is not the same count as
-            defective garments
+            {t('ui.production.defects_note')}
           </span>
 
           {tooManyDefective ? (
             <InlineAlert tone="danger">
-              {defective} defective out of {checked} checked. A count where more garments
-              failed than were inspected cannot be filed.
+              {t('ui.production.too_many_defective', { defective, checked })}
             </InlineAlert>
           ) : null}
 
           {/* ── Derived ──────────────────────────────────────────────────── */}
-          <SectionHeading eyebrow="derived, never stored">What that means</SectionHeading>
+          <SectionHeading eyebrow={t('ui.production.derived_eyebrow')}>
+            {t('ui.production.derived_heading')}
+          </SectionHeading>
           <div
             style={{
               display: 'grid',
@@ -236,11 +243,28 @@ export function EndlineClient({
             }}
           >
             {[
-              { label: 'DHU', value: dhu ?? '—', note: 'defects per hundred units' },
-              { label: 'Pass rate', value: passRate ? `${passRate}%` : '—', note: 'garments through first time' },
-              { label: 'Rework queue', value: rework > 0 ? String(rework) : '—', note: 'back to the line' },
+              // `id` rather than the label as the React key: the label is translated, and a
+              // key that changes with the language remounts all three cells on a switch.
+              {
+                id: 'dhu',
+                label: t('ui.production.stat_dhu'),
+                value: dhu ?? '—',
+                note: t('ui.production.stat_dhu_note'),
+              },
+              {
+                id: 'pass-rate',
+                label: t('ui.production.stat_pass_rate'),
+                value: passRate ? `${passRate}%` : '—',
+                note: t('ui.production.stat_pass_rate_note'),
+              },
+              {
+                id: 'rework',
+                label: t('ui.production.stat_rework'),
+                value: rework > 0 ? String(rework) : '—',
+                note: t('ui.production.stat_rework_note'),
+              },
             ].map((cell) => (
-              <div key={cell.label} style={{ background: 'var(--fx-bg-surface)', padding: '16px 18px' }}>
+              <div key={cell.id} style={{ background: 'var(--fx-bg-surface)', padding: '16px 18px' }}>
                 <div
                   style={{
                     font: "400 11px/1 var(--fx-font-mono)",
@@ -271,11 +295,11 @@ export function EndlineClient({
             <span
               style={{ font: "400 12px/1.4 var(--fx-font-mono)", color: 'var(--fx-text-tertiary)' }}
             >
-              passed is {checked > 0 ? passed : '—'} — checked minus defective, not typed
+              {t('ui.production.passed_note', { passed: checked > 0 ? passed : '—' })}
             </span>
             <span style={{ marginLeft: 'auto' }}>
               <Button variant="primary" size="lg" disabled={!valid} onClick={() => void save()}>
-                Save count
+                {t('ui.production.save_count_button')}
               </Button>
             </span>
           </div>
