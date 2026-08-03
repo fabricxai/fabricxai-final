@@ -27,6 +27,16 @@ export const LOCALES = ['en', 'bn'] as const
 export type Locale = (typeof LOCALES)[number]
 export const DEFAULT_LOCALE: Locale = 'en'
 
+/**
+ * The cookie a language picker writes and `lib/ui-locale.ts` reads.
+ *
+ * It lives HERE, in the module with no dependencies, rather than beside the server-side
+ * resolver that owns the reading of it — because `global-error.tsx` needs the name too, and
+ * that is a client component: importing it from the resolver pulled `next/headers` into the
+ * browser bundle and failed the build.
+ */
+export const LOCALE_COOKIE = 'fx_locale'
+
 export type Catalogue = Record<Locale, Record<string, string>>
 
 /**
