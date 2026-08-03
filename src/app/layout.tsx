@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Anek_Bangla, JetBrains_Mono, Plus_Jakarta_Sans } from 'next/font/google'
 
 import { THEME_BOOTSTRAP } from '@/components/shell/theme-toggle'
+import { requestLocale } from '@/lib/ui-locale'
 
 import './globals.css'
 
@@ -42,10 +43,15 @@ export const viewport: Viewport = {
   initialScale: 1,
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // `lang` is the document's, so it has to be resolved this high up: it is what a screen
+  // reader announces in and what the browser hyphenates by, and Bangla announced as English
+  // is worse than untranslated English.
+  const locale = await requestLocale()
+
   return (
     <html
-      lang="en"
+      lang={locale}
       // Light-first: every screen is designed in light mode. Dark is opt-in per
       // subtree (the wall board, the owner night view) by setting data-theme there.
       data-theme="light"

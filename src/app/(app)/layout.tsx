@@ -17,6 +17,8 @@ import {
   type FactoryType,
 } from '@/components/shell/nav'
 import { LockedState, ReadOnlyNote } from '@/components/fx/feedback'
+import { LocaleProvider } from '@/components/fx/locale'
+import { requestLocale } from '@/lib/ui-locale'
 import { marbimTrust, routedPendingCount } from '@/modules/approvals/queries'
 import type { ApprovalsPolicy } from '@/modules/approvals/service'
 import { getCtx, signedInUser } from '@/modules/core/session'
@@ -64,6 +66,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // A storekeeper whose inbox reads "Nothing routed to you" must not carry a "4" on every
   // screen — a badge that cannot be cleared is one people stop reading.
   const routed = await routedPendingCount(ctx, approvalsPolicy)
+  const locale = await requestLocale()
   const factoryType: FactoryType = profile?.factoryType ?? 'woven'
   const nav = visibleNav(ctx.roles, factoryType)
 
@@ -80,42 +83,44 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const readOnly = Boolean(item && allowed && !canWrite(item, ctx.roles, factoryType))
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh' }}>
-      <TopBar
-        companyName={displayName ?? 'FabricXAI'}
-        account={
-          <AccountMenu
-            name={me?.name ?? null}
-            email={me?.email ?? ''}
-            roleLabel={describeRoles(ctx.roles)}
-            companyName={displayName ?? 'FabricXAI'}
-          />
-        }
-        actions={<MarbimButton />}
-      />
-      <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
-        <Sidebar items={nav} />
-        <PageBody>
-          {allowed ? (
-            <>
-              {/* Said before anything is typed, not after a button is pressed. The write
-                  itself is still refused by the action — this is the label, not the lock. */}
-              {readOnly ? <ReadOnlyNote what={item!.label} /> : null}
-              {children}
-            </>
-          ) : (
-            <LockedState what={lockedSubject(item!)} />
-          )}
-        </PageBody>
+    <LocaleProvider locale={locale}>
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh' }}>
+        <TopBar
+          companyName={displayName ?? 'FabricXAI'}
+          account={
+            <AccountMenu
+              name={me?.name ?? null}
+              email={me?.email ?? ''}
+              roleLabel={describeRoles(ctx.roles)}
+              companyName={displayName ?? 'FabricXAI'}
+            />
+          }
+          actions={<MarbimButton />}
+        />
+        <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+          <Sidebar items={nav} />
+          <PageBody>
+            {allowed ? (
+              <>
+                {/* Said before anything is typed, not after a button is pressed. The write
+                    itself is still refused by the action — this is the label, not the lock. */}
+                {readOnly ? <ReadOnlyNote what={item!.label} /> : null}
+                {children}
+              </>
+            ) : (
+              <LockedState what={lockedSubject(item!)} />
+            )}
+          </PageBody>
+        </div>
+        {/* X.2: MARBIM is a surface over whatever screen you are on, not a place you go. The
+            FAB sits bottom-right of every screen and the panel opens over it; mounted here in
+            the shell so the thread survives navigation. */}
+        <MarbimPanel
+          entry={{ ...marbimEntryFor(ctx.roles), model: providerId() }}
+          trust={{ ...trust, pending: routed }}
+        />
       </div>
-      {/* X.2: MARBIM is a surface over whatever screen you are on, not a place you go. The
-          FAB sits bottom-right of every screen and the panel opens over it; mounted here in
-          the shell so the thread survives navigation. */}
-      <MarbimPanel
-        entry={{ ...marbimEntryFor(ctx.roles), model: providerId() }}
-        trust={{ ...trust, pending: routed }}
-      />
-    </div>
+    </LocaleProvider>
   )
 }
 

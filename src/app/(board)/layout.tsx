@@ -1,6 +1,8 @@
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 
+import { LocaleProvider } from '@/components/fx/locale'
+import { requestLocale } from '@/lib/ui-locale'
 import { getCtx } from '@/modules/core/session'
 
 /**
@@ -18,5 +20,7 @@ export default async function BoardLayout({ children }: { children: React.ReactN
   const ctx = await getCtx(await headers())
   if (!ctx) redirect('/login')
 
-  return <>{children}</>
+  const locale = await requestLocale()
+
+  return <LocaleProvider locale={locale}>{children}</LocaleProvider>
 }
