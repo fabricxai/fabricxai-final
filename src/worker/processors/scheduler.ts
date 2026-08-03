@@ -20,7 +20,14 @@ import type { Job } from 'bullmq'
 import { sql } from 'drizzle-orm'
 
 import { db } from '@/db/client'
+import { emitAgingEscalations } from '@/modules/approvals/service'
+import type { ApprovalsPolicy } from '@/modules/approvals/service'
 import { runUdAlerts } from '@/modules/commercial/jobs'
+import { expireLapsedUds } from '@/modules/commercial/service'
+import { emitCashShortfall } from '@/modules/finance/service'
+import { emitPpBlocking } from '@/modules/sampling/service'
+import type { SamplingPolicy } from '@/modules/sampling/service'
+import { emitLatestShipmentCountdown } from '@/modules/shipment/service'
 import { deliverCritical, deliverDigest, type DeliveryPolicy } from '@/modules/core/delivery'
 import { runJobHealthCheck, type JobHealthPolicy } from '@/modules/core/job-health-job'
 import { pruneJobRuns, recordRun } from '@/modules/core/job-runs'
@@ -37,8 +44,16 @@ import {
 import { runQueuedExtractions } from '@/modules/marbim/jobs'
 import type { MarbimPolicy } from '@/modules/marbim/service'
 import { runStyleEmbedSweep } from '@/modules/memory/jobs'
+import { computeSupplierScores } from '@/modules/procurement/service'
 import { runLcCountdown, runTnaScan } from '@/modules/orders/jobs'
-import { ensureOutputPartitions, runDayClose } from '@/modules/production/jobs'
+import {
+  ensureOutputPartitions,
+  runDayClose,
+  runRunRateAlerts,
+  snapshotWip,
+} from '@/modules/production/jobs'
+import { runQualityDayClose, runRepeatDefectAlerts } from '@/modules/quality/jobs'
+import type { QualityPolicy } from '@/modules/quality/service'
 import { getPolicy } from '@/modules/settings/service'
 import { sendNotificationEmail } from '@/lib/mailer'
 
@@ -77,6 +92,74 @@ export const SCHEDULED_TASKS = [
     task: 'production.day_close',
     // 01:00 Dhaka: after the night shift's last entries, before the TNA scan reads them.
     pattern: '0 1 * * *',
+  },
+  {
+    id: 'run-rate-alerts-nightly',
+    task: 'production.run_rate_alerts',
+    // 01:30 Dhaka — after day-close has settled yesterday's output, so the forecast is made
+    // from a complete trailing window rather than a day that is still being written to.
+    pattern: '30 1 * * *',
+  },
+  {
+    id: 'quality-day-close-nightly',
+    task: 'quality.day_close',
+    // 01:15 Dhaka, after production's day-close. `dhu_daily` is what the fourteen-day trend
+    // and every buyer report read, so it has to exist before anybody opens either.
+    pattern: '15 1 * * *',
+  },
+  {
+    id: 'repeat-defects-nightly',
+    task: 'quality.repeat_defects',
+    // 01:45 Dhaka, after the DHU close — a run is only visible once the days it spans are
+    // closed, and a scan that ran first would be one day short every night.
+    pattern: '45 1 * * *',
+  },
+  {
+    id: 'wip-snapshot-hourly',
+    task: 'production.snapshot_wip',
+    // Every hour on the half hour. The brief calls for an hourly WIP snapshot and it was
+    // never scheduled — so `wip_snapshots` stayed empty and the owner dashboard's cut/sewn/
+    // finished figures had nothing behind them.
+    pattern: '30 * * * *',
+  },
+  {
+    id: 'pp-blocking-nightly',
+    task: 'sampling.pp_blocking',
+    // 03:00 Dhaka. A PP sample that has not come back blocks a cutting start, and the floor
+    // finds out on the morning it cannot spread a lay. This is the alert that gets a
+    // merchandiser onto the buyer the week before instead.
+    pattern: '0 3 * * *',
+  },
+  {
+    id: 'latest-shipment-nightly',
+    task: 'shipment.latest_shipment',
+    // 02:45 Dhaka, before the commercial team's day. A shipment that misses the LC's
+    // latest-shipment date is a discrepancy the bank raises and the factory argues about
+    // for weeks — the countdown is the only cheap moment to act on it.
+    pattern: '45 2 * * *',
+  },
+  {
+    id: 'expire-lapsed-uds-nightly',
+    task: 'commercial.expire_uds',
+    // 00:45 Dhaka. A UD whose validity has run out must stop being drawable that same day —
+    // the gate reads status, and a lapsed declaration left `active` is duty-free material
+    // the factory is no longer entitled to issue.
+    pattern: '45 0 * * *',
+  },
+  {
+    id: 'approval-aging-nightly',
+    task: 'approvals.aging_escalations',
+    // 04:00 Dhaka. A draft nobody has looked at is a decision nobody has made, and the whole
+    // propose→approve loop degrades into a queue people stop opening.
+    pattern: '0 4 * * *',
+  },
+  {
+    id: 'cash-shortfall-nightly',
+    task: 'finance.cash_shortfall',
+    // 05:00 Dhaka, so the owner's morning digest already carries it. The week cash first
+    // goes negative is the most actionable figure the finance module produces, and it is
+    // only useful while there is still time to move a payment.
+    pattern: '0 5 * * *',
   },
   {
     id: 'ud-alerts-nightly',
@@ -139,6 +222,24 @@ export const SCHEDULED_TASKS = [
     // 03:30 Dhaka. A sweep rather than an event consumer, so a style created while the
     // model provider was down is picked up on the next run instead of never.
     pattern: '30 3 * * *',
+  },
+
+  // ── 3.2 Procurement ──
+  {
+    id: 'supplier-scores-nightly',
+    task: 'procurement.score_suppliers',
+    /*
+     * Nightly, for the month in progress — not monthly on the 1st.
+     *
+     * The scorecard's job is to be true when somebody is choosing a supplier, and that
+     * happens on the 14th as often as the 2nd. A monthly run would leave the current month
+     * blank for up to thirty days, which reads as "this supplier has done nothing" rather
+     * than "nobody has computed it yet" — and the screen cannot tell those apart.
+     *
+     * Recomputing the same period is safe: the write is an upsert keyed on
+     * (supplier, period).
+     */
+    pattern: '20 2 * * *',
   },
 
   // ── X.2 MARBIM ──
@@ -342,6 +443,30 @@ async function dispatchTask(ctx: SystemCtx, task: ScheduledTask): Promise<unknow
       return ensureOutputPartitions(ctx)
     case 'production.day_close':
       return runDayClose(ctx)
+    case 'production.run_rate_alerts':
+      return runRunRateAlerts(ctx, { today })
+    case 'production.snapshot_wip':
+      return snapshotWip(ctx)
+    case 'sampling.pp_blocking':
+      return emitPpBlocking(ctx, { today }, await getPolicy<SamplingPolicy>(ctx, 'sampling'))
+    case 'shipment.latest_shipment':
+      // 21 days is the usual presentation period; a shipment inside that window with an
+      // unmet latest-shipment date is the one worth waking somebody for.
+      return emitLatestShipmentCountdown(ctx, { today, withinDays: 21 })
+    case 'commercial.expire_uds':
+      return expireLapsedUds(ctx, { today })
+    case 'approvals.aging_escalations':
+      return emitAgingEscalations(
+        ctx,
+        { now: new Date(`${today}T00:00:00Z`) },
+        await getPolicy<ApprovalsPolicy>(ctx, 'approvals'),
+      )
+    case 'finance.cash_shortfall':
+      return emitCashShortfall(ctx, { from: today, weeks: 8, currency: 'USD' })
+    case 'quality.day_close':
+      return runQualityDayClose(ctx, {}, await getPolicy<QualityPolicy>(ctx, 'quality'))
+    case 'quality.repeat_defects':
+      return runRepeatDefectAlerts(ctx, { today }, await getPolicy<QualityPolicy>(ctx, 'quality'))
 
     case 'compliance.certificate_alerts':
       return runCertificateAlerts(ctx, { today }, await getPolicy<CompliancePolicy>(ctx, 'compliance'))
@@ -370,6 +495,11 @@ async function dispatchTask(ctx: SystemCtx, task: ScheduledTask): Promise<unknow
 
     case 'marbim.run_extractions':
       return runQueuedExtractions(ctx, await getPolicy<MarbimPolicy>(ctx, 'marbim'))
+
+    case 'procurement.score_suppliers':
+      // The month `today` falls in. Scoring a period that has not finished is the point —
+      // see the schedule note.
+      return computeSupplierScores(ctx, { period: `${today.slice(0, 7)}-01` })
 
     case 'analytics.exceptions_refresh':
       return refreshExceptionsFeed(ctx, today)

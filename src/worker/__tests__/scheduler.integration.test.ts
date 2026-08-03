@@ -7,7 +7,7 @@
  */
 import { randomUUID } from 'node:crypto'
 
-import type { Job } from 'bullmq'
+import type { Job, Queue } from 'bullmq'
 import { eq, sql } from 'drizzle-orm'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
@@ -46,7 +46,13 @@ beforeAll(async () => {
 afterAll(async () => {
   const derive = getQueue(QUEUE.derive)
   await derive.drain()
+  // Completed AND failed. `drain()` only takes waiting and delayed, so a job left in either
+  // terminal state keeps its id — and these tests assert on job COUNTS after a fan-out that
+  // dedupes on exactly that id. A `pnpm worker:dev` running against the same Redis (the
+  // normal way to work on this) processes these jobs and leaves them terminal, which made
+  // the next run of the suite come up short and fail somewhere unrelated to its own cause.
   await derive.clean(0, 1000, 'completed')
+  await derive.clean(0, 1000, 'failed')
 
   const schedule = getQueue(QUEUE.schedule)
   for (const task of SCHEDULED_TASKS) {
@@ -70,6 +76,63 @@ afterAll(async () => {
 const fakeJob = (task: ScheduledTask, timestamp = Date.now()) =>
   ({ data: { task }, timestamp }) as Job<{ task: ScheduledTask }>
 
+/**
+ * A fire time unique to THIS run.
+ *
+ * Job ids are `task:company:slot`, and the slot comes from the fire's timestamp. Fixed
+ * timestamps meant every run produced the same ids, so a job left behind in a terminal
+ * state by an earlier run silently deduped the next run's fan-out — the first fire would
+ * enqueue seven where the second enqueued ten, and the test failed with arithmetic that
+ * looked like the scheduler was wrong. Distinct-per-run timestamps make the ids unique, so
+ * the assertion measures this run and nothing else. The test only ever needed two DIFFERENT
+ * fire times, never two particular ones.
+ */
+// Offset by a random number of MINUTES, not milliseconds: the slot is minute-resolution,
+// so two runs in the same minute would otherwise still collide — which is exactly what
+// happened while iterating on this file.
+const RUN_BASE = Date.now() + Math.floor(Math.random() * 1_000_000) * 60_000
+const fireAt = (offsetMinutes: number) => RUN_BASE + offsetMinutes * 60_000
+
+/**
+ * Count only THIS task's jobs, not everything in the queue.
+ *
+ * The derive queue is shared — by the relay's event consumers, by other suites, and by a
+ * `pnpm worker:dev` somebody has running while they work. Asserting on the queue's total
+ * length made these tests fail on whatever else happened to be in it, which is a test
+ * reporting someone else's activity as this code being broken. Job ids are
+ * `task:company:slot`, so the task's own jobs are countable exactly.
+ */
+/**
+ * Every state a fanned-out job can be in by the time we look.
+ *
+ * Reading only `waiting` assumed nothing was consuming the queue — but `pnpm worker:dev`
+ * against the same Redis is the normal way to work on this, and it picks jobs up within
+ * milliseconds. The fan-out would enqueue nine and the test would see one, then report the
+ * scheduler as broken. What is being asserted is what was ENQUEUED, so a job already picked
+ * up or finished still counts.
+ */
+const ANY_STATE = ['waiting', 'delayed', 'prioritized', 'active', 'completed', 'failed'] as const
+
+/**
+ * Empty the derive queue completely before a test that counts.
+ *
+ * `drain()` only removes waiting and delayed jobs. A job left COMPLETED or FAILED keeps its
+ * id, and BullMQ treats a re-added id as a duplicate — so a fan-out would report ten
+ * companies while enqueuing one, and the test failed describing the scheduler as broken
+ * when the queue was simply dirty. Anything that shares this Redis leaves such jobs behind:
+ * another suite, a crashed run, or a `pnpm worker:dev` left running while somebody works.
+ */
+async function clearDerive(queue: Queue): Promise<void> {
+  await queue.drain()
+  await queue.clean(0, 5000, 'completed')
+  await queue.clean(0, 5000, 'failed')
+}
+
+async function countJobsFor(queue: Queue, task: string): Promise<number> {
+  const jobs = await queue.getJobs([...ANY_STATE])
+  return jobs.filter((job) => (job.id ?? '').startsWith(`${task}:`)).length
+}
+
 describe('scheduler', () => {
   it('registers repeatable jobs idempotently', async () => {
     await registerSchedules()
@@ -87,13 +150,15 @@ describe('scheduler', () => {
 
   it('fans out to live companies only, skipping dormant ones', async () => {
     const derive = getQueue(QUEUE.derive)
-    await derive.drain()
+    await clearDerive(derive)
 
-    const count = await fanOutScheduledTask(fakeJob('orders.tna_scan'))
+    const count = await fanOutScheduledTask(fakeJob('orders.tna_scan', fireAt(120)))
     expect(count).toBeGreaterThanOrEqual(2)
 
-    const jobs = await derive.getJobs(['waiting', 'delayed', 'prioritized'])
-    const companyIds = jobs.map((job) => (job.data as DeriveJobData).companyId)
+    const jobs = await derive.getJobs([...ANY_STATE])
+    const companyIds = jobs
+      .filter((job) => (job.id ?? '').startsWith('orders.tna_scan:'))
+      .map((job) => (job.data as DeriveJobData).companyId)
 
     expect(companyIds).toContain(COMPANY_A)
     expect(companyIds).toContain(COMPANY_B)
@@ -103,16 +168,16 @@ describe('scheduler', () => {
 
   it('the SAME fire enqueues nothing extra — the job id is deterministic', async () => {
     const derive = getQueue(QUEUE.derive)
-    await derive.drain()
+    await clearDerive(derive)
 
-    const firedAt = Date.parse('2026-03-10T02:00:00Z')
+    const firedAt = fireAt(0)
 
     await fanOutScheduledTask(fakeJob('commercial.lc_countdown', firedAt))
-    const after1 = (await derive.getJobs(['waiting', 'delayed', 'prioritized'])).length
+    const after1 = await countJobsFor(derive, 'commercial.lc_countdown')
 
     // The same scheduled job, retried after a worker died mid-fan-out.
     await fanOutScheduledTask(fakeJob('commercial.lc_countdown', firedAt))
-    const after2 = (await derive.getJobs(['waiting', 'delayed', 'prioritized'])).length
+    const after2 = await countJobsFor(derive, 'commercial.lc_countdown')
 
     expect(after1).toBeGreaterThan(0)
     expect(after2).toBe(after1)
@@ -120,18 +185,18 @@ describe('scheduler', () => {
 
   it('a SUB-DAILY task enqueues every fire, not just the first of the day', async () => {
     const derive = getQueue(QUEUE.derive)
-    await derive.drain()
+    await clearDerive(derive)
 
     // Two fires of the five-minute extraction runner, twenty minutes apart on one day.
     await fanOutScheduledTask(
-      fakeJob('marbim.run_extractions', Date.parse('2026-03-10T08:00:00Z')),
+      fakeJob('marbim.run_extractions', fireAt(60)),
     )
-    const afterFirst = (await derive.getJobs(['waiting', 'delayed', 'prioritized'])).length
+    const afterFirst = await countJobsFor(derive, 'marbim.run_extractions')
 
     await fanOutScheduledTask(
-      fakeJob('marbim.run_extractions', Date.parse('2026-03-10T08:20:00Z')),
+      fakeJob('marbim.run_extractions', fireAt(80)),
     )
-    const afterSecond = (await derive.getJobs(['waiting', 'delayed', 'prioritized'])).length
+    const afterSecond = await countJobsFor(derive, 'marbim.run_extractions')
 
     // Keyed on the calendar date, the second fire and the 286 after it would have been
     // dropped as duplicates — the task would have run once a day and looked fine.

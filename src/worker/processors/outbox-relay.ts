@@ -66,6 +66,14 @@ const QUEUE_ROUTES: readonly { prefix: string; queue: QueueName }[] = [
   { prefix: 'sampling.pp_approved', queue: QUEUE.derive },
   { prefix: 'rfq.won', queue: QUEUE.derive },
   { prefix: 'production.day.closed', queue: QUEUE.derive },
+  // A machine stoppage raises a maintenance ticket, and resolving that ticket closes the
+  // stoppage back. Both had consumers and neither had a route — so the events fell through
+  // to `notify`, where nothing runs them, and the wire between the floor and the mechanics
+  // was dead in a way that looked exactly like working.
+  { prefix: 'production.downtime.machine', queue: QUEUE.derive },
+  { prefix: 'maintenance.ticket.resolved', queue: QUEUE.derive },
+  // Closing an order compiles its outcome into order memory.
+  { prefix: 'orders.order.status_changed', queue: QUEUE.derive },
 
   // Document rendering.
   { prefix: 'procurement.po.issued', queue: QUEUE.renderPdf },
@@ -74,7 +82,11 @@ const QUEUE_ROUTES: readonly { prefix: string; queue: QueueName }[] = [
   // Everything else is somebody being told something.
 ]
 
-function queueFor(eventName: string): QueueName {
+/**
+ * Which queue an event goes to. Exported so a test can assert that every registered
+ * consumer actually reaches the queue that runs consumers — see the derive-router suite.
+ */
+export function queueForEvent(eventName: string): QueueName {
   return QUEUE_ROUTES.find((route) => eventName.startsWith(route.prefix))?.queue ?? QUEUE.notify
 }
 
@@ -100,7 +112,7 @@ export async function relayOnce(batchSize = BATCH_SIZE): Promise<{ relayed: numb
       }
 
       try {
-        await getQueue(queueFor(row.event_name)).add(
+        await getQueue(queueForEvent(row.event_name)).add(
           row.event_name,
           { eventId: row.id, companyId: row.company_id, payload: row.payload },
           // BullMQ-side dedupe as well as the DB one: a redelivery after a crash between

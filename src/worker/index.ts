@@ -12,17 +12,18 @@
 // In production the container supplies the environment and this is a no-op.
 import 'dotenv/config'
 
-import { Worker, type Job } from 'bullmq'
+import { Worker } from 'bullmq'
 
 import { env } from '@/lib/env'
 import { createQueueConnection, getRedis } from '@/lib/redis'
 
-import { EVENT_HANDLERS, runEventConsumer, type EventJobData } from './processors/consumers'
+import { routeDeriveJob } from './derive-router'
+import { runNotifyJob, type NotifyJobData } from './processors/notifier'
+import { type EventJobData } from './processors/consumers'
 import { startOutboxRelay } from './processors/outbox-relay'
 import {
   fanOutScheduledTask,
   registerSchedules,
-  runDeriveTask,
   type DeriveJobData,
   type ScheduledTask,
 } from './processors/scheduler'
@@ -52,23 +53,29 @@ async function main() {
     // fleet of tenants gets through its nightly derivations.
     //
     // Two kinds of job share this queue: the scheduler's per-company fan-out, and the
-    // relay's cross-module event consumers. They are told apart by job NAME — the
-    // scheduler names its jobs after the task, the relay names them after the event — and
-    // they share a queue deliberately, because both are "derived work that must not block
-    // a request" and splitting them would double the worker count for no isolation gain.
-    new Worker<DeriveJobData | EventJobData>(
-      QUEUE.derive,
-      async (job) => {
-        if (job.name in EVENT_HANDLERS) {
-          return runEventConsumer(job as Job<EventJobData>)
-        }
-        return runDeriveTask(job as Job<DeriveJobData>)
-      },
-      {
-        connection: createQueueConnection(),
-        concurrency: env.WORKER_CONCURRENCY,
-      },
-    ),
+    // relay's cross-module event consumers. They share a queue deliberately, because both
+    // are "derived work that must not block a request" and splitting them would double the
+    // worker count for no isolation gain. Telling them apart — including the third case, an
+    // event the relay routes here with no consumer yet — is `derive-router.ts`, kept in its
+    // own file so the decision can be tested without importing this one, which starts a
+    // worker process on import.
+    new Worker<DeriveJobData | EventJobData>(QUEUE.derive, routeDeriveJob, {
+      connection: createQueueConnection(),
+      concurrency: env.WORKER_CONCURRENCY,
+    }),
+    // The relay's default route. Everything it does not send to `derive` lands here — the
+    // events that are somebody being told something rather than another module writing.
+    //
+    // Until this worker existed the queue had no reader, so those events arrived and
+    // stopped: a fabric roll rejected, a lot failing AQL, a shipment refused at the bank for
+    // a missing EXP. All committed, all relayed, none of them reaching a person.
+    //
+    // Separate from `derive` on purpose. A notification is cheap and must not queue behind a
+    // nightly derivation, and a derivation must never be delayed by a mail-shaped write.
+    new Worker<NotifyJobData>(QUEUE.notify, runNotifyJob, {
+      connection: createQueueConnection(),
+      concurrency: env.WORKER_CONCURRENCY,
+    }),
   ]
 
   for (const worker of workers) {

@@ -46,7 +46,7 @@ export interface EventJobData {
  * as it binds a request, and `userId` is null so nothing it writes is attributed to a
  * person who did not do it.
  */
-function systemCtx(companyId: string): SystemCtx {
+export function systemCtx(companyId: string): SystemCtx {
   return { companyId, userId: null, roles: ['owner'], system: true }
 }
 
@@ -183,6 +183,53 @@ const onExFactoryConfirmed: Handler = async (ctx, payload) => {
     orderId,
     name: 'ex_factory',
     on: String(payload.actualExFactory ?? todayInFactoryTz()),
+  })
+}
+
+/**
+ * 7.1 final inspection passed → 1.3 actualises the `final_inspection` milestone.
+ *
+ * Only on a PASS. A failed lot has not reached the milestone — it is going to be re-worked
+ * and re-inspected — and stamping the date anyway would tell the TNA the order is further
+ * along than it is, which is precisely the moment a merchandiser stops chasing it. The
+ * failure raises its own alert; it does not move the calendar.
+ */
+const onFinalInspectionPassed: Handler = async (ctx, payload) => {
+  const orderId = String(payload.orderId ?? '')
+  if (!orderId) notReady('event carries no orderId')
+
+  await actualiseMilestone(ctx, {
+    orderId,
+    name: 'final_inspection',
+    on: typeof payload.inspectedOn === 'string' ? payload.inspectedOn : todayInFactoryTz(),
+  })
+}
+
+/**
+ * 9.1 ticket resolved → 6.1 closes the stoppage it came from.
+ *
+ * The canvas is explicit that this happens "unprompted": a mechanic who has just got a
+ * machine running should not then be asked to file how long it was broken. They would
+ * guess, and the guess is the number the line's efficiency is measured on.
+ *
+ * Only for tickets that CAME FROM a stoppage. A mechanic's own ticket for a machine that
+ * was already idle has no downtime behind it, and closing one that does not exist would
+ * invent minutes the floor never lost.
+ */
+const onTicketResolved: Handler = async (ctx, payload) => {
+  const downtimeId = payload.downtimeId
+  if (typeof downtimeId !== 'string' || !downtimeId) {
+    // Not a sequencing gap — a manual ticket legitimately has none. Nothing to do.
+    return
+  }
+
+  const { closeLineDowntime } = await import('@/modules/production/service')
+
+  await closeLineDowntime(ctx, {
+    downtimeId,
+    // The moment the mechanic said the machine was running. `closeLineDowntime` refuses an
+    // already-closed downtime, which is what makes a redelivery of this event a no-op.
+    endedAt: new Date().toISOString(),
   })
 }
 
@@ -367,6 +414,8 @@ export const EVENT_HANDLERS: Readonly<Record<string, Handler>> = {
   'rfq.won': onRfqWon,
   'orders.order.status_changed': onOrderStatusChanged,
   'production.downtime.machine': onMachineDowntime,
+  'quality.final.passed': onFinalInspectionPassed,
+  'maintenance.ticket.resolved': onTicketResolved,
 }
 
 /**

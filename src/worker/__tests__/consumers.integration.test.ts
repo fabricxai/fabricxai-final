@@ -134,8 +134,10 @@ describe('the routing table', () => {
     expect(Object.keys(EVENT_HANDLERS).sort()).toEqual([
       'cutting.order.complete',
       'finance.realized',
+      'maintenance.ticket.resolved',
       'orders.order.status_changed',
       'production.downtime.machine',
+      'quality.final.passed',
       'rfq.won',
       'shipment.docs.ready_for_bank',
       'shipment.ex_factory.confirmed',
