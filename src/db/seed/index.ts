@@ -27,7 +27,20 @@ import { eq, sql } from 'drizzle-orm'
 import { createDirectClient, createDirectDb } from '@/db/direct'
 import * as schema from '@/db/schema'
 
+import { COMMERCIAL_SLICE } from './commercial-slice'
+import { COMPLIANCE_SLICE } from './compliance-slice'
 import { CORE_SLICE } from './core-slice'
+import { FINANCE_SLICE } from './finance-slice'
+import { CUTTING_SLICE } from './cutting-slice'
+import { PLANNING_SLICE } from './planning-slice'
+import { MAINTENANCE_SLICE } from './maintenance-slice'
+import { PROCUREMENT_SLICE } from './procurement-slice'
+import { PRODUCTION_SLICE } from './production-slice'
+import { QUALITY_SLICE } from './quality-slice'
+import { SHIPMENT_SLICE } from './shipment-slice'
+import { WORKFORCE_SLICE } from './workforce-slice'
+import { SAMPLING_SLICE } from './sampling-slice'
+import { STORE_SLICE } from './store-slice'
 import type { SeedContext, SeedScale, SeedSlice } from './types'
 
 const SCALES: Record<SeedScale, { label: string; users: number; documents: number }> = {
@@ -39,8 +52,35 @@ const SCALES: Record<SeedScale, { label: string; users: number; documents: numbe
   factory: { label: 'factory', users: 120, documents: 400 },
 }
 
-/** Registered slices. Modules append theirs as they land. */
-const SLICES: SeedSlice[] = [CORE_SLICE]
+/**
+ * Registered slices. Modules append theirs as they land.
+ *
+ * Order is dependency order, not alphabetical. The store's requisitions reserve stock
+ * against an order, so `core` (and the order `pnpm demo` creates) comes first — and
+ * `sampling` precedes `cutting` because the PP gate fails closed: without an approved PP
+ * sample, no lay may exist, so seeding cutting first would seed rows the product forbids.
+ */
+const SLICES: SeedSlice[] = [
+  CORE_SLICE,
+  // Before the store: a bonded GRN references a UD, and the issue gate reads one.
+  COMMERCIAL_SLICE,
+  STORE_SLICE,
+  SAMPLING_SLICE,
+  CUTTING_SLICE,
+  // Planning owns `lines` (rule 11), and production hangs every hourly output, downtime
+  // and endline count off a line id — so the floor's shape is seeded before its work.
+  PLANNING_SLICE,
+  PRODUCTION_SLICE,
+  QUALITY_SLICE,
+  SHIPMENT_SLICE,
+  PROCUREMENT_SLICE,
+  // After quality: it seeds the operators this attaches attendance to.
+  WORKFORCE_SLICE,
+  COMPLIANCE_SLICE,
+  MAINTENANCE_SLICE,
+  // Last: it invoices an order and raises payables against receipts, so both must exist.
+  FINANCE_SLICE,
+]
 
 function parseArgs(argv: readonly string[]): { scale: SeedScale; reset: boolean } {
   const scaleArg = argv.find((a) => a.startsWith('--scale='))?.split('=')[1] ?? 'pilot'
@@ -57,9 +97,30 @@ function parseArgs(argv: readonly string[]): { scale: SeedScale; reset: boolean 
 const SEED_COMPANY_ID = '00000000-0000-4000-8000-000000000001'
 const SEED_COMPANY_SLUG = 'seed-apparels'
 
+/**
+ * Which tenant to fill.
+ *
+ * Defaults to the seed's own company, which is what makes the generator idempotent. But the
+ * company somebody is actually signed into is the one created by THEIR signup, and until
+ * this existed the seed could only fill a tenant nobody could log into — the data was
+ * there and every screen they opened was empty. `pnpm demo` already took its target this
+ * way; the two now agree.
+ *
+ * The company must already exist: this fills a tenant, it does not invent one.
+ */
+function resolveTargetCompany(): { id: string; own: boolean } {
+  const requested = process.env.SEED_COMPANY_ID?.trim()
+  if (!requested) return { id: SEED_COMPANY_ID, own: true }
+  if (!/^[0-9a-f-]{36}$/i.test(requested)) {
+    throw new Error(`SEED_COMPANY_ID="${requested}" is not a uuid`)
+  }
+  return { id: requested, own: requested === SEED_COMPANY_ID }
+}
+
 async function main() {
   const { scale, reset } = parseArgs(process.argv.slice(2))
   const config = SCALES[scale]
+  const target = resolveTargetCompany()
   const startedAt = Date.now()
 
   console.log(`[seed] scale=${config.label} · ${SLICES.length} slice(s)`)
@@ -69,32 +130,46 @@ async function main() {
 
   try {
     if (reset) {
+      if (!target.own) {
+        // --reset deletes the company row. Doing that to somebody's real tenant because
+        // they exported an env var is not a flag, it is a trap.
+        throw new Error('--reset only applies to the seed company; unset SEED_COMPANY_ID')
+      }
       // audit_log is ON DELETE restrict on purpose — purging history is explicit.
       console.log('[seed] --reset: removing the seed company and its audit trail')
       await db.execute(sql`delete from audit_log where company_id = ${SEED_COMPANY_ID}`)
       await db.delete(schema.companies).where(eq(schema.companies.id, SEED_COMPANY_ID))
     }
 
-    await db
-      .insert(schema.companies)
-      .values({
-        id: SEED_COMPANY_ID,
-        name: 'Seed Apparels Ltd.',
-        legalName: 'Seed Apparels Limited',
-        slug: SEED_COMPANY_SLUG,
-        bin: '004123456789',
-        bondedLicenseNo: 'BOND/DHK/2019/4471',
-        factoryLicenseNo: 'FL-DHK-88231',
-        address: { line1: 'Plot 42, DEPZ', city: 'Savar', district: 'Dhaka', country: 'BD' },
-      })
-      .onConflictDoUpdate({
-        target: schema.companies.id,
-        set: { name: 'Seed Apparels Ltd.', updatedAt: new Date() },
-      })
+    if (target.own) {
+      await db
+        .insert(schema.companies)
+        .values({
+          id: SEED_COMPANY_ID,
+          name: 'Seed Apparels Ltd.',
+          legalName: 'Seed Apparels Limited',
+          slug: SEED_COMPANY_SLUG,
+          bin: '004123456789',
+          bondedLicenseNo: 'BOND/DHK/2019/4471',
+          factoryLicenseNo: 'FL-DHK-88231',
+          address: { line1: 'Plot 42, DEPZ', city: 'Savar', district: 'Dhaka', country: 'BD' },
+        })
+        .onConflictDoUpdate({
+          target: schema.companies.id,
+          set: { name: 'Seed Apparels Ltd.', updatedAt: new Date() },
+        })
+    } else {
+      const [existing] = await db
+        .select({ id: schema.companies.id, name: schema.companies.name })
+        .from(schema.companies)
+        .where(eq(schema.companies.id, target.id))
+      if (!existing) throw new Error(`company ${target.id} does not exist`)
+      console.log(`[seed] filling ${existing.name} (${target.id})`)
+    }
 
     const ctx: SeedContext = {
       db,
-      companyId: SEED_COMPANY_ID,
+      companyId: target.id,
       scale,
       volume: config,
       rng: makeRng(`fabricxai:${scale}`),
@@ -115,7 +190,7 @@ async function main() {
     for (const [table, n] of Object.entries(counts).sort()) {
       console.log(`[seed]   ${table.padEnd(20)} ${n}`)
     }
-    console.log(`[seed] done in ${Date.now() - startedAt}ms · company=${SEED_COMPANY_ID}`)
+    console.log(`[seed] done in ${Date.now() - startedAt}ms · company=${target.id}`)
   } finally {
     await client.end()
   }

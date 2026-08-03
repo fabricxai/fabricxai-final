@@ -6,10 +6,29 @@
  * get the same database, which is what makes it usable before a demo or a k6 run.
  */
 import { and, eq, sql } from 'drizzle-orm'
+import { hashPassword } from 'better-auth/crypto'
 
 import * as schema from '@/db/schema'
+import { env } from '@/lib/env'
 
 import type { SeedContext, SeedSlice } from './types'
+
+/**
+ * The password every seeded person shares.
+ *
+ * Seeded users existed from the first day with roles, profiles and names — and no way to
+ * sign in as any of them, because `pnpm seed` never wrote a credential. So the one thing
+ * the role matrix is for, seeing what a storekeeper sees and what a viewer cannot, was
+ * impossible without hand-crafting a scrypt hash.
+ *
+ * Hashed with Better Auth's own hasher rather than a hand-rolled one: the verifier at
+ * login is theirs, and a hash it cannot read is a login that fails for reasons nobody
+ * enjoys tracing.
+ *
+ * Long enough for `minPasswordLength: 10`, and identical for everybody on purpose —
+ * switching roles during a walkthrough should not mean looking up eight passwords.
+ */
+const SEED_PASSWORD = 'FabricXai-seed-2026'
 
 /** Roles worth having a real person behind for a demo walkthrough. */
 const SEED_PEOPLE = [
@@ -23,13 +42,48 @@ const SEED_PEOPLE = [
   { key: 'viewer', role: 'viewer' as const, name: 'Audit Observer', dept: 'External' },
 ]
 
+/**
+ * A password for a seeded user, so somebody can actually sign in as them.
+ *
+ * **Never in production.** A known password on every account is exactly the hole it looks
+ * like, and a seed run against a live tenant by accident must not open it. The guard is
+ * here rather than at the call site so no future slice can forget it.
+ *
+ * `emailVerified` is already true on these users, which matters because
+ * `requireEmailVerification` is on — an unverified seeded account would refuse the login
+ * with a message about an inbox that does not exist.
+ */
+async function seedCredential(ctx: SeedContext, userId: string): Promise<void> {
+  if (env.NODE_ENV === 'production') return
+
+  const existing = await ctx.db
+    .select({ id: schema.accounts.id })
+    .from(schema.accounts)
+    .where(
+      and(eq(schema.accounts.userId, userId), eq(schema.accounts.providerId, 'credential')),
+    )
+  if (existing.length > 0) return
+
+  await ctx.db.insert(schema.accounts).values({
+    id: `seed-cred-${userId}`,
+    userId,
+    accountId: userId,
+    providerId: 'credential',
+    password: await hashPassword(SEED_PASSWORD),
+  })
+}
+
 async function seedPeople(ctx: SeedContext): Promise<number> {
   const wanted = SEED_PEOPLE.slice(0, Math.max(2, ctx.volume.users))
   let n = 0
 
   for (const person of wanted) {
-    const userId = `seed-${ctx.companyId.slice(0, 8)}-${person.key}`
-    const email = `${person.key}@seed-apparels.test`
+    const short = ctx.companyId.slice(0, 8)
+    const userId = `seed-${short}-${person.key}`
+    // Scoped to the tenant, like the id already was. `users.email` is unique across the
+    // whole install, so a fixed address meant the seed could only ever fill ONE company —
+    // filling a second died on a duplicate key halfway through, leaving it half-seeded.
+    const email = `${person.key}+${short}@seed-apparels.test`
 
     await ctx.db
       .insert(schema.users)
@@ -52,6 +106,8 @@ async function seedPeople(ctx: SeedContext): Promise<number> {
       .insert(schema.roles)
       .values({ companyId: ctx.companyId, userId, role: person.role })
       .onConflictDoNothing()
+
+    await seedCredential(ctx, userId)
 
     n += 1
   }
@@ -244,13 +300,22 @@ async function seedPendingChanges(ctx: SeedContext): Promise<number> {
 async function seedNotifications(ctx: SeedContext): Promise<number> {
   const ownerId = `seed-${ctx.companyId.slice(0, 8)}-owner`
 
+  // The expiry date is derived from the same `daysLeft` the story tells rather than written
+  // out, so the two cannot drift — and a date relative to the run keeps a CRITICAL "expires
+  // soon" alert from quietly becoming an already-expired one on every demo after the first
+  // month, which reads as a bug in the LC register rather than as stale seed data.
+  const lcDaysLeft = 6
+  const lcExpiresOn = new Date(Date.now() + lcDaysLeft * 86_400_000).toISOString().slice(0, 10)
+
   const items = [
     {
       dedupeKey: 'seed:lc-expiry',
       kind: 'lc.expiry_near',
       severity: 'critical' as const,
       titleKey: 'notifications.lc.expiry_near.title',
-      params: { lcNumber: 'LC-2026-00841', daysLeft: 6 },
+      // Every placeholder the template names must be supplied: `t()` deliberately leaves an
+      // unsupplied one visible, so a miss here ships a literal `{date}` to the inbox.
+      params: { lcNumber: 'LC-2026-00841', date: lcExpiresOn, daysLeft: lcDaysLeft },
       role: 'commercial' as const,
     },
     {
