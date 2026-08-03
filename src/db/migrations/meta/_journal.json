@@ -498,6 +498,13 @@
       "when": 1785757623639,
       "tag": "0070_pgbouncer_auth_query",
       "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1785760320692,
+      "tag": "0071_cascade_fk_indexes",
+      "breakpoints": true
     }
   ]
 }
