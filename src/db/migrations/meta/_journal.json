@@ -505,6 +505,13 @@
       "when": 1785760320692,
       "tag": "0071_cascade_fk_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1785760565735,
+      "tag": "0072_prune_worker_bookkeeping",
+      "breakpoints": true
     }
   ]
 }

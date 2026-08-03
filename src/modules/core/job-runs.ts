@@ -230,3 +230,44 @@ export async function pruneJobRuns(
     return { deleted: deleted.length, keptSince: cutoff.toISOString() }
   })
 }
+
+/**
+ * Prune the worker's own bookkeeping: published outbox rows and consumer dedupe rows.
+ *
+ * Both tables grew forever (audit DB-M1, DB-M2) — nearly 2,000 published events and 4,000
+ * dedupe rows on a demo database, none of which answer a question anybody asks once a
+ * redelivery is no longer plausible.
+ *
+ * Through the definer functions from migration 0072 rather than a `delete` here, because
+ * the app role has no DELETE on `outbox` by design: nothing serving a request should be
+ * able to remove an event whose consequences have not happened yet. The functions enforce
+ * the safety property (published only, never a parked failure), so this is the schedule
+ * and the retention, not the rule.
+ */
+export async function pruneWorkerBookkeeping(
+  ctx: AnyCtx,
+  retentionDays: number,
+  now = new Date(),
+): Promise<{ outbox: number; processedEvents: number; keptSince: string }> {
+  const cutoff = new Date(now.getTime() - retentionDays * 86_400_000)
+
+  return withTenantTx(ctx, async (tx) => {
+    const outboxRows = await tx.execute<{ removed: string }>(
+      sql`select app.prune_outbox(${cutoff.toISOString()}) as removed`,
+    )
+    const eventRows = await tx.execute<{ removed: string }>(
+      sql`select app.prune_processed_events(${cutoff.toISOString()}) as removed`,
+    )
+
+    const count = (result: unknown): number => {
+      const rows = Array.isArray(result) ? result : ((result as { rows?: unknown[] }).rows ?? [])
+      return Number((rows[0] as { removed: string } | undefined)?.removed ?? 0)
+    }
+
+    return {
+      outbox: count(outboxRows),
+      processedEvents: count(eventRows),
+      keptSince: cutoff.toISOString(),
+    }
+  })
+}

@@ -30,7 +30,7 @@ import type { SamplingPolicy } from '@/modules/sampling/service'
 import { emitLatestShipmentCountdown } from '@/modules/shipment/service'
 import { deliverCritical, deliverDigest, type DeliveryPolicy } from '@/modules/core/delivery'
 import { runJobHealthCheck, type JobHealthPolicy } from '@/modules/core/job-health-job'
-import { pruneJobRuns, recordRun } from '@/modules/core/job-runs'
+import { pruneJobRuns, pruneWorkerBookkeeping, recordRun } from '@/modules/core/job-runs'
 import { runCapEscalations, runCertificateAlerts } from '@/modules/compliance/jobs'
 import type { CompliancePolicy } from '@/modules/compliance/service'
 import type { SystemCtx } from '@/modules/core/ctx'
@@ -281,6 +281,15 @@ export const SCHEDULED_TASKS = [
     // 05:00 Dhaka, after the monthly reports. The five-minute tasks alone are 288 rows a
     // day per company, and the query that watches everything else reads this table.
     pattern: '0 5 * * *',
+  },
+  {
+    id: 'prune-worker-bookkeeping-nightly',
+    task: 'core.prune_worker_bookkeeping',
+    // 05:15 Dhaka, just after the job-run prune and well clear of the night shift. Both
+    // tables it touches are worker bookkeeping that grew forever until now (audit DB-M1,
+    // DB-M2); neither is read by anything a person is waiting for, so this is deliberately
+    // the least urgent thing on the schedule.
+    pattern: '15 5 * * *',
   },
 
   // ── 11.2 Analytics ──
@@ -534,6 +543,14 @@ async function dispatchTask(ctx: SystemCtx, task: ScheduledTask): Promise<unknow
 
     case 'core.prune_job_runs':
       return pruneJobRuns(ctx, (await getPolicy<{ retentionDays: number }>(ctx, 'job_health')).retentionDays)
+
+    case 'core.prune_worker_bookkeeping':
+      // Shares the job-health retention window: both answer "how far back does the
+      // worker's own history go", and two numbers to keep in step would drift.
+      return pruneWorkerBookkeeping(
+        ctx,
+        (await getPolicy<{ retentionDays: number }>(ctx, 'job_health')).retentionDays,
+      )
     default: {
       // Exhaustiveness: a task added to SCHEDULED_TASKS without a branch here fails to
       // compile rather than silently doing nothing every night.
