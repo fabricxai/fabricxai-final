@@ -95,6 +95,47 @@ try {
     )
   }
   console.log(`[roles] verified: ${ownerName} can bypass RLS (owner/migration duties)`)
+
+  // ── The pooler's lookup account ───────────────────────────────────────────────
+  //
+  // Migration 0070 creates `pgbouncer_auth` and grants it EXECUTE on one function;
+  // like every other role here, its PASSWORD comes from the environment rather than
+  // from a migration, because a password in a migration file is a password in git.
+  //
+  // Optional on purpose. Dev runs the pooler with a cleartext userlist and does not
+  // need this account, so an unset variable is a skip with a reason rather than a
+  // failure — but production must set it, and `pgbouncer.prod.ini` will not start
+  // without the credential.
+  const poolerPassword = process.env.PGBOUNCER_AUTH_PASSWORD
+  if (poolerPassword) {
+    await sql.unsafe(`ALTER ROLE "pgbouncer_auth" WITH PASSWORD ${quoteLiteral(poolerPassword)}`)
+
+    // Prove the lookup actually answers for the app role before a pooler depends on
+    // it. A silent empty result here is every client failing to authenticate later,
+    // which looks like a password problem and is not one.
+    const [probe] = await sql`SELECT username FROM app.pgbouncer_get_auth(${username})`
+    if (probe?.username !== username) {
+      throw new Error(
+        `app.pgbouncer_get_auth('${username}') returned nothing — PgBouncer would refuse\n` +
+          'every client. Check that the role can log in and is not a superuser.',
+      )
+    }
+
+    // And prove it refuses what it must refuse. The function exists to hand out one
+    // non-superuser verifier; if it ever answers for the owner, the pooler becomes a
+    // way to authenticate as a role that bypasses RLS.
+    const ownerProbe = await sql`SELECT username FROM app.pgbouncer_get_auth(${ownerName})`
+    if (ownerProbe.length > 0) {
+      throw new Error(
+        `app.pgbouncer_get_auth('${ownerName}') returned a verifier for the owner role — ` +
+          'the pooler must never be able to authenticate a role that bypasses RLS',
+      )
+    }
+
+    console.log('[roles] pgbouncer_auth password set · auth_query verified (app yes, owner no)')
+  } else {
+    console.log('[roles] PGBOUNCER_AUTH_PASSWORD unset — skipping (dev uses a cleartext userlist)')
+  }
 } finally {
   await sql.end()
 }

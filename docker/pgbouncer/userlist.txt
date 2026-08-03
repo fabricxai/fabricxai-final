@@ -1,8 +1,12 @@
 ; DEV ONLY. Passwords match docker-compose.dev.yml and .env.example.
 ;
-; Production does not use this file — use auth_type=scram-sha-256 with auth_user +
-; auth_query so PgBouncer reads verifiers from Postgres and no password is ever
-; written to disk. See docs/runbooks/.
+; Production does not use this file. It uses `docker/pgbouncer/pgbouncer.prod.ini`:
+; auth_type=scram-sha-256 with auth_user=pgbouncer_auth and an auth_query against
+; `app.pgbouncer_get_auth` (migration 0070), so PgBouncer reads a verifier from
+; Postgres and no application password is ever written to disk. The only credential
+; on the production pooler's disk is pgbouncer_auth's own — a role that can do
+; nothing but call that one function — written at deploy time from
+; PGBOUNCER_AUTH_PASSWORD by `pnpm db:setup-roles`.
 ;
 ; "fabricxai"     — owner/migration role. Migrations bypass PgBouncer entirely
 ;                   (DIRECT_DATABASE_URL); this entry exists only for psql via the pooler.
