@@ -71,6 +71,30 @@ try {
     )
   }
   console.log(`[roles] verified: ${username} is not superuser and does not bypass RLS`)
+
+  // The OWNER side of the same contract, stated instead of assumed. Every policy in the
+  // schema is `TO fabricxai_app` and every tenant table is FORCE RLS, so the owner is
+  // bound by RLS too unless it holds BYPASSRLS (or is a superuser, as the dev initdb
+  // user happens to be). Eight SECURITY DEFINER functions — login's membership lookup,
+  // the outbox relay's batch claim, the scheduler's health reads — execute as the owner
+  // and read forced tables: with a hardened, non-BYPASSRLS owner they all return zero
+  // rows, which presents as "login broken, events undelivered", not as an RLS error.
+  // Decision (audit DB-B1): the owner role MUST hold BYPASSRLS. Enforced here, at
+  // provisioning, where the operator who hardened the role is still looking.
+  const ownerName = new URL(ownerUrl).username
+  const [owner] = await sql`
+    SELECT r.rolbypassrls AS bypasses_rls, r.rolsuper AS is_superuser
+    FROM pg_roles r WHERE r.rolname = ${ownerName}`
+
+  if (!owner?.bypasses_rls && !owner?.is_superuser) {
+    throw new Error(
+      `${ownerName} (the migration/owner role) has neither BYPASSRLS nor SUPERUSER.\n` +
+        'FORCE ROW LEVEL SECURITY binds the owner too, and the SECURITY DEFINER helpers\n' +
+        '(membership lookup at login, outbox batch claim, scheduler health) would all\n' +
+        `return zero rows. Fix: ALTER ROLE ${quoteIdent(ownerName)} BYPASSRLS;`,
+    )
+  }
+  console.log(`[roles] verified: ${ownerName} can bypass RLS (owner/migration duties)`)
 } finally {
   await sql.end()
 }
