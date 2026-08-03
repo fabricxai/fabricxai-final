@@ -75,12 +75,25 @@ const QUEUE_ROUTES: readonly { prefix: string; queue: QueueName }[] = [
   // Closing an order compiles its outcome into order memory.
   { prefix: 'orders.order.status_changed', queue: QUEUE.derive },
 
-  // Document rendering.
-  { prefix: 'procurement.po.issued', queue: QUEUE.renderPdf },
-  { prefix: 'shipment.packing_list.approved', queue: QUEUE.renderPdf },
+  // Document rendering (`procurement.po.issued`, `shipment.packing_list.approved`) is NOT
+  // routed yet, on purpose. `renderPdf` has no worker and lib/pdf.ts is a stub — a route
+  // pointing there parked every issued PO in `waiting` forever and grew Redis unbounded.
+  // Until the Playwright pipeline lands, those events fall through to `notify`, where the
+  // notifier's "no spec for this event" answer is a recorded no-op instead of a leak.
+  // When the pipeline lands, restore the routes AND the render worker in the same commit —
+  // startup now asserts every routed queue has a worker, so half the change cannot ship.
 
   // Everything else is somebody being told something.
 ]
+
+/**
+ * Every queue the routing table can send a job to (including the `notify` default).
+ * The worker asserts at boot that it starts a worker for each — a route into a queue
+ * nobody reads is a job that waits forever while looking successfully published.
+ */
+export function routedQueues(): readonly QueueName[] {
+  return [...new Set([...QUEUE_ROUTES.map((route) => route.queue), QUEUE.notify])]
+}
 
 /**
  * Which queue an event goes to. Exported so a test can assert that every registered

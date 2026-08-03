@@ -26,7 +26,7 @@ import { registeredSummary } from '@/modules/registry'
 import { routeDeriveJob } from './derive-router'
 import { runNotifyJob, type NotifyJobData } from './processors/notifier'
 import { type EventJobData } from './processors/consumers'
-import { startOutboxRelay } from './processors/outbox-relay'
+import { routedQueues, startOutboxRelay } from './processors/outbox-relay'
 import {
   fanOutScheduledTask,
   registerSchedules,
@@ -91,6 +91,16 @@ async function main() {
       concurrency: env.WORKER_CONCURRENCY,
     }),
   ]
+
+  // Every queue the relay can route into must have a worker below, or jobs land in a
+  // queue nobody reads and wait forever while the outbox reports them published.
+  const consumed = new Set(workers.map((worker) => worker.name))
+  const unconsumed = routedQueues().filter((queue) => !consumed.has(queue))
+  if (unconsumed.length > 0) {
+    throw new Error(
+      `[worker] QUEUE_ROUTES sends jobs to queue(s) with no worker: ${unconsumed.join(', ')}`,
+    )
+  }
 
   for (const worker of workers) {
     worker.on('failed', (job, error) => {
