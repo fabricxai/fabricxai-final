@@ -44,7 +44,28 @@
 | TEST-B3 payroll tenancy | `b33cb4c` | 4-test cross-company block |
 | INFRA-H6 security headers | `76afd5d` | CSP/HSTS/XFO/nosniff/Referrer/Permissions in next.config |
 
-Still open from Sprint 1's neighbourhood: BE-B1 (service-layer `company_id` predicates + lint — the boot assertion half is done), DB-B1's CI job, and everything in Sprints 3–7 not named above.
+**Second batch, same day** — Sprint 3 (production infrastructure) and the start of Sprint 4:
+
+| Finding | Commit | Note |
+|---|---|---|
+| INFRA-B4 PgBouncer plaintext auth | `d0a3b9a` | migration 0070: scram + `auth_query` via a NOINHERIT lookup role; refuses superusers and itself; provisioning verifies both directions |
+| INFRA-B2 no prod deploy config | `9ded55a` | `docker-compose.prod.yml` + Caddyfile + `.env.production.example`; Caddy holds the only published ports; migrate runs to completion before app/worker |
+| INFRA-H1 S3 presign unreachable | `9ded55a` | `S3_PUBLIC_ENDPOINT` + a separate signing client; Caddy proxies `/s3/*` preserving the path SigV4 covers |
+| INFRA-H4 worker PID-1 / healthcheck | `9ded55a`, `8a5de28` | dumb-init entrypoint, `healthcheck: disable` on the worker, 60s start-period, `unhandledRejection`/`uncaughtException` handlers |
+| INFRA-H5 no migration step in deploy | `9ded55a` | one-shot `migrate` service; app/worker gated on `service_completed_successfully` |
+| INFRA-M6/M9/M11 image + Redis + bucket hardening | `9ded55a` | read-only rootfs, `cap_drop: ALL`, memory limits; Redis AOF/noeviction/requirepass; bucket private **and versioned** |
+| INFRA-B3 / DB-B2 no backups or restore | `445e4be`, `e0e560b` | pgBackRest with continuous WAL to an offsite encrypted repo, `scripts/backup.sh` (full Sun / incr otherwise, heartbeat on success), `restore.md` branching by failure mode with a verification list — **rehearsal log deliberately empty** |
+| INFRA-M7 / TEST-M10 / TEST-L12 CI gaps | `91257ff` | job timeouts, `--max-warnings=0`, `pnpm audit --prod`, gitleaks over full history, trivy on the image, a boot-refusal check, and `:latest` tags pinned |
+| INFRA-H7 no rate limiting | `32d19f7` | Redis token buckets on auth/sync/presign; Better Auth on the same Redis; **fails open** so a Redis blip cannot stop a floor recording production |
+| INFRA-L3 implicit cookie flags | `32d19f7` | `useSecureCookies` pinned to production |
+| INFRA-B5 observability | `8a5de28` | pino structured JSON (redacting wages, prices, LC values) + Sentry wired with replay and PII off; **SENTRY_DSN is now optional** rather than required-and-ignored |
+| INFRA-H8 three unused LLM keys required | `8a5de28` | `MARBIM_ENABLED` flag; enabling needs ONE provider key. Mail now needs SMTP **or** Resend, not Resend specifically |
+| FE-B3 no route boundaries | `64bd3ff` | error/loading/not-found per group + `global-error`; app boundary resolves thrown AppError keys; board retries itself with no button |
+| FE-B1 i18n mechanism | `7e1afb3` | `i18n-ui` catalogue bound to the existing resolver, `requestLocale`, `useT`; parity/blank/orphan/Bengali-script tests |
+| FE-B1 floor routes (7 of 12) | `14f8b52`, `af06b48` | store (receive, overview, issue, rolls) + cutting (queue, lay, report, wastage); verified rendering Bangla against a running server |
+| PROC-3 stale trackers | `00cc18d` | PROGRESS rewritten to all 23 modules with per-module state; STUBS corrected in both directions |
+
+Still open from these sprints: BE-B1 (service-layer `company_id` predicates + lint — the boot-assertion half is done), DB-B1's non-superuser-owner CI job, the last five floor routes (lines ×3, quality ×2), and Sprints 5–7 entirely. Note also a gap this work surfaced: **the `errors.*` catalogue has no `bn` entries at all**, so every refusal a floor screen shows falls back to English even on a converted screen.
 
 ## Severity index
 
