@@ -65,7 +65,24 @@
 | FE-B1 floor routes (7 of 12) | `14f8b52`, `af06b48` | store (receive, overview, issue, rolls) + cutting (queue, lay, report, wastage); verified rendering Bangla against a running server |
 | PROC-3 stale trackers | `00cc18d` | PROGRESS rewritten to all 23 modules with per-module state; STUBS corrected in both directions |
 
-Still open from these sprints: BE-B1 (service-layer `company_id` predicates + lint — the boot-assertion half is done), DB-B1's non-superuser-owner CI job, the last five floor routes (lines ×3, quality ×2), and Sprints 5–7 entirely. Note also a gap this work surfaced: **the `errors.*` catalogue has no `bn` entries at all**, so every refusal a floor screen shows falls back to English even on a converted screen.
+**Third batch, same day** — the rest of Sprint 4 plus two items pulled forward:
+
+| Finding | Commit | Note |
+|---|---|---|
+| FE-B1 floor routes (10 of 12) | `0c62d1b` | lines (queue, hourly, endline) + the TV board; and the shared `fx/floor.tsx` sync pill, which every converted screen was still showing in English |
+| FE-M5 no language picker | `d2e6164` | the switch, in the account menu, per device — without it every translated string was gated behind the browser's `Accept-Language` |
+| FE-H1 no password recovery | `566483e` | reset email, one-hour single-use token, `/forgot-password` + `/reset-password`; enumeration-safe. Verified end to end through Mailpit |
+| DB-M4 unindexed cascade FKs | `24d0e52` | 24 indexes; the notification bell went from Seq Scan + Sort to a bare Index Scan (EXPLAIN before/after) |
+
+Also fixed in passing, each surfaced by the conversion rather than the audit: a lay badge comparing against a `'closed'` status absent from the enum, so every finished lay looked unfinished; a no-op ternary that was the only consumer of a prop that was in turn the only consumer of an `activeLines()` query, i.e. a database round trip per floor page load feeding nothing; and the refused-writes banner rendering a raw i18n key at the operator.
+
+### Still open
+
+- **BE-B1** service-layer `company_id` predicates + a lint rule (the boot-assertion half is done).
+- **DB-B1** the non-superuser-owner CI job that would catch the privilege model regressing.
+- **FE-B1** the last two floor routes (quality inline + QC screens) — in progress.
+- **A gap this work surfaced, not in the original audit:** the `errors.*` catalogue has **no `bn` entries at all** — 28 error keys, English only. So on a fully converted Bangla screen, every refusal still reads in English. The floor sees Bangla until something goes wrong, which is when the words matter most.
+- **Sprints 5–7** essentially untouched: the flagship TNA and buyers write surfaces (FE-B2, FE-B4, BE-B6), the LC latest-shipment gate (BE-H2), the UTC "today" bug across 85 sites (INFRA-H2), MARBIM (AI-B1/B2/B3), and the test depth items (TEST-B1, TEST-B2, TEST-H4–H8).
 
 ## Severity index
 
