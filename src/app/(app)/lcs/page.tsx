@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 
+import { compareDecimalStrings } from '@/lib/quantity'
 import { EmptyState, InlineAlert } from '@/components/fx/feedback'
 import { Badge } from '@/components/fx/primitives'
 import { Eyebrow, SectionHeading } from '@/components/fx/signature'
@@ -199,7 +200,7 @@ export default async function LcsPage() {
                         font: "400 12.5px/1.3 var(--fx-font-mono)",
                         textAlign: 'right',
                         color:
-                          lc.btbUsedPct && Number.parseFloat(lc.btbUsedPct) > btbLimitPct
+                          lc.btbUsedPct && compareDecimalStrings(lc.btbUsedPct, String(btbLimitPct)) > 0
                             ? 'var(--fx-danger)'
                             : 'var(--fx-text-secondary)',
                       }}

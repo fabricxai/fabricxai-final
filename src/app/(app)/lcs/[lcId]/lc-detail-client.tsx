@@ -80,7 +80,9 @@ export function LcDetailClient({
   const [noted, setNoted] = useState<string | null>(null)
   const [failure, setFailure] = useState<string | null>(null)
 
+  // eslint-disable-next-line fabricxai/no-float-money -- local BTB headroom preview only; the server re-runs the exact gate (rule 8) and only its answer writes
   const free = Number.parseFloat(lc.headroom.free)
+  // eslint-disable-next-line fabricxai/no-float-money -- half-typed keyboard value for the same preview; NaN falls back to 0, the server recomputes exactly
   const asking = Number.parseFloat(btbValue) || 0
   // Local preview only. The server runs the same check and its answer is the one that counts.
   const wouldExceed = asking > 0 && asking > free

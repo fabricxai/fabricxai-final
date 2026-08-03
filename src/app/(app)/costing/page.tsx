@@ -3,6 +3,8 @@ import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { desc } from 'drizzle-orm'
 
+import { compareDecimalStrings } from '@/lib/quantity'
+
 import { Badge } from '@/components/fx/primitives'
 import { SectionHeading } from '@/components/fx/signature'
 import { PageHeader } from '@/components/shell/page-shell'
@@ -121,8 +123,7 @@ export default async function CostingPage() {
               {sheets.map((s) => {
                 const below =
                   policy.marginFloorPct !== undefined &&
-                  Number.parseFloat(s.achievedMarginPct ?? '0') <
-                    Number.parseFloat(policy.marginFloorPct)
+                  compareDecimalStrings(s.achievedMarginPct ?? '0', policy.marginFloorPct) < 0
                 return (
                   <div
                     key={s.id}

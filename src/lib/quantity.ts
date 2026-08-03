@@ -140,6 +140,85 @@ export function multiplyDecimalStrings(a: string, b: string): string {
   return `${negative ? '-' : ''}${padded.slice(0, -scale)}.${padded.slice(-scale)}`
 }
 
+/**
+ * Subtract two decimal strings exactly, keeping the finer of the two scales.
+ * `a − b`; the result carries its sign ("-2.35").
+ */
+export function subtractDecimalStrings(a: string, b: string): string {
+  const split = (value: string) => {
+    if (!DECIMAL.test(value)) throw new QuantityError(`"${value}" is not a decimal`)
+    const [whole = '0', fraction = ''] = value.replace('-', '').split('.')
+    return { digits: BigInt(whole + fraction), scale: fraction.length, negative: value.startsWith('-') }
+  }
+
+  const left = split(a)
+  const right = split(b)
+  const scale = Math.max(left.scale, right.scale)
+  const l = left.digits * 10n ** BigInt(scale - left.scale) * (left.negative ? -1n : 1n)
+  const r = right.digits * 10n ** BigInt(scale - right.scale) * (right.negative ? -1n : 1n)
+  const diff = l - r
+
+  if (scale === 0) return diff.toString()
+  const negative = diff < 0n
+  const abs = (negative ? -diff : diff).toString().padStart(scale + 1, '0')
+  return `${negative ? '-' : ''}${abs.slice(0, -scale)}.${abs.slice(-scale)}`
+}
+
+/**
+ * Compare two decimal strings exactly, at any scale. -1 / 0 / 1 like Array.sort wants.
+ *
+ * The float spelling (`Number.parseFloat(a) > Number.parseFloat(b)`) is what this
+ * replaces: fine until the day two 15-digit UD balances differ in the 16th, and the
+ * comparison that gates a bonded issue answers from the rounding instead of the numbers.
+ */
+export function compareDecimalStrings(a: string, b: string): -1 | 0 | 1 {
+  const split = (value: string) => {
+    if (!DECIMAL.test(value)) throw new QuantityError(`"${value}" is not a decimal`)
+    const [whole = '0', fraction = ''] = value.replace('-', '').split('.')
+    return { digits: BigInt(whole + fraction), scale: fraction.length, negative: value.startsWith('-') }
+  }
+
+  const left = split(a)
+  const right = split(b)
+  const scale = Math.max(left.scale, right.scale)
+  const l = left.digits * 10n ** BigInt(scale - left.scale) * (left.negative ? -1n : 1n)
+  const r = right.digits * 10n ** BigInt(scale - right.scale) * (right.negative ? -1n : 1n)
+  return l < r ? -1 : l > r ? 1 : 0
+}
+
+/**
+ * `part` as a percentage of `whole`, exactly, rounded half-up ONCE to `decimals` places.
+ * Null when the whole is zero — "no denominator" is an answer, 0% or ∞% are lies.
+ *
+ * This is the BTB-headroom and UD-utilisation figure, i.e. a number a bank or a customs
+ * officer may later dispute; it must not be a float that happened to print nicely.
+ */
+export function ratioAsPercent(part: string, whole: string, decimals = 1): string | null {
+  const split = (value: string) => {
+    if (!DECIMAL.test(value)) throw new QuantityError(`"${value}" is not a decimal`)
+    const [w = '0', fraction = ''] = value.replace('-', '').split('.')
+    return { digits: BigInt(w + fraction), scale: fraction.length, negative: value.startsWith('-') }
+  }
+
+  const p = split(part)
+  const w = split(whole)
+  if (w.digits === 0n) return null
+
+  // part×100×10^decimals ÷ whole, on a common scale, rounded half-up once.
+  // Sign handled here: divideRoundHalfUp expects a positive denominator.
+  const scale = Math.max(p.scale, w.scale)
+  const numerator =
+    p.digits * 10n ** BigInt(scale - p.scale) * 100n * 10n ** BigInt(decimals)
+  const denominator = w.digits * 10n ** BigInt(scale - w.scale)
+  const magnitude = divideRoundHalfUp(numerator, denominator)
+  const rounded = p.negative !== w.negative ? -magnitude : magnitude
+
+  if (decimals === 0) return rounded.toString()
+  const negative = rounded < 0n
+  const abs = (negative ? -rounded : rounded).toString().padStart(decimals + 1, '0')
+  return `${negative ? '-' : ''}${abs.slice(0, -decimals)}.${abs.slice(-decimals)}`
+}
+
 /** Round a decimal string to `scale` places, half-up. The single rounding at the end. */
 export function roundToScale(value: string, scale = QUANTITY_SCALE): string {
   if (!DECIMAL.test(value)) throw new QuantityError(`"${value}" is not a decimal`)

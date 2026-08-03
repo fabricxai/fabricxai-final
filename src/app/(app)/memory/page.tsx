@@ -1,6 +1,7 @@
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 
+import { compareDecimalStrings } from '@/lib/quantity'
 import { CloseOutNote } from '@/components/fx/close-out-note'
 import { Card } from '@/components/fx/data'
 import { EmptyState } from '@/components/fx/feedback'
@@ -236,7 +237,7 @@ function PairFigure({
   unit?: string
   basis?: string | null
 }) {
-  const worse = pair.variancePct !== null && Number.parseFloat(pair.variancePct) < 0
+  const worse = pair.variancePct !== null && compareDecimalStrings(pair.variancePct, '0') < 0
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -272,7 +273,7 @@ function PairFigure({
 
       <span style={{ font: "400 12px/1.4 var(--fx-font-sans)", color: 'var(--fx-text-tertiary)' }}>
         {pair.variancePct !== null
-          ? `${Number.parseFloat(pair.variancePct) >= 0 ? '+' : ''}${pair.variancePct} pts vs quote`
+          ? `${compareDecimalStrings(pair.variancePct, '0') >= 0 ? '+' : ''}${pair.variancePct} pts vs quote`
           : 'no quote on file to compare'}
         {basis ? ` · on ${basis}` : ''}
       </span>

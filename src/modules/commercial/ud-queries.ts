@@ -12,6 +12,8 @@
 import { desc, eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
 
+import { compareDecimalStrings } from '@/lib/quantity'
+
 import type { AnyCtx } from '@/modules/core/ctx'
 import { readJsonbArray } from '@/modules/core/jsonb'
 import { withTenantRead } from '@/modules/core/tenancy'
@@ -107,7 +109,7 @@ export async function udRegister(ctx: AnyCtx, input: { now: Date }): Promise<UdC
         daysToExpiry: ud.validUntil ? daysUntil(ud.validUntil, input.now) : null,
         items,
         unreadableItems: authorized.unreadable,
-        exhaustedItems: items.filter((i) => Number.parseFloat(i.free) <= 0).length,
+        exhaustedItems: items.filter((i) => compareDecimalStrings(i.free, '0') <= 0).length,
       }
     })
   })

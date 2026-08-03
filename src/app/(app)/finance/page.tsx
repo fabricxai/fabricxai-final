@@ -1,6 +1,8 @@
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 
+import { money, subtract } from '@/lib/money'
+import { compareDecimalStrings, subtractDecimalStrings } from '@/lib/quantity'
 import { EmptyState, InlineAlert } from '@/components/fx/feedback'
 import { PayableAction } from '@/components/fx/payable-action'
 import { Badge } from '@/components/fx/primitives'
@@ -30,6 +32,14 @@ import {
  * this system — a finance screen is the worst place to invent the first one.
  */
 export const dynamic = 'force-dynamic'
+
+/**
+ * a + b on decimal strings, exactly. The aging buckets total a column the same way the
+ * old float sum did (per bucket, no currency netting introduced here) — but a bucket of
+ * numeric(14,2) receivables must not drift by a float's rounding.
+ */
+const addDecimalStrings = (a: string, b: string): string =>
+  subtractDecimalStrings(a, b.startsWith('-') ? b.slice(1) : `-${b}`)
 
 export default async function FinancePage() {
   const ctx = await getCtx(await headers())
@@ -74,15 +84,15 @@ export default async function FinancePage() {
     return {
       label: bucket.label,
       count: rows.length,
-      total: rows
-        .reduce((sum, r) => sum + Number.parseFloat(r.amount), 0)
-        .toFixed(2),
+      total: rows.reduce((sum, r) => addDecimalStrings(sum, r.amount), '0.00'),
     }
   })
 
   const overdueIn = receivables.filter((r) => r.daysToExpected !== null && r.daysToExpected < 0)
   const overdueOut = payables.filter((p) => p.daysToDue !== null && p.daysToDue < 0)
-  const shortfalls = receivables.filter((r) => r.shortfall && Number.parseFloat(r.shortfall) > 0)
+  const shortfalls = receivables.filter(
+    (r) => r.shortfall && compareDecimalStrings(r.shortfall, '0') > 0,
+  )
 
   return (
     <>
@@ -151,8 +161,7 @@ export default async function FinancePage() {
                 </thead>
                 <tbody>
                   {cash.buckets.map((bucket) => {
-                    const closing = Number.parseFloat(bucket.closingBalance)
-                    const negative = closing < 0
+                    const negative = compareDecimalStrings(bucket.closingBalance, '0') < 0
                     return (
                       <tr key={bucket.weekStart}>
                         <td
@@ -373,7 +382,7 @@ export default async function FinancePage() {
                   className="fx-selvage"
                   data-status={
                     o.actualMarginPct && o.quotedMarginPct
-                      ? Number.parseFloat(o.actualMarginPct) < Number.parseFloat(o.quotedMarginPct)
+                      ? compareDecimalStrings(o.actualMarginPct, o.quotedMarginPct) < 0
                         ? 'at-risk'
                         : 'on-track'
                       : undefined
@@ -414,7 +423,7 @@ export default async function FinancePage() {
                             {v.component}{' '}
                             <span
                               style={{
-                                color: Number.parseFloat(v.variance) < 0
+                                color: compareDecimalStrings(v.variance, '0') < 0
                                   ? 'var(--fx-danger)'
                                   : 'var(--fx-success)',
                               }}
@@ -446,7 +455,7 @@ export default async function FinancePage() {
 
 function ReceivableRowView({ row }: { row: ReceivableRow }) {
   const late = row.daysToExpected !== null && row.daysToExpected < 0
-  const short = row.shortfall && Number.parseFloat(row.shortfall) > 0
+  const short = row.shortfall && compareDecimalStrings(row.shortfall, '0') > 0
 
   return (
     <div
@@ -573,9 +582,10 @@ function PayableRowView({ row }: { row: PayableRow }) {
             reference={row.supplierName ?? row.reference ?? 'payable'}
             amount={row.amount}
             currency={row.currency}
-            outstanding={(
-              Number.parseFloat(row.amount) - Number.parseFloat(row.paidAmount ?? '0')
-            ).toFixed(2)}
+            outstanding={
+              subtract(money(row.amount, row.currency), money(row.paidAmount ?? '0', row.currency))
+                .amount
+            }
           />
         ) : null}
       </div>

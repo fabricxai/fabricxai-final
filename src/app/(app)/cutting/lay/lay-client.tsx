@@ -77,6 +77,7 @@ export function LayClient({
   const [spread, setSpread] = useState<string[]>([])
 
   const marker = markers.find((m) => m.id === markerId)
+  // eslint-disable-next-line fabricxai/no-float-money -- floor keypad ply count, pieces not money; NaN is rejected by the validPlies check on the next line
   const plyCount = Number.parseInt(plies, 10)
   const validPlies = Number.isInteger(plyCount) && plyCount > 0
 

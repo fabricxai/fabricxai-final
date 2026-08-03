@@ -21,6 +21,8 @@ import {
   add,
   compare,
   convert,
+  isNegative,
+  isZero,
   type Money,
   money,
   mulDiv,
@@ -28,7 +30,11 @@ import {
   subtract,
   sum,
 } from '@/lib/money'
-import { multiplyDecimalStrings } from '@/lib/quantity'
+import {
+  compareDecimalStrings,
+  multiplyDecimalStrings,
+  subtractDecimalStrings,
+} from '@/lib/quantity'
 
 export class CostingError extends Error {
   override readonly name = 'CostingError'
@@ -194,7 +200,7 @@ function cmSection(cm: CmInput, input: CostSheetInput): SectionTotal {
     assertNonNegative(cm.smv, 'SMV')
     assertNonNegative(cm.efficiencyPct, 'efficiency')
 
-    if (Number.parseFloat(cm.efficiencyPct) <= 0) {
+    if (compareDecimalStrings(cm.efficiencyPct, '0') <= 0) {
       // A line at 0% produces nothing; there is no CM to quote, and dividing would give
       // an infinite one.
       throw new CostingError('efficiency must be greater than zero to quote CM')
@@ -294,8 +300,7 @@ function applyMargin(totalCost: Money, marginPct: string, basis: 'price' | 'cost
 
   if (basis === 'cost') return multiply(totalCost, wastageFactor(marginPct))
 
-  const pct = Number.parseFloat(marginPct)
-  if (pct >= 100) {
+  if (compareDecimalStrings(marginPct, '100') >= 0) {
     // price = cost ÷ (1 − margin). At 100% that is a division by zero, and above it the
     // price goes negative — both are somebody having typed the wrong basis.
     throw new CostingError(
@@ -303,8 +308,10 @@ function applyMargin(totalCost: Money, marginPct: string, basis: 'price' | 'cost
     )
   }
 
-  // cost ÷ (1 − pct/100)  =  cost × 100 ÷ (100 − pct)
-  return mulDiv(totalCost, 100, (100 - pct).toFixed(4))
+  // cost ÷ (1 − pct/100)  =  cost × 100 ÷ (100 − pct), the divisor computed exactly —
+  // this is the FOB price; a float divisor here was the audit's sharpest money finding.
+  const headroom = subtractDecimalStrings('100', marginPct)
+  return mulDiv(totalCost, 100, headroom)
 }
 
 function finalise(
@@ -322,7 +329,7 @@ function finalise(
   // manager checks, and the only one comparable across sheets with different bases.
   const profit = subtract(fobPrice, totalCost)
   const achieved =
-    Number.parseFloat(fobPrice.amount) > 0
+    !isZero(fobPrice) && !isNegative(fobPrice)
       ? mulDiv(profit, 100, fobPrice.amount).amount
       : '0.00'
 

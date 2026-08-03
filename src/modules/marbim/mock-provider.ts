@@ -120,6 +120,7 @@ function findLabelled(
  * person is waiting.
  */
 function coerceToSchema(raw: string, fieldSchema: ZodType | undefined): unknown {
+  // eslint-disable-next-line fabricxai/no-float-money -- digits-only candidate for integer quantity fields; money schemas are string-typed, so they reject this form and take the raw string candidate instead
   const candidates: unknown[] = /^\d+$/.test(raw) ? [Number.parseInt(raw, 10), raw] : [raw]
 
   // A labelled line can legitimately answer a LIST field: `PO Numbers: A-1, A-2` is two,

@@ -7,6 +7,8 @@
  */
 import { eq, sql } from 'drizzle-orm'
 
+import { compareDecimalStrings, multiplyDecimalStrings } from '@/lib/quantity'
+
 import type { SystemCtx } from '../core/ctx'
 import { notify } from '../core/notifications'
 import { withTenantRead } from '../core/tenancy'
@@ -98,11 +100,16 @@ export async function runUdAlerts(
     const balance = computeUdBalance({ authorizedItems: parsed.data, consumptions })
 
     for (const item of balance.values()) {
-      const authorized = Number.parseFloat(item.authorized)
-      const free = Number.parseFloat(item.free)
-      // Display-side comparison only — the gate itself is exact. Getting a warning
-      // threshold marginally wrong costs nothing; getting the gate wrong costs duty.
-      if (authorized <= 0 || free / authorized > LOW_BALANCE_THRESHOLD) continue
+      // Same exact arithmetic as the gate: warn when free ≤ authorized × threshold.
+      // A float ratio here would let two 15-digit balances answer from the rounding.
+      if (
+        compareDecimalStrings(item.authorized, '0') <= 0 ||
+        compareDecimalStrings(
+          item.free,
+          multiplyDecimalStrings(item.authorized, String(LOW_BALANCE_THRESHOLD)),
+        ) > 0
+      )
+        continue
 
       lowBalance += 1
       await notify(ctx, {

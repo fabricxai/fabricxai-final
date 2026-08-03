@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 
+import { compareDecimalStrings, roundToScale, subtractDecimalStrings } from '@/lib/quantity'
 import { InlineAlert } from '@/components/fx/feedback'
 import { actionErrorMessage } from '@/lib/action-error'
 import { Badge, Button } from '@/components/fx/primitives'
@@ -133,7 +134,12 @@ export function UdDetailClient({
     })
   }
 
-  const totalHeld = items.reduce((sum, i) => sum + Number.parseFloat(i.free), 0)
+  // Exact string sum — this is bonded balance, the number customs disputes. Addition is
+  // spelled as a − (−b) because lib/quantity deliberately exports no unit-less add.
+  const totalHeld = items.reduce(
+    (sum, i) => subtractDecimalStrings(sum, i.free.startsWith('-') ? i.free.slice(1) : `-${i.free}`),
+    '0.00',
+  )
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 30 }}>
@@ -145,9 +151,9 @@ export function UdDetailClient({
         </InlineAlert>
       ) : null}
 
-      {validUntil && status === 'active' && totalHeld > 0 ? (
+      {validUntil && status === 'active' && compareDecimalStrings(totalHeld, '0') > 0 ? (
         <InlineAlert tone="info">
-          Validity ends {validUntil} with {totalHeld.toFixed(2)} still unused. Balance left on a
+          Validity ends {validUntil} with {roundToScale(totalHeld)} still unused. Balance left on a
           lapsed UD is duty-free material the factory can no longer legally issue.
         </InlineAlert>
       ) : null}
@@ -170,7 +176,7 @@ export function UdDetailClient({
             </thead>
             <tbody>
               {items.map((i) => {
-                const free = Number.parseFloat(i.free)
+                const overdrawnItem = compareDecimalStrings(i.free, '0') < 0
                 return (
                   <tr key={i.itemRef}>
                     <td style={{ ...bodyCell, font: "400 13.5px/1.3 var(--fx-font-sans)" }}>
@@ -186,7 +192,7 @@ export function UdDetailClient({
                       style={{
                         ...bodyCell,
                         textAlign: 'right',
-                        color: free < 0 ? 'var(--fx-danger)' : 'var(--fx-text-primary)',
+                        color: overdrawnItem ? 'var(--fx-danger)' : 'var(--fx-text-primary)',
                         fontWeight: 600,
                       }}
                     >
@@ -303,7 +309,7 @@ export function UdDetailClient({
             }}
           >
             total balance held in bond ·{' '}
-            <span data-numeric>{totalHeld.toFixed(2)}</span>
+            <span data-numeric>{roundToScale(totalHeld)}</span>
           </span>
         </div>
 

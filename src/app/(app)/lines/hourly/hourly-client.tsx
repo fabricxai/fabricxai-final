@@ -73,6 +73,7 @@ export function HourlyClient({
   const stoppedByLine = new Map(stoppages.map((s) => [s.lineId, s]))
 
   const filled = lines.filter((l) => (entries[l.lineId] ?? '').trim() !== '')
+  // eslint-disable-next-line fabricxai/no-float-money -- floor keypad piece counts summed for the confirmation toast; integers, never money
   const total = filled.reduce((n, l) => n + (Number.parseInt(entries[l.lineId]!, 10) || 0), 0)
 
   async function submit() {
@@ -88,6 +89,7 @@ export function HourlyClient({
           producedOn,
           hourSlot: hour,
           target: line.target,
+          // eslint-disable-next-line fabricxai/no-float-money -- floor keypad piece count (integer), not money; NaN falls back to 0 and the server validates the payload
           actual: Number.parseInt(entries[line.lineId]!, 10) || 0,
         })),
       },

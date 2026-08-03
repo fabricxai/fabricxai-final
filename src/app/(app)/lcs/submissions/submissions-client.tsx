@@ -170,7 +170,9 @@ export function SubmissionsClient({
 
   // Shown live so the reason box appears while the number is still being typed, rather than
   // after the server refuses it.
+  // eslint-disable-next-line fabricxai/no-float-money -- live shortfall preview beside the input; the server recomputes the exact figure on post and that is what is stored
   const invoicedOf = realizing?.invoicedAmount ? Number.parseFloat(realizing.invoicedAmount) : 0
+  // eslint-disable-next-line fabricxai/no-float-money -- half-typed keyboard amount for the same preview; NaN falls back to 0
   const realizedOf = Number.parseFloat(amount) || 0
   const shortPct = invoicedOf > 0 ? ((invoicedOf - realizedOf) / invoicedOf) * 100 : 0
 

@@ -59,9 +59,13 @@ export function EndlineClient({
 
   const line = lines.find((l) => l.lineId === active)
 
+  // eslint-disable-next-line fabricxai/no-float-money -- floor keypad piece count, quantity not money; NaN falls back to 0
   const checked = Number.parseInt(draft.checked, 10) || 0
+  // eslint-disable-next-line fabricxai/no-float-money -- floor keypad piece count, quantity not money; NaN falls back to 0
   const defective = Number.parseInt(draft.defective, 10) || 0
+  // eslint-disable-next-line fabricxai/no-float-money -- floor keypad defect tally, quantity not money; NaN falls back to 0
   const defects = Number.parseInt(draft.defects, 10) || 0
+  // eslint-disable-next-line fabricxai/no-float-money -- floor keypad piece count, quantity not money; NaN falls back to 0
   const rework = Number.parseInt(draft.rework, 10) || 0
   const passed = Math.max(0, checked - defective)
 

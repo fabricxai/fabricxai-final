@@ -76,9 +76,12 @@ export function FabricClient({
   const [noted, setNoted] = useState<string | null>(null)
   const [failure, setFailure] = useState<string | null>(null)
 
+  // eslint-disable-next-line fabricxai/no-float-money -- keypad defect-band tallies for the live 4-point preview, counts not money; NaN falls back to 0
   const counts = BANDS.map((b) => Number.parseInt(bands[b.key] ?? '', 10) || 0)
   const penaltyPoints = counts.reduce((sum, n, i) => sum + n * (i + 1), 0)
+  // eslint-disable-next-line fabricxai/no-float-money -- keypad roll length in yards for the same preview; the server re-derives the stored grade
   const lengthYards = Number.parseFloat(length) || 0
+  // eslint-disable-next-line fabricxai/no-float-money -- keypad fabric width in inches for the same preview; the server re-derives the stored grade
   const widthInches = Number.parseFloat(width) || 0
   // points / (length yd × width in ÷ 36) × 100 — the standard normalisation to 100 yd².
   const squareYards = lengthYards > 0 && widthInches > 0 ? (lengthYards * widthInches) / 36 : 0

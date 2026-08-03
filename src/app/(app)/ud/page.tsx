@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 
+import { compareDecimalStrings } from '@/lib/quantity'
 import { EmptyState, InlineAlert, LockedState } from '@/components/fx/feedback'
 import { FloorScreen } from '@/components/fx/floor'
 import { Badge } from '@/components/fx/primitives'
@@ -201,8 +202,7 @@ function UdPanel({ ud }: { ud: UdCard }) {
             </div>
 
             {ud.items.map((item) => {
-              const free = Number.parseFloat(item.free)
-              const none = free <= 0
+              const none = compareDecimalStrings(item.free, '0') <= 0
 
               return (
                 <div

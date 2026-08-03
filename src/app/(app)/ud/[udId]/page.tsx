@@ -2,6 +2,8 @@ import { headers } from 'next/headers'
 import { notFound, redirect } from 'next/navigation'
 import { desc, eq } from 'drizzle-orm'
 
+import { compareDecimalStrings } from '@/lib/quantity'
+
 import { Breadcrumbs } from '@/components/fx/data'
 import { PageHeader } from '@/components/shell/page-shell'
 import { getCtx } from '@/modules/core/session'
@@ -54,7 +56,7 @@ export default async function UdDetailPage({
     ),
   ])
 
-  const overdrawn = balance.items.filter((i) => Number.parseFloat(i.free) < 0)
+  const overdrawn = balance.items.filter((i) => compareDecimalStrings(i.free, '0') < 0)
 
   return (
     <>

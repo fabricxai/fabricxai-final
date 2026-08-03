@@ -289,14 +289,22 @@ export function answerCapacityQuery(input: {
   const feasible = !difference.startsWith('-')
 
   const shortfall = feasible ? '0.00' : difference.slice(1)
-  const perDay = Number.parseFloat(effectiveMinutes(input.lineDays[0]!).earnableMinutes)
+  // Ceiling division on scale-2 BigInt minutes — same maths as ceil(shortfall / perDay),
+  // but a 15-digit shortfall cannot land on the wrong side of a day boundary.
+  const perDayMinor = toMinorMinutes(effectiveMinutes(input.lineDays[0]!).earnableMinutes)
 
   return {
     feasible,
     requiredMinutes,
     availableMinutes,
     shortfallMinutes: shortfall,
-    additionalLineDaysNeeded: feasible ? 0 : Math.ceil(Number.parseFloat(shortfall) / perDay),
+    additionalLineDaysNeeded: feasible
+      ? 0
+      : perDayMinor > 0n
+        ? Number((toMinorMinutes(shortfall) + perDayMinor - 1n) / perDayMinor)
+        : // A line-day that earns zero minutes never closes a shortfall — same answer the
+          // float division gave (ceil of Infinity), spelled honestly.
+          Number.POSITIVE_INFINITY,
     assumptions: {
       smv: input.smv,
       efficiencyPct: input.lineDays[0]!.expectedEfficiencyPct,

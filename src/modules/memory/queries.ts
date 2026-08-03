@@ -13,6 +13,7 @@
  */
 import { desc, eq, inArray } from 'drizzle-orm'
 
+import { roundToScale, subtractDecimalStrings } from '@/lib/quantity'
 import type { AnyCtx } from '@/modules/core/ctx'
 import { readJsonbArray, readJsonbObject } from '@/modules/core/jsonb'
 import { withTenantRead } from '@/modules/core/tenancy'
@@ -63,13 +64,12 @@ export interface OutcomeCard {
 
 /**
  * Variance as a percentage-point difference, computed only when BOTH sides
- * exist. These are percentages rather than money, so ordinary float arithmetic
- * is correct here — no scaled-integer discipline applies.
+ * exist. Exact string subtraction — both sides come off numeric columns, and
+ * the sign of this figure is what colours the card.
  */
 function pairOf(planned: string | null, actual: string | null): Pair {
   if (planned === null || actual === null) return { planned, actual, variancePct: null }
-  const delta = Number.parseFloat(actual) - Number.parseFloat(planned)
-  return { planned, actual, variancePct: delta.toFixed(2) }
+  return { planned, actual, variancePct: roundToScale(subtractDecimalStrings(actual, planned), 2) }
 }
 
 export async function outcomes(ctx: AnyCtx, limit = 30): Promise<OutcomeCard[]> {

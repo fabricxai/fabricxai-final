@@ -12,6 +12,8 @@
  */
 import { and, desc, eq, sql } from 'drizzle-orm'
 
+import { compareDecimalStrings } from '@/lib/quantity'
+
 import { recordChange, registerAuditedTables } from '../core/audit'
 import type { AnyCtx, RequestCtx } from '../core/ctx'
 import { AppError, notFound } from '../core/errors'
@@ -253,7 +255,7 @@ export async function drawUd(
     authorizedItems: ud.authorizedItems,
     consumptions: [...consumptions, { itemRef: input.itemRef, qty: input.qty, unit: input.unit }],
   })
-  const anyFree = [...remaining.values()].some((item) => Number.parseFloat(item.free) > 0)
+  const anyFree = [...remaining.values()].some((item) => compareDecimalStrings(item.free, '0') > 0)
 
   if (!anyFree && ud.status === 'active') {
     await tx.update(uds).set({ status: 'exhausted', updatedAt: new Date() }).where(eq(uds.id, ud.id))

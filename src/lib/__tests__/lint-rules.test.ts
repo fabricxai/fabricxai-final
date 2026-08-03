@@ -49,6 +49,16 @@ describe('fabricxai/no-float-money', () => {
           errors: [{ messageId: 'parseBanned' }],
         },
         {
+          // The MemberExpression spelling is the same function — it went unmatched for
+          // months and 22 call sites (including the FOB computation) rode through green.
+          code: `const pct = Number.parseFloat(marginPct)`,
+          errors: [{ messageId: 'parseBanned' }],
+        },
+        {
+          code: `const n = Number.parseInt(row.qty, 10)`,
+          errors: [{ messageId: 'parseBanned' }],
+        },
+        {
           code: `const t = Number(order.totalValue)`,
           errors: [{ messageId: 'numberOnMoney' }],
         },

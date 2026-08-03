@@ -37,10 +37,14 @@ type CellState = 'empty' | 'in' | 'over' | 'under'
 function cellState(point: SpecPoint, raw: string): CellState {
   // Not `value` — the money-name heuristic reads that stem and is right to. This is a
   // measurement in centimetres.
+  // eslint-disable-next-line fabricxai/no-float-money -- half-typed tape measurement in cm for the live cell hint; the server re-derives every deviation from the stored chart
   const measured = Number.parseFloat(raw)
   if (!raw.trim() || Number.isNaN(measured)) return 'empty'
+  // eslint-disable-next-line fabricxai/no-float-money -- spec point in cm for the same hint colour, never sent as a result
   const deviation = measured - Number.parseFloat(point.spec)
+  // eslint-disable-next-line fabricxai/no-float-money -- plus-tolerance in cm for the same hint colour, never sent as a result
   if (deviation > Number.parseFloat(point.tolPlus)) return 'over'
+  // eslint-disable-next-line fabricxai/no-float-money -- minus-tolerance in cm for the same hint colour, never sent as a result
   if (-deviation > Number.parseFloat(point.tolMinus)) return 'under'
   return 'in'
 }

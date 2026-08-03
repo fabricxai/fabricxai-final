@@ -83,8 +83,26 @@ const noFloatMoney = {
       CallExpression(node) {
         const callee = node.callee
 
-        if (callee.type === 'Identifier' && (callee.name === 'parseFloat' || callee.name === 'parseInt')) {
-          context.report({ node, messageId: 'parseBanned', data: { callee: callee.name } })
+        // Bare `parseFloat(x)` and the MemberExpression spellings `Number.parseFloat(x)`
+        // / `Number.parseInt(x)` are the same function — matching only the Identifier
+        // form left 22 live call sites (including the FOB price computation) invisible
+        // to this rule while `pnpm lint` stayed green.
+        const isNumberDotParse =
+          callee.type === 'MemberExpression' &&
+          !callee.computed &&
+          callee.object.type === 'Identifier' &&
+          callee.object.name === 'Number' &&
+          callee.property.type === 'Identifier' &&
+          (callee.property.name === 'parseFloat' || callee.property.name === 'parseInt')
+
+        if (
+          (callee.type === 'Identifier' &&
+            (callee.name === 'parseFloat' || callee.name === 'parseInt')) ||
+          isNumberDotParse
+        ) {
+          const calleeName =
+            callee.type === 'Identifier' ? callee.name : `Number.${callee.property.name}`
+          context.report({ node, messageId: 'parseBanned', data: { callee: calleeName } })
           return
         }
 

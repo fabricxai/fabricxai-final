@@ -24,6 +24,7 @@
  * wrong payslip for 2,400 people.
  */
 import { add, type Money, money, mulDiv, multiply, subtract, sum, zero } from '@/lib/money'
+import { compareDecimalStrings, multiplyDecimalStrings } from '@/lib/quantity'
 
 export class PayrollError extends Error {
   override readonly name = 'PayrollError'
@@ -365,12 +366,21 @@ function divideBy100(pct: string): string {
 function detectAnomalies(worker: WorkerPayrollInput): PayrollFlag[] {
   const flags: PayrollFlag[] = []
 
-  if (worker.threeMonthAvgOtHours && DECIMAL.test(worker.threeMonthAvgOtHours)) {
-    const average = Number.parseFloat(worker.threeMonthAvgOtHours)
-    const hours = Number.parseFloat(worker.otHours)
-    // Comparison only, never an amount — this decides whether to raise a flag, and a
-    // fraction of an hour either way changes nothing about what is paid.
-    if (average > 0 && hours > average * OT_ANOMALY_MULTIPLE) {
+  if (
+    worker.threeMonthAvgOtHours &&
+    DECIMAL.test(worker.threeMonthAvgOtHours) &&
+    DECIMAL.test(worker.otHours)
+  ) {
+    // Comparison only, never an amount — this decides whether to raise a flag. Exact
+    // string comparison, so the boundary case answers from the hours, not float rounding.
+    const anomalyBar = multiplyDecimalStrings(
+      worker.threeMonthAvgOtHours,
+      String(OT_ANOMALY_MULTIPLE),
+    )
+    if (
+      compareDecimalStrings(worker.threeMonthAvgOtHours, '0') > 0 &&
+      compareDecimalStrings(worker.otHours, anomalyBar) > 0
+    ) {
       flags.push({
         code: 'ot_above_average',
         messageKey: 'workforce.payroll.flags.ot_above_average',

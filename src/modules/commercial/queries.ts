@@ -14,6 +14,7 @@
  */
 import { desc, eq, inArray, sql } from 'drizzle-orm'
 
+import { compareDecimalStrings, ratioAsPercent } from '@/lib/quantity'
 import { buyers } from '@/modules/buyers/schema'
 import type { AnyCtx } from '@/modules/core/ctx'
 import { withTenantRead } from '@/modules/core/tenancy'
@@ -77,11 +78,9 @@ function sumMoney(amounts: readonly (string | null)[]): string {
   return `${s.slice(0, -2)}.${s.slice(-2)}`
 }
 
-function pctOf(part: string, whole: string): string | null {
-  const w = Number.parseFloat(whole)
-  if (!Number.isFinite(w) || w === 0) return null
-  return ((Number.parseFloat(part) / w) * 100).toFixed(1)
-}
+// Exact, not a float division: the number this produces is compared against the BTB
+// limit below, and "over the back-to-back ceiling" is a decision a bank can dispute.
+const pctOf = (part: string, whole: string): string | null => ratioAsPercent(part, whole, 1)
 
 export async function register(
   ctx: AnyCtx,
@@ -167,7 +166,7 @@ export async function register(
         alerts.push({ kind: 'discrepant', count: discrepant.length, oldestDays: oldest ?? null })
       }
 
-      if (btbUsedPct !== null && Number.parseFloat(btbUsedPct) > input.btbLimitPct) {
+      if (btbUsedPct !== null && compareDecimalStrings(btbUsedPct, String(input.btbLimitPct)) > 0) {
         alerts.push({ kind: 'btb_over_limit', usedPct: btbUsedPct, limitPct: input.btbLimitPct })
       }
 

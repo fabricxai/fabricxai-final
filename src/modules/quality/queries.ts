@@ -11,6 +11,8 @@
  */
 import { and, asc, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm'
 
+import { compareDecimalStrings } from '@/lib/quantity'
+
 import type { AnyCtx } from '@/modules/core/ctx'
 import { withTenantRead } from '@/modules/core/tenancy'
 import { lines } from '@/modules/planning/schema'
@@ -61,8 +63,6 @@ export async function dhuByLine(
         .where(eq(inlineChecks.checkedOn, input.on)),
     ])
 
-    const limit = input.threshold === null ? null : Number.parseFloat(input.threshold)
-
     return lineRows.map((line): LineDhu => {
       const closed = daily.find((d) => d.lineId === line.id)
       const live = checks.filter((c) => c.lineId === line.id)
@@ -81,7 +81,8 @@ export async function dhuByLine(
         dhu,
         checked,
         defects,
-        overThreshold: dhu !== null && limit !== null && Number.parseFloat(dhu) > limit,
+        overThreshold:
+          dhu !== null && input.threshold !== null && compareDecimalStrings(dhu, input.threshold) > 0,
       }
     })
   })

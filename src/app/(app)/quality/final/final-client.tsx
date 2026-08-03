@@ -79,6 +79,7 @@ export function FinalClient({
   const [outcome, setOutcome] = useState<string | null>(null)
   const [failure, setFailure] = useState<string | null>(null)
 
+  // eslint-disable-next-line fabricxai/no-float-money -- keypad lot size in pieces, quantity not money; NaN falls back to 0
   const qty = Number.parseInt(lotQty, 10) || 0
 
   // Tallies, not judgements. Severity comes from the code, and the verdict from the server.
@@ -201,6 +202,7 @@ export function FinalClient({
               value={lotQty}
               onChange={(v) => {
                 setLotQty(v)
+                // eslint-disable-next-line fabricxai/no-float-money -- keypad lot size in pieces to size the AQL plan, quantity not money; NaN falls back to 0
                 loadPlan(Number.parseInt(v, 10) || 0, level)
               }}
             />
