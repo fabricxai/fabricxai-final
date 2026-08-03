@@ -61,6 +61,15 @@ const baseSchema = z.object({
   OPENAI_API_KEY: z.string().min(1).optional(),
   /** Serve MARBIM from fixtures — no provider calls. Dev/test only. */
   MARBIM_MOCK: bool.default(false),
+  /**
+   * Whether the copilot is offered at all.
+   *
+   * Off by default, and off is the honest setting today: no real provider is registered,
+   * so an enabled MARBIM hard-fails every question while its extraction poller silently
+   * accumulates unread documents (audit AI-B1). A factory should be told the copilot is
+   * not available rather than shown one that does not work.
+   */
+  MARBIM_ENABLED: bool.default(false),
 
   // Email: transactional only, never self-hosted SMTP in prod. Dev uses Mailpit.
   RESEND_API_KEY: z.string().min(1).optional(),
@@ -77,22 +86,41 @@ const baseSchema = z.object({
 const envSchema = baseSchema.superRefine((env, ctx) => {
   if (env.NODE_ENV !== 'production') return
 
-  const requiredInProd = [
-    'ANTHROPIC_API_KEY',
-    'GEMINI_API_KEY',
-    'OPENAI_API_KEY',
-    'RESEND_API_KEY',
-    'SENTRY_DSN',
-  ] as const
+  // ── A working mail path, by either route ────────────────────────────────────
+  //
+  // Verification email is required to SIGN IN, so a deployment with no mail path is a
+  // deployment nobody can log into. This used to demand RESEND_API_KEY specifically,
+  // which was wrong in both directions: it failed a perfectly good SMTP deployment (the
+  // one docker-compose.prod.yml actually describes) and would have passed a Resend key
+  // with no sender configured.
+  if (!env.RESEND_API_KEY && !env.SMTP_HOST) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['SMTP_HOST'],
+      message:
+        'production needs a mail path: set SMTP_HOST (with SMTP_PORT) or RESEND_API_KEY. ' +
+        'Email verification is required to sign in, so without one nobody can log in.',
+    })
+  }
 
-  for (const key of requiredInProd) {
-    if (!env[key]) {
-      ctx.addIssue({
-        code: 'custom',
-        path: [key],
-        message: `${key} is required when NODE_ENV=production`,
-      })
-    }
+  // ── MARBIM ─────────────────────────────────────────────────────────────────
+  //
+  // This used to require ANTHROPIC_API_KEY *and* GEMINI_API_KEY *and* OPENAI_API_KEY —
+  // three unrelated vendor accounts — while no real provider was registered, so a
+  // deployment had to buy and configure all three and then still got a hard failure the
+  // moment anybody asked MARBIM a question (audit INFRA-H8).
+  //
+  // Now it is a flag. Off (the default) means the copilot is honestly absent. On means at
+  // least one provider key must be present, because a MARBIM that is enabled and cannot
+  // reach a model is the worst of the three states: it looks available and fails per use.
+  if (env.MARBIM_ENABLED && !env.ANTHROPIC_API_KEY && !env.GEMINI_API_KEY && !env.OPENAI_API_KEY) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['MARBIM_ENABLED'],
+      message:
+        'MARBIM_ENABLED is set but no provider key is configured — set at least one of ' +
+        'ANTHROPIC_API_KEY, GEMINI_API_KEY, OPENAI_API_KEY, or unset MARBIM_ENABLED.',
+    })
   }
 
   if (env.MARBIM_MOCK) {
@@ -102,6 +130,11 @@ const envSchema = baseSchema.superRefine((env, ctx) => {
       message: 'MARBIM_MOCK must be off in production',
     })
   }
+
+  // SENTRY_DSN is deliberately NOT required. It is now actually read
+  // (`lib/observability.ts`), and a single-factory pilot on a VPS with no Sentry account
+  // is a legitimate deployment — it should ship logs and know that is what it has, rather
+  // than refusing to boot over a monitoring tool. Its absence is warned about at startup.
 })
 
 export type Env = z.infer<typeof baseSchema>

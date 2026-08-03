@@ -15,6 +15,8 @@ import 'dotenv/config'
 import { Worker } from 'bullmq'
 
 import { env } from '@/lib/env'
+import { logger } from '@/lib/logger'
+import { captureHandled, initObservability } from '@/lib/observability'
 import { closeRedis, createQueueConnection, getRedis } from '@/lib/redis'
 // Module registration is a side effect of importing the registry, and it only happens in
 // processes that import it. The app gets it via instrumentation.ts; without this line the
@@ -36,17 +38,23 @@ import {
 import { closeQueues, QUEUE } from './queues'
 
 async function main() {
-  console.log(`[worker] starting · NODE_ENV=${env.NODE_ENV} · concurrency=${env.WORKER_CONCURRENCY}`)
+  // Before anything that can fail, so a boot failure is reported and not merely printed
+  // into a container nobody is tailing.
+  initObservability('worker')
+  logger.info(
+    { nodeEnv: env.NODE_ENV, concurrency: env.WORKER_CONCURRENCY },
+    'worker starting',
+  )
 
   // Fail loudly at boot if Redis is unreachable, rather than silently processing nothing.
   await getRedis().ping()
-  console.log('[worker] redis ok')
+  logger.info('redis reachable')
 
   // Same wall as the app: the worker writes through withTenantTx too, and a worker
   // connected as the owner would run every scheduled derivation with RLS off.
   const { assertAppRoleConnection } = await import('@/db/assert-app-role')
   await assertAppRoleConnection()
-  console.log('[worker] db role ok — RLS applies to this connection')
+  logger.info('database role verified — RLS applies to this connection')
 
   // Same principle for the module registry: a worker with zero registered modules would
   // run every schedule and understand none of the work.
@@ -54,12 +62,12 @@ async function main() {
   if (registered.modules === 0) {
     throw new Error('[worker] module registry is empty — registration import is broken')
   }
-  console.log(`[worker] ${registered.modules} modules registered`)
+  logger.info({ modules: registered.modules }, 'module registry populated')
 
   // The outbox relay is the only bridge from committed transactions to the queues, so it
   // starts first — module job families attach to queues it feeds.
   const relay = startOutboxRelay()
-  console.log('[worker] outbox relay started')
+  logger.info('outbox relay started')
 
   await registerSchedules()
 
@@ -110,18 +118,26 @@ async function main() {
 
   for (const worker of workers) {
     worker.on('failed', (job, error) => {
-      // A silent nightly failure is a report nobody notices is missing.
-      console.error(`[worker] ${worker.name} job ${job?.id ?? '?'} failed:`, error.message)
+      // A silent nightly failure is a report nobody notices is missing. Bound to the queue
+      // and the job so "which factory, which job" is answerable from one line — and sent to
+      // Sentry, because a failed derivation is not something to find out about by reading
+      // logs on a hunch.
+      captureHandled(error, {
+        queue: worker.name,
+        jobId: job?.id ?? null,
+        companyId: (job?.data as { companyId?: string } | undefined)?.companyId ?? null,
+        attempt: job?.attemptsMade ?? null,
+      })
     })
   }
 
-  console.log(`[worker] ${workers.length} queue worker(s) listening`)
+  logger.info({ queues: workers.map((w) => w.name) }, 'queue workers listening')
 
   let shuttingDown = false
   const shutdown = async (signal: string) => {
     if (shuttingDown) return
     shuttingDown = true
-    console.log(`[worker] ${signal} received, draining …`)
+    logger.info({ signal }, 'shutting down, draining in-flight jobs')
 
     relay.stop()
     // Close workers before queues: a worker still holding a job would otherwise lose its
@@ -139,6 +155,19 @@ async function main() {
 }
 
 main().catch((error: unknown) => {
-  console.error('[worker] fatal:', error)
+  logger.fatal({ err: error }, 'worker failed to start')
+  process.exit(1)
+})
+
+// Nothing handled these before, so an unhandled rejection left the worker running in a
+// state nobody had reasoned about — queues attached, jobs being claimed, one subsystem
+// dead. Exiting non-zero lets the restart policy do its job (audit INFRA-H4).
+process.on('unhandledRejection', (reason) => {
+  logger.fatal({ err: reason }, 'unhandled rejection — exiting so the container restarts')
+  process.exit(1)
+})
+
+process.on('uncaughtException', (error) => {
+  logger.fatal({ err: error }, 'uncaught exception — exiting so the container restarts')
   process.exit(1)
 })

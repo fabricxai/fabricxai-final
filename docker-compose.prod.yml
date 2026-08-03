@@ -51,11 +51,13 @@ x-app-env: &app-env
   SMTP_PORT: ${SMTP_PORT:-587}
   EMAIL_FROM: ${EMAIL_FROM:?}
   RESEND_API_KEY: ${RESEND_API_KEY:-}
-  SENTRY_DSN: ${SENTRY_DSN:?required in production by lib/env.ts}
+  # Optional. Set it and errors are aggregated and alertable; leave it and the app warns
+  # at startup and logs to stdout only. Logs are structured JSON either way.
+  SENTRY_DSN: ${SENTRY_DSN:-}
   WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-4}
-  # env.ts requires all three in production today. Until a real MARBIM provider is
-  # registered (audit AI-B1) these can be placeholders — MARBIM will refuse rather
-  # than answer, which is the honest failure.
+  # Off until a real provider is registered (audit AI-B1). With it on, env.ts requires
+  # at least one of the three keys below — not all three, as it used to.
+  MARBIM_ENABLED: ${MARBIM_ENABLED:-false}
   ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
   GEMINI_API_KEY: ${GEMINI_API_KEY:-}
   OPENAI_API_KEY: ${OPENAI_API_KEY:-}
