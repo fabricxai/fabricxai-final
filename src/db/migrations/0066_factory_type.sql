@@ -1,0 +1,2 @@
+CREATE TYPE "public"."factory_type" AS ENUM('woven', 'knit', 'knit-composite');--> statement-breakpoint
+ALTER TABLE "company_profiles" ADD COLUMN "factory_type" "factory_type" DEFAULT 'woven' NOT NULL;
