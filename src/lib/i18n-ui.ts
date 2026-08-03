@@ -83,6 +83,55 @@ export const UI_MESSAGES: Catalogue = {
     'ui.store.receive_eyebrow': 'Store · receive goods',
     'ui.store.receive_title': 'Receive against a challan',
     'ui.store.receive_meta': 'one GRN per challan · rolls counted at the rack',
+    'ui.store.receive_refused_one': '{count} receipt the server refused.',
+    'ui.store.receive_refused_other': '{count} receipts the server refused.',
+    'ui.store.receive_done': 'Received {list}.',
+    'ui.store.receive_done_sent': 'Sent.',
+    'ui.store.receive_done_held': 'Held on this device until you are back online.',
+    'ui.store.challan_eyebrow': 'Challan',
+    'ui.store.challan_heading': 'What arrived',
+    'ui.store.challan_attached': 'Challan attached',
+    'ui.store.challan_photograph': 'Photograph the challan',
+    'ui.store.challan_sending': 'sending…',
+    'ui.store.challan_why':
+      'the paper is what the supplier invoices against — keep it with the receipt',
+    'ui.store.challan_take_photo': 'Take photo',
+    'ui.store.challan_replace': 'Replace',
+    'ui.store.challan_sending_button': 'Sending…',
+    'ui.store.challan_upload_failed': 'the photo could not be sent',
+    'ui.store.challan_upload_retryable':
+      '{reason} — you can still record the receipt and attach the challan when you are back online',
+    'ui.store.field_challan_no': 'Challan no',
+    'ui.store.field_received_on': 'Received on',
+    'ui.store.field_item': 'Item',
+    'ui.store.field_into': 'Into',
+    'ui.store.field_qty_on_challan': 'Quantity on the challan ({unit})',
+    'ui.store.location_bonded_suffix': ' (bonded)',
+    'ui.store.bonded_warning':
+      '{code} is a bonded location. Duty-free cloth must be received against a Utilization Declaration — that record belongs to the commercial desk, and this screen cannot raise one.',
+    'ui.store.bonded_refused':
+      'Bonded receipts must name a Utilization Declaration, and UDs belong to the commercial desk (module 2.2). Receive to a general location, or ask commercial to raise the UD first.',
+    'ui.store.rolls_counted_eyebrow': '{count} counted',
+    'ui.store.rolls_heading': 'Rolls at the rack',
+    'ui.store.rolls_mismatch':
+      'The rolls add up to {counted} {unit} against {expected} {unit} on the challan — a difference of {difference}. Recount before receiving; the challan is what the supplier will invoice.',
+    'ui.store.roll_no_placeholder': 'roll no',
+    'ui.store.roll_lot_placeholder': 'lot',
+    'ui.store.roll_dye_lot_placeholder': 'dye lot',
+    'ui.store.roll_shade_placeholder': 'shade',
+    'ui.store.roll_number_label': 'Roll {index} number',
+    'ui.store.roll_qty_label': 'Roll {index} quantity',
+    'ui.store.roll_lot_label': 'Roll {index} lot',
+    'ui.store.roll_dye_lot_label': 'Roll {index} dye lot',
+    'ui.store.roll_shade_label': 'Roll {index} shade group',
+    'ui.store.roll_remove_label': 'Remove roll {index}',
+    'ui.store.add_roll': '+ Add roll',
+    'ui.store.rolls_progress': '{counted} of {expected} {unit} counted',
+    'ui.store.rolls_none_yet':
+      'stock is roll-level — a receipt with no rolls creates stock nobody can issue',
+    'ui.store.receive_button': 'Receive',
+    'ui.store.receive_button_one': 'Receive {count} roll',
+    'ui.store.receive_button_other': 'Receive {count} rolls',
   },
 
   bn: {
@@ -123,9 +172,58 @@ export const UI_MESSAGES: Catalogue = {
     'ui.boundary.not_found_back': 'ফিরে যান',
 
     // ── store · 3.1 ──
+    // Bangla nouns do not inflect after a numeral, so the _one and _other forms of a key
+    // are legitimately identical here. They stay as two keys because English needs two.
     'ui.store.receive_eyebrow': 'স্টোর · মাল গ্রহণ',
     'ui.store.receive_title': 'চালান অনুযায়ী মাল বুঝে নিন',
     'ui.store.receive_meta': 'এক চালানে এক GRN · রোল র‍্যাকেই গোনা হয়',
+    'ui.store.receive_refused_one': 'সার্ভার {count}টি রসিদ নেয়নি।',
+    'ui.store.receive_refused_other': 'সার্ভার {count}টি রসিদ নেয়নি।',
+    'ui.store.receive_done': '{list} বুঝে নেওয়া হয়েছে।',
+    'ui.store.receive_done_sent': 'পাঠানো হয়েছে।',
+    'ui.store.receive_done_held': 'নেট আসা পর্যন্ত এই ডিভাইসেই রাখা আছে।',
+    'ui.store.challan_eyebrow': 'চালান',
+    'ui.store.challan_heading': 'কী এসেছে',
+    'ui.store.challan_attached': 'চালানের ছবি দেওয়া হয়েছে',
+    'ui.store.challan_photograph': 'চালানের ছবি তুলুন',
+    'ui.store.challan_sending': 'পাঠানো হচ্ছে…',
+    'ui.store.challan_why': 'সাপ্লায়ার এই কাগজ দেখেই বিল করবে — রসিদের সাথে রাখুন',
+    'ui.store.challan_take_photo': 'ছবি তুলুন',
+    'ui.store.challan_replace': 'বদলান',
+    'ui.store.challan_sending_button': 'পাঠানো হচ্ছে…',
+    'ui.store.challan_upload_failed': 'ছবিটি পাঠানো যায়নি',
+    'ui.store.challan_upload_retryable':
+      '{reason} — এখনই রসিদ লিখে রাখতে পারেন, নেট এলে চালানের ছবি দিয়ে দেবেন',
+    'ui.store.field_challan_no': 'চালান নম্বর',
+    'ui.store.field_received_on': 'কোন তারিখে এসেছে',
+    'ui.store.field_item': 'আইটেম',
+    'ui.store.field_into': 'কোথায় রাখা হবে',
+    'ui.store.field_qty_on_challan': 'চালানে লেখা পরিমাণ ({unit})',
+    'ui.store.location_bonded_suffix': ' (বন্ড)',
+    'ui.store.bonded_warning':
+      '{code} একটি বন্ডেড জায়গা। শুল্কমুক্ত কাপড় UD ছাড়া নেওয়া যাবে না — UD কমার্শিয়াল ডেস্কের কাজ, এই পাতা থেকে করা যায় না।',
+    'ui.store.bonded_refused':
+      'বন্ডেড রসিদে UD থাকতেই হবে, আর UD কমার্শিয়াল ডেস্কের (মডিউল ২.২)। সাধারণ জায়গায় নিন, বা আগে কমার্শিয়ালকে UD করতে বলুন।',
+    'ui.store.rolls_counted_eyebrow': '{count}টি গোনা হয়েছে',
+    'ui.store.rolls_heading': 'র‍্যাকে থাকা রোল',
+    'ui.store.rolls_mismatch':
+      'রোল মিলিয়ে {counted} {unit}, চালানে {expected} {unit} — {difference} পার্থক্য। নেওয়ার আগে আবার গুনুন; সাপ্লায়ার চালান দেখেই বিল করবে।',
+    'ui.store.roll_no_placeholder': 'রোল নম্বর',
+    'ui.store.roll_lot_placeholder': 'লট',
+    'ui.store.roll_dye_lot_placeholder': 'ডাই লট',
+    'ui.store.roll_shade_placeholder': 'শেড',
+    'ui.store.roll_number_label': '{index} নম্বর রোলের নম্বর',
+    'ui.store.roll_qty_label': '{index} নম্বর রোলের পরিমাণ',
+    'ui.store.roll_lot_label': '{index} নম্বর রোলের লট',
+    'ui.store.roll_dye_lot_label': '{index} নম্বর রোলের ডাই লট',
+    'ui.store.roll_shade_label': '{index} নম্বর রোলের শেড গ্রুপ',
+    'ui.store.roll_remove_label': '{index} নম্বর রোল বাদ দিন',
+    'ui.store.add_roll': '+ রোল যোগ করুন',
+    'ui.store.rolls_progress': '{expected} {unit} এর মধ্যে {counted} গোনা হয়েছে',
+    'ui.store.rolls_none_yet': 'স্টক রোল ধরে হিসাব হয় — রোল না দিলে সেই স্টক কেউ ইস্যু করতে পারবে না',
+    'ui.store.receive_button': 'বুঝে নিন',
+    'ui.store.receive_button_one': '{count}টি রোল বুঝে নিন',
+    'ui.store.receive_button_other': '{count}টি রোল বুঝে নিন',
   },
 }
 
@@ -142,16 +240,30 @@ export function tui(
 }
 
 /**
- * A bound translator, for a component that resolves the locale once and then reads many
- * keys. `const t = translator(locale)` reads closer to the markup than threading the
- * locale through every call.
+ * One or many: `plural('ui.store.receive_button', n)` reads `…_one` or `…_other`.
+ *
+ * Deliberately only two forms. English needs two and Bangla needs one — a Bangla noun does
+ * not inflect after a numeral, so both its forms are the same string, which looks redundant
+ * in the catalogue and is the correct translation. A full CLDR plural-category system would
+ * buy nothing for these two languages and would have to be understood by whoever adds the
+ * next screen.
+ *
+ * `count` is passed through as a parameter, so the copy decides where the number goes —
+ * Bangla puts the classifier on it (`{count}টি`) and English does not.
  */
-export type Translator = (key: string, params?: Readonly<Record<string, unknown>>) => string
+export type Translator = ((key: string, params?: Readonly<Record<string, unknown>>) => string) & {
+  plural: (baseKey: string, count: number, params?: Readonly<Record<string, unknown>>) => string
+}
 
-export const translator =
-  (locale: Locale): Translator =>
-  (key, params = {}) =>
-    tui(locale, key, params)
+export function translator(locale: Locale): Translator {
+  const translate = ((key: string, params: Readonly<Record<string, unknown>> = {}) =>
+    tui(locale, key, params)) as Translator
+
+  translate.plural = (baseKey, count, params = {}) =>
+    tui(locale, `${baseKey}${count === 1 ? '_one' : '_other'}`, { count, ...params })
+
+  return translate
+}
 
 /**
  * Screen copy AND system copy, for the one place that needs both: a caught action error

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 
 import { InlineAlert } from '@/components/fx/feedback'
 import { SyncPill } from '@/components/fx/floor'
+import { useT } from '@/components/fx/locale'
 import { Button } from '@/components/fx/primitives'
 import { SectionHeading } from '@/components/fx/signature'
 import { useOfflineQueue } from '@/lib/offline/use-offline-queue'
@@ -76,6 +77,7 @@ export function ReceiveClient({
   items: readonly ItemOption[]
   locations: readonly LocationOption[]
 }) {
+  const t = useT()
   const { capture, online, queued, syncing, refused, sync, clear } = useOfflineQueue()
 
   const [challanNo, setChallanNo] = useState('')
@@ -117,9 +119,9 @@ export function ReceiveClient({
       setPhotoError(
         e instanceof UploadError
           ? e.retryable
-            ? `${e.message} — you can still record the receipt and attach the challan when you are back online`
+            ? t('ui.store.challan_upload_retryable', { reason: e.message })
             : e.message
-          : 'the photo could not be sent',
+          : t('ui.store.challan_upload_failed'),
       )
     }
   }
@@ -171,9 +173,7 @@ export function ReceiveClient({
     if (bonded) {
       // The schema's check constraint refuses a bonded GRN with no UD, and module 2.2 owns
       // UDs. Refusing here with a sentence beats a constraint violation at the sync layer.
-      setError(
-        'Bonded receipts must name a Utilization Declaration, and UDs belong to the commercial desk (module 2.2). Receive to a general location, or ask commercial to raise the UD first.',
-      )
+      setError(t('ui.store.bonded_refused'))
       return
     }
 
@@ -217,7 +217,7 @@ export function ReceiveClient({
 
       {refused.length > 0 ? (
         <InlineAlert tone="danger">
-          {refused.length} receipt{refused.length === 1 ? '' : 's'} the server refused.
+          {t.plural('ui.store.receive_refused', refused.length)}
           {refused.map((r) => (
             <button
               key={r.offlineKey}
@@ -231,7 +231,7 @@ export function ReceiveClient({
                 font: 'inherit',
               }}
             >
-              dismiss
+              {t('ui.common.dismiss')}
             </button>
           ))}
         </InlineAlert>
@@ -239,14 +239,16 @@ export function ReceiveClient({
 
       {received.length > 0 ? (
         <InlineAlert tone="success">
-          Received {received.join(' · ')}.{' '}
-          {online ? 'Sent.' : 'Held on this device until you are back online.'}
+          {t('ui.store.receive_done', { list: received.join(' · ') })}{' '}
+          {online ? t('ui.store.receive_done_sent') : t('ui.store.receive_done_held')}
         </InlineAlert>
       ) : null}
 
       {error ? <InlineAlert tone="danger">{error}</InlineAlert> : null}
 
-      <SectionHeading eyebrow="Challan">What arrived</SectionHeading>
+      <SectionHeading eyebrow={t('ui.store.challan_eyebrow')}>
+        {t('ui.store.challan_heading')}
+      </SectionHeading>
 
       {/* `capture="environment"` opens the rear camera straight away on a phone or tablet,
           which is what a storekeeper has in the delivery bay. On a desktop it degrades to
@@ -278,7 +280,7 @@ export function ReceiveClient({
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
           <span style={{ font: "500 13.5px/1.3 var(--fx-font-sans)" }}>
-            {challanPhoto ? 'Challan attached' : 'Photograph the challan'}
+            {challanPhoto ? t('ui.store.challan_attached') : t('ui.store.challan_photograph')}
           </span>
           <span
             style={{ font: "400 12px/1.4 var(--fx-font-mono)", color: 'var(--fx-text-tertiary)' }}
@@ -286,15 +288,15 @@ export function ReceiveClient({
             {challanPhoto
               ? `${challanPhoto.filename} · ${humanBytes(challanPhoto.sizeBytes)}`
               : photoState === 'uploading'
-                ? 'sending…'
-                : 'the paper is what the supplier invoices against — keep it with the receipt'}
+                ? t('ui.store.challan_sending')
+                : t('ui.store.challan_why')}
           </span>
         </div>
 
         <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
           {challanPhoto ? (
             <Button variant="ghost" onClick={() => setChallanPhoto(null)}>
-              Remove
+              {t('ui.common.remove')}
             </Button>
           ) : null}
           <Button
@@ -303,10 +305,10 @@ export function ReceiveClient({
             onClick={() => photoRef.current?.click()}
           >
             {photoState === 'uploading'
-              ? 'Sending…'
+              ? t('ui.store.challan_sending_button')
               : challanPhoto
-                ? 'Replace'
-                : 'Take photo'}
+                ? t('ui.store.challan_replace')
+                : t('ui.store.challan_take_photo')}
           </Button>
         </span>
       </div>
@@ -316,7 +318,7 @@ export function ReceiveClient({
       ) : null}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14 }}>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span style={label}>Challan no</span>
+          <span style={label}>{t('ui.store.field_challan_no')}</span>
           <input
             value={challanNo}
             onChange={(e) => setChallanNo(e.target.value)}
@@ -325,7 +327,7 @@ export function ReceiveClient({
           />
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span style={label}>Received on</span>
+          <span style={label}>{t('ui.store.field_received_on')}</span>
           <input
             type="date"
             value={receivedAt}
@@ -334,7 +336,7 @@ export function ReceiveClient({
           />
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span style={label}>Item</span>
+          <span style={label}>{t('ui.store.field_item')}</span>
           <select value={itemId} onChange={(e) => setItemId(e.target.value)} style={field}>
             {items.map((option) => (
               <option key={option.id} value={option.id}>
@@ -344,18 +346,20 @@ export function ReceiveClient({
           </select>
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span style={label}>Into</span>
+          <span style={label}>{t('ui.store.field_into')}</span>
           <select value={locationId} onChange={(e) => setLocationId(e.target.value)} style={field}>
             {locations.map((option) => (
               <option key={option.id} value={option.id}>
                 {option.code} · {option.name}
-                {option.kind === 'bonded' ? ' (bonded)' : ''}
+                {option.kind === 'bonded' ? t('ui.store.location_bonded_suffix') : ''}
               </option>
             ))}
           </select>
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span style={label}>Quantity on the challan ({item?.uom ?? '—'})</span>
+          <span style={label}>
+            {t('ui.store.field_qty_on_challan', { unit: item?.uom ?? '—' })}
+          </span>
           <input
             inputMode="decimal"
             value={qty}
@@ -368,19 +372,22 @@ export function ReceiveClient({
 
       {bonded ? (
         <InlineAlert tone="warning">
-          {location?.code} is a bonded location. Duty-free cloth must be received against a
-          Utilization Declaration — that record belongs to the commercial desk, and this
-          screen cannot raise one.
+          {t('ui.store.bonded_warning', { code: location?.code ?? '' })}
         </InlineAlert>
       ) : null}
 
-      <SectionHeading eyebrow={`${rolls.length} counted`}>Rolls at the rack</SectionHeading>
+      <SectionHeading eyebrow={t('ui.store.rolls_counted_eyebrow', { count: rolls.length })}>
+        {t('ui.store.rolls_heading')}
+      </SectionHeading>
 
       {mismatch ? (
         <InlineAlert tone="warning">
-          The rolls add up to {rollTotal.value} {unit} against {lineQty.value} {unit} on the
-          challan — a difference of {difference.value}. Recount before receiving; the challan
-          is what the supplier will invoice.
+          {t('ui.store.rolls_mismatch', {
+            counted: rollTotal.value,
+            expected: lineQty.value,
+            difference: difference.value,
+            unit,
+          })}
         </InlineAlert>
       ) : null}
 
@@ -401,42 +408,42 @@ export function ReceiveClient({
             <input
               value={roll.rollNo}
               onChange={(e) => patchRoll(roll.key, { rollNo: e.target.value })}
-              aria-label={`Roll ${index + 1} number`}
-              placeholder="roll no"
+              aria-label={t('ui.store.roll_number_label', { index: index + 1 })}
+              placeholder={t('ui.store.roll_no_placeholder')}
               style={{ ...field, font: "400 13px/1.4 var(--fx-font-mono)" }}
             />
             <input
               inputMode="decimal"
               value={roll.qty}
               onChange={(e) => patchRoll(roll.key, { qty: e.target.value })}
-              aria-label={`Roll ${index + 1} quantity`}
+              aria-label={t('ui.store.roll_qty_label', { index: index + 1 })}
               placeholder={item?.uom ?? 'qty'}
               style={{ ...field, font: "400 13px/1.4 var(--fx-font-mono)" }}
             />
             <input
               value={roll.lot}
               onChange={(e) => patchRoll(roll.key, { lot: e.target.value })}
-              aria-label={`Roll ${index + 1} lot`}
-              placeholder="lot"
+              aria-label={t('ui.store.roll_lot_label', { index: index + 1 })}
+              placeholder={t('ui.store.roll_lot_placeholder')}
               style={{ ...field, font: "400 13px/1.4 var(--fx-font-mono)" }}
             />
             <input
               value={roll.dyeLot}
               onChange={(e) => patchRoll(roll.key, { dyeLot: e.target.value })}
-              aria-label={`Roll ${index + 1} dye lot`}
-              placeholder="dye lot"
+              aria-label={t('ui.store.roll_dye_lot_label', { index: index + 1 })}
+              placeholder={t('ui.store.roll_dye_lot_placeholder')}
               style={{ ...field, font: "400 13px/1.4 var(--fx-font-mono)" }}
             />
             <input
               value={roll.shadeGroup}
               onChange={(e) => patchRoll(roll.key, { shadeGroup: e.target.value })}
-              aria-label={`Roll ${index + 1} shade group`}
-              placeholder="shade"
+              aria-label={t('ui.store.roll_shade_label', { index: index + 1 })}
+              placeholder={t('ui.store.roll_shade_placeholder')}
               style={{ ...field, font: "400 13px/1.4 var(--fx-font-mono)" }}
             />
             <button
               onClick={() => setRolls((current) => current.filter((r) => r.key !== roll.key))}
-              aria-label={`Remove roll ${index + 1}`}
+              aria-label={t('ui.store.roll_remove_label', { index: index + 1 })}
               style={{
                 minHeight: 44,
                 border: '1px solid var(--fx-border-subtle)',
@@ -454,16 +461,22 @@ export function ReceiveClient({
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <Button variant="ghost" onClick={addRoll}>
-          + Add roll
+          {t('ui.store.add_roll')}
         </Button>
         <span style={{ font: "400 12px/1.4 var(--fx-font-mono)", color: 'var(--fx-text-tertiary)' }}>
           {rolls.length > 0
-            ? `${rollTotal.value} of ${lineQty.value} ${unit} counted`
-            : 'stock is roll-level — a receipt with no rolls creates stock nobody can issue'}
+            ? t('ui.store.rolls_progress', {
+                counted: rollTotal.value,
+                expected: lineQty.value,
+                unit,
+              })
+            : t('ui.store.rolls_none_yet')}
         </span>
         <span style={{ marginLeft: 'auto' }}>
           <Button variant="primary" size="lg" disabled={!complete} onClick={() => void receive()}>
-            Receive {rolls.length > 0 ? `${rolls.length} roll${rolls.length === 1 ? '' : 's'}` : ''}
+            {rolls.length > 0
+              ? t.plural('ui.store.receive_button', rolls.length)
+              : t('ui.store.receive_button')}
           </Button>
         </span>
       </div>

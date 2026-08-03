@@ -77,8 +77,14 @@ describe('screen copy is bilingual', () => {
       }
     }
 
+    // `t.plural('ui.x.y', n)` asks for a BASE key and reads `ui.x.y_one` / `ui.x.y_other`,
+    // so a base with both forms present is satisfied even though the base itself is absent.
+    const defined = (key: string) =>
+      UI_MESSAGES.en[key] !== undefined ||
+      (UI_MESSAGES.en[`${key}_one`] !== undefined && UI_MESSAGES.en[`${key}_other`] !== undefined)
+
     const missing = [...asked]
-      .filter(([key]) => UI_MESSAGES.en[key] === undefined)
+      .filter(([key]) => !defined(key))
       .map(([key, path]) => `${key} (asked in ${path})`)
       .sort()
 

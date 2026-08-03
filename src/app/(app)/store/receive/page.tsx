@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation'
 
 import { FloorScreen } from '@/components/fx/floor'
 import { PageHeader } from '@/components/shell/page-shell'
+import { tui } from '@/lib/i18n-ui'
+import { requestLocale } from '@/lib/ui-locale'
 import { getCtx } from '@/modules/core/session'
 import { itemList } from '@/modules/store/queries'
 import { locations } from '@/modules/store/schema'
@@ -33,6 +35,8 @@ export default async function StoreReceivePage() {
   const ctx = await getCtx(await headers())
   if (!ctx) redirect('/login')
 
+  const locale = await requestLocale()
+
   const [items, locationRows] = await Promise.all([
     itemList(ctx),
     withTenantRead(ctx, (tx) =>
@@ -45,9 +49,9 @@ export default async function StoreReceivePage() {
   return (
     <FloorScreen>
       <PageHeader
-        eyebrow="Store · receive goods"
-        title="Receive against a challan"
-        meta="one GRN per challan · rolls counted at the rack"
+        eyebrow={tui(locale, 'ui.store.receive_eyebrow')}
+        title={tui(locale, 'ui.store.receive_title')}
+        meta={tui(locale, 'ui.store.receive_meta')}
         ownsAmber
       />
       <ReceiveClient items={items} locations={locationRows} />
