@@ -354,7 +354,18 @@ const delivery = {
   defaults: {
     emailSeverities: ['critical'],
     digestLimit: 20,
-    appUrl: 'http://localhost:3000',
+    // The deployment's own address, not a literal: this is the base of every link in
+    // every email the platform sends. The old 'http://localhost:3000' default meant a
+    // pilot factory's critical alerts all deep-linked to a dead URL — and with no
+    // Settings surface for this policy yet, nobody could fix it from the product.
+    //
+    // A getter on process.env rather than an import of @/lib/env: env validates the
+    // whole environment at import time, which is right for a booting server and wrong
+    // for a unit test importing this catalogue. Every real process has already passed
+    // boot validation (APP_URL is required), so the fallback only ever serves tests.
+    get appUrl(): string {
+      return process.env.APP_URL ?? 'http://localhost:3000'
+    },
   },
 } satisfies PolicyDefinition<DeliveryPolicy>
 
