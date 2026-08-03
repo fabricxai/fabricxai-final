@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 
 import { InlineAlert } from '@/components/fx/feedback'
+import { useLocale, useT } from '@/components/fx/locale'
 import { actionErrorMessage } from '@/lib/action-error'
 import { Badge, Button } from '@/components/fx/primitives'
 import { SectionHeading } from '@/components/fx/signature'
@@ -66,6 +67,8 @@ const STATE_COLOUR: Record<CellState, string | undefined> = {
  */
 export function MeasurementsClient({ subjects }: { subjects: readonly Subject[] }) {
   const router = useRouter()
+  const t = useT()
+  const locale = useLocale()
   const [pending, startTransition] = useTransition()
 
   const [subject, setSubject] = useState<Subject | null>(null)
@@ -112,16 +115,20 @@ export function MeasurementsClient({ subjects }: { subjects: readonly Subject[] 
 
         // Named separately — see the note on the action. "Out of tolerance" and
         // "not fully measured" are different findings and lead to different actions.
-        const parts = [`${result.pieces} ${result.pieces === 1 ? 'piece' : 'pieces'} recorded`]
-        if (result.outOfTolerance > 0) parts.push(`${result.outOfTolerance} out of tolerance`)
-        if (result.incomplete > 0) parts.push(`${result.incomplete} not fully measured`)
-        if (result.failed === 0) parts.push('all within spec')
+        const parts = [t.plural('ui.quality.pieces_recorded', result.pieces)]
+        if (result.outOfTolerance > 0) {
+          parts.push(t('ui.quality.out_of_tolerance', { count: result.outOfTolerance }))
+        }
+        if (result.incomplete > 0) {
+          parts.push(t('ui.quality.not_fully_measured', { count: result.incomplete }))
+        }
+        if (result.failed === 0) parts.push(t('ui.quality.all_within_spec'))
 
-        setNoted(`${size} · ${parts.join(' · ')}`)
+        setNoted(t('ui.quality.measure_noted', { size, summary: parts.join(' · ') }))
         setSubject(null)
         router.refresh()
       } catch (error) {
-        setFailure(actionErrorMessage(error, 'The measurements were not saved.'))
+        setFailure(actionErrorMessage(error, t('ui.quality.measure_not_saved'), locale))
       }
     })
   }
@@ -143,7 +150,11 @@ export function MeasurementsClient({ subjects }: { subjects: readonly Subject[] 
           }}
         >
           <SectionHeading
-            eyebrow={`${subject.styleCode} · chart v${subject.specVersion} · ${subject.unit}`}
+            eyebrow={t('ui.quality.measure_chart_eyebrow', {
+              style: subject.styleCode,
+              version: subject.specVersion,
+              unit: subject.unit,
+            })}
           >
             Points of measure · size {size} · {PIECES} pieces
           </SectionHeading>
@@ -179,12 +190,23 @@ export function MeasurementsClient({ subjects }: { subjects: readonly Subject[] 
             <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 720 }}>
               <thead>
                 <tr>
-                  {['Point of measure', 'Spec', 'Tol ±', ...Array.from({ length: PIECES }, (_, i) => `Pc ${i + 1}`)].map(
-                    (heading) => (
+                  {[
+                    { key: 'point', label: t('ui.quality.col_point') },
+                    { key: 'spec', label: t('ui.quality.col_spec') },
+                    { key: 'tol', label: t('ui.quality.col_tolerance') },
+                    ...Array.from({ length: PIECES }, (_, i) => ({
+                      key: `pc-${i + 1}`,
+                      label: t('ui.quality.col_piece', { n: i + 1 }),
+                    })),
+                  ].map(
+                    ({ key, label: heading }) => (
                       <th
-                        key={heading}
+                        key={key}
                         style={{
-                          textAlign: heading === 'Point of measure' ? 'left' : 'right',
+                          // Keyed off the column identity, not its text: comparing against
+                          // the English heading silently right-aligned the first column the
+                          // moment it was translated.
+                          textAlign: key === 'point' ? 'left' : 'right',
                           padding: '8px 12px',
                           borderBottom: '1px solid var(--fx-border-default)',
                           font: "400 10.5px/1 var(--fx-font-mono)",
@@ -232,7 +254,10 @@ export function MeasurementsClient({ subjects }: { subjects: readonly Subject[] 
                         >
                           <input
                             inputMode="decimal"
-                            aria-label={`${point.name} piece ${piece + 1}`}
+                            aria-label={t('ui.quality.cell_aria', {
+                              point: point.name,
+                              n: piece + 1,
+                            })}
                             value={raw}
                             onChange={(e) =>
                               setGrid((g) =>
@@ -264,9 +289,7 @@ export function MeasurementsClient({ subjects }: { subjects: readonly Subject[] 
 
           {partPieces > 0 ? (
             <InlineAlert tone="warning">
-              {partPieces === 1 ? 'One piece has' : `${partPieces} pieces have`} some points
-              unmeasured. Those checks file as failed — an unmeasured point is not a good one,
-              and a partial check is not a clean one.
+              {t.plural('ui.quality.part_measured', partPieces)}
             </InlineAlert>
           ) : null}
 
@@ -275,12 +298,15 @@ export function MeasurementsClient({ subjects }: { subjects: readonly Subject[] 
               style={{ font: "400 12px/1.5 var(--fx-font-mono)", color: 'var(--fx-text-tertiary)' }}
             >
               {filledPieces.length === 0
-                ? 'a blank cell is filed as unmeasured, never as zero'
-                : `${filledPieces.length} of ${PIECES} pieces have readings · each files its own check`}
+                ? t('ui.quality.blank_cell_note')
+                : t('ui.quality.pieces_with_readings', {
+                    count: filledPieces.length,
+                    total: PIECES,
+                  })}
             </span>
             <span style={{ marginLeft: 'auto', display: 'flex', gap: 10 }}>
               <Button variant="ghost" onClick={() => setSubject(null)}>
-                Back
+                {t('ui.boundary.not_found_back')}
               </Button>
               <Button
                 variant="primary"
@@ -288,7 +314,7 @@ export function MeasurementsClient({ subjects }: { subjects: readonly Subject[] 
                 disabled={filledPieces.length === 0 || pending}
                 onClick={save}
               >
-                {pending ? 'Saving…' : 'Save measurements'}
+                {pending ? t('ui.common.saving') : t('ui.quality.save_measurements')}
               </Button>
             </span>
           </div>

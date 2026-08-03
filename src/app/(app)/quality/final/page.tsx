@@ -5,6 +5,8 @@ import { asc, eq } from 'drizzle-orm'
 import { EmptyState } from '@/components/fx/feedback'
 import { FloorScreen } from '@/components/fx/floor'
 import { PageHeader } from '@/components/shell/page-shell'
+import { tui } from '@/lib/i18n-ui'
+import { requestLocale } from '@/lib/ui-locale'
 import { getCtx } from '@/modules/core/session'
 import { withTenantRead } from '@/modules/core/tenancy'
 import { defectCodes } from '@/modules/quality/schema'
@@ -38,6 +40,8 @@ export default async function FinalInspectionPage() {
   const ctx = await getCtx(await headers())
   if (!ctx) redirect('/login')
 
+  const locale = await requestLocale()
+
   const [policy, lots, codes] = await Promise.all([
     getPolicy<QualityPolicy>(ctx, 'quality'),
     finalInspectionLots(ctx),
@@ -58,10 +62,14 @@ export default async function FinalInspectionPage() {
   if (lots.length === 0) {
     return (
       <FloorScreen>
-        <PageHeader eyebrow="Quality · final inspection" title="No lots to inspect" ownsAmber />
+        <PageHeader
+          eyebrow={tui(locale, 'ui.quality.final_eyebrow')}
+          title={tui(locale, 'ui.quality.final_empty_page_title')}
+          ownsAmber
+        />
         <EmptyState
-          title="Nothing in front of you"
-          body="A final inspection is run against a live order. Orders that have shipped or closed are no longer inspectable."
+          title={tui(locale, 'ui.quality.final_empty_title')}
+          body={tui(locale, 'ui.quality.final_empty_body')}
         />
       </FloorScreen>
     )
@@ -72,9 +80,17 @@ export default async function FinalInspectionPage() {
   return (
     <FloorScreen>
       <PageHeader
-        eyebrow={`Quality · final inspection · ${policy.aqlStandard} · single sampling · normal`}
-        title={`${lots.length} ${lots.length === 1 ? 'lot' : 'lots'} inspectable`}
-        meta={failed > 0 ? `${failed} failed and not yet cleared` : undefined}
+        eyebrow={tui(locale, 'ui.quality.final_eyebrow_full', { standard: policy.aqlStandard })}
+        title={tui(
+          locale,
+          lots.length === 1
+            ? 'ui.quality.lots_inspectable_one'
+            : 'ui.quality.lots_inspectable_other',
+          { count: lots.length },
+        )}
+        meta={
+          failed > 0 ? tui(locale, 'ui.quality.lots_failed_meta', { count: failed }) : undefined
+        }
         ownsAmber
       />
       <FinalClient lots={lots.map((l) => ({ ...l, history: l.history.map(toWire) }))} defects={codes} />

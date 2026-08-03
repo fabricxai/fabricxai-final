@@ -5,6 +5,8 @@ import { eq } from 'drizzle-orm'
 import { EmptyState } from '@/components/fx/feedback'
 import { FloorScreen } from '@/components/fx/floor'
 import { PageHeader } from '@/components/shell/page-shell'
+import { tui } from '@/lib/i18n-ui'
+import { requestLocale } from '@/lib/ui-locale'
 import { getCtx } from '@/modules/core/session'
 import { withTenantRead } from '@/modules/core/tenancy'
 import { lines } from '@/modules/planning/schema'
@@ -38,6 +40,8 @@ export default async function InlineQcPage({
   const ctx = await getCtx(await headers())
   if (!ctx) redirect('/login')
 
+  const locale = await requestLocale()
+
   const today = new Date().toISOString().slice(0, 10)
   const lineRows = await withTenantRead(ctx, (tx) =>
     tx
@@ -50,10 +54,14 @@ export default async function InlineQcPage({
   if (lineRows.length === 0) {
     return (
       <FloorScreen>
-        <PageHeader eyebrow="Quality · inline" title="No lines set up" ownsAmber />
+        <PageHeader
+          eyebrow={tui(locale, 'ui.quality.inline_eyebrow')}
+          title={tui(locale, 'ui.quality.no_lines_set_up')}
+          ownsAmber
+        />
         <EmptyState
-          title="Nothing to check"
-          body="An inline check is filed against a line. Planning sets the floor up before quality can walk it."
+          title={tui(locale, 'ui.quality.inline_empty_title')}
+          body={tui(locale, 'ui.quality.inline_empty_body')}
         />
       </FloorScreen>
     )
@@ -80,9 +88,9 @@ export default async function InlineQcPage({
   return (
     <FloorScreen>
       <PageHeader
-        eyebrow={`Quality · inline · ${today}`}
+        eyebrow={tui(locale, 'ui.quality.inline_eyebrow_dated', { date: today })}
         title={`${active.code} · ${active.name}`}
-        meta={threshold ? `target DHU ≤ ${threshold}` : undefined}
+        meta={threshold ? tui(locale, 'ui.quality.target_dhu_meta', { threshold }) : undefined}
         ownsAmber
       />
       <InlineClient

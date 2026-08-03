@@ -6,8 +6,10 @@ import { useState, useTransition } from 'react'
 import { InlineAlert } from '@/components/fx/feedback'
 import { actionErrorMessage } from '@/lib/action-error'
 import { NumpadInput } from '@/components/fx/floor'
+import { useLocale, useT } from '@/components/fx/locale'
 import { Badge, Button } from '@/components/fx/primitives'
 import { SectionHeading } from '@/components/fx/signature'
+import type { Translator } from '@/lib/i18n-ui'
 import { recordFabricInspection } from '@/modules/quality/actions'
 
 interface Roll {
@@ -35,11 +37,27 @@ interface Grn {
 
 /** The four penalty bands. A band-3 fault is worth 3 points, and so on. */
 const BANDS = [
-  { key: '1', label: '1 pt', hint: 'up to 3 inches' },
-  { key: '2', label: '2 pt', hint: '3 to 6 inches' },
-  { key: '3', label: '3 pt', hint: '6 to 9 inches' },
-  { key: '4', label: '4 pt', hint: 'over 9 inches, or a hole' },
+  { key: '1', labelKey: 'ui.quality.band_1_label', hintKey: 'ui.quality.band_1_hint' },
+  { key: '2', labelKey: 'ui.quality.band_2_label', hintKey: 'ui.quality.band_2_hint' },
+  { key: '3', labelKey: 'ui.quality.band_3_label', hintKey: 'ui.quality.band_3_hint' },
+  { key: '4', labelKey: 'ui.quality.band_4_label', hintKey: 'ui.quality.band_4_hint' },
 ] as const
+
+/**
+ * An `inspection_result` as the word on the badge, not as the column value.
+ *
+ * Falls back to the raw value so a third result added to the enum reads wrong rather than
+ * as a missing key — legible is the safer failure at an inspection frame.
+ */
+const RESULT_COPY: Record<string, string> = {
+  pass: 'ui.quality.verdict_pass',
+  fail: 'ui.quality.verdict_fail',
+}
+
+function resultLabel(t: Translator, result: string): string {
+  const key = RESULT_COPY[result]
+  return key ? t(key) : result
+}
 
 type Bands = Record<string, string>
 
@@ -63,6 +81,8 @@ export function FabricClient({
   threshold: string
   mandatory: boolean
 }) {
+  const t = useT()
+  const locale = useLocale()
   const router = useRouter()
   const [pending, startTransition] = useTransition()
 
@@ -118,26 +138,31 @@ export function FabricClient({
         })
 
         setNoted(
-          `${grading.roll.rollNo} · ${result.pointsPer100SqYd} points/100 yd² · ${result.result}`,
+          t('ui.quality.fabric_recorded', {
+            roll: grading.roll.rollNo,
+            points: result.pointsPer100SqYd,
+            result: resultLabel(t, result.result),
+          }),
         )
         setGrading(null)
         router.refresh()
       } catch (error) {
-        setFailure(actionErrorMessage(error, 'The inspection was not saved.'))
+        setFailure(actionErrorMessage(error, t('ui.quality.fabric_not_saved'), locale))
       }
     })
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
-      {noted ? <InlineAlert tone="success">Recorded {noted}.</InlineAlert> : null}
+      {noted ? (
+        <InlineAlert tone="success">
+          {t('ui.quality.fabric_recorded_alert', { summary: noted })}
+        </InlineAlert>
+      ) : null}
       {failure ? <InlineAlert tone="danger">{failure}</InlineAlert> : null}
 
       {mandatory ? (
-        <InlineAlert tone="info">
-          Woven fabric must be graded before the store may issue it. A roll with no result
-          here is a roll production cannot have — that gate is server-side, not a reminder.
-        </InlineAlert>
+        <InlineAlert tone="info">{t('ui.quality.woven_gate_note')}</InlineAlert>
       ) : null}
 
       {/* ── Grading one roll ─────────────────────────────────────────────── */}
@@ -149,8 +174,13 @@ export function FabricClient({
             padding: '22px 24px',
           }}
         >
-          <SectionHeading eyebrow={`challan ${grading.grn.challanNo}`}>
-            Roll {grading.roll.rollNo} · {grading.roll.itemName}
+          <SectionHeading
+            eyebrow={t('ui.quality.grading_eyebrow', { challan: grading.grn.challanNo })}
+          >
+            {t('ui.quality.roll_heading', {
+              roll: grading.roll.rollNo,
+              item: grading.roll.itemName,
+            })}
           </SectionHeading>
 
           <div
@@ -164,7 +194,7 @@ export function FabricClient({
             {BANDS.map((band) => (
               <label key={band.key} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <NumpadInput
-                  label={band.label}
+                  label={t(band.labelKey)}
                   value={bands[band.key] ?? ''}
                   onChange={(v) => setBands((b) => ({ ...b, [band.key]: v }))}
                 />
@@ -174,7 +204,7 @@ export function FabricClient({
                     color: 'var(--fx-text-tertiary)',
                   }}
                 >
-                  {band.hint}
+                  {t(band.hintKey)}
                 </span>
               </label>
             ))}
@@ -188,8 +218,12 @@ export function FabricClient({
               marginTop: 18,
             }}
           >
-            <NumpadInput label="Length inspected (yd)" value={length} onChange={setLength} />
-            <NumpadInput label="Width (in)" value={width} onChange={setWidth} />
+            <NumpadInput
+              label={t('ui.quality.field_length_yd')}
+              value={length}
+              onChange={setLength}
+            />
+            <NumpadInput label={t('ui.quality.field_width_in')} value={width} onChange={setWidth} />
           </div>
 
           {/* ── The arithmetic, shown rather than trusted ───────────────── */}
@@ -204,16 +238,24 @@ export function FabricClient({
             }}
           >
             {[
-              { label: 'Penalty points', value: String(penaltyPoints) },
+              { label: t('ui.quality.stat_penalty_points'), value: String(penaltyPoints) },
               {
-                label: 'Points / 100 yd²',
+                label: t('ui.quality.stat_points_per_100'),
                 value: per100SqYd === null ? '—' : per100SqYd.toFixed(2),
                 tone: wouldPass === false ? 'var(--fx-danger)' : undefined,
               },
-              { label: 'Threshold', value: `≤ ${threshold}` },
               {
-                label: 'Would be',
-                value: wouldPass === null ? '—' : wouldPass ? 'pass' : 'fail',
+                label: t('ui.quality.stat_threshold'),
+                value: t('ui.quality.at_most', { value: threshold }),
+              },
+              {
+                label: t('ui.quality.stat_would_be'),
+                value:
+                  wouldPass === null
+                    ? '—'
+                    : wouldPass
+                      ? t('ui.quality.verdict_pass')
+                      : t('ui.quality.verdict_fail'),
                 tone: wouldPass === false ? 'var(--fx-danger)' : undefined,
               },
             ].map((cell) => (
@@ -251,17 +293,15 @@ export function FabricClient({
               color: 'var(--fx-text-tertiary)',
             }}
           >
-            The same faults pass on a wide roll and fail on a narrow one — that is why width
-            is asked for and why this is a rate rather than a count. The server recomputes
-            all of it; what is shown here is a preview, not the verdict.
+            {t('ui.quality.fabric_rate_note')}
           </p>
 
           <div style={{ display: 'flex', gap: 10, marginTop: 18, alignItems: 'center' }}>
             <Button variant="primary" size="lg" disabled={!valid || pending} onClick={save}>
-              {pending ? 'Recording…' : 'Record the result'}
+              {pending ? t('ui.quality.recording') : t('ui.quality.record_result')}
             </Button>
             <Button variant="ghost" onClick={() => setGrading(null)}>
-              Back
+              {t('ui.quality.back')}
             </Button>
             {!valid ? (
               <span
@@ -270,7 +310,7 @@ export function FabricClient({
                   color: 'var(--fx-text-tertiary)',
                 }}
               >
-                length and width are needed before a rate exists
+                {t('ui.quality.need_length_width')}
               </span>
             ) : null}
           </div>
@@ -299,21 +339,27 @@ export function FabricClient({
                 font: "500 15px/1.3 var(--fx-font-sans)",
               }}
             >
-              <span>Challan {grn.challanNo}</span>
+              <span>{t('ui.quality.challan_heading', { challan: grn.challanNo })}</span>
               <span
                 style={{
                   font: "400 12px/1.3 var(--fx-font-mono)",
                   color: 'var(--fx-text-tertiary)',
                 }}
               >
-                received {grn.receivedAt} · {grn.rolls.length} rolls
+                {t.plural('ui.quality.received_rolls', grn.rolls.length, {
+                  date: grn.receivedAt,
+                })}
               </span>
               <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-                {grn.failed > 0 ? <Badge tone="danger">{grn.failed} failed</Badge> : null}
+                {grn.failed > 0 ? (
+                  <Badge tone="danger">{t.plural('ui.quality.failed_count', grn.failed)}</Badge>
+                ) : null}
                 {grn.uninspected > 0 ? (
-                  <Badge tone="warning">{grn.uninspected} not graded</Badge>
+                  <Badge tone="warning">
+                    {t.plural('ui.quality.not_graded_count', grn.uninspected)}
+                  </Badge>
                 ) : (
-                  <Badge tone="success">graded</Badge>
+                  <Badge tone="success">{t('ui.quality.badge_graded')}</Badge>
                 )}
               </span>
             </button>
@@ -342,18 +388,23 @@ export function FabricClient({
                       }}
                     >
                       {roll.qty} {roll.unit}
-                      {roll.lot ? ` · lot ${roll.lot}` : ''}
-                      {roll.shadeGroup ? ` · shade ${roll.shadeGroup}` : ''}
+                      {roll.lot ? t('ui.quality.lot_suffix', { lot: roll.lot }) : ''}
+                      {roll.shadeGroup
+                        ? t('ui.quality.shade_suffix', { shade: roll.shadeGroup })
+                        : ''}
                     </span>
                     <span>
                       {roll.result === null ? (
-                        <Badge tone="warning">not graded</Badge>
+                        <Badge tone="warning">{t('ui.quality.badge_not_graded')}</Badge>
                       ) : (
                         <span
                           style={{ display: 'inline-flex', flexDirection: 'column', gap: 3 }}
                         >
                           <Badge tone={roll.result === 'pass' ? 'success' : 'danger'}>
-                            {roll.result} · {roll.pointsPer100SqYd}
+                            {t('ui.quality.roll_result_badge', {
+                              result: resultLabel(t, roll.result),
+                              points: roll.pointsPer100SqYd,
+                            })}
                           </Badge>
                           {/* Says whose verdict it is. "This roll passed" and "the delivery
                               it came in on passed" are different degrees of assurance. */}
@@ -364,7 +415,7 @@ export function FabricClient({
                                 color: 'var(--fx-text-tertiary)',
                               }}
                             >
-                              from the consignment sheet
+                              {t('ui.quality.inherited_from_grn')}
                             </span>
                           ) : null}
                         </span>
@@ -372,7 +423,9 @@ export function FabricClient({
                     </span>
                     <span style={{ textAlign: 'right' }}>
                       <Button variant="ghost" onClick={() => startGrading(grn, roll)}>
-                        {roll.result === null ? 'Grade this roll' : 'Re-grade'}
+                        {roll.result === null
+                          ? t('ui.quality.grade_roll')
+                          : t('ui.quality.regrade')}
                       </Button>
                     </span>
                   </div>

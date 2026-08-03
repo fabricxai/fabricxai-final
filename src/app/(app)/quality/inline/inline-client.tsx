@@ -5,8 +5,10 @@ import { useState } from 'react'
 
 import { InlineAlert } from '@/components/fx/feedback'
 import { SyncPill } from '@/components/fx/floor'
+import { useT } from '@/components/fx/locale'
 import { Badge, Button } from '@/components/fx/primitives'
 import { SectionHeading } from '@/components/fx/signature'
+import type { Translator } from '@/lib/i18n-ui'
 import { useOfflineQueue } from '@/lib/offline/use-offline-queue'
 
 interface TapDefect {
@@ -37,6 +39,23 @@ const SEVERITY_TONE: Record<string, 'danger' | 'warning' | 'neutral'> = {
   critical: 'danger',
   major: 'warning',
   minor: 'neutral',
+}
+
+/**
+ * A `defect_severity` as the word next to the defect, not as the column value.
+ *
+ * Falls back to the raw value, so a fourth severity added to the enum without touching
+ * this screen renders wrong rather than as a missing key.
+ */
+const SEVERITY_COPY: Record<string, string> = {
+  critical: 'ui.quality.severity_critical',
+  major: 'ui.quality.severity_major',
+  minor: 'ui.quality.severity_minor',
+}
+
+function severityLabel(t: Translator, severity: string): string {
+  const key = SEVERITY_COPY[severity]
+  return key ? t(key) : severity
 }
 
 function clockTime(iso: string): string {
@@ -75,6 +94,7 @@ export function InlineClient({
   dhu: { dhu: string | null; checked: number; defects: number }
   threshold: string | null
 }) {
+  const t = useT()
   const router = useRouter()
   const { capture, online, queued, syncing, refused, sync, clear } = useOfflineQueue()
 
@@ -124,7 +144,7 @@ export function InlineClient({
 
       {refused.length > 0 ? (
         <InlineAlert tone="danger">
-          {refused.length} check{refused.length === 1 ? '' : 's'} the server refused.
+          {t.plural('ui.quality.checks_refused', refused.length)}
           {refused.map((r) => (
             <button
               key={r.offlineKey}
@@ -138,7 +158,7 @@ export function InlineClient({
                 font: 'inherit',
               }}
             >
-              dismiss
+              {t('ui.common.dismiss')}
             </button>
           ))}
         </InlineAlert>
@@ -158,14 +178,29 @@ export function InlineClient({
       >
         {[
           {
-            label: 'Line DHU · live',
+            label: t('ui.quality.stat_line_dhu'),
             value: dhu.dhu ?? '—',
-            note: dhu.dhu === null ? 'nothing checked yet' : 'defects per hundred',
+            note:
+              dhu.dhu === null
+                ? t('ui.quality.stat_nothing_checked')
+                : t('ui.quality.stat_per_hundred'),
             tone: overThreshold ? 'var(--fx-danger)' : undefined,
           },
-          { label: 'Checked', value: String(dhu.checked), note: 'garments today' },
-          { label: 'Defects', value: String(dhu.defects), note: 'found today' },
-          { label: 'Target', value: threshold ? `≤ ${threshold}` : '—', note: 'factory setting' },
+          {
+            label: t('ui.quality.col_checked'),
+            value: String(dhu.checked),
+            note: t('ui.quality.stat_garments_today'),
+          },
+          {
+            label: t('ui.quality.col_defects'),
+            value: String(dhu.defects),
+            note: t('ui.quality.stat_found_today'),
+          },
+          {
+            label: t('ui.quality.stat_target'),
+            value: threshold ? t('ui.quality.at_most', { value: threshold }) : '—',
+            note: t('ui.quality.stat_factory_setting'),
+          },
         ].map((cell) => (
           <div key={cell.label} style={{ background: 'var(--fx-bg-surface)', padding: '14px 16px' }}>
             <div
@@ -228,7 +263,9 @@ export function InlineClient({
       {/* ── Tap 1 ────────────────────────────────────────────────────────── */}
       {step === 'operation' ? (
         <section>
-          <SectionHeading eyebrow="tap 1">Which operation</SectionHeading>
+          <SectionHeading eyebrow={t('ui.quality.tap_1')}>
+            {t('ui.quality.tap_operation_heading')}
+          </SectionHeading>
           <TapGrid>
             {operations.map((op) => (
               <TapButton
@@ -247,8 +284,8 @@ export function InlineClient({
             <input
               value={typed}
               onChange={(e) => setTyped(e.target.value)}
-              placeholder="or type an operation this line does"
-              aria-label="Other operation"
+              placeholder={t('ui.quality.operation_placeholder')}
+              aria-label={t('ui.quality.operation_aria')}
               style={{
                 flex: '1 1 240px',
                 minWidth: 0,
@@ -269,7 +306,7 @@ export function InlineClient({
                 setStep('defect')
               }}
             >
-              Use this
+              {t('ui.quality.use_this')}
             </Button>
           </div>
         </section>
@@ -278,7 +315,9 @@ export function InlineClient({
       {/* ── Tap 2 ────────────────────────────────────────────────────────── */}
       {step === 'defect' ? (
         <section>
-          <SectionHeading eyebrow={`tap 2 · ${operation}`}>What is wrong</SectionHeading>
+          <SectionHeading eyebrow={t('ui.quality.tap_2', { operation })}>
+            {t('ui.quality.tap_defect_heading')}
+          </SectionHeading>
 
           {categories.map((category) => (
             <div key={category} style={{ marginBottom: 18 }}>
@@ -313,7 +352,9 @@ export function InlineClient({
                         }}
                       >
                         {d.label}
-                        <Badge tone={SEVERITY_TONE[d.severity] ?? 'neutral'}>{d.severity}</Badge>
+                        <Badge tone={SEVERITY_TONE[d.severity] ?? 'neutral'}>
+                          {severityLabel(t, d.severity)}
+                        </Badge>
                       </span>
                     </TapButton>
                   ))}
@@ -322,7 +363,7 @@ export function InlineClient({
           ))}
 
           <Button variant="ghost" onClick={reset}>
-            Back
+            {t('ui.quality.back')}
           </Button>
         </section>
       ) : null}
@@ -330,15 +371,12 @@ export function InlineClient({
       {/* ── Tap 3 · skippable by design ──────────────────────────────────── */}
       {step === 'operator' && defect ? (
         <section>
-          <SectionHeading eyebrow={`tap 3 · ${defect.label}`}>
-            Whose machine, if you know
+          <SectionHeading eyebrow={t('ui.quality.tap_3', { defect: defect.label })}>
+            {t('ui.quality.tap_operator_heading')}
           </SectionHeading>
 
           {operators.length === 0 ? (
-            <InlineAlert tone="info">
-              No operators are assigned to this line yet, so there is nobody to attribute this
-              to. The defect still files.
-            </InlineAlert>
+            <InlineAlert tone="info">{t('ui.quality.no_operators')}</InlineAlert>
           ) : (
             <TapGrid>
               {operators.map((o) => (
@@ -351,7 +389,11 @@ export function InlineClient({
                         defects: [{ code: defect.code, count: 1 }],
                         operatorId: o.id,
                       },
-                      `${defect.label} on ${operation} · ${o.name}`,
+                      t('ui.quality.filed_with_operator', {
+                        defect: defect.label,
+                        operation,
+                        operator: o.name,
+                      }),
                     )
                   }
                 >
@@ -387,14 +429,14 @@ export function InlineClient({
               onClick={() =>
                 void file(
                   { operation: operation!, defects: [{ code: defect.code, count: 1 }] },
-                  `${defect.label} on ${operation} · not attributed`,
+                  t('ui.quality.filed_unattributed', { defect: defect.label, operation }),
                 )
               }
             >
-              Skip — just log the defect
+              {t('ui.quality.skip_operator')}
             </Button>
             <Button variant="ghost" onClick={() => setStep('defect')}>
-              Back
+              {t('ui.quality.back')}
             </Button>
           </div>
 
@@ -405,8 +447,7 @@ export function InlineClient({
               color: 'var(--fx-text-tertiary)',
             }}
           >
-            Skipping is normal. A defect nobody can attribute is still a defect, and a QC who
-            has to guess a name to file one will guess.
+            {t('ui.quality.skip_note')}
           </p>
         </section>
       ) : null}
@@ -421,17 +462,16 @@ export function InlineClient({
             onClick={() =>
               void file(
                 { operation: operations[0] ?? 'Inline check', defects: [] },
-                '1 checked, no defect',
+                t('ui.quality.one_checked_noted'),
               )
             }
           >
-            ＋ 1 checked, no defect
+            {t('ui.quality.one_checked_button')}
           </Button>
           <span
             style={{ font: "400 12px/1.5 var(--fx-font-mono)", color: 'var(--fx-text-tertiary)' }}
           >
-            DHU is a ratio — good garments have to be as cheap to record as bad ones, or the
-            denominator is whatever anyone happened to log
+            {t('ui.quality.denominator_note')}
           </span>
         </div>
       ) : null}
@@ -439,7 +479,9 @@ export function InlineClient({
       {/* ── Last few ─────────────────────────────────────────────────────── */}
       {recent.length > 0 ? (
         <section>
-          <SectionHeading eyebrow="last few">Just filed</SectionHeading>
+          <SectionHeading eyebrow={t('ui.quality.recent_eyebrow')}>
+            {t('ui.quality.recent_heading')}
+          </SectionHeading>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {recent.map((r) => (
               <div
@@ -465,7 +507,9 @@ export function InlineClient({
                 </span>
                 <span style={{ flex: 1, minWidth: 0 }}>{r.operation}</span>
                 <Badge tone={r.defectQty > 0 ? 'warning' : 'success'}>
-                  {r.defectQty > 0 ? `${r.defectQty} defect` : 'no defect'}
+                  {r.defectQty > 0
+                    ? t.plural('ui.quality.defect_count', r.defectQty)
+                    : t('ui.quality.no_defect')}
                 </Badge>
               </div>
             ))}

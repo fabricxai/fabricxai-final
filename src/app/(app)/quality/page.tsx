@@ -8,6 +8,9 @@ import { Badge } from '@/components/fx/primitives'
 import { SectionHeading } from '@/components/fx/signature'
 import { Ident } from '@/components/fx/format'
 import { PageHeader } from '@/components/shell/page-shell'
+import type { Locale } from '@/lib/i18n'
+import { tui } from '@/lib/i18n-ui'
+import { requestLocale } from '@/lib/ui-locale'
 import { getCtx } from '@/modules/core/session'
 import {
   defectLabels,
@@ -36,6 +39,8 @@ export const dynamic = 'force-dynamic'
 export default async function QualityPage() {
   const ctx = await getCtx(await headers())
   if (!ctx) redirect('/login')
+
+  const locale = await requestLocale()
 
   const policy = await getPolicy<QualityPolicy>(ctx, 'quality')
   const today = new Date().toISOString().slice(0, 10)
@@ -77,21 +82,37 @@ export default async function QualityPage() {
   return (
     <FloorScreen>
       <PageHeader
-        eyebrow={`Quality · ${today}`}
-        title={lines.length === 0 ? 'No lines' : `${lines.length} lines`}
+        eyebrow={tui(locale, 'ui.quality.eyebrow_dated', { date: today })}
+        title={
+          lines.length === 0
+            ? tui(locale, 'ui.quality.no_lines_title')
+            : tui(
+                locale,
+                lines.length === 1 ? 'ui.quality.lines_count_one' : 'ui.quality.lines_count_other',
+                { count: lines.length },
+              )
+        }
         meta={
           over.length > 0
-            ? `${over.length} ${over.length === 1 ? 'line' : 'lines'} above ${policy.dhuAlertThreshold} DHU`
+            ? tui(
+                locale,
+                over.length === 1
+                  ? 'ui.quality.lines_over_dhu_one'
+                  : 'ui.quality.lines_over_dhu_other',
+                { count: over.length, threshold: policy.dhuAlertThreshold },
+              )
             : undefined
         }
         ownsAmber
       />
 
       <nav style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
-        <QualityLink href="/quality/inline">Walk a line</QualityLink>
-        <QualityLink href="/quality/fabric">Fabric inspection</QualityLink>
-        <QualityLink href="/quality/final">Final inspection</QualityLink>
-        <QualityLink href="/quality/measurements">Measurements</QualityLink>
+        <QualityLink href="/quality/inline">{tui(locale, 'ui.quality.nav_inline')}</QualityLink>
+        <QualityLink href="/quality/fabric">{tui(locale, 'ui.quality.nav_fabric')}</QualityLink>
+        <QualityLink href="/quality/final">{tui(locale, 'ui.quality.nav_final')}</QualityLink>
+        <QualityLink href="/quality/measurements">
+          {tui(locale, 'ui.quality.nav_measurements')}
+        </QualityLink>
       </nav>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 30 }}>
@@ -99,15 +120,20 @@ export default async function QualityPage() {
             more likely to go unnoticed — so it gets its own line. */}
         {unchecked.length > 0 && lines.length > 0 ? (
           <InlineAlert tone="warning">
-            {unchecked.length} of {lines.length} lines have no inline check today. Those lines have
-            no DHU — which is not the same as a DHU of zero.
+            {tui(locale, 'ui.quality.unchecked_lines', {
+              count: unchecked.length,
+              total: lines.length,
+            })}
           </InlineAlert>
         ) : null}
 
         {failed.length > 0 ? (
           <InlineAlert tone="danger">
-            {failed.length} final {failed.length === 1 ? 'inspection has' : 'inspections have'}{' '}
-            failed. A failed lot does not ship until it is re-inspected.
+            {tui(
+              locale,
+              failed.length === 1 ? 'ui.quality.final_failed_one' : 'ui.quality.final_failed_other',
+              { count: failed.length },
+            )}
           </InlineAlert>
         ) : null}
 
@@ -116,11 +142,14 @@ export default async function QualityPage() {
           <SectionHeading
             eyebrow={
               periodDhu
-                ? `${periodDhu}% average · target ${policy.dhuAlertThreshold ?? '—'}%`
-                : 'nothing checked in the last fortnight'
+                ? tui(locale, 'ui.quality.dhu_period_eyebrow', {
+                    dhu: periodDhu,
+                    target: policy.dhuAlertThreshold ?? '—',
+                  })
+                : tui(locale, 'ui.quality.dhu_nothing_checked')
             }
           >
-            DHU · 14 days, all lines
+            {tui(locale, 'ui.quality.dhu_trend_heading')}
           </SectionHeading>
 
           {/* Bars, not a line: a day nobody checked has NO DHU, and a line chart would
@@ -147,8 +176,13 @@ export default async function QualityPage() {
                   key={day.date}
                   title={
                     day.dhu === null
-                      ? `${day.date} · nothing checked`
-                      : `${day.date} · ${day.dhu} DHU · ${day.defects} of ${day.checked}`
+                      ? tui(locale, 'ui.quality.day_nothing_checked', { date: day.date })
+                      : tui(locale, 'ui.quality.day_dhu_title', {
+                          date: day.date,
+                          dhu: day.dhu,
+                          defects: day.defects,
+                          checked: day.checked,
+                        })
                   }
                   style={{
                     flex: 1,
@@ -204,11 +238,17 @@ export default async function QualityPage() {
             <SectionHeading
               eyebrow={
                 causesTo80 > 0
-                  ? `80% sits in ${causesTo80} ${causesTo80 === 1 ? 'cause' : 'causes'}`
+                  ? tui(
+                      locale,
+                      causesTo80 === 1
+                        ? 'ui.quality.pareto_causes_one'
+                        : 'ui.quality.pareto_causes_other',
+                      { count: causesTo80 },
+                    )
                   : undefined
               }
             >
-              Defect pareto
+              {tui(locale, 'ui.quality.pareto_heading')}
             </SectionHeading>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {pareto.slice(0, 8).map((slice, index) => (
@@ -238,7 +278,7 @@ export default async function QualityPage() {
                         color: 'var(--fx-text-tertiary)',
                       }}
                     >
-                      {slice.severity}
+                      {severityLabel(locale, slice.severity)}
                     </span>
                   </span>
                   <span
@@ -264,8 +304,8 @@ export default async function QualityPage() {
 
         {repeats.length > 0 ? (
           <section>
-            <SectionHeading eyebrow="same defect, same station, days running">
-              Repeats worth a conversation
+            <SectionHeading eyebrow={tui(locale, 'ui.quality.repeats_eyebrow')}>
+              {tui(locale, 'ui.quality.repeats_heading')}
             </SectionHeading>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {repeats.map((run) => (
@@ -283,9 +323,18 @@ export default async function QualityPage() {
                   }}
                 >
                   <span style={{ font: "500 14px/1.3 var(--fx-font-sans)" }}>
-                    {runLabels.get(run.code)?.label ?? run.code} at {run.operation}
+                    {tui(locale, 'ui.quality.repeat_at', {
+                      defect: runLabels.get(run.code)?.label ?? run.code,
+                      operation: run.operation,
+                    })}
                   </span>
-                  <Badge tone="warning">{run.days} days running</Badge>
+                  <Badge tone="warning">
+                    {tui(
+                      locale,
+                      run.days === 1 ? 'ui.quality.days_running_one' : 'ui.quality.days_running_other',
+                      { count: run.days },
+                    )}
+                  </Badge>
                   <span
                     style={{
                       font: "400 12px/1.3 var(--fx-font-mono)",
@@ -304,24 +353,25 @@ export default async function QualityPage() {
                 color: 'var(--fx-text-tertiary)',
               }}
             >
-              One of these is a slip. The same one for days at the same station is a machine
-              out of adjustment or an operator nobody trained — both fixable, and neither
-              visible in a daily DHU that stays under target the whole time.
+              {tui(locale, 'ui.quality.repeats_note')}
             </p>
           </section>
         ) : null}
 
         <section>
           <SectionHeading
-            eyebrow={`${activity.checks} checks · ${activity.fromDevice} from a device`}
+            eyebrow={tui(locale, 'ui.quality.checks_eyebrow', {
+              checks: activity.checks,
+              devices: activity.fromDevice,
+            })}
           >
-            DHU by line
+            {tui(locale, 'ui.quality.dhu_by_line_heading')}
           </SectionHeading>
 
           {lines.length === 0 ? (
             <EmptyState
-              title="No lines to check"
-              body="Lines are set up on the planning board. Inline checks are captured on the floor and count toward each line's DHU for the day."
+              title={tui(locale, 'ui.quality.lines_empty_title')}
+              body={tui(locale, 'ui.quality.lines_empty_body')}
             />
           ) : (
             <div
@@ -345,15 +395,20 @@ export default async function QualityPage() {
                   color: 'var(--fx-text-tertiary)',
                 }}
               >
-                <div>Line</div>
-                <div>DHU</div>
-                <div style={{ textAlign: 'right' }}>Checked</div>
-                <div style={{ textAlign: 'right' }}>Defects</div>
-                <div style={{ textAlign: 'right' }}>Verdict</div>
+                <div>{tui(locale, 'ui.quality.col_line')}</div>
+                <div>{tui(locale, 'ui.quality.col_dhu')}</div>
+                <div style={{ textAlign: 'right' }}>{tui(locale, 'ui.quality.col_checked')}</div>
+                <div style={{ textAlign: 'right' }}>{tui(locale, 'ui.quality.col_defects')}</div>
+                <div style={{ textAlign: 'right' }}>{tui(locale, 'ui.quality.col_verdict')}</div>
               </div>
 
               {lines.map((line) => (
-                <DhuRow key={line.lineId} line={line} threshold={policy.dhuAlertThreshold ?? null} />
+                <DhuRow
+                  key={line.lineId}
+                  locale={locale}
+                  line={line}
+                  threshold={policy.dhuAlertThreshold ?? null}
+                />
               ))}
 
               <div
@@ -364,15 +419,18 @@ export default async function QualityPage() {
                   color: 'var(--fx-text-tertiary)',
                 }}
               >
-                DHU = defects ÷ garments checked × 100 · a ratio is never shown without what it
-                was measured on
+                {tui(locale, 'ui.quality.dhu_formula_note')}
               </div>
             </div>
           )}
         </section>
 
         <section>
-          <SectionHeading eyebrow={`${inspections.length} recent`}>Final inspections</SectionHeading>
+          <SectionHeading
+            eyebrow={tui(locale, 'ui.quality.recent_count', { count: inspections.length })}
+          >
+            {tui(locale, 'ui.quality.final_heading')}
+          </SectionHeading>
 
           {inspections.length === 0 ? (
             <div
@@ -385,14 +443,12 @@ export default async function QualityPage() {
                 color: 'var(--fx-text-secondary)',
               }}
             >
-              No final inspections yet. The AQL plan comes from the standard table and is
-              snapshotted onto the inspection, so a lot is judged by the plan in force when it
-              was inspected.
+              {tui(locale, 'ui.quality.final_none_note')}
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {inspections.map((i) => (
-                <InspectionCard key={i.id} inspection={i} />
+                <InspectionCard key={i.id} locale={locale} inspection={i} />
               ))}
             </div>
           )}
@@ -402,7 +458,15 @@ export default async function QualityPage() {
   )
 }
 
-function DhuRow({ line, threshold }: { line: LineDhu; threshold: string | null }) {
+function DhuRow({
+  locale,
+  line,
+  threshold,
+}: {
+  locale: Locale
+  line: LineDhu
+  threshold: string | null
+}) {
   return (
     <div
       className="fx-selvage"
@@ -427,7 +491,7 @@ function DhuRow({ line, threshold }: { line: LineDhu; threshold: string | null }
         {line.dhu === null ? (
           /* Absence, not zero. A line nobody checked is not a perfect line. */
           <span style={{ font: "400 15px/1.2 var(--fx-font-mono)", color: 'var(--fx-text-tertiary)' }}>
-            not checked
+            {tui(locale, 'ui.quality.not_checked')}
           </span>
         ) : (
           <span style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
@@ -474,11 +538,11 @@ function DhuRow({ line, threshold }: { line: LineDhu; threshold: string | null }
 
         <span style={{ textAlign: 'right' }}>
           {line.dhu === null ? (
-            <Badge>no data</Badge>
+            <Badge>{tui(locale, 'ui.quality.badge_no_data')}</Badge>
           ) : line.overThreshold ? (
-            <Badge tone="danger">over</Badge>
+            <Badge tone="danger">{tui(locale, 'ui.quality.badge_over')}</Badge>
           ) : (
-            <Badge tone="success">within</Badge>
+            <Badge tone="success">{tui(locale, 'ui.quality.badge_within')}</Badge>
           )}
         </span>
       </div>
@@ -486,7 +550,13 @@ function DhuRow({ line, threshold }: { line: LineDhu; threshold: string | null }
   )
 }
 
-function InspectionCard({ inspection }: { inspection: FinalInspectionRow }) {
+function InspectionCard({
+  locale,
+  inspection,
+}: {
+  locale: Locale
+  inspection: FinalInspectionRow
+}) {
   const failed = inspection.verdict === 'fail'
 
   return (
@@ -505,8 +575,10 @@ function InspectionCard({ inspection }: { inspection: FinalInspectionRow }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <Ident size={14}>{inspection.inspectionNo}</Ident>
           <Badge>{inspection.standard}</Badge>
-          <Badge tone={failed ? 'danger' : 'success'}>{inspection.verdict}</Badge>
-          <Badge>{inspection.status.replace(/_/g, ' ')}</Badge>
+          <Badge tone={failed ? 'danger' : 'success'}>
+            {verdictLabel(locale, inspection.verdict)}
+          </Badge>
+          <Badge>{inspectionStatus(locale, inspection.status)}</Badge>
           <span
             data-numeric
             style={{
@@ -515,23 +587,51 @@ function InspectionCard({ inspection }: { inspection: FinalInspectionRow }) {
               color: 'var(--fx-text-tertiary)',
             }}
           >
-            lot {inspection.lotQty.toLocaleString()} · sample {inspection.sampleSize}
+            {tui(locale, 'ui.quality.lot_sample', {
+              lot: inspection.lotQty.toLocaleString(),
+              sample: inspection.sampleSize,
+            })}
           </span>
         </div>
 
         {/* Found against accept, side by side — the verdict is computed from the
             snapshotted plan, and this is the arithmetic it used. */}
         <div style={{ display: 'flex', gap: 26, flexWrap: 'wrap' }}>
-          <Found label="Critical" found={inspection.criticalFound} accept={0} />
-          <Found label="Major" found={inspection.majorFound} accept={inspection.majorAccept} />
-          <Found label="Minor" found={inspection.minorFound} accept={inspection.minorAccept} />
+          <Found
+            locale={locale}
+            label={severityLabel(locale, 'critical')}
+            found={inspection.criticalFound}
+            accept={0}
+          />
+          <Found
+            locale={locale}
+            label={severityLabel(locale, 'major')}
+            found={inspection.majorFound}
+            accept={inspection.majorAccept}
+          />
+          <Found
+            locale={locale}
+            label={severityLabel(locale, 'minor')}
+            found={inspection.minorFound}
+            accept={inspection.minorAccept}
+          />
         </div>
       </div>
     </div>
   )
 }
 
-function Found({ label, found, accept }: { label: string; found: number; accept: number }) {
+function Found({
+  locale,
+  label,
+  found,
+  accept,
+}: {
+  locale: Locale
+  label: string
+  found: number
+  accept: number
+}) {
   const over = found > accept
 
   return (
@@ -541,7 +641,10 @@ function Found({ label, found, accept }: { label: string; found: number; accept:
       </span>
       <span data-numeric style={{ font: "500 16px/1.2 var(--fx-font-mono)" }}>
         <span style={{ color: over ? 'var(--fx-danger)' : 'var(--fx-text-primary)' }}>{found}</span>
-        <span style={{ color: 'var(--fx-text-tertiary)' }}> / {accept} allowed</span>
+        <span style={{ color: 'var(--fx-text-tertiary)' }}>
+          {' '}
+          {tui(locale, 'ui.quality.allowed_suffix', { accept })}
+        </span>
       </span>
     </span>
   )
@@ -566,4 +669,45 @@ function QualityLink({ href, children }: { href: string; children: React.ReactNo
       {children}
     </Link>
   )
+}
+
+/**
+ * The three DB enums this screen renders as words: `defect_severity`,
+ * `inspection_result` and `final_inspection_status`.
+ *
+ * Each falls back to the raw column value rather than to a missing key, so a fourth
+ * value added to an enum without touching this screen reads wrong but readable — which
+ * on a floor tablet is the safer failure.
+ */
+const SEVERITY_COPY: Record<string, string> = {
+  critical: 'ui.quality.severity_critical',
+  major: 'ui.quality.severity_major',
+  minor: 'ui.quality.severity_minor',
+}
+
+const VERDICT_COPY: Record<string, string> = {
+  pass: 'ui.quality.verdict_pass',
+  fail: 'ui.quality.verdict_fail',
+}
+
+const INSPECTION_STATUS_COPY: Record<string, string> = {
+  draft: 'ui.quality.status_draft',
+  submitted: 'ui.quality.status_submitted',
+  reinspection_required: 'ui.quality.status_reinspection_required',
+  closed: 'ui.quality.status_closed',
+}
+
+function severityLabel(locale: Locale, severity: string): string {
+  const key = SEVERITY_COPY[severity]
+  return key ? tui(locale, key) : severity
+}
+
+function verdictLabel(locale: Locale, verdict: string): string {
+  const key = VERDICT_COPY[verdict]
+  return key ? tui(locale, key) : verdict
+}
+
+function inspectionStatus(locale: Locale, status: string): string {
+  const key = INSPECTION_STATUS_COPY[status]
+  return key ? tui(locale, key) : status.replace(/_/g, ' ')
 }

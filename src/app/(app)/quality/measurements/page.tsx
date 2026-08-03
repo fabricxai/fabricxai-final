@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation'
 import { EmptyState } from '@/components/fx/feedback'
 import { FloorScreen } from '@/components/fx/floor'
 import { PageHeader } from '@/components/shell/page-shell'
+import { tui } from '@/lib/i18n-ui'
+import { requestLocale } from '@/lib/ui-locale'
 import { getCtx } from '@/modules/core/session'
 import { measurementSubjects } from '@/modules/quality/queries'
 
@@ -31,15 +33,21 @@ export default async function MeasurementsPage() {
   const ctx = await getCtx(await headers())
   if (!ctx) redirect('/login')
 
+  const locale = await requestLocale()
+
   const subjects = await measurementSubjects(ctx)
 
   if (subjects.length === 0) {
     return (
       <FloorScreen>
-        <PageHeader eyebrow="Quality · measurements" title="Nothing to measure" ownsAmber />
+        <PageHeader
+          eyebrow={tui(locale, 'ui.quality.measure_eyebrow')}
+          title={tui(locale, 'ui.quality.measure_empty_page_title')}
+          ownsAmber
+        />
         <EmptyState
-          title="No live orders"
-          body="Measurements are recorded against an order and judged against its style's chart."
+          title={tui(locale, 'ui.quality.measure_empty_title')}
+          body={tui(locale, 'ui.quality.measure_empty_body')}
         />
       </FloorScreen>
     )
@@ -50,9 +58,16 @@ export default async function MeasurementsPage() {
   return (
     <FloorScreen>
       <PageHeader
-        eyebrow="Quality · measurements · points of measure"
-        title={`${subjects.length - withoutChart.length} of ${subjects.length} orders have a chart`}
-        meta={withoutChart.length > 0 ? `${withoutChart.length} without one` : undefined}
+        eyebrow={tui(locale, 'ui.quality.measure_eyebrow_full')}
+        title={tui(locale, 'ui.quality.charts_meta', {
+          measured: subjects.length - withoutChart.length,
+          total: subjects.length,
+        })}
+        meta={
+          withoutChart.length > 0
+            ? tui(locale, 'ui.quality.without_chart_meta', { count: withoutChart.length })
+            : undefined
+        }
         ownsAmber
       />
       <MeasurementsClient subjects={subjects} />

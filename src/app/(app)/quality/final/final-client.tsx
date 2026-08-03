@@ -6,8 +6,10 @@ import { useState, useTransition } from 'react'
 import { InlineAlert } from '@/components/fx/feedback'
 import { actionErrorMessage } from '@/lib/action-error'
 import { NumpadInput } from '@/components/fx/floor'
+import { useLocale, useT } from '@/components/fx/locale'
 import { Badge, Button } from '@/components/fx/primitives'
 import { SectionHeading } from '@/components/fx/signature'
+import type { Translator } from '@/lib/i18n-ui'
 import { previewAqlPlan, submitFinalInspection } from '@/modules/quality/actions'
 import type { AqlPlan } from '@/modules/quality/quality'
 
@@ -51,6 +53,33 @@ const SEVERITY_TONE: Record<string, 'danger' | 'warning' | 'neutral'> = {
 }
 
 /**
+ * `defect_severity` and `inspection_result` as words rather than as column values.
+ *
+ * Both fall back to the raw value, so a value added to either enum without touching this
+ * screen renders wrong but readable rather than as a missing key.
+ */
+const SEVERITY_COPY: Record<string, string> = {
+  critical: 'ui.quality.severity_critical',
+  major: 'ui.quality.severity_major',
+  minor: 'ui.quality.severity_minor',
+}
+
+const VERDICT_COPY: Record<string, string> = {
+  pass: 'ui.quality.verdict_pass',
+  fail: 'ui.quality.verdict_fail',
+}
+
+function severityLabel(t: Translator, severity: string): string {
+  const key = SEVERITY_COPY[severity]
+  return key ? t(key) : severity
+}
+
+function verdictLabel(t: Translator, verdict: string): string {
+  const key = VERDICT_COPY[verdict]
+  return key ? t(key) : verdict
+}
+
+/**
  * Running a final inspection.
  *
  * The plan is fetched from the server the moment the lot size and levels are known, and it
@@ -66,6 +95,8 @@ export function FinalClient({
   lots: readonly Lot[]
   defects: readonly DefectCode[]
 }) {
+  const t = useT()
+  const locale = useLocale()
   const router = useRouter()
   const [pending, startTransition] = useTransition()
 
@@ -76,7 +107,10 @@ export function FinalClient({
   const [found, setFound] = useState<Record<string, number>>({})
   const [plan, setPlan] = useState<AqlPlan | null>(null)
   const [planError, setPlanError] = useState<string | null>(null)
-  const [outcome, setOutcome] = useState<string | null>(null)
+  // The verdict is carried as a FLAG next to its sentence, not sniffed out of the sentence.
+  // Reading the tone off `text.includes('FAILED')` worked only while the copy was English:
+  // in Bangla the word is not there, and a failed lot would have shown in the success tone.
+  const [outcome, setOutcome] = useState<{ failed: boolean; text: string } | null>(null)
   const [failure, setFailure] = useState<string | null>(null)
 
   // eslint-disable-next-line fabricxai/no-float-money -- keypad lot size in pieces, quantity not money; NaN falls back to 0
@@ -128,9 +162,7 @@ export function FinalClient({
         )
       } catch (error) {
         setPlan(null)
-        setPlanError(
-          actionErrorMessage(error, 'No sampling plan exists for that lot size and level.'),
-        )
+        setPlanError(actionErrorMessage(error, t('ui.quality.no_plan'), locale))
       }
     })
   }
@@ -156,13 +188,19 @@ export function FinalClient({
 
         setOutcome(
           result.verdict === 'pass'
-            ? `${inspectionNo} passed. The final-inspection milestone moves.`
-            : `${inspectionNo} FAILED. The lot does not ship until it is re-inspected.`,
+            ? {
+                failed: false,
+                text: t('ui.quality.inspection_passed', { inspection: inspectionNo }),
+              }
+            : {
+                failed: true,
+                text: t('ui.quality.inspection_failed', { inspection: inspectionNo }),
+              },
         )
         setLot(null)
         router.refresh()
       } catch (error) {
-        setFailure(actionErrorMessage(error, 'The inspection was not filed.'))
+        setFailure(actionErrorMessage(error, t('ui.quality.final_not_filed'), locale))
       }
     })
   }
@@ -170,7 +208,7 @@ export function FinalClient({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
       {outcome ? (
-        <InlineAlert tone={outcome.includes('FAILED') ? 'danger' : 'success'}>{outcome}</InlineAlert>
+        <InlineAlert tone={outcome.failed ? 'danger' : 'success'}>{outcome.text}</InlineAlert>
       ) : null}
       {failure ? <InlineAlert tone="danger">{failure}</InlineAlert> : null}
 
@@ -186,8 +224,10 @@ export function FinalClient({
             gap: 18,
           }}
         >
-          <SectionHeading eyebrow={lot.buyerName ?? 'lot'}>
-            The lot in front of you · {lot.poNumber ?? lot.orderId.slice(0, 8)}
+          <SectionHeading eyebrow={lot.buyerName ?? t('ui.quality.lot_eyebrow_fallback')}>
+            {t('ui.quality.lot_heading', {
+              lot: lot.poNumber ?? lot.orderId.slice(0, 8),
+            })}
           </SectionHeading>
 
           <div
@@ -198,7 +238,7 @@ export function FinalClient({
             }}
           >
             <NumpadInput
-              label="Lot size (pcs)"
+              label={t('ui.quality.field_lot_size')}
               value={lotQty}
               onChange={(v) => {
                 setLotQty(v)
@@ -207,7 +247,9 @@ export function FinalClient({
               }}
             />
             <label style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
-              <span style={{ font: "500 13px/1.3 var(--fx-font-sans)" }}>Inspection level</span>
+              <span style={{ font: "500 13px/1.3 var(--fx-font-sans)" }}>
+                {t('ui.quality.field_level')}
+              </span>
               <select
                 value={level}
                 onChange={(e) => {
@@ -228,13 +270,15 @@ export function FinalClient({
               >
                 {LEVELS.map((l) => (
                   <option key={l} value={l}>
-                    Level {l}
+                    {t('ui.quality.level_option', { level: l })}
                   </option>
                 ))}
               </select>
             </label>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
-              <span style={{ font: "500 13px/1.3 var(--fx-font-sans)" }}>Inspection no.</span>
+              <span style={{ font: "500 13px/1.3 var(--fx-font-sans)" }}>
+                {t('ui.quality.field_inspection_no')}
+              </span>
               <input
                 value={inspectionNo}
                 onChange={(e) => setInspectionNo(e.target.value)}
@@ -253,15 +297,15 @@ export function FinalClient({
           </div>
 
           {/* ── The rule, not just the numbers ───────────────────────────── */}
-          <SectionHeading eyebrow="from the buyer's terms, not a default">
-            The rule, not just the numbers
+          <SectionHeading eyebrow={t('ui.quality.plan_eyebrow')}>
+            {t('ui.quality.plan_heading')}
           </SectionHeading>
 
           {!lot.majorAql ? (
             <InlineAlert tone="warning">
-              {lot.buyerName ?? 'This buyer'} has no terms on file, so there is no agreed AQL to
-              inspect against. A level the system picked would be an acceptance number nobody
-              signed for — set the buyer&rsquo;s terms first.
+              {t('ui.quality.no_buyer_terms', {
+                buyer: lot.buyerName ?? t('ui.quality.this_buyer'),
+              })}
             </InlineAlert>
           ) : planError ? (
             <InlineAlert tone="danger">{planError}</InlineAlert>
@@ -278,21 +322,29 @@ export function FinalClient({
               >
                 {[
                   {
-                    label: 'Pull',
-                    value: plan.hundredPercent ? `all ${plan.lotQty}` : String(plan.sampleSize),
-                    note: plan.hundredPercent ? '100% inspection' : 'pieces from the lot',
+                    label: t('ui.quality.plan_pull'),
+                    value: plan.hundredPercent
+                      ? t('ui.quality.plan_pull_all', { count: plan.lotQty })
+                      : String(plan.sampleSize),
+                    note: plan.hundredPercent
+                      ? t('ui.quality.plan_full_inspection')
+                      : t('ui.quality.plan_pieces_note'),
                   },
                   {
-                    label: `Major · AQL ${plan.majorAql}`,
+                    label: t('ui.quality.plan_major_label', { aql: plan.majorAql }),
                     value: `${plan.majorAccept} / ${plan.majorReject}`,
-                    note: 'accept / reject',
+                    note: t('ui.quality.plan_accept_reject'),
                   },
                   {
-                    label: `Minor · AQL ${plan.minorAql}`,
+                    label: t('ui.quality.plan_minor_label', { aql: plan.minorAql }),
                     value: `${plan.minorAccept} / ${plan.minorReject}`,
-                    note: 'accept / reject',
+                    note: t('ui.quality.plan_accept_reject'),
                   },
-                  { label: 'Critical', value: '0', note: 'no acceptance number exists' },
+                  {
+                    label: severityLabel(t, 'critical'),
+                    value: '0',
+                    note: t('ui.quality.plan_critical_note'),
+                  },
                 ].map((cell) => (
                   <div
                     key={cell.label}
@@ -330,9 +382,7 @@ export function FinalClient({
                   color: 'var(--fx-text-tertiary)',
                 }}
               >
-                Major and minor are judged separately and never netted — a lot can pass on
-                minors and fail on majors in the same count. One critical defect fails the lot
-                on its own, whatever the rest of the numbers say.
+                {t('ui.quality.plan_note')}
               </p>
             </>
           ) : (
@@ -346,7 +396,9 @@ export function FinalClient({
           {/* ── Counting ─────────────────────────────────────────────────── */}
           {plan ? (
             <>
-              <SectionHeading eyebrow="tap what you find">Defects</SectionHeading>
+              <SectionHeading eyebrow={t('ui.quality.defects_eyebrow')}>
+                {t('ui.quality.defects_heading')}
+              </SectionHeading>
               <div
                 style={{
                   display: 'grid',
@@ -456,10 +508,10 @@ export function FinalClient({
 
                 <span style={{ marginLeft: 'auto', display: 'flex', gap: 10 }}>
                   <Button variant="ghost" onClick={() => setLot(null)}>
-                    Back
+                    {t('ui.boundary.not_found_back')}
                   </Button>
                   <Button variant="primary" size="lg" disabled={pending} onClick={submit}>
-                    {pending ? 'Filing…' : 'Submit the verdict'}
+                    {pending ? t('ui.quality.filing') : t('ui.quality.submit_verdict')}
                   </Button>
                 </span>
               </div>
@@ -471,8 +523,7 @@ export function FinalClient({
                   color: 'var(--fx-text-tertiary)',
                 }}
               >
-                The verdict is decided by the server from the sampling table, not by this
-                screen and not by the inspector. What is shown above is the count.
+                {t('ui.quality.verdict_server_note')}
               </p>
             </>
           ) : null}
@@ -519,13 +570,18 @@ export function FinalClient({
             <span
               style={{ font: "400 12px/1.3 var(--fx-font-mono)", color: 'var(--fx-text-secondary)' }}
             >
-              {l.majorAql ? `AQL ${l.majorAql} / ${l.minorAql}` : 'no buyer terms'}
+              {l.majorAql
+                ? `AQL ${l.majorAql} / ${l.minorAql}`
+                : t('ui.quality.no_buyer_terms')}
             </span>
 
             <span>
               {last ? (
                 <Badge tone={last.verdict === 'pass' ? 'success' : 'danger'}>
-                  {last.inspectionNo} · {last.verdict}
+                  {/* Through verdictLabel, not the raw column: `pass` / `fail` are enum
+                      values, and an inspector reading Bangla should not have to learn two
+                      English words to read a badge. */}
+                  {last.inspectionNo} · {verdictLabel(t, last.verdict)}
                 </Badge>
               ) : (
                 <span
@@ -534,14 +590,14 @@ export function FinalClient({
                     color: 'var(--fx-text-tertiary)',
                   }}
                 >
-                  never inspected
+                  {t('ui.quality.never_inspected')}
                 </span>
               )}
             </span>
 
             <span style={{ textAlign: 'right' }}>
               <Button variant="ghost" disabled={!l.majorAql} onClick={() => open(l)}>
-                {last ? 'Re-inspect' : 'Inspect'}
+                {last ? t('ui.quality.reinspect') : t('ui.quality.inspect')}
               </Button>
             </span>
           </div>

@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation'
 import { EmptyState } from '@/components/fx/feedback'
 import { FloorScreen } from '@/components/fx/floor'
 import { PageHeader } from '@/components/shell/page-shell'
+import { tui } from '@/lib/i18n-ui'
+import { requestLocale } from '@/lib/ui-locale'
 import { getCtx } from '@/modules/core/session'
 import { inspectableGrns } from '@/modules/quality/queries'
 import type { QualityPolicy } from '@/modules/quality/service'
@@ -30,6 +32,8 @@ export default async function FabricInspectionPage() {
   const ctx = await getCtx(await headers())
   if (!ctx) redirect('/login')
 
+  const locale = await requestLocale()
+
   const [policy, profile, grns] = await Promise.all([
     getPolicy<QualityPolicy>(ctx, 'quality'),
     companyProfile(ctx),
@@ -42,10 +46,14 @@ export default async function FabricInspectionPage() {
   if (grns.length === 0) {
     return (
       <FloorScreen>
-        <PageHeader eyebrow="Quality · fabric" title="Nothing received" ownsAmber />
+        <PageHeader
+          eyebrow={tui(locale, 'ui.quality.fabric_eyebrow')}
+          title={tui(locale, 'ui.quality.fabric_empty_page_title')}
+          ownsAmber
+        />
         <EmptyState
-          title="No rolls to inspect"
-          body="Fabric is inspected against the consignment it arrived on. The store records a GRN before quality can grade it."
+          title={tui(locale, 'ui.quality.fabric_empty_title')}
+          body={tui(locale, 'ui.quality.fabric_empty_body')}
         />
       </FloorScreen>
     )
@@ -54,13 +62,21 @@ export default async function FabricInspectionPage() {
   return (
     <FloorScreen>
       <PageHeader
-        eyebrow="Quality · fabric · 4-point inspection"
+        eyebrow={tui(locale, 'ui.quality.fabric_eyebrow_full')}
         title={
           awaiting.length > 0
-            ? `${awaiting.length} ${awaiting.length === 1 ? 'delivery' : 'deliveries'} awaiting`
-            : 'All deliveries graded'
+            ? tui(
+                locale,
+                awaiting.length === 1
+                  ? 'ui.quality.deliveries_awaiting_one'
+                  : 'ui.quality.deliveries_awaiting_other',
+                { count: awaiting.length },
+              )
+            : tui(locale, 'ui.quality.all_graded')
         }
-        meta={`pass at ${policy.fabricMaxPointsPer100SqYd} points per 100 yd² or less`}
+        meta={tui(locale, 'ui.quality.fabric_pass_meta', {
+          threshold: policy.fabricMaxPointsPer100SqYd,
+        })}
         ownsAmber
       />
       <FabricClient
