@@ -23,7 +23,7 @@ import type { ZodType } from 'zod'
 import { approvalRules, pendingChangeApprovals, pendingChanges } from '@/db/schema/core'
 
 import { recordChange } from './audit'
-import type { AnyCtx, RequestCtx, Role } from './ctx'
+import { isSystemCtx, type AnyCtx, type RequestCtx, type Role } from './ctx'
 import { AppError, conflict, notFound } from './errors'
 import { emit } from './outbox'
 import { getCommitHandler, getModule, resolvePendingSchema } from './registry'
@@ -222,8 +222,10 @@ export async function propose(
     Number(confidenceMin) >= Number(rule.minConfidence)
 
   if (clearsFloor) {
-    await approve(ctx as RequestCtx, { pendingChangeId: id, autoApproved: true })
-    return { id, status: 'committed' }
+    // Not unconditionally 'committed': a rule that both auto-approves and demands two
+    // humans resolves in favour of the humans, and approve() reports awaiting_approvals.
+    const result = await approve(ctx, { pendingChangeId: id, autoApproved: true })
+    return { id, status: result.status === 'committed' ? 'committed' : 'pending' }
   }
 
   return { id, status: 'pending' }
@@ -247,7 +249,10 @@ export interface ApproveResult {
   approvalsRequired: number
 }
 
-export async function approve(ctx: RequestCtx, input: ApproveInput): Promise<ApproveResult> {
+// AnyCtx, not RequestCtx: the auto-approve floor runs under SystemCtx (extraction jobs
+// have no user). A system approval records no row in the approvals ledger — there is no
+// approver — and can never stand in for a rule that demands more than one human.
+export async function approve(ctx: AnyCtx, input: ApproveInput): Promise<ApproveResult> {
   type Failure = { schemaError: AppError }
   type Awaiting = { awaiting: { approvals: number; required: number } }
   type Committed = { rowId: string; approvals: number; required: number }
@@ -276,7 +281,17 @@ export async function approve(ctx: RequestCtx, input: ApproveInput): Promise<App
       operation: draft.operation,
     })
 
-    if (!rule.requiredRoles.some((role) => ctx.roles.includes(role))) {
+    // A system caller is only ever the auto-approve floor: the rule itself is the
+    // authorization, and only when it demands a single approval — software cannot be
+    // two different people.
+    if (isSystemCtx(ctx)) {
+      if (!input.autoApproved) {
+        throw new AppError('forbidden', 'errors.not_an_approver', { required: rule.requiredRoles })
+      }
+      if (rule.approvalsRequired > 1) {
+        return { awaiting: { approvals: 0, required: rule.approvalsRequired } }
+      }
+    } else if (!rule.requiredRoles.some((role) => ctx.roles.includes(role))) {
       throw new AppError('forbidden', 'errors.not_an_approver', { required: rule.requiredRoles })
     }
 
@@ -287,27 +302,32 @@ export async function approve(ctx: RequestCtx, input: ApproveInput): Promise<App
     // approver) and only commits once the threshold is met. The unique index means the same
     // person clicking twice is one approval — otherwise a two-approver control is a
     // one-approver control with extra steps.
-    const approvedAsRole = rule.requiredRoles.find((role) => ctx.roles.includes(role))!
+    // No ledger row for a system auto-approve: `approver_user_id` is NOT NULL on
+    // purpose (an approval is a person), and the draft itself records the commit with
+    // `reviewed_by` NULL, which is what keeps auto-commits out of correction telemetry.
+    if (!isSystemCtx(ctx)) {
+      const approvedAsRole = rule.requiredRoles.find((role) => ctx.roles.includes(role))!
 
-    const [existingApproval] = await tx
-      .select({ id: pendingChangeApprovals.id })
-      .from(pendingChangeApprovals)
-      .where(
-        and(
-          eq(pendingChangeApprovals.pendingChangeId, draft.id),
-          eq(pendingChangeApprovals.approverUserId, ctx.userId),
-        ),
-      )
+      const [existingApproval] = await tx
+        .select({ id: pendingChangeApprovals.id })
+        .from(pendingChangeApprovals)
+        .where(
+          and(
+            eq(pendingChangeApprovals.pendingChangeId, draft.id),
+            eq(pendingChangeApprovals.approverUserId, ctx.userId),
+          ),
+        )
 
-    if (!existingApproval) {
-      await tx.insert(pendingChangeApprovals).values({
-        companyId: ctx.companyId,
-        pendingChangeId: draft.id,
-        approverUserId: ctx.userId,
-        approvedAsRole,
-        corrections: input.corrections ?? {},
-        note: input.note ?? null,
-      })
+      if (!existingApproval) {
+        await tx.insert(pendingChangeApprovals).values({
+          companyId: ctx.companyId,
+          pendingChangeId: draft.id,
+          approverUserId: ctx.userId,
+          approvedAsRole,
+          corrections: input.corrections ?? {},
+          note: input.note ?? null,
+        })
+      }
     }
 
     const approvals = await tx
@@ -317,7 +337,9 @@ export async function approve(ctx: RequestCtx, input: ApproveInput): Promise<App
 
     const required = rule.approvalsRequired
 
-    if (approvals.length < required) {
+    // The system caller passed the single-approval check above; a human still needs the
+    // ledger to reach the threshold.
+    if (!isSystemCtx(ctx) && approvals.length < required) {
       // Recorded, not committed. The draft stays `pending` so it remains in every other
       // approver's inbox, and this reviewer's corrections are kept against their name.
       return {

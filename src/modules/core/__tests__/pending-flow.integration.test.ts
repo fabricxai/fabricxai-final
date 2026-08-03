@@ -17,7 +17,15 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { z } from 'zod'
 
 import { createDirectClient, createDirectDb } from '@/db/direct'
-import { approvalRules, auditLog, companies, outbox, pendingChanges, users } from '@/db/schema/core'
+import {
+  approvalRules,
+  auditLog,
+  companies,
+  outbox,
+  pendingChangeApprovals,
+  pendingChanges,
+  users,
+} from '@/db/schema/core'
 import type { RequestCtx } from '@/modules/core/ctx'
 import { AppError } from '@/modules/core/errors'
 import { approve, propose, reject } from '@/modules/core/pending-changes'
@@ -295,6 +303,89 @@ describe('gate B · propose → approve → commit → audit', () => {
         fieldConfidence: { name: 0.99, quantity: 0.96 },
       })
       expect(high.status).toBe('committed')
+    } finally {
+      await db.delete(approvalRules).where(eq(approvalRules.companyId, COMPANY_A))
+    }
+  })
+
+  it('9c · auto-approve commits under a SystemCtx — no approver row, reviewed_by stays null', async () => {
+    // Extraction jobs run with no human caller. Before this path existed, the auto-approve
+    // floor cast SystemCtx to RequestCtx and inserted `approver_user_id: null` into a NOT
+    // NULL column — every high-confidence extraction crashed, retried, and died rejected.
+    const systemCtx = {
+      companyId: COMPANY_A,
+      userId: null,
+      roles: [],
+      system: true,
+      jobId: 'gate-b-9c',
+    } as const
+
+    await db.insert(approvalRules).values({
+      companyId: COMPANY_A,
+      moduleId: '__demo__',
+      targetTable: 'demo_widgets',
+      requiredRoles: ['owner'],
+      autoApprove: true,
+      minConfidence: '0.900',
+      priority: 500,
+    })
+
+    try {
+      const before = await countWidgets(COMPANY_A)
+      const { id, status } = await propose(systemCtx, {
+        ...draft(),
+        fieldConfidence: { name: 0.99, quantity: 0.96 },
+      })
+
+      expect(status).toBe('committed')
+      expect(await countWidgets(COMPANY_A)).toBe(before + 1)
+
+      const [row] = await db.select().from(pendingChanges).where(eq(pendingChanges.id, id))
+      expect(row?.status).toBe('committed')
+      // NULL, not a synthetic user: this is what keeps auto-commits out of every
+      // extractor's correction-rate telemetry.
+      expect(row?.reviewedBy).toBeNull()
+
+      const approvals = await db
+        .select()
+        .from(pendingChangeApprovals)
+        .where(eq(pendingChangeApprovals.pendingChangeId, id))
+      expect(approvals).toHaveLength(0)
+    } finally {
+      await db.delete(approvalRules).where(eq(approvalRules.companyId, COMPANY_A))
+    }
+  })
+
+  it('9d · a two-approver auto-approve rule stays pending under a SystemCtx', async () => {
+    // Software cannot be two different people. A rule that demands two approvals keeps
+    // demanding them no matter how confident the extractor was.
+    const systemCtx = {
+      companyId: COMPANY_A,
+      userId: null,
+      roles: [],
+      system: true,
+    } as const
+
+    await db.insert(approvalRules).values({
+      companyId: COMPANY_A,
+      moduleId: '__demo__',
+      targetTable: 'demo_widgets',
+      requiredRoles: ['owner', 'admin'],
+      approvalsRequired: 2,
+      autoApprove: true,
+      minConfidence: '0.900',
+      priority: 700,
+    })
+
+    try {
+      const before = await countWidgets(COMPANY_A)
+      const { status } = await propose(systemCtx, {
+        ...draft(),
+        fieldConfidence: { name: 0.99, quantity: 0.96 },
+      })
+
+      expect(status).toBe('pending')
+      expect(await countWidgets(COMPANY_A)).toBe(before)
     } finally {
       await db.delete(approvalRules).where(eq(approvalRules.companyId, COMPANY_A))
     }
