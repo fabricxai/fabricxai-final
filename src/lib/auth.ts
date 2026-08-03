@@ -77,9 +77,20 @@ export const auth = betterAuth({
    * `secondaryStorage` below puts the counters in Redis, so the limit is one limit across
    * processes and survives a restart. The per-path numbers live in `lib/rate-limit.ts`
    * beside the ones for /api/sync and /api/documents, so all of them can be read together.
+   *
+   * ## Production only, with an escape hatch
+   *
+   * Off outside production, which is also Better Auth's own default. The reason is
+   * concrete rather than convenience: signup is capped at three per hour per IP because a
+   * real factory signs up once, and the integration suite signs up a handful of owners
+   * from one address — so an always-on limiter fails `gate A · signup → verify → login`
+   * and the role-gate suite with a 429 that has nothing to do with the code under test.
+   *
+   * `RATE_LIMIT_ENFORCE=1` turns it on anywhere, which is how the limits get exercised
+   * locally without leaving CI to discover them.
    */
   rateLimit: {
-    enabled: true,
+    enabled: env.NODE_ENV === 'production' || process.env.RATE_LIMIT_ENFORCE === '1',
     storage: 'secondary-storage',
     window: 60,
     max: 60,
@@ -102,11 +113,16 @@ export const auth = betterAuth({
   },
 
   /**
-   * Redis for rate-limit counters and session cache.
+   * Redis for rate-limit counters and the session cache.
    *
-   * Deliberately NOT a session store: sessions stay in Postgres, where they are joined to
-   * roles and survive a Redis flush. This is a cache and a counter, so losing it costs a
-   * round trip and resets a window — never a signed-in user's session.
+   * **Sessions still live in Postgres** — see `storeSessionInDatabase` on `session` below.
+   * Configuring `secondaryStorage` alone moves them OUT of the database, which the gate A
+   * suite caught immediately: `ctx` is resolved from `sessions.activeOrganizationId`
+   * through a `SECURITY DEFINER` lookup, so a session that exists only in Redis has no
+   * company, and tenancy resolution returns nothing at all.
+   *
+   * With that flag set this is a cache and a counter: losing Redis costs a round trip and
+   * resets a rate-limit window, never a signed-in user's session.
    */
   secondaryStorage: {
     get: async (key) => (await getRedis().get(`ba:${key}`)) ?? null,
@@ -127,6 +143,12 @@ export const auth = betterAuth({
     // bounds the damage from an unattended one.
     expiresIn: 60 * 60 * 24 * 7,
     updateAge: 60 * 60 * 24,
+    // Load-bearing, and NOT the default once `secondaryStorage` is configured: without it
+    // Better Auth keeps sessions in Redis only. `ctx.companyId` comes from
+    // `sessions.activeOrganizationId` read through a SECURITY DEFINER function, and the
+    // session row is what joins a signed-in user to their roles — so a Redis-only session
+    // means no tenancy scope at all, and a Redis flush would sign out the whole factory.
+    storeSessionInDatabase: true,
   },
   account: { modelName: 'accounts' },
   verification: { modelName: 'verifications' },
