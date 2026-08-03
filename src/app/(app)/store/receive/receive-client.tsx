@@ -1,0 +1,478 @@
+'use client'
+
+import { useEffect, useRef, useState } from 'react'
+
+import { InlineAlert } from '@/components/fx/feedback'
+import { SyncPill } from '@/components/fx/floor'
+import { Button } from '@/components/fx/primitives'
+import { SectionHeading } from '@/components/fx/signature'
+import { useOfflineQueue } from '@/lib/offline/use-offline-queue'
+import { compareQty, quantity, subtractQty, sumQty, zeroQty } from '@/lib/quantity'
+import {
+  documentLimits,
+  humanBytes,
+  uploadDocument,
+  UploadError,
+  type DocumentLimits,
+  type UploadedDocument,
+} from '@/lib/upload-document'
+
+interface ItemOption {
+  id: string
+  code: string
+  name: string
+  uom: string
+}
+
+interface LocationOption {
+  id: string
+  code: string
+  name: string
+  kind: string
+}
+
+interface RollDraft {
+  key: string
+  rollNo: string
+  qty: string
+  lot: string
+  dyeLot: string
+  shadeGroup: string
+}
+
+const field: React.CSSProperties = {
+  minHeight: 44,
+  padding: '10px 12px',
+  border: '1px solid var(--fx-border-default)',
+  borderRadius: 'var(--fx-radius-sm)',
+  background: 'var(--fx-bg-surface)',
+  color: 'var(--fx-text-primary)',
+  font: "400 14px/1.4 var(--fx-font-sans)",
+  width: '100%',
+}
+
+const label: React.CSSProperties = {
+  font: "500 12.5px/1.3 var(--fx-font-sans)",
+  color: 'var(--fx-text-secondary)',
+}
+
+/**
+ * One challan, one item, its rolls.
+ *
+ * Deliberately single-item. A challan usually carries one fabric, and a form that lets a
+ * storekeeper build an arbitrary multi-item receipt on a tablet at the delivery bay is a
+ * form that gets abandoned halfway. Receiving a second item is a second GRN, which is also
+ * how the paperwork works.
+ *
+ * The roll list is the part that matters: stock in this module is roll-level, so a receipt
+ * that records a bulk quantity and no rolls produces stock nobody can issue. The total is
+ * shown against the line quantity as they type, because the two disagreeing is the single
+ * most common error in a receipt and the rack is where it can still be recounted.
+ */
+export function ReceiveClient({
+  items,
+  locations,
+}: {
+  items: readonly ItemOption[]
+  locations: readonly LocationOption[]
+}) {
+  const { capture, online, queued, syncing, refused, sync, clear } = useOfflineQueue()
+
+  const [challanNo, setChallanNo] = useState('')
+  const [receivedAt, setReceivedAt] = useState(() => new Date().toISOString().slice(0, 10))
+  const [itemId, setItemId] = useState(items[0]?.id ?? '')
+  const [locationId, setLocationId] = useState(locations[0]?.id ?? '')
+  const [qty, setQty] = useState('')
+  const [rolls, setRolls] = useState<RollDraft[]>([])
+  const [received, setReceived] = useState<string[]>([])
+  const [error, setError] = useState<string | null>(null)
+
+  // The challan itself. The paper in the storekeeper's hand is the document a supplier
+  // will invoice against and a customs officer may ask for, and the typed fields are a
+  // transcription of it — so the photo is attached to the GRN, not used and discarded.
+  const [challanPhoto, setChallanPhoto] = useState<UploadedDocument | null>(null)
+  const [photoState, setPhotoState] = useState<'idle' | 'uploading' | 'failed'>('idle')
+  const [photoError, setPhotoError] = useState<string | null>(null)
+  const [limits, setLimits] = useState<DocumentLimits | null>(null)
+  const photoRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    void documentLimits().then((value) => {
+      if (!cancelled) setLimits(value)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  async function capturePhoto(file: File) {
+    setPhotoError(null)
+    setPhotoState('uploading')
+    try {
+      setChallanPhoto(await uploadDocument(file, { kind: 'challan', moduleId: 'store', limits }))
+      setPhotoState('idle')
+    } catch (e) {
+      setPhotoState('failed')
+      setPhotoError(
+        e instanceof UploadError
+          ? e.retryable
+            ? `${e.message} — you can still record the receipt and attach the challan when you are back online`
+            : e.message
+          : 'the photo could not be sent',
+      )
+    }
+  }
+
+  const item = items.find((i) => i.id === itemId)
+  const location = locations.find((l) => l.id === locationId)
+  // Exact decimal arithmetic, not floats. A challan of 21,000 m across fourteen rolls
+  // summed as doubles drifts, and the number this screen refuses to receive on is the one
+  // the supplier will invoice against.
+  const unit = item?.uom ?? 'unit'
+  const rollTotal = sumQty(
+    rolls.map((roll) => quantity(decimalOrZero(roll.qty), unit)),
+    unit,
+  )
+  const lineQty = quantity(decimalOrZero(qty), unit)
+  const difference = subtractQty(rollTotal, lineQty)
+  const mismatch = rolls.length > 0 && compareQty(rollTotal, lineQty) !== 0
+
+  const bonded = location?.kind === 'bonded'
+  const complete =
+    challanNo.trim() !== '' &&
+    compareQty(lineQty, zeroQty(unit)) > 0 &&
+    rolls.length > 0 &&
+    !mismatch &&
+    Boolean(item)
+
+  function addRoll() {
+    setRolls((current) => [
+      ...current,
+      {
+        key: crypto.randomUUID(),
+        rollNo: '',
+        qty: '',
+        lot: current[current.length - 1]?.lot ?? '',
+        dyeLot: current[current.length - 1]?.dyeLot ?? '',
+        shadeGroup: current[current.length - 1]?.shadeGroup ?? '',
+      },
+    ])
+  }
+
+  function patchRoll(key: string, patch: Partial<RollDraft>) {
+    setRolls((current) => current.map((roll) => (roll.key === key ? { ...roll, ...patch } : roll)))
+  }
+
+  async function receive() {
+    setError(null)
+    if (!complete || !item) return
+
+    if (bonded) {
+      // The schema's check constraint refuses a bonded GRN with no UD, and module 2.2 owns
+      // UDs. Refusing here with a sentence beats a constraint violation at the sync layer.
+      setError(
+        'Bonded receipts must name a Utilization Declaration, and UDs belong to the commercial desk (module 2.2). Receive to a general location, or ask commercial to raise the UD first.',
+      )
+      return
+    }
+
+    await capture({
+      moduleId: 'store',
+      operation: 'receive_grn',
+      payload: {
+        challanNo: challanNo.trim(),
+        receivedAt,
+        bonded: false,
+        ...(challanPhoto ? { documentId: challanPhoto.documentId } : {}),
+        lines: [
+          {
+            itemId: item.id,
+            qty: lineQty.value,
+            unit: item.uom,
+            rolls: rolls.map((roll) => ({
+              rollNo: roll.rollNo.trim(),
+              qty: quantity(decimalOrZero(roll.qty), unit).value,
+              locationId,
+              ...(roll.lot.trim() ? { lot: roll.lot.trim() } : {}),
+              ...(roll.dyeLot.trim() ? { dyeLot: roll.dyeLot.trim() } : {}),
+              ...(roll.shadeGroup.trim() ? { shadeGroup: roll.shadeGroup.trim() } : {}),
+            })),
+          },
+        ],
+      },
+    })
+
+    setReceived((done) => [...done, `${challanNo.trim()} · ${rolls.length} rolls · ${item.code}`])
+    setChallanNo('')
+    setQty('')
+    setRolls([])
+    setChallanPhoto(null)
+    setPhotoState('idle')
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 26 }}>
+      <SyncPill online={online} queued={queued} syncing={syncing} onSync={() => void sync()} />
+
+      {refused.length > 0 ? (
+        <InlineAlert tone="danger">
+          {refused.length} receipt{refused.length === 1 ? '' : 's'} the server refused.
+          {refused.map((r) => (
+            <button
+              key={r.offlineKey}
+              onClick={() => void clear(r.offlineKey)}
+              style={{
+                marginLeft: 8,
+                background: 'transparent',
+                border: 'none',
+                textDecoration: 'underline',
+                cursor: 'pointer',
+                font: 'inherit',
+              }}
+            >
+              dismiss
+            </button>
+          ))}
+        </InlineAlert>
+      ) : null}
+
+      {received.length > 0 ? (
+        <InlineAlert tone="success">
+          Received {received.join(' · ')}.{' '}
+          {online ? 'Sent.' : 'Held on this device until you are back online.'}
+        </InlineAlert>
+      ) : null}
+
+      {error ? <InlineAlert tone="danger">{error}</InlineAlert> : null}
+
+      <SectionHeading eyebrow="Challan">What arrived</SectionHeading>
+
+      {/* `capture="environment"` opens the rear camera straight away on a phone or tablet,
+          which is what a storekeeper has in the delivery bay. On a desktop it degrades to
+          an ordinary file picker, so a scanned PDF works from the office too. */}
+      <input
+        ref={photoRef}
+        type="file"
+        hidden
+        accept={limits?.allowedMime.join(',') ?? 'image/*,application/pdf'}
+        capture="environment"
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          e.target.value = ''
+          if (file) void capturePhoto(file)
+        }}
+      />
+
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 14,
+          flexWrap: 'wrap',
+          padding: '14px 16px',
+          border: `1px ${challanPhoto ? 'solid' : 'dashed'} var(--fx-border-default)`,
+          borderRadius: 'var(--fx-radius-md)',
+          background: challanPhoto ? 'var(--fx-bg-surface)' : 'var(--fx-bg-sunken)',
+        }}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
+          <span style={{ font: "500 13.5px/1.3 var(--fx-font-sans)" }}>
+            {challanPhoto ? 'Challan attached' : 'Photograph the challan'}
+          </span>
+          <span
+            style={{ font: "400 12px/1.4 var(--fx-font-mono)", color: 'var(--fx-text-tertiary)' }}
+          >
+            {challanPhoto
+              ? `${challanPhoto.filename} · ${humanBytes(challanPhoto.sizeBytes)}`
+              : photoState === 'uploading'
+                ? 'sending…'
+                : 'the paper is what the supplier invoices against — keep it with the receipt'}
+          </span>
+        </div>
+
+        <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+          {challanPhoto ? (
+            <Button variant="ghost" onClick={() => setChallanPhoto(null)}>
+              Remove
+            </Button>
+          ) : null}
+          <Button
+            variant="ghost"
+            disabled={photoState === 'uploading'}
+            onClick={() => photoRef.current?.click()}
+          >
+            {photoState === 'uploading'
+              ? 'Sending…'
+              : challanPhoto
+                ? 'Replace'
+                : 'Take photo'}
+          </Button>
+        </span>
+      </div>
+
+      {photoError ? (
+        <InlineAlert tone={photoState === 'failed' ? 'warning' : 'danger'}>{photoError}</InlineAlert>
+      ) : null}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14 }}>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <span style={label}>Challan no</span>
+          <input
+            value={challanNo}
+            onChange={(e) => setChallanNo(e.target.value)}
+            placeholder="CH-2026-0431"
+            style={{ ...field, font: "400 14px/1.4 var(--fx-font-mono)" }}
+          />
+        </label>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <span style={label}>Received on</span>
+          <input
+            type="date"
+            value={receivedAt}
+            onChange={(e) => setReceivedAt(e.target.value)}
+            style={field}
+          />
+        </label>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <span style={label}>Item</span>
+          <select value={itemId} onChange={(e) => setItemId(e.target.value)} style={field}>
+            {items.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.code} · {option.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <span style={label}>Into</span>
+          <select value={locationId} onChange={(e) => setLocationId(e.target.value)} style={field}>
+            {locations.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.code} · {option.name}
+                {option.kind === 'bonded' ? ' (bonded)' : ''}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <span style={label}>Quantity on the challan ({item?.uom ?? '—'})</span>
+          <input
+            inputMode="decimal"
+            value={qty}
+            onChange={(e) => setQty(e.target.value)}
+            placeholder="21000.00"
+            style={{ ...field, font: "400 14px/1.4 var(--fx-font-mono)" }}
+          />
+        </label>
+      </div>
+
+      {bonded ? (
+        <InlineAlert tone="warning">
+          {location?.code} is a bonded location. Duty-free cloth must be received against a
+          Utilization Declaration — that record belongs to the commercial desk, and this
+          screen cannot raise one.
+        </InlineAlert>
+      ) : null}
+
+      <SectionHeading eyebrow={`${rolls.length} counted`}>Rolls at the rack</SectionHeading>
+
+      {mismatch ? (
+        <InlineAlert tone="warning">
+          The rolls add up to {rollTotal.value} {unit} against {lineQty.value} {unit} on the
+          challan — a difference of {difference.value}. Recount before receiving; the challan
+          is what the supplier will invoice.
+        </InlineAlert>
+      ) : null}
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {rolls.map((roll, index) => (
+          <div
+            key={roll.key}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '32px 1.2fr 1fr .9fr .9fr .8fr 44px',
+              gap: 8,
+              alignItems: 'center',
+            }}
+          >
+            <span style={{ font: "400 12px/1 var(--fx-font-mono)", color: 'var(--fx-text-tertiary)' }}>
+              {index + 1}
+            </span>
+            <input
+              value={roll.rollNo}
+              onChange={(e) => patchRoll(roll.key, { rollNo: e.target.value })}
+              aria-label={`Roll ${index + 1} number`}
+              placeholder="roll no"
+              style={{ ...field, font: "400 13px/1.4 var(--fx-font-mono)" }}
+            />
+            <input
+              inputMode="decimal"
+              value={roll.qty}
+              onChange={(e) => patchRoll(roll.key, { qty: e.target.value })}
+              aria-label={`Roll ${index + 1} quantity`}
+              placeholder={item?.uom ?? 'qty'}
+              style={{ ...field, font: "400 13px/1.4 var(--fx-font-mono)" }}
+            />
+            <input
+              value={roll.lot}
+              onChange={(e) => patchRoll(roll.key, { lot: e.target.value })}
+              aria-label={`Roll ${index + 1} lot`}
+              placeholder="lot"
+              style={{ ...field, font: "400 13px/1.4 var(--fx-font-mono)" }}
+            />
+            <input
+              value={roll.dyeLot}
+              onChange={(e) => patchRoll(roll.key, { dyeLot: e.target.value })}
+              aria-label={`Roll ${index + 1} dye lot`}
+              placeholder="dye lot"
+              style={{ ...field, font: "400 13px/1.4 var(--fx-font-mono)" }}
+            />
+            <input
+              value={roll.shadeGroup}
+              onChange={(e) => patchRoll(roll.key, { shadeGroup: e.target.value })}
+              aria-label={`Roll ${index + 1} shade group`}
+              placeholder="shade"
+              style={{ ...field, font: "400 13px/1.4 var(--fx-font-mono)" }}
+            />
+            <button
+              onClick={() => setRolls((current) => current.filter((r) => r.key !== roll.key))}
+              aria-label={`Remove roll ${index + 1}`}
+              style={{
+                minHeight: 44,
+                border: '1px solid var(--fx-border-subtle)',
+                borderRadius: 'var(--fx-radius-sm)',
+                background: 'transparent',
+                color: 'var(--fx-text-tertiary)',
+                cursor: 'pointer',
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <Button variant="ghost" onClick={addRoll}>
+          + Add roll
+        </Button>
+        <span style={{ font: "400 12px/1.4 var(--fx-font-mono)", color: 'var(--fx-text-tertiary)' }}>
+          {rolls.length > 0
+            ? `${rollTotal.value} of ${lineQty.value} ${unit} counted`
+            : 'stock is roll-level — a receipt with no rolls creates stock nobody can issue'}
+        </span>
+        <span style={{ marginLeft: 'auto' }}>
+          <Button variant="primary" size="lg" disabled={!complete} onClick={() => void receive()}>
+            Receive {rolls.length > 0 ? `${rolls.length} roll${rolls.length === 1 ? '' : 's'}` : ''}
+          </Button>
+        </span>
+      </div>
+    </div>
+  )
+}
+
+/** Anything the storekeeper has not finished typing counts as nothing, not as NaN. */
+function decimalOrZero(raw: string): string {
+  const trimmed = raw.trim()
+  return /^\d+(\.\d{1,2})?$/.test(trimmed) ? trimmed : '0'
+}

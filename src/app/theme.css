@@ -1,179 +1,500 @@
 /* ============================================================
-   FabricXAI — design tokens (Tailwind v4)
-   Drop in at src/app/theme.css and @import after tailwindcss.
-   Palette derived from the logo: ink #101725, amber #EAB308.
+   FabricXAI — design tokens
+   Ported from the locked Claude Design system (Fabricxai-design):
+   `FabricX AI Design System.dc.html` + `FabricX AI - Foundation Prompt.md`.
+
+   Two rules govern this file:
+   1. Components reference semantic tokens (--fx-*), never raw hex.
+   2. Both modes work from the same markup. `data-theme` re-scopes the
+      whole token set on ANY element, not just <html> — the factory wall
+      board and the owner night view are dark panels inside a light page.
    ============================================================ */
 
-@theme {
-  /* ── Ink ─────────────────────────────────────────────── */
-  --color-ink-950: #0A0E17;
-  --color-ink-900: #101725;   /* logo navy */
-  --color-ink-850: #141C2C;
-  --color-ink-800: #18202F;
-  --color-ink-700: #212A3B;
-  --color-ink-600: #2C3648;
-  --color-ink-500: #3C4759;
-  --color-ink-400: #5A6577;
-  --color-ink-300: #808B9D;
-  --color-ink-200: #A8B2C1;
-  --color-ink-100: #D2D8E2;
-  --color-ink-50:  #EFF2F7;
+/* ── Light: the default. Every screen is designed here first. ── */
+:root,
+[data-theme='light'] {
+  /* Surfaces */
+  --fx-bg-canvas: #fbfaf8;
+  --fx-bg-surface: #ffffff;
+  --fx-bg-raised: #ffffff;
+  --fx-bg-sunken: #f3f1ec;
+  --fx-bg-hover: rgb(24 29 41 / 0.035);
+  --fx-bg-selected: rgb(225 179 52 / 0.12);
 
-  /* ── Amber (brand) ───────────────────────────────────── */
-  --color-amber-300: #F5D661;
-  --color-amber-400: #F0C531;
-  --color-amber-500: #EAB308;  /* logo amber */
-  --color-amber-600: #C89806;
-  --color-amber-700: #9A7505;
+  /* Borders */
+  --fx-border-subtle: #e7e4de;
+  --fx-border-default: #d6d2c9;
+  --fx-border-strong: #a9a49a;
 
-  /* ── Warp indigo (secondary) ─────────────────────────── */
-  --color-warp-400: #8BA4FF;
-  --color-warp-500: #6B8AFF;
-  --color-warp-600: #4B63E0;
-  --color-warp-700: #3B4DB8;
+  /* Text */
+  --fx-text-primary: #181d29;
+  --fx-text-secondary: #4c5364;
+  --fx-text-tertiary: #767e90;
+  --fx-text-disabled: #a8aebb;
+  --fx-text-inverse: #fbfaf8;
 
-  /* ── Status ──────────────────────────────────────────── */
-  --color-on-track: #34D399;
-  --color-at-risk:  #FF8A3D;   /* NOT amber — see the amber rule */
-  --color-late:     #FB4E5E;
-  --color-info:     #60A5FA;
-  --color-done:     #808B9D;
+  /* Accent — see the amber rule */
+  --fx-accent: #e1b334;
+  --fx-accent-hover: #cfa22b;
+  --fx-accent-pressed: #b88c21;
+  --fx-accent-subtle: #faf1da;
+  --fx-accent-on: #181d29; /* text on amber is ALWAYS ink, never white */
 
-  /* ── Data viz (luminance-ordered) ────────────────────── */
-  --color-viz-1: #EAB308;
-  --color-viz-2: #6B8AFF;
-  --color-viz-3: #2DD4BF;   /* the retired brand teal */
-  --color-viz-4: #FB7185;
-  --color-viz-5: #A78BFA;
-  --color-viz-6: #A3E635;
-  --color-viz-7: #38BDF8;
+  /* Semantic. Warning is its own hue — amber is not warning. */
+  --fx-success: #2f7d5b;
+  --fx-warning: #b4741c;
+  --fx-danger: #b23a32;
+  --fx-info: #2f5fa8;
+  --fx-focus: #181d29;
 
-  /* ── Type ────────────────────────────────────────────── */
-  --font-display: 'Archivo', system-ui, sans-serif;
-  --font-sans:    'Inter', system-ui, sans-serif;
-  --font-bangla:  'Anek Bangla', 'Noto Sans Bengali', sans-serif;
-  --font-mono:    'JetBrains Mono', ui-monospace, monospace;
+  /* Elevation */
+  --fx-sh1: 0 1px 2px rgb(24 29 41 / 0.06);
+  --fx-sh2: 0 4px 12px rgb(24 29 41 / 0.08);
+  --fx-sh3: 0 12px 32px rgb(24 29 41 / 0.12);
 
-  /* ── Radius ──────────────────────────────────────────── */
-  --radius-xs: 4px;
-  --radius-sm: 8px;    /* buttons, chips */
-  --radius-md: 12px;   /* inputs */
-  --radius-lg: 16px;   /* cards */
-  --radius-xl: 20px;   /* drawers, modals */
+  /* Which MARBIM stroke set this scope shows — the mark asset is picked, never
+     recoloured. Custom properties inherit from the nearest data-theme, so a
+     light panel nested inside a dark one still resolves correctly. */
+  --fx-mark-ink: block;
+  --fx-mark-white: none;
+
+  /* Glass — the MARBIM slide-over only (X.2). Deliberately NOT a general surface:
+     the screen underneath has to stay legible through it, which is the whole point
+     of answering without leaving the screen you are asking about. Opaque enough
+     that text on the panel never competes with text behind it. */
+  --fx-glass-bg: rgb(251 250 248 / 0.86);
+  --fx-glass-border: rgb(24 29 41 / 0.10);
+  --fx-glass-blur: blur(18px) saturate(1.4);
 }
 
-/* ── Semantic aliases: components reference these, never raw hex ── */
+/* ── Dark: a first-class mode, not an inversion. ──
+   Surfaces lighten as they rise, shadows become hairlines,
+   and nothing reaches pure black. */
+[data-theme='dark'] {
+  --fx-bg-canvas: #0f131b;
+  --fx-bg-surface: #181d29;
+  --fx-bg-raised: #212736;
+  --fx-bg-sunken: #0b0e15;
+  --fx-bg-hover: rgb(255 255 255 / 0.05);
+  --fx-bg-selected: rgb(225 179 52 / 0.17);
+
+  --fx-border-subtle: #252b3a;
+  --fx-border-default: #343b4c;
+  --fx-border-strong: #4e576b;
+
+  /* Off-white, never #FFF — pure white on near-black vibrates on a wall screen. */
+  --fx-text-primary: #f4f3f0;
+  --fx-text-secondary: #aeb5c4;
+  --fx-text-tertiary: #7c8497;
+  --fx-text-disabled: #565e71;
+  --fx-text-inverse: #181d29;
+
+  /* Base amber is unchanged; hover/pressed lighten — the reverse of light mode. */
+  --fx-accent: #e1b334;
+  --fx-accent-hover: #ebc352;
+  --fx-accent-pressed: #f2d077;
+  --fx-accent-subtle: rgb(225 179 52 / 0.14);
+  --fx-accent-on: #181d29;
+
+  --fx-success: #4fa97d;
+  --fx-warning: #d99a3f;
+  --fx-danger: #e0665c;
+  --fx-info: #6d9be8;
+  /* Ink is invisible here, so the ring inverts to amber — the one amber that may repeat. */
+  --fx-focus: #e1b334;
+
+  --fx-sh1: none;
+  --fx-sh2: 0 6px 20px rgb(0 0 0 / 0.45);
+  --fx-sh3: 0 18px 44px rgb(0 0 0 / 0.55);
+
+  /* MARBIM_logo.png has four white strokes, so it is a dark-surface asset only. */
+  --fx-mark-ink: none;
+  --fx-mark-white: block;
+
+  /* Dark glass is a darker pane, never a lightened one — a translucent white panel
+     over a dark screen greys the text behind it and reads as a disabled overlay. */
+  --fx-glass-bg: rgb(20 25 34 / 0.88);
+  --fx-glass-border: rgb(255 255 255 / 0.12);
+  --fx-glass-blur: blur(18px) saturate(1.2);
+}
+
+/* ── Non-colour foundations ─────────────────────────────── */
 :root {
-  --canvas:      var(--color-ink-950);
-  --surface:     var(--color-ink-900);
-  --raised:      var(--color-ink-850);
-  --line:        rgb(255 255 255 / 0.09);
-  --line-strong: rgb(255 255 255 / 0.16);
+  /* Type. next/font rewrites the family vars in globals.css. */
+  --fx-font-sans: var(--font-jakarta), system-ui, sans-serif;
+  --fx-font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+  --fx-font-bangla: var(--font-anek-bangla), 'Noto Sans Bengali', sans-serif;
 
-  --text:        #E8EBF0;
-  --text-dim:    var(--color-ink-200);
-  --text-mute:   var(--color-ink-300);
+  --fx-text-display: 44px;
+  --fx-text-h1: 34px;
+  --fx-text-h2: 26px;
+  --fx-text-h3: 20px;
+  --fx-text-body-lg: 18px;
+  --fx-text-body: 16px;
+  --fx-text-sm: 14px;
+  --fx-text-xs: 12px;
 
-  --brand:       var(--color-amber-500);   /* repoint here to migrate */
-  --brand-hover: var(--color-amber-400);
-  --on-brand:    var(--color-ink-950);
+  --fx-leading-tight: 1.15; /* <= h3 */
+  --fx-leading-body: 1.55;
+  --fx-tracking-display: -0.02em; /* Latin only — see the Bengali rules */
 
-  --glass:       rgb(20 28 44 / 0.72);
-  --glass-blur:  20px;
+  /* Spacing — 4px base */
+  --fx-space-1: 4px;
+  --fx-space-2: 8px;
+  --fx-space-3: 12px;
+  --fx-space-4: 16px;
+  --fx-space-6: 24px;
+  --fx-space-8: 32px;
+  --fx-space-12: 48px;
+  --fx-space-16: 64px;
+  --fx-space-24: 96px;
 
-  --focus-ring:  0 0 0 3px rgb(234 179 8 / 0.15);
+  /* Radius. The cut corner replaces radius on that corner, never both. */
+  --fx-radius-sm: 4px; /* inputs, chips */
+  --fx-radius-md: 8px; /* buttons, cards */
+  --fx-radius-lg: 14px; /* modals, sheets */
+  --fx-radius-xl: 20px; /* the MARBIM slide-over, and only that (X.2) */
+  --fx-radius-full: 999px;
+
+  /* Motion */
+  --fx-dur-state: 120ms;
+  --fx-dur-enter: 180ms;
+  --fx-dur-overlay: 260ms;
+  --fx-dur-page: 400ms;
+  --fx-ease-enter: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --fx-ease-exit: cubic-bezier(0.4, 0, 1, 1);
+
+  /* Layout */
+  --fx-content-max: 1280px;
+  --fx-prose-measure: 68ch;
+
+  /* The signature 34deg warp and its 115deg counter-thread */
+  --fx-slash-angle: -34deg;
+  --fx-weave-angle: 146deg;
+  --fx-thread-angle: 115deg;
 }
 
-/* ── Base ─────────────────────────────────────────────── */
+/* Expose the tokens to Tailwind so utilities resolve at runtime and
+   follow whichever data-theme scope they render inside. */
+@theme inline {
+  --color-canvas: var(--fx-bg-canvas);
+  --color-surface: var(--fx-bg-surface);
+  --color-raised: var(--fx-bg-raised);
+  --color-sunken: var(--fx-bg-sunken);
+  --color-hover: var(--fx-bg-hover);
+  --color-selected: var(--fx-bg-selected);
+
+  --color-subtle: var(--fx-border-subtle);
+  --color-line: var(--fx-border-default);
+  --color-strong: var(--fx-border-strong);
+
+  --color-primary: var(--fx-text-primary);
+  --color-secondary: var(--fx-text-secondary);
+  --color-tertiary: var(--fx-text-tertiary);
+  --color-disabled: var(--fx-text-disabled);
+  --color-inverse: var(--fx-text-inverse);
+
+  --color-accent: var(--fx-accent);
+  --color-accent-hover: var(--fx-accent-hover);
+  --color-accent-pressed: var(--fx-accent-pressed);
+  --color-accent-subtle: var(--fx-accent-subtle);
+  --color-accent-on: var(--fx-accent-on);
+
+  --color-success: var(--fx-success);
+  --color-warning: var(--fx-warning);
+  --color-danger: var(--fx-danger);
+  --color-info: var(--fx-info);
+
+  --font-sans: var(--fx-font-sans);
+  --font-mono: var(--fx-font-mono);
+
+  --radius-sm: var(--fx-radius-sm);
+  --radius-md: var(--fx-radius-md);
+  --radius-lg: var(--fx-radius-lg);
+
+  --shadow-e1: var(--fx-sh1);
+  --shadow-e2: var(--fx-sh2);
+  --shadow-e3: var(--fx-sh3);
+}
+
+/* ── Base ────────────────────────────────────────────────── */
+* {
+  box-sizing: border-box;
+}
+
 body {
-  background: var(--canvas);
-  color: var(--text);
-  font-family: var(--font-sans);
-  font-size: 14px;
-  line-height: 1.55;
+  margin: 0;
+  background: var(--fx-bg-canvas);
+  color: var(--fx-text-primary);
+  font-family: var(--fx-font-sans);
+  font-size: var(--fx-text-body);
+  line-height: var(--fx-leading-body);
   -webkit-font-smoothing: antialiased;
+}
+
+p,
+[data-prose] {
+  text-wrap: pretty;
 }
 
 /* Every stacked figure aligns. Non-negotiable in an ERP. */
 .tabular,
 table td,
-[data-numeric] { font-variant-numeric: tabular-nums; }
+[data-numeric] {
+  font-variant-numeric: tabular-nums;
+}
 
-:where(:lang(bn)) { font-family: var(--font-bangla); }
-
+/* Visible focus ring on every interactive element, both modes. */
 *:focus-visible {
-  outline: 2px solid var(--brand);
+  outline: 2px solid var(--fx-focus);
   outline-offset: 2px;
 }
 
-/* ── Signature: warp/weft thread motif ────────────────── */
-.thread-rule {
-  height: 6px;
+a {
+  color: var(--fx-text-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+a:hover {
+  color: var(--fx-accent-pressed);
+}
+
+/* ── Bengali ──
+   Anek Bangla sits at the same px as Jakarta, one line-height step looser.
+   Three hard rules: no negative tracking (matra clusters break at negative
+   values), no 700 (its 600 already carries Jakarta's 700), no uppercase
+   transform (Bengali has no case). */
+:where(:lang(bn)) {
+  font-family: var(--fx-font-bangla);
+  letter-spacing: 0;
+  line-height: 1.7;
+}
+:where(:lang(bn)) :is(h1, h2, h3, h4, [data-heading]) {
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.35;
+  text-transform: none;
+}
+/* Identifiers, money and metrics stay Latin mono in both languages:
+   PO-88203 never becomes পিও-৮৮২০৩. */
+:where(:lang(bn)) :is(code, kbd, samp, [data-numeric], [data-mono]) {
+  font-family: var(--fx-font-mono);
+}
+
+/* ── Density: floor devices get bigger rows and targets ─── */
+[data-density='desk'] {
+  --fx-row-height: 44px;
+  --fx-tap-min: 36px;
+}
+[data-density='floor'] {
+  --fx-row-height: 56px;
+  --fx-tap-min: 48px;
+  font-size: var(--fx-text-body-lg);
+}
+
+/* ============================================================
+   Signature elements — at least one per screen, never all four
+   in the same viewport.
+   ============================================================ */
+
+/* 1. The MARBIM mark.
+   Eight stroke layers, transform + opacity only. --dx/--dy are each
+   stroke's outward unit vector from the mark's centre. The animated mark
+   is the product's ONLY spinner; no circular spinner exists in the system. */
+@keyframes fx-spread {
+  to {
+    transform: translate(calc(var(--dx) * 6%), calc(var(--dy) * 6%));
+  }
+}
+@keyframes fx-breathe {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(calc(var(--dx) * 3.5%), calc(var(--dy) * 3.5%));
+  }
+}
+@keyframes fx-orbit {
+  0%,
+  100% {
+    transform: rotate(-13deg);
+    opacity: 0.45;
+  }
+  50% {
+    transform: rotate(13deg);
+    opacity: 1;
+  }
+}
+@keyframes fx-travel {
+  0% {
+    transform: translate(-10%, 10%);
+    opacity: 0.25;
+  }
+  40% {
+    transform: translate(0, 0);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(10%, -10%);
+    opacity: 0.25;
+  }
+}
+@keyframes fx-converge {
+  0% {
+    transform: translate(calc(var(--dx) * 26%), calc(var(--dy) * 26%)) scale(0.82);
+    opacity: 0;
+  }
+  62% {
+    transform: translate(0, 0) scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+}
+@keyframes fx-shimmer {
+  0% {
+    background-position: -180% 0;
+  }
+  100% {
+    background-position: 280% 0;
+  }
+}
+/* The MARBIM slide-over's entry (X.2 canvas). Transform and opacity only, like the mark. */
+@keyframes fx-slide-in {
+  from {
+    transform: translateX(28px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* While the panel is open the screen behind it is context, not content: it desaturates so
+   the panel's own amber is the only saturated thing on screen. Paired with the scrim. */
+:root[data-marbim='open'] [data-fx-host] {
+  filter: saturate(0.55);
+}
+
+@keyframes fx-caret {
+  0%,
+  45% {
+    opacity: 1;
+  }
+  55%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* The ink set serves light surfaces, the white set dark ones. */
+.fx-mark-ink {
+  display: var(--fx-mark-ink, block);
+}
+.fx-mark-white {
+  display: var(--fx-mark-white, none);
+}
+
+/* 2. The slash rule — three 2px strokes at the wordmark's 34deg.
+   Replaces horizontal rules, and fills left-to-right as the progress bar. */
+.fx-slash-rule {
+  display: flex;
+  gap: 4px;
+  transform: skewX(var(--fx-slash-angle));
+}
+.fx-slash-rule > i {
+  display: block;
+  width: 2px;
+  height: 14px;
+  background: var(--fx-border-default);
+}
+
+/* 3. The weave field — 34deg hatch at 3-5%. Empty states, auth washes,
+   card backs, scrims. Never behind body copy or data tables. */
+.fx-weave {
   background-image: repeating-linear-gradient(
-    115deg, var(--brand) 0 2px, transparent 2px 9px
+    var(--fx-weave-angle),
+    transparent 0 7px,
+    var(--fx-border-subtle) 7px 9px,
+    transparent 9px 17px
   );
-  opacity: .85;
 }
-.thread-rule--ink {
+
+/* 4. The cut corner — one 12px notch. Top-right on containers,
+   bottom-left on chips. Never on inputs or buttons. */
+.fx-cut {
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);
+  border-radius: var(--fx-radius-md);
+}
+.fx-cut-chip {
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+}
+
+/* Addendum 05 — the selvage edge.
+   A 3px stripe on the left rim carrying one status colour; 5px marks the
+   critical path. The surface stays neutral so a wall of rows stays readable.
+   Never amber: the selvage is a verdict, not an action. Colour never carries
+   state alone — every selvage repeats itself in the status column. */
+.fx-selvage {
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+}
+.fx-selvage::before {
+  content: '';
+  flex-shrink: 0;
+  width: 3px;
+  background: var(--fx-border-strong);
+}
+.fx-selvage[data-status='on-track']::before {
+  background: var(--fx-success);
+}
+.fx-selvage[data-status='at-risk']::before {
+  background: var(--fx-warning);
+}
+.fx-selvage[data-status='late']::before {
+  background: var(--fx-danger);
+}
+.fx-selvage[data-status='done']::before {
+  background: var(--fx-border-strong);
+}
+.fx-selvage[data-critical='true']::before {
+  width: 5px;
+}
+
+/* Addendum 06 — the thread rule.
+   2px strokes at 115deg, the counter-thread to the slash rule's 34deg warp.
+   Accent closes a page header (once per page, and it IS that view's amber
+   moment); muted separates sections inside a card and may repeat. */
+.fx-thread-rule {
+  height: 9px;
   background-image: repeating-linear-gradient(
-    115deg, var(--color-ink-500) 0 2px, transparent 2px 9px
+    var(--fx-thread-angle),
+    var(--fx-accent) 0 2px,
+    transparent 2px 9px
+  );
+}
+.fx-thread-rule[data-variant='muted'] {
+  height: 7px;
+  background-image: repeating-linear-gradient(
+    var(--fx-thread-angle),
+    var(--fx-border-default) 0 2px,
+    transparent 2px 9px
   );
 }
 
-/* Selvage edge — status on the left rim of a card or row */
-.selvage { position: relative; overflow: hidden; }
-.selvage::before {
-  content: ''; position: absolute; inset: 0 auto 0 0; width: 3px;
-  background: var(--brand);
-}
-.selvage[data-status="on-track"]::before { background: var(--color-on-track); }
-.selvage[data-status="at-risk"]::before  { background: var(--color-at-risk); }
-.selvage[data-status="late"]::before     { background: var(--color-late); }
-.selvage[data-status="done"]::before     { background: var(--color-done); }
-
-/* Glass — drawers, modals, sticky top bar only */
-.glass {
-  background: var(--glass);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
-  border: 1px solid var(--line);
-}
-/* Floor devices: solid fallback, no compositing cost */
-@supports not (backdrop-filter: blur(1px)) {
-  .glass { background: var(--raised); }
-}
-html[data-perf="low"] .glass {
-  background: var(--raised);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
-
-/* Weave loader — replaces every spinner */
-@keyframes fx-weave {
-  0%, 100% { opacity: .25; transform: skewX(-22deg) scaleY(.62); }
-  50%      { opacity: 1;   transform: skewX(-22deg) scaleY(1); }
-}
-.weave { display: inline-flex; gap: 3px; align-items: center; }
-.weave > i {
-  display: block; width: 3px; height: 15px; border-radius: 1px;
-  background: var(--brand); transform: skewX(-22deg);
-  animation: fx-weave 1.05s ease-in-out infinite;
-}
-.weave > i:nth-child(2) { animation-delay: .13s; background: var(--color-ink-300); }
-.weave > i:nth-child(3) { animation-delay: .26s; }
-.weave > i:nth-child(4) { animation-delay: .39s; background: var(--color-ink-300); }
-
+/* Reduced motion: the mark falls back to the static asset. */
 @media (prefers-reduced-motion: reduce) {
-  .weave > i { animation: none; opacity: .7; }
-}
-
-/* ── Density: floor devices get bigger rows and targets ── */
-html[data-density="floor"] {
-  --row-height: 56px;
-  --tap-min: 48px;
-  font-size: 15px;
-}
-html[data-density="desk"] {
-  --row-height: 44px;
-  --tap-min: 36px;
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
