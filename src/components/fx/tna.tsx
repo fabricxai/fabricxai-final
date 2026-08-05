@@ -276,6 +276,10 @@ export function BreakdownGrid({
 
   // Tolerance is a percentage as a decimal string; basis points keep the
   // boundary case exact rather than putting it on the wrong side of a float.
+  // A tolerance PERCENTAGE, converted once to basis points so the comparison below is
+  // integer maths. Mirrors the conversion `checkBreakdownTotal` does server-side, which
+  // is the number that actually decides.
+  // eslint-disable-next-line fabricxai/no-float-money
   const bp = tolerancePct ? Math.round(Number.parseFloat(tolerancePct) * 100) : 0
   const slack = contractedQty ? Math.floor((contractedQty * bp) / 10_000) : 0
   const within = contractedQty === null || contractedQty === undefined
@@ -405,6 +409,8 @@ export function BreakdownGrid({
         >
           contracted {contractedQty.toLocaleString()}
           {slack > 0 ? ` ±${slack.toLocaleString()}` : ''} ·{' '}
+          {/* pieces, not money: `total` is a garment count from the colour x size grid. */}
+          {/* eslint-disable-next-line fabricxai/no-float-money */}
           {within ? 'within tolerance' : `out by ${Math.abs(total - contractedQty).toLocaleString()}`}
         </div>
       ) : null}

@@ -16,6 +16,8 @@
  */
 import { and, eq, inArray, sql } from 'drizzle-orm'
 
+import { fromMinor, toMinor } from '@/lib/quantity'
+
 import { drawUd } from '../commercial/service'
 import { getRequisitionConsumption } from '../costing/queries'
 import { recordChange, registerAuditedTables } from '../core/audit'
@@ -664,7 +666,16 @@ export async function commitStockAdjustment(
   input: { payload: Record<string, unknown> },
 ): Promise<{ rowId: string; before: Record<string, unknown> | null; after: Record<string, unknown> }> {
   const payload = stockAdjustmentDraft.parse(input.payload)
-  const delta = Number(payload.qtyDelta)
+  /*
+   * Exact, because this quantity is bonded fabric.
+   *
+   * This was `Number(payload.qtyDelta)` and `Number(roll.qty) + delta`, rounded back with
+   * `.toFixed(2)` — float arithmetic on the roll quantity that UD reconciliation is
+   * computed against, i.e. the number a customs inspector checks. `no-float-money` never
+   * saw it because `qty`/`qtyDelta` are not money-shaped names, which is exactly how a
+   * quantity ends up being the one thing in the module that is not exact.
+   */
+  const deltaMinor = toMinor(payload.qtyDelta, 'adjustment quantity')
 
   let before: Record<string, unknown> | null = null
 
@@ -692,8 +703,8 @@ export async function commitStockAdjustment(
       })
     }
 
-    const next = Number(roll.qty) + delta
-    if (next < 0) {
+    const nextMinor = toMinor(roll.qty, 'roll quantity') + deltaMinor
+    if (nextMinor < 0n) {
       // Taking more off a roll than is on it is a miscount in the correction itself.
       throw new AppError('validation_failed', 'store.errors.adjustment_below_zero', {
         rollId: payload.rollId,
@@ -707,9 +718,9 @@ export async function commitStockAdjustment(
     await tx
       .update(rolls)
       .set(
-        next === 0
+        nextMinor === 0n
           ? { status: 'adjusted_out', updatedAt: new Date() }
-          : { qty: next.toFixed(2), updatedAt: new Date() },
+          : { qty: fromMinor(nextMinor), updatedAt: new Date() },
       )
       .where(eq(rolls.id, payload.rollId))
   }

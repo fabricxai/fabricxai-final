@@ -61,13 +61,23 @@ export default tseslint.config(
 
   // ── CLAUDE.md rule 4 · money is never a float ─────────────────────────────
   {
-    files: ['src/modules/**/*.ts', 'src/app/**/*.{ts,tsx}', 'src/db/**/*.ts', 'src/worker/**/*.ts'],
+    // `src/lib` and `src/components` were outside this for months, and they are where money
+    // is FORMATTED — `fx/format.tsx`, `fx/tna.tsx` — so the one layer that turns an exact
+    // string into something a person reads was the one layer unchecked (audit TEST-M11).
+    files: [
+      'src/modules/**/*.ts',
+      'src/app/**/*.{ts,tsx}',
+      'src/db/**/*.ts',
+      'src/worker/**/*.ts',
+      'src/lib/**/*.ts',
+      'src/components/**/*.{ts,tsx}',
+    ],
     rules: { 'fabricxai/no-float-money': 'error' },
   },
   {
-    // The one file allowed to convert — and only in `format()`, for display. The rule is
-    // off here rather than disabled inline so the exemption is visible in one place.
-    files: ['src/lib/money.ts'],
+    // The two files allowed to convert, and only to display. Off here rather than disabled
+    // inline so the whole exemption is one visible list rather than scattered comments.
+    files: ['src/lib/money.ts', 'src/lib/quantity.ts'],
     rules: { 'fabricxai/no-float-money': 'off' },
   },
 

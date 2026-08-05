@@ -321,6 +321,9 @@ export function Slider({
         step={step}
         value={value}
         aria-label={label}
+        // A range input's `value` is a slider position. A money field uses the
+        // decimal-string path, never this control.
+        // eslint-disable-next-line fabricxai/no-float-money
         onChange={(e) => onChange(Number(e.target.value))}
         style={{ width: '100%', accentColor: 'var(--fx-accent)' }}
       />

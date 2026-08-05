@@ -452,6 +452,9 @@ export function PartialAnswerNotice({
 
 /** Neutral until 90%, then warning — not amber. Amber is never a status. */
 export function UsageMeter({ used, total, unit = 'ctx' }: { used: number; total: number; unit?: string }) {
+  // `total` here is a context-window token budget, not money: the rule matches the NAME,
+  // and this meter never sees a currency.
+  // eslint-disable-next-line fabricxai/no-float-money
   const pct = Math.round((used / total) * 100)
   const high = pct >= 90
   return (

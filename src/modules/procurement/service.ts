@@ -523,12 +523,18 @@ export async function issuePo(
         throw new AppError('validation_failed', 'procurement.errors.no_btb_limit', {})
       }
 
-      const { checkBtbHeadroom } = await import('../commercial/service')
+      // Inside THIS transaction, with the master credit locked. The wrapper opens its own
+      // read, which meant a second connection held open while this transaction was live —
+      // the deadlock shape `saveBreakdownIn` documents — and a headroom answer already
+      // stale by the time the PO was written. `openBtb` locks the master on its own path;
+      // now both callers deciding against one ceiling queue instead of racing.
+      const { checkBtbHeadroomIn } = await import('../commercial/service')
       assertGate(
         GATES.btbHeadroom,
-        await checkBtbHeadroom(ctx, {
+        await checkBtbHeadroomIn(ctx, tx, {
           btbLcId: payload.btbLcId,
           limitPct: policy.btbLimitPct,
+          lock: true,
         }),
       )
     }

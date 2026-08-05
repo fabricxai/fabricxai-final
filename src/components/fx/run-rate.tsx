@@ -17,6 +17,11 @@ import type { OrderRunRate } from '@/modules/production/queries'
 export function RunRateCard({ forecast }: { forecast: OrderRunRate }) {
   const { confidence } = forecast
 
+  // Pieces per day, not money: `ratePerDay` is an output run-rate off the sewing floor.
+  // Formatted once here so the reason for the exemption is stated once too.
+  // eslint-disable-next-line fabricxai/no-float-money
+  const perDay = Number(forecast.ratePerDay).toLocaleString()
+
   return (
     <Card>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -53,7 +58,8 @@ export function RunRateCard({ forecast }: { forecast: OrderRunRate }) {
           <Figure label="Remaining" value={`${forecast.remainingQty.toLocaleString()} pcs`} />
           <Figure
             label="Rate"
-            value={confidence === 'none' ? '—' : `${Number(forecast.ratePerDay).toLocaleString()}/day`}
+            // Pieces per day, not money.
+            value={confidence === 'none' ? '—' : `${perDay}/day`}
           />
         </div>
 
@@ -65,9 +71,10 @@ export function RunRateCard({ forecast }: { forecast: OrderRunRate }) {
             color: 'var(--fx-text-tertiary)',
           }}
         >
+          {/* Pieces per day, not money — same identifier as above. */}
           {confidence === 'none'
             ? `No output booked against this order in the last ${forecast.trailingDays} days, so there is no rate to project from. This is not a date of zero — it is the absence of one.`
-            : `At ${Number(forecast.ratePerDay).toLocaleString()} a day — the average of the last ${forecast.trailingDays} days, ${forecast.daysWithOutput} of which the floor ran. Days with no output count as zero.`}
+            : `At ${perDay} a day — the average of the last ${forecast.trailingDays} days, ${forecast.daysWithOutput} of which the floor ran. Days with no output count as zero.`}
           {forecast.milestoneDate
             ? ` Sewing is due ${forecast.milestoneDate}.`
             : ' No sewing milestone is set on the TNA to compare against.'}

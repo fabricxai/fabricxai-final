@@ -366,15 +366,36 @@ export { UdError }
  * `excludeBtbId` exists for re-checks on an existing BTB: counting it as used would
  * compare it with itself.
  */
-export async function checkBtbHeadroom(
-  ctx: AnyCtx,
-  input: { btbLcId: string; limitPct: number; excludeBtbId?: string },
-): Promise<{
+export interface BtbHeadroomResult {
   passed: boolean
   reasonKey?: string
   facts?: Record<string, unknown>
-}> {
-  return withTenantRead(ctx, async (tx) => {
+}
+
+export async function checkBtbHeadroom(
+  ctx: AnyCtx,
+  input: { btbLcId: string; limitPct: number; excludeBtbId?: string },
+): Promise<BtbHeadroomResult> {
+  return withTenantRead(ctx, (tx) => checkBtbHeadroomIn(ctx, tx, input))
+}
+
+/**
+ * The body, taking a transaction rather than opening one.
+ *
+ * `issuePo` used to call the wrapper from inside its own `withTenantTx`, which opens a
+ * SECOND transaction on another connection while the first is still open — the shape this
+ * codebase already warns about in `saveBreakdownIn`, where it deadlocks under approval. It
+ * also meant the headroom was read outside the transaction that then wrote the PO, so the
+ * answer was already stale by the time it was used (audit note on plan 2.6).
+ *
+ * `lock` takes `FOR UPDATE` on the master credit, which is what `openBtb` already does on
+ * its own path: two callers deciding against the same ceiling must queue, not race.
+ */
+export async function checkBtbHeadroomIn(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  input: { btbLcId: string; limitPct: number; excludeBtbId?: string; lock?: boolean },
+): Promise<BtbHeadroomResult> {
     const [btb] = await tx.select().from(btbLcs).where(eq(btbLcs.id, input.btbLcId))
     if (!btb) {
       return {
@@ -384,7 +405,8 @@ export async function checkBtbHeadroom(
       }
     }
 
-    const [master] = await tx.select().from(lcs).where(eq(lcs.id, btb.masterLcId))
+    const masterQuery = tx.select().from(lcs).where(eq(lcs.id, btb.masterLcId))
+    const [master] = input.lock ? await masterQuery.for('update') : await masterQuery
     if (!master) {
       return {
         passed: false,
@@ -442,7 +464,6 @@ export async function checkBtbHeadroom(
           passed: true,
           facts: { limit: headroom.limit, used: headroom.used, free: headroom.free },
         }
-  })
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
