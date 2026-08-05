@@ -22,7 +22,7 @@ Legend: 🅑 blocker · 🅗 high · 🅜 medium · `[~]` = mechanism done, adop
 
 ---
 
-## Phase 1 — Authorization & tenancy (BLOCKER class — nothing real goes live before this)
+## Phase 1 — Authorization & tenancy (BLOCKER class — nothing real goes live before this)  ✅ **complete 2026-08-06** (1.3's adoption ratchet continues)
 
 - [x] **1.1 🔑 Role authorization on every server action (finding N1).** `5b92922` — `requireRole` had zero callers; all 16 `modules/*/actions.ts` were session-only, so any member could open the PP gate, issue a PO, open a BTB, confirm ex-factory or open an LC submission. **69 call sites across 16 modules now gate on roles**, derived from the sync handlers (store/quality/sampling/cutting keep exactly theirs), `nav.ts` audiences, and the services that already gate themselves. No action is broader than its module's nav entry. Owner/admin supervisory on every call; an empty role list throws. Reused `errors.forbidden` (already en+bn) instead of adding `errors.role_forbidden`. Payroll's stricter hr+owner rule stays in 10.1's service.
   *Verify:* `action-role-gates.test.ts` sweeps every `actions.ts` and names any ungated export, any `requireCtx`, any empty gate (red-tested); 6 cases in `role-gates.integration.test.ts` prove it against real signed-in sessions. ✅ 755 unit · 616 integration.
@@ -38,8 +38,8 @@ Legend: 🅑 blocker · 🅗 high · 🅜 medium · `[~]` = mechanism done, adop
 - [x] **1.5 🔑 Non-superuser-owner CI job (DB-B1).** `4a36033` — new `owner-privileges` job provisions the hardened owner a real deployment uses (NOSUPERUSER, BYPASSRLS, CREATEROLE), migrates, seeds, and runs `scripts/verify-owner-privileges.mjs`, which exercises all twelve SECURITY DEFINER helpers and **refuses to run against a superuser** (where it would pass regardless — how DB-B1 stayed invisible).
   *Found by writing it — three undocumented prerequisites, each failing without mentioning the owner:* `vector` is untrusted so a non-superuser cannot create it (0000's "provisioned by db:migrate alone" is true only for a superuser); the owner needs CREATEROLE; and **`app.pgbouncer_get_auth` reads superuser-only `pg_shadow`, so without `GRANT SELECT ON pg_shadow` the pooler refuses every client** — a total outage from a grant nobody knew to make. `db:setup-roles` now warns with the exact statement; `deploy.md` documents all three.
   *Verify:* exit 0 correctly provisioned · exit 1 with BYPASSRLS removed (owner cannot read `roles` — login broken) · exit 1 as superuser. Proven locally against a real non-superuser owner.
-- [ ] **1.6 🅜 Auth-rate-limit parity in CI.** `rateLimit.enabled` is prod-only (`src/lib/auth.ts:101`); set `RATE_LIMIT_ENFORCE=1` in the CI integration job so the limiter is exercised before it matters.
-
+- [x] **1.6 🔑 Auth-rate-limit parity in CI.** `46aa987` — **not** by setting `RATE_LIMIT_ENFORCE=1` on the integration job as written: `lib/auth.ts` already documents why that fails (signup is 3/hr per IP; the suite signs up nine owners from one address). Instead one file runs alone in its own step with the flag, asserting both directions — the first ten sign-ins must NOT be refused, the eleventh must be.
+  *Verify:* the step greps for `2 passed` because vitest exits 0 when everything skips and this file skips itself without the flag — guard verified to fail the step when the flag is absent. Test made repeatable after finding it was not: the bucket is keyed by IP, so back-to-back runs shared one 5-minute window. ✅ 631 passed / 2 skipped.
 ---
 
 ## Phase 2 — Money, dates, audit, gates (legal/money correctness)
