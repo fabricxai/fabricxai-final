@@ -9,13 +9,15 @@
  * So this screen exists to answer one question before anybody gets there:
  * how much is genuinely left, per item, on each live declaration.
  */
-import { desc, eq, inArray } from 'drizzle-orm'
+import { desc, eq, ilike, inArray } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { compareDecimalStrings } from '@/lib/quantity'
 
+import { likePattern } from '@/lib/search-text'
 import type { AnyCtx } from '@/modules/core/ctx'
 import { readJsonbArray } from '@/modules/core/jsonb'
+import { scoped } from '@/modules/core/scoped'
 import { withTenantRead } from '@/modules/core/tenancy'
 
 import { udConsumptions, uds } from './schema'
@@ -133,5 +135,29 @@ export async function udDraws(
       .where(eq(udConsumptions.udId, udId))
       .orderBy(desc(udConsumptions.createdAt))
       .limit(200),
+  )
+}
+
+
+/** A UD, as the command bar shows it. */
+export interface UdSearchRow {
+  id: string
+  number: string
+  status: string
+}
+
+/** Utilization Declarations matching a UD number fragment. */
+export async function searchUds(
+  ctx: AnyCtx,
+  input: { term: string; limit: number },
+): Promise<UdSearchRow[]> {
+  const like = likePattern(input.term)
+
+  return withTenantRead(ctx, (tx) =>
+    tx
+      .select({ id: uds.id, number: uds.number, status: uds.status })
+      .from(uds)
+      .where(scoped(uds, ctx, ilike(uds.number, like)))
+      .limit(input.limit),
   )
 }

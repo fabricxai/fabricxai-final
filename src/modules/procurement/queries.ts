@@ -12,9 +12,11 @@
  *    progress" in any useful sense — some items are on the floor and some are
  *    still on the water, and the shortfall is what a merchandiser chases.
  */
-import { and, desc, eq, gt, inArray, isNotNull, ne, or, sql } from 'drizzle-orm'
+import { and, desc, eq, gt, ilike, inArray, isNotNull, ne, or, sql } from 'drizzle-orm'
 
+import { likePattern } from '@/lib/search-text'
 import type { AnyCtx } from '@/modules/core/ctx'
+import { scoped } from '@/modules/core/scoped'
 import { withTenantRead } from '@/modules/core/tenancy'
 import { btbLcs } from '@/modules/commercial/schema'
 
@@ -427,4 +429,34 @@ export async function awaitingReceipt(
           a.poNumber.localeCompare(b.poNumber),
       )
   })
+}
+
+
+/** A purchase requisition, as the command bar shows it. */
+export interface RequisitionSearchRow {
+  id: string
+  prNo: string
+  status: string
+  neededBy: string | null
+}
+
+/** Requisitions matching a PR number fragment. */
+export async function searchRequisitions(
+  ctx: AnyCtx,
+  input: { term: string; limit: number },
+): Promise<RequisitionSearchRow[]> {
+  const like = likePattern(input.term)
+
+  return withTenantRead(ctx, (tx) =>
+    tx
+      .select({
+        id: purchaseRequisitions.id,
+        prNo: purchaseRequisitions.prNo,
+        status: purchaseRequisitions.status,
+        neededBy: purchaseRequisitions.neededBy,
+      })
+      .from(purchaseRequisitions)
+      .where(scoped(purchaseRequisitions, ctx, ilike(purchaseRequisitions.prNo, like)))
+      .limit(input.limit),
+  )
 }

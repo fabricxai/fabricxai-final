@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
 
 import { requireRole } from '@/modules/core/session'
+import { unassignedCartons } from './queries'
 import { getPolicy } from '@/modules/settings/service'
 
 import {
@@ -159,16 +160,7 @@ export async function loadOrderCartons(input: {
 }): Promise<{ loaded: number }> {
   const ctx = await requireRole(await headers(), 'shipment', 'commercial', 'merchandiser')
 
-  const { withTenantRead } = await import('@/modules/core/tenancy')
-  const { and, eq, isNull } = await import('drizzle-orm')
-  const { cartons } = await import('./schema')
-
-  const unassigned = await withTenantRead(ctx, (tx) =>
-    tx
-      .select({ id: cartons.id })
-      .from(cartons)
-      .where(and(eq(cartons.orderId, input.orderId), isNull(cartons.shipmentId))),
-  )
+  const unassigned = await unassignedCartons(ctx, { orderId: input.orderId })
 
   if (unassigned.length === 0) return { loaded: 0 }
 

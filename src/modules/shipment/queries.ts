@@ -11,7 +11,7 @@
  *    `docs_required`, so a missing document is the buyer's requirement unmet,
  *    not an internal tidiness problem.
  */
-import { and, asc, desc, inArray, isNull } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm'
 
 import { lcs } from '@/modules/commercial/schema'
 import type { AnyCtx } from '@/modules/core/ctx'
@@ -206,3 +206,24 @@ export async function shipmentBoard(ctx: AnyCtx): Promise<ShipmentRow[]> {
     })
   })
 }
+
+/**
+ * Cartons packed against an order and not yet loaded onto any shipment.
+ *
+ * Lives here rather than in `actions.ts`, where it was a dynamic import of drizzle and the
+ * schema inside the action body (audit BE-H1, rule 1: an action is auth → zod → service).
+ * The dynamic import also put it beyond the reach of the `@/db/client` ban, which is the
+ * shape of violation a lint rule cannot see coming.
+ */
+export async function unassignedCartons(
+  ctx: AnyCtx,
+  input: { orderId: string },
+): Promise<{ id: string }[]> {
+  return withTenantRead(ctx, (tx) =>
+    tx
+      .select({ id: cartons.id })
+      .from(cartons)
+      .where(and(eq(cartons.orderId, input.orderId), isNull(cartons.shipmentId))),
+  )
+}
+

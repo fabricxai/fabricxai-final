@@ -82,6 +82,14 @@ export const LIMITS = {
    * loop from minting grants.
    */
   documents: { limit: 30, windowSeconds: 60 },
+
+  /**
+   * Command-bar searches per user. Each one fans out to up to six modules, and it fires
+   * from a debounced keystroke — so the honest ceiling is "a person typing fast", not
+   * "a person clicking". Sixty a minute is one every second, which no human sustains and
+   * which stops a stuck client from turning a search box into a load generator.
+   */
+  search: { limit: 60, windowSeconds: 60 },
 } as const satisfies Record<string, RateLimit>
 
 /**

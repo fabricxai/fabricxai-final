@@ -7,9 +7,11 @@
  * actually worked, and using updated_at would quietly reset the clock on
  * exactly the leads that have gone cold.
  */
-import { desc, eq, inArray, sql } from 'drizzle-orm'
+import { desc, eq, ilike, inArray, or, sql } from 'drizzle-orm'
 
+import { likePattern } from '@/lib/search-text'
 import type { AnyCtx } from '@/modules/core/ctx'
+import { scoped } from '@/modules/core/scoped'
 import { withTenantRead } from '@/modules/core/tenancy'
 import { orders } from '@/modules/orders/schema'
 
@@ -165,4 +167,56 @@ export async function buyerAccounts(ctx: AnyCtx): Promise<BuyerAccount[]> {
 
     return rows
   })
+}
+
+
+/** A buyer or a lead, as the command bar shows it. */
+export interface BuyerSearchRow {
+  id: string
+  name: string
+  country: string | null
+}
+
+export interface LeadSearchRow {
+  id: string
+  companyName: string
+  stage: string
+  country: string | null
+}
+
+/** Buyer accounts matching a name or country fragment. */
+export async function searchBuyers(
+  ctx: AnyCtx,
+  input: { term: string; limit: number },
+): Promise<BuyerSearchRow[]> {
+  const like = likePattern(input.term)
+
+  return withTenantRead(ctx, (tx) =>
+    tx
+      .select({ id: buyers.id, name: buyers.name, country: buyers.country })
+      .from(buyers)
+      .where(scoped(buyers, ctx, or(ilike(buyers.name, like), ilike(buyers.country, like))))
+      .limit(input.limit),
+  )
+}
+
+/** Leads matching a company-name or country fragment. */
+export async function searchLeads(
+  ctx: AnyCtx,
+  input: { term: string; limit: number },
+): Promise<LeadSearchRow[]> {
+  const like = likePattern(input.term)
+
+  return withTenantRead(ctx, (tx) =>
+    tx
+      .select({
+        id: leads.id,
+        companyName: leads.companyName,
+        stage: leads.stage,
+        country: leads.country,
+      })
+      .from(leads)
+      .where(scoped(leads, ctx, or(ilike(leads.companyName, like), ilike(leads.country, like))))
+      .limit(input.limit),
+  )
 }

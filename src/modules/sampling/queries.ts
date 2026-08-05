@@ -8,10 +8,12 @@
  * A PP sample is the buyer signing off one garment before the factory makes
  * eighty thousand. Everything else here is context for that one verdict.
  */
-import { and, asc, desc, eq, inArray } from 'drizzle-orm'
+import { and, asc, desc, eq, ilike, inArray, or } from 'drizzle-orm'
 
+import { likePattern } from '@/lib/search-text'
 import type { AnyCtx } from '@/modules/core/ctx'
 import { readJsonbArray } from '@/modules/core/jsonb'
+import { scoped } from '@/modules/core/scoped'
 import { withTenantRead } from '@/modules/core/tenancy'
 import { orders } from '@/modules/orders/schema'
 
@@ -356,4 +358,42 @@ export async function sampleLibrary(
 
     return hits.filter((hit) => outcomeMatches(hit) && textMatches(hit)).slice(0, limit)
   })
+}
+
+
+/** A sample request, as the command bar shows it. */
+export interface SampleSearchRow {
+  id: string
+  requestNo: string
+  styleCode: string
+  type: string
+  status: string
+}
+
+/** Sample requests matching a request number or style code. */
+export async function searchSampleRequests(
+  ctx: AnyCtx,
+  input: { term: string; limit: number },
+): Promise<SampleSearchRow[]> {
+  const like = likePattern(input.term)
+
+  return withTenantRead(ctx, (tx) =>
+    tx
+      .select({
+        id: sampleRequests.id,
+        requestNo: sampleRequests.requestNo,
+        styleCode: sampleRequests.styleCode,
+        type: sampleRequests.type,
+        status: sampleRequests.status,
+      })
+      .from(sampleRequests)
+      .where(
+        scoped(
+          sampleRequests,
+          ctx,
+          or(ilike(sampleRequests.requestNo, like), ilike(sampleRequests.styleCode, like)),
+        ),
+      )
+      .limit(input.limit),
+  )
 }

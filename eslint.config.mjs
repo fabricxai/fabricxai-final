@@ -99,9 +99,21 @@ export default tseslint.config(
     rules: { 'fabricxai/analytics-no-writes': 'error' },
   },
 
-  // ── CLAUDE.md rule 1 · actions and routes never touch `db` ────────────────
+  // ── CLAUDE.md rule 1 · actions, routes and components never touch `db` ────
+  //
+  // The glob used to be `src/app/actions/**` + `src/app/api/**`, which between them held
+  // one real file: the sixteen `'use server'` action files live at `src/modules/*/
+  // actions.ts` and were never covered (audit BE-H1). Nor was `src/components/`, and that
+  // is not hypothetical — the top-bar search shipped as a server action in
+  // `src/components/shell/search/` querying six modules' raw schemas, which is exactly
+  // what this rule exists to stop, from the one directory nobody had pointed it at.
   {
-    files: ['src/app/actions/**/*.ts', 'src/app/api/**/*.ts'],
+    files: [
+      'src/app/actions/**/*.ts',
+      'src/app/api/**/*.ts',
+      'src/modules/*/actions.ts',
+      'src/components/**/*.{ts,tsx}',
+    ],
     ignores: [
       // Better Auth owns its own boundary; the health check deliberately exercises the
       // real pooled path, which is the point of it.
@@ -116,7 +128,18 @@ export default tseslint.config(
             {
               name: '@/db/client',
               message:
-                'Actions and route handlers are thin: auth → zod → service. All db access lives in modules/<m>/service.ts (CLAUDE.md rule 1).',
+                'Actions, route handlers and components are thin: auth → zod → service. All db access lives in modules/<m>/service.ts (CLAUDE.md rule 1).',
+            },
+          ],
+          patterns: [
+            {
+              // Reaching a table directly is the same violation one level down, and it is
+              // the shape both real breaches took: search imported six modules' schemas,
+              // and shipment/actions.ts dynamically imported drizzle and its own. Cross-
+              // module reads go through the owner's queries.ts (rule 11).
+              group: ['@/modules/*/schema', '**/schema', 'drizzle-orm'],
+              message:
+                'Do not query tables from an action, route or component. Read through the owning module\'s queries.ts (CLAUDE.md rules 1 and 11).',
             },
           ],
         },

@@ -12,11 +12,13 @@
  * them — an LC whose latest shipment falls after its own expiry is structurally
  * unworkable and needs an amendment before anything ships against it.
  */
-import { desc, eq, inArray, sql } from 'drizzle-orm'
+import { desc, eq, ilike, inArray, or, sql } from 'drizzle-orm'
 
 import { compareDecimalStrings, ratioAsPercent } from '@/lib/quantity'
 import { buyers } from '@/modules/buyers/schema'
+import { likePattern } from '@/lib/search-text'
 import type { AnyCtx } from '@/modules/core/ctx'
+import { scoped } from '@/modules/core/scoped'
 import { withTenantRead } from '@/modules/core/tenancy'
 
 import { btbLcs, docSubmissions, lcs } from './schema'
@@ -357,4 +359,30 @@ export async function lcDetail(
       headroom: { ...headroom, limitPct },
     }
   })
+}
+
+
+/** A credit, as the command bar shows it. */
+export interface LcSearchRow {
+  id: string
+  number: string
+  status: string
+  buyerName: string | null
+}
+
+/** Letters of credit matching an LC number or buyer name. */
+export async function searchLcs(
+  ctx: AnyCtx,
+  input: { term: string; limit: number },
+): Promise<LcSearchRow[]> {
+  const like = likePattern(input.term)
+
+  return withTenantRead(ctx, (tx) =>
+    tx
+      .select({ id: lcs.id, number: lcs.number, status: lcs.status, buyerName: buyers.name })
+      .from(lcs)
+      .leftJoin(buyers, eq(buyers.id, lcs.buyerId))
+      .where(scoped(lcs, ctx, or(ilike(lcs.number, like), ilike(buyers.name, like))))
+      .limit(input.limit),
+  )
 }

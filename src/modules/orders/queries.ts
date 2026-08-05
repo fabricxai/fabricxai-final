@@ -6,11 +6,13 @@
  * "is this late?" would eventually disagree with the job that escalates it, and
  * then the desk and the alert would be telling a merchandiser different things.
  */
-import { and, asc, desc, eq, inArray } from 'drizzle-orm'
+import { and, asc, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm'
 
 import { buyers } from '@/modules/buyers/schema'
+import { likePattern } from '@/lib/search-text'
 import type { AnyCtx } from '@/modules/core/ctx'
 import { readJsonbArray } from '@/modules/core/jsonb'
+import { scoped } from '@/modules/core/scoped'
 import { withTenantRead } from '@/modules/core/tenancy'
 
 import { orderBreakdowns, orderStyles, orders, tnaMilestones } from './schema'
@@ -343,5 +345,69 @@ export async function ordersInProduction(ctx: AnyCtx): Promise<OrderInProduction
         totalValue: row.totalValue,
         currency: row.currency,
       }))
+  })
+}
+
+
+/** One order as the command bar shows it. */
+export interface OrderSearchRow {
+  id: string
+  poNumber: string | null
+  buyerName: string | null
+  styleCode: string | null
+}
+
+/**
+ * Orders matching a typed fragment of a PO number, buyer name or style code.
+ *
+ * Owned here rather than assembled by the shell (rule 11): the PO-number match has to
+ * reach into a text[] column, and the de-duplication exists because the style join
+ * multiplies rows per order. Both are facts about how 1.3 stores an order, and neither
+ * belongs in a search box.
+ */
+export async function searchOrders(
+  ctx: AnyCtx,
+  input: { term: string; limit: number },
+): Promise<OrderSearchRow[]> {
+  const like = likePattern(input.term)
+
+  return withTenantRead(ctx, async (tx) => {
+    const rows = await tx
+      .select({
+        id: orders.id,
+        poNumbers: orders.poNumbers,
+        buyerName: buyers.name,
+        styleCode: orderStyles.styleCode,
+      })
+      .from(orders)
+      .leftJoin(buyers, eq(buyers.id, orders.buyerId))
+      .leftJoin(orderStyles, eq(orderStyles.orderId, orders.id))
+      .where(
+        scoped(
+          orders,
+          ctx,
+          or(
+            sql`${orders.poNumbers}::text ilike ${like} escape '\\'`,
+            ilike(buyers.name, like),
+            ilike(orderStyles.styleCode, like),
+          ),
+        ),
+      )
+      .limit(input.limit * 2)
+
+    const seen = new Set<string>()
+    const hits: OrderSearchRow[] = []
+    for (const row of rows) {
+      if (seen.has(row.id)) continue
+      seen.add(row.id)
+      hits.push({
+        id: row.id,
+        poNumber: (row.poNumbers ?? [])[0] ?? null,
+        buyerName: row.buyerName,
+        styleCode: row.styleCode,
+      })
+      if (hits.length >= input.limit) break
+    }
+    return hits
   })
 }

@@ -3,6 +3,8 @@
 import { useRouter } from 'next/navigation'
 import { useEffect, useId, useRef, useState, useTransition } from 'react'
 
+import { MIN_SEARCH_LENGTH } from '@/lib/search-text'
+
 import { runGlobalSearch } from './actions'
 import type { SearchHit } from './search-types'
 
@@ -58,7 +60,7 @@ export function TopBarSearch() {
 
   useEffect(() => {
     const q = query.trim()
-    if (q.length < 1) return
+    if (q.length < MIN_SEARCH_LENGTH) return
     const timer = setTimeout(() => {
       startTransition(async () => {
         const result = await runGlobalSearch({ query: q })
@@ -78,7 +80,7 @@ export function TopBarSearch() {
     router.push(hit.href)
   }
 
-  const showPanel = open && query.trim().length > 0
+  const showPanel = open && query.trim().length >= MIN_SEARCH_LENGTH
 
   return (
     <div ref={rootRef} style={{ position: 'relative', width: '100%', maxWidth: 420 }}>
@@ -97,7 +99,7 @@ export function TopBarSearch() {
         onFocus={() => setOpen(true)}
         onChange={(e) => {
           setQuery(e.target.value)
-          if (e.target.value.trim().length < 1) setHits([])
+          if (e.target.value.trim().length < MIN_SEARCH_LENGTH) setHits([])
           setOpen(true)
         }}
         onKeyDown={(e) => {
