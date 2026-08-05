@@ -8,11 +8,8 @@ import { PageBody, TopBar } from '@/components/shell/page-shell'
 import { Sidebar } from '@/components/shell/sidebar'
 import { AccountMenu } from '@/components/shell/account-menu'
 import {
-  canSee,
-  canWrite,
   describeRoles,
-  lockedSubject,
-  navItemFor,
+  resolveAccess,
   visibleNav,
   type FactoryType,
 } from '@/components/shell/nav'
@@ -71,16 +68,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const nav = visibleNav(ctx.roles, factoryType)
 
   /*
-   * Which screen is being rendered, and whether this role may.
-   *
-   * A path with no nav entry — `/board`, a sub-route nobody registered — is left alone
-   * rather than refused. Guessing that an unknown path must be forbidden would lock people
-   * out of screens by omission, which is the failure that is hardest to notice.
+   * Which screen is being rendered, and whether this role may. The decision itself lives in
+   * `resolveAccess` so it can be tested as a function rather than as this file's source; a
+   * path with no registry entry is refused there, not waved through.
    */
   const pathname = requestHeaders.get('x-pathname') ?? ''
-  const item = navItemFor(pathname)
-  const allowed = !item || canSee(item, ctx.roles, factoryType)
-  const readOnly = Boolean(item && allowed && !canWrite(item, ctx.roles, factoryType))
+  const { item, allowed, readOnly, subject } = resolveAccess(pathname, ctx.roles, factoryType)
 
   return (
     <LocaleProvider locale={locale}>
@@ -104,11 +97,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <>
                 {/* Said before anything is typed, not after a button is pressed. The write
                     itself is still refused by the action — this is the label, not the lock. */}
-                {readOnly ? <ReadOnlyNote what={item!.label} /> : null}
+                {readOnly && item ? <ReadOnlyNote what={item.label} /> : null}
                 {children}
               </>
             ) : (
-              <LockedState what={lockedSubject(item!)} />
+              <LockedState what={subject} />
             )}
           </PageBody>
         </div>

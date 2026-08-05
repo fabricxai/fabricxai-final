@@ -238,6 +238,11 @@ describe('permitted screens still render for the roles that own them', () => {
     ['/quality', 'quality'],
     ['/workforce', 'hr'],
     ['/dashboard', 'owner'],
+    // Reached from the top-bar chip, so it carries `hiddenFromSidebar` and is absent from
+    // the nav a storekeeper is sent. It is still registered, and must still open: the shell
+    // now refuses any path the registry does not name, and the way to get that wrong is to
+    // lock a screen that was only ever missing from a list.
+    ['/factory', 'store'],
   ]
 
   for (const [path, role] of ALLOWED) {

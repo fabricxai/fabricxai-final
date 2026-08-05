@@ -48,6 +48,15 @@ export interface NavItem {
   lockedAs?: string
   /** Restrict to particular factory types. Absent means shared. */
   factoryTypes?: readonly FactoryType[]
+  /**
+   * Governed here, but not listed in the sidebar.
+   *
+   * For screens reached from dedicated chrome rather than the nav — `/factory` opens from
+   * the top-bar chip. Without this they had to be left out of the registry altogether, and
+   * a route outside the registry is a route with no access policy at all. It stays
+   * findable (search reads `NAV` directly) and stays refusable; it just isn't in the list.
+   */
+  hiddenFromSidebar?: boolean
   section: NavSection
 }
 
@@ -280,6 +289,20 @@ export const NAV: readonly NavItem[] = [
 
   // ── System ──────────────────────────────────────────────
   {
+    id: 'factory',
+    lockedAs: 'the factory profile',
+    label: 'Factory',
+    href: '/factory',
+    section: 'system',
+    // Opens from the top-bar chip, not the sidebar — but it is still a screen with an
+    // audience, so it is registered like any other. Same readership as Settings: everybody
+    // may read how their unit is configured. Nothing here is editable by anyone; the page
+    // sends you to Settings, which is where the permission actually is.
+    hiddenFromSidebar: true,
+    roles: ['member', 'viewer', 'merchandiser', 'commercial', 'planner', 'store', 'procurement', 'cutting', 'production', 'quality', 'shipment', 'maintenance', 'hr', 'compliance', 'finance'],
+    writeRoles: [],
+  },
+  {
     id: 'settings',
     label: 'Settings',
     href: '/settings',
@@ -326,7 +349,51 @@ export function canSee(item: NavItem, roles: readonly Role[], factoryType: Facto
 }
 
 export function visibleNav(roles: readonly Role[], factoryType: FactoryType): NavItem[] {
-  return NAV.filter((item) => canSee(item, roles, factoryType))
+  return NAV.filter((item) => !item.hiddenFromSidebar && canSee(item, roles, factoryType))
+}
+
+/**
+ * The shell's whole access decision for one path, in one place.
+ *
+ * Extracted from the layout so it can be asserted directly rather than by reading the
+ * layout's source: a policy that can only be tested by grepping the file that applies it
+ * is a policy nobody can change with confidence.
+ *
+ * **A path with no entry is refused.** The registry IS the access policy, so a route
+ * missing from it has no policy — and "no policy" must never read as "no restriction".
+ * `/factory` shipped exactly that way: reachable by URL, absent from `NAV`, and therefore
+ * open to every signed-in role whatever its entry would have said.
+ *
+ * The cost of failing closed is that a forgotten entry locks a screen rather than exposing
+ * it. That is the trade worth making — somebody reports a locked screen within the hour,
+ * and nobody reports an open one — and `access.test.ts` sweeps every page in the group so
+ * the omission fails CI long before anybody meets it.
+ */
+export interface RouteAccess {
+  item: NavItem | undefined
+  allowed: boolean
+  readOnly: boolean
+  /** What the locked card names, when it has to render one. */
+  subject: string
+}
+
+export function resolveAccess(
+  pathname: string,
+  roles: readonly Role[],
+  factoryType: FactoryType,
+): RouteAccess {
+  const item = navItemFor(pathname)
+  if (!item) return { item: undefined, allowed: false, readOnly: false, subject: 'this screen' }
+
+  const allowed = canSee(item, roles, factoryType)
+  return {
+    item,
+    allowed,
+    // Never both: a "read only" banner on a screen the caller cannot open would be two
+    // contradictory statements about the same permission.
+    readOnly: allowed && !canWrite(item, roles, factoryType),
+    subject: lockedSubject(item),
+  }
 }
 
 export function navItemFor(href: string): NavItem | undefined {

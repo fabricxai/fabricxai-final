@@ -10,7 +10,8 @@
  * It is enforced in `src/app/(app)/layout.tsx` now, in one place, from the same `NAV` the
  * sidebar is built from. These vectors are what keep those two the same thing.
  */
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
@@ -22,11 +23,37 @@ import {
   lockedSubject,
   navItemFor,
   NAV,
+  resolveAccess,
   ROLE_LABEL,
   visibleNav,
 } from '@/components/shell/nav'
 
 const ALL_ROLES = Object.keys(ROLE_LABEL) as Role[]
+
+const APP_GROUP = 'src/app/(app)'
+
+/**
+ * Every route the authenticated shell renders, as a URL.
+ *
+ * Read off the filesystem rather than listed here, because a list would have to be kept in
+ * step by the same person who forgot the nav entry.
+ */
+function appRoutes(dir = APP_GROUP, prefix = ''): string[] {
+  const found: string[] = []
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.isDirectory()) {
+      // Parenthesised directories are route groups and contribute no URL segment.
+      const segment = entry.name.startsWith('(') ? '' : `/${entry.name}`
+      found.push(...appRoutes(join(dir, entry.name), prefix + segment))
+    } else if (entry.name === 'page.tsx') {
+      found.push(prefix || '/')
+    }
+  }
+  return found
+}
+
+/** `/lcs/[lcId]` is not a URL anybody visits; `/lcs/9f3c` is. */
+const withSampleParams = (route: string) => route.replace(/\[[^\]]+\]/g, '9f3c')
 
 describe('the shell enforces the nav', () => {
   it('checks the route in the layout, not in each page', () => {
@@ -35,12 +62,27 @@ describe('the shell enforces the nav', () => {
      * times and trusting whoever adds the twenty-fourth. If this moves, it must stay one
      * place that reads the pathname and consults the same registry.
      */
-    const layout = readFileSync('src/app/(app)/layout.tsx', 'utf8')
+    const layout = readFileSync(`${APP_GROUP}/layout.tsx`, 'utf8')
 
     expect(layout).toContain('x-pathname')
-    expect(layout).toContain('navItemFor')
-    expect(layout).toContain('canSee')
+    expect(layout).toContain('resolveAccess')
     expect(layout).toContain('LockedState')
+  })
+
+  it('registers every screen it renders, so none is governed by nothing', () => {
+    /*
+     * The sweep that makes failing closed safe. `/factory` shipped reachable by URL and
+     * absent from NAV, so `navItemFor` returned undefined and the layout — which then
+     * treated "no entry" as "no restriction" — showed the factory's identity, licences and
+     * configuration to every signed-in role. The gate is closed now; this keeps the other
+     * half of the bargain by making a missing entry a red build rather than a locked screen
+     * somebody finds in production.
+     */
+    const unregistered = appRoutes()
+      .map(withSampleParams)
+      .filter((route) => !navItemFor(route))
+
+    expect(unregistered).toEqual([])
   })
 
   it('has a proxy supplying the pathname the layout reads', () => {
@@ -76,10 +118,14 @@ describe('canSee', () => {
     expect(navItemFor('/costing/bom/abc')?.href).toBe('/costing')
   })
 
-  it('leaves paths with no entry alone', () => {
-    // `/board` is the wall display and has no sidebar entry. Refusing unknown paths would
-    // lock people out by omission — the failure that is hardest to spot.
-    expect(navItemFor('/board')).toBeUndefined()
+  it('governs a screen that is deliberately not in the sidebar', () => {
+    // `/factory` opens from the top-bar chip. Not being in the list must not mean not being
+    // governed — that gap is exactly how it was readable by every role.
+    const factory = NAV.find((i) => i.href === '/factory')!
+
+    expect(factory.hiddenFromSidebar).toBe(true)
+    expect(visibleNav(['owner'], 'woven').map((i) => i.href)).not.toContain('/factory')
+    expect(navItemFor('/factory')?.id).toBe('factory')
   })
 
   it('never shows a role a screen it cannot open', () => {
@@ -118,6 +164,59 @@ describe('canWrite', () => {
       for (const item of NAV) {
         if (canSee(item, [role], 'woven')) continue
         expect(canWrite(item, [role], 'woven'), `${role} → ${item.id}`).toBe(false)
+      }
+    }
+  })
+})
+
+describe('resolveAccess — the decision the shell applies', () => {
+  it('refuses a path with no entry instead of waving it through', () => {
+    const unknown = resolveAccess('/not-a-module', ['owner'], 'woven')
+
+    // Owner, the role that can see everything there is, still cannot open a screen the
+    // registry says nothing about. "Unregistered" is not a permission level.
+    expect(unknown.item).toBeUndefined()
+    expect(unknown.allowed).toBe(false)
+    expect(unknown.subject.trim()).toBeTruthy()
+  })
+
+  it('refuses when the pathname header is missing', () => {
+    // If the proxy ever stops stamping `x-pathname` the layout resolves '' for every route.
+    // That used to permit everything silently; now it locks everything loudly, which is the
+    // failure somebody notices in the first minute rather than never.
+    expect(resolveAccess('', ['owner'], 'woven').allowed).toBe(false)
+  })
+
+  it('opens a registered screen for a role its entry lists, nested routes included', () => {
+    expect(resolveAccess('/lcs', ['commercial'], 'woven').allowed).toBe(true)
+    expect(resolveAccess('/lcs/9f3c', ['commercial'], 'woven').allowed).toBe(true)
+    expect(resolveAccess('/lcs/9f3c', ['store'], 'woven').allowed).toBe(false)
+  })
+
+  it('names the module it refused, so the card is not a shrug', () => {
+    expect(resolveAccess('/ud', ['cutting'], 'woven').subject).toBe('the UD workbench')
+  })
+
+  it('marks read-only without contradicting itself', () => {
+    // Allowed and read-only for a viewer on the order book; never read-only where refused.
+    expect(resolveAccess('/orders', ['viewer'], 'woven')).toMatchObject({
+      allowed: true,
+      readOnly: true,
+    })
+    expect(resolveAccess('/workforce', ['store'], 'woven')).toMatchObject({
+      allowed: false,
+      readOnly: false,
+    })
+  })
+
+  it('agrees with canSee on every route and role', () => {
+    // The layout no longer calls canSee itself, so this is what keeps the extracted
+    // decision and the registry from drifting apart.
+    for (const role of ALL_ROLES) {
+      for (const item of NAV) {
+        expect(resolveAccess(item.href, [role], 'woven').allowed, `${role} → ${item.id}`).toBe(
+          canSee(item, [role], 'woven'),
+        )
       }
     }
   })
