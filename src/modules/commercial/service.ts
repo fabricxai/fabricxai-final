@@ -787,6 +787,46 @@ export async function openSubmission(
     const [lc] = await tx.select({ id: lcs.id }).from(lcs).where(eq(lcs.id, input.lcId))
     if (!lc) throw notFound('commercial.errors.lc_not_found', { lcId: input.lcId })
 
+    /*
+     * The EXP gate, on the door 8.1 does not own.
+     *
+     * `handoffDocsToBank` enforces this properly — preflight, trail, then re-checked under
+     * a lock — and the worker consumer that normally reaches this function documents that
+     * the gate "has already passed by the time this event exists". True for the event path
+     * and false for the other one: `createSubmission` is a human action calling straight
+     * into here, so a presentation could be opened against a shipment with no EXP number
+     * at all. Bangladesh Bank requires one per export shipment; without it the presentation
+     * cannot legally be made, which is why this is a block and not a warning.
+     *
+     * Inside this transaction rather than through 8.1's `queries.ts` (rule 11) because a
+     * gate that reads in one transaction and writes in another is a gate with a gap. Same
+     * trade, and the same dynamic import, that `shipment/service.ts` makes to read `lcs`.
+     */
+    if (input.shipmentId) {
+      // Note the shape of the remaining hole: a presentation with NO `shipmentId` skips
+      // this, because there is no shipment whose EXP number could be checked. That is
+      // correct for the non-export presentations this column is nullable for, and it is
+      // also the way to dodge the gate — so the honest control is that a presentation with
+      // no shipment is visibly unlinked to one, not that this branch is exhaustive.
+      const { shipments } = await import('@/modules/shipment/schema')
+      const [shipment] = await tx
+        .select({ id: shipments.id, expNumber: shipments.expNumber })
+        .from(shipments)
+        .where(eq(shipments.id, input.shipmentId))
+        .for('update')
+
+      if (!shipment) {
+        throw notFound('commercial.errors.shipment_not_found', { shipmentId: input.shipmentId })
+      }
+      if (!shipment.expNumber) {
+        throw new AppError('gate_blocked', 'gates.exp_number.missing', {
+          gate: GATES.expNumber,
+          shipmentId: shipment.id,
+          lcId: input.lcId,
+        })
+      }
+    }
+
     const [row] = await tx
       .insert(docSubmissions)
       .values({

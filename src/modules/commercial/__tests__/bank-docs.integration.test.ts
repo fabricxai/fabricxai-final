@@ -34,6 +34,7 @@ import {
 import type { RequestCtx } from '@/modules/core/ctx'
 import { withTenantRead } from '@/modules/core/tenancy'
 import { orderLcs, orders } from '@/modules/orders/schema'
+import { shipments } from '@/modules/shipment/schema'
 
 const client = createDirectClient()
 const db = createDirectDb(client)
@@ -87,6 +88,30 @@ afterAll(async () => {
   await db.delete(users).where(eq(users.id, USER))
   await client.end()
 })
+
+/**
+ * A real shipment to present against.
+ *
+ * The suite used to pass `randomUUID()` here — a shipment id that referenced nothing, which
+ * nothing noticed because `doc_submissions.shipment_id` has no FK. Since the EXP gate landed
+ * on this path (audit BE-H2 sibling, plan 2.2), a presentation is opened against a shipment
+ * that exists and carries its EXP number, which is what the bank actually requires.
+ */
+let shipmentSeq = 0
+const newShipment = async (expNumber: string | null = 'EXP-2026-000123') => {
+  shipmentSeq += 1
+  const [row] = await db
+    .insert(shipments)
+    .values({
+      companyId: COMPANY,
+      orderId,
+      partialNo: shipmentSeq,
+      plannedExFactory: '2026-07-01',
+      expNumber,
+    })
+    .returning({ id: shipments.id })
+  return row!.id
+}
 
 const newLc = async (over: Record<string, unknown> = {}) => {
   const [lc] = await db
@@ -272,12 +297,59 @@ describe('2.1 · opening a BTB', () => {
   })
 })
 
+describe('2.1 · the EXP gate on the human door', () => {
+  it('refuses a presentation against a shipment with no EXP number', async () => {
+    // 8.1's `handoffDocsToBank` enforces this properly, and its worker consumer documents
+    // that "the gate has already passed by the time this event exists" — true for the event
+    // path and false for this one. `createSubmission` calls straight into `openSubmission`,
+    // so before plan 2.2 a bank presentation could be opened against a shipment carrying no
+    // EXP number at all (audit BE-H2 sibling).
+    const lcId = await newLc()
+    const shipmentId = await newShipment(null)
+
+    await expect(
+      openSubmission(ctx, {
+        lcId,
+        shipmentId,
+        docs: [{ kind: 'commercial_invoice', status: 'ready' }],
+        currency: 'USD',
+      }),
+    ).rejects.toMatchObject({ code: 'gate_blocked', messageKey: 'gates.exp_number.missing' })
+  })
+
+  it('opens once the shipment carries its EXP number', async () => {
+    const lcId = await newLc()
+    const shipmentId = await newShipment('EXP-2026-777001')
+
+    const { submissionId } = await openSubmission(ctx, {
+      lcId,
+      shipmentId,
+      docs: [{ kind: 'commercial_invoice', status: 'ready' }],
+      currency: 'USD',
+    })
+    expect(submissionId).toBeTruthy()
+  })
+
+  it('refuses a shipment that does not exist', async () => {
+    // The old fixture passed randomUUID() here and nothing objected: doc_submissions
+    // .shipment_id has no FK, so a presentation could reference nothing at all.
+    await expect(
+      openSubmission(ctx, {
+        lcId: await newLc(),
+        shipmentId: randomUUID(),
+        docs: [],
+        currency: 'USD',
+      }),
+    ).rejects.toMatchObject({ code: 'not_found' })
+  })
+})
+
 describe('2.1 · the submission lifecycle', () => {
   const submit = async (invoiced = '50000.00') => {
     const lcId = await newLc()
     const { submissionId } = await openSubmission(ctx, {
       lcId,
-      shipmentId: randomUUID(),
+      shipmentId: await newShipment(),
       docs: [{ kind: 'commercial_invoice', status: 'ready' }],
       invoicedAmount: invoiced,
       currency: 'USD',

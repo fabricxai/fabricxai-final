@@ -229,6 +229,8 @@ export const MESSAGES: Catalogue = {
       'A discrepancy needs its notes — they are what the bank is being answered with.',
     'commercial.errors.invalid_period': 'That period is not a valid one.',
     'commercial.errors.lc_not_amendable': 'This LC is not in a state that accepts an amendment.',
+    'commercial.errors.shipment_not_found':
+      'That shipment no longer exists, so a presentation cannot be opened against it.',
     'commercial.errors.lc_not_found': 'That letter of credit no longer exists.',
     'commercial.errors.lc_number_exists':
       'A letter of credit with that number is already recorded.',
