@@ -8,6 +8,7 @@ import { actionErrorMessage } from '@/lib/action-error'
 import { uploadDocument } from '@/lib/upload-document'
 import { Badge, Button } from '@/components/fx/primitives'
 import {
+  acceptLcDateBreach,
   buildShipmentDocChecklist,
   confirmShipmentLeft,
   loadOrderCartons,
@@ -51,6 +52,8 @@ export function ShipmentActions({ state }: { state: ShipmentActionState }) {
   const [leftOn, setLeftOn] = useState(new Date().toISOString().slice(0, 10))
   const [reason, setReason] = useState('')
   const [showException, setShowException] = useState(false)
+  const [lcReason, setLcReason] = useState('')
+  const [showLcWaiver, setShowLcWaiver] = useState(false)
   const [noted, setNoted] = useState<string | null>(null)
   const [failure, setFailure] = useState<string | null>(null)
 
@@ -256,6 +259,14 @@ export function ShipmentActions({ state }: { state: ShipmentActionState }) {
         <Button variant="ghost" onClick={() => setShowException((v) => !v)}>
           Request a tolerance exception
         </Button>
+
+        {/* The escape hatch for the LC date gate. Confirming departure refuses when the
+            credit cannot accept the date, and the refusal names the days over — this is
+            what the person reading that refusal needs next. Offered like every other
+            button here: the server decides, and refuses anyone but commercial. */}
+        <Button variant="ghost" onClick={() => setShowLcWaiver((v) => !v)}>
+          Accept a late shipment against the LC
+        </Button>
       </div>
 
       {showException ? (
@@ -285,6 +296,41 @@ export function ShipmentActions({ state }: { state: ShipmentActionState }) {
             }
           >
             Send for approval
+          </Button>
+        </div>
+      ) : null}
+
+      {showLcWaiver ? (
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 5, flex: '1 1 320px' }}>
+            <span style={smallLabel}>
+              Why this ships against a credit that cannot take the date
+            </span>
+            <input
+              value={lcReason}
+              onChange={(e) => setLcReason(e.target.value)}
+              placeholder="Buyer confirmed by email they will amend the credit to 15 August."
+              style={control}
+            />
+          </label>
+          <Button
+            variant="secondary"
+            disabled={pending || lcReason.trim().length < 10}
+            onClick={() =>
+              run(async () => {
+                await acceptLcDateBreach({
+                  shipmentId: state.shipmentId,
+                  reason: lcReason.trim(),
+                })
+                setShowLcWaiver(false)
+                setLcReason('')
+                // Said plainly: this does not make the shipment compliant, it records who
+                // decided to send it anyway. The bank can still refuse the presentation.
+                return 'Recorded against this shipment. The departure can now be confirmed; the credit is still breached.'
+              })
+            }
+          >
+            Accept and record
           </Button>
         </div>
       ) : null}
