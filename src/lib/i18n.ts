@@ -335,6 +335,49 @@ export const MESSAGES: Catalogue = {
     'finance.errors.uncomputable': 'There is not enough recorded yet to compute that.',
     'gates.btb_headroom.no_btb':
       'No back-to-back credit is linked, and an import PO cannot be issued without one — the factory would be committed to a supplier with nothing funding it.',
+    // ── Gates the floor and the desk actually hit ──
+    //
+    // Twenty-one gate reasons were thrown with no copy behind them, so a UD overdraw
+    // reached the storekeeper as the literal string `gate_blocked:
+    // gates.ud_balance.insufficient` (audit BE-H3). These are the refusals people meet.
+    'gates.ud_balance.insufficient':
+      'This issue would draw more than the UD allows. Free balance is {free} {unit}; this asks for {requested} {unit}. An owner can approve a deliberate overdraw through the approve inbox.',
+    'gates.pp_approval.not_approved':
+      'The buyer has not approved the PP sample for this style, so cutting cannot start.',
+    'gates.pp_approval.no_sample':
+      'No PP sample has been raised for this style. Cutting starts after the buyer approves one.',
+    'gates.pp_approval.rejected':
+      'The buyer rejected the PP sample. A new round has to be approved before this style is cut.',
+    'gates.pp_approval.awaiting_feedback':
+      'The PP sample is with the buyer and has no verdict yet.',
+    'gates.pp_approval.wrong_sample_type':
+      'That sample is not a PP sample. Only a pre-production approval opens cutting.',
+    'gates.pp_approval.style_not_found': 'That style is not on this order.',
+    'gates.pp_approval.style_mismatch':
+      'The approved sample belongs to a different style than the one being cut.',
+    'gates.pp_approval.no_provider':
+      'PP approval cannot be checked right now, so cutting is held rather than opened.',
+    'gates.pp_approval.demo_bypass':
+      'The PP gate is bypassed for a demo. This never happens outside development.',
+    'gates.issued_fabric.no_rolls':
+      'No fabric has been issued for this order, so there is nothing to lay.',
+    'gates.issued_fabric.not_issued_to_order':
+      'Those rolls were issued against a different order.',
+    'gates.issued_fabric.blocked': 'The issued-fabric check did not pass, so the lay is held.',
+    'gates.final_inspection.none':
+      'No final inspection has been recorded for this order. The shipment is held until one is.',
+    'gates.final_inspection.failed':
+      'The final inspection failed. Commercial or an owner can waive it on the record if the buyer accepts the lot.',
+    'gates.final_inspection.blocked': 'Final inspection has not cleared this shipment.',
+    'gates.btb_headroom.exceeded':
+      'This purchase order would take the back-to-back credits past their ceiling. Limit {limit} {currency}, already used {used}, free {free}.',
+    'gates.btb_headroom.btb_not_found': 'That back-to-back credit no longer exists.',
+    'gates.btb_headroom.master_not_found':
+      'The master credit behind this back-to-back is missing, so its headroom cannot be checked.',
+    'gates.btb_headroom.master_not_active':
+      'The master credit is not active, so nothing is funding this back-to-back.',
+    'gates.btb_headroom.currency_mismatch':
+      'The back-to-back and its master credit are in different currencies ({btbCurrency} against {masterCurrency}), and no rate has been stated to net them.',
     'gates.exp_number.missing':
       'No EXP number on this shipment. Bangladesh Bank requires one before documents can be presented, so the handoff is blocked rather than delayed.',
     'gates.lc_date.after_latest_shipment':
@@ -618,6 +661,22 @@ export const MESSAGES: Catalogue = {
       'একটি রোল যাচাই করা যায়নি ({expected} টির মধ্যে {found} টি পাওয়া গেছে)',
     'gates.fabric_inspection.no_provider':
       'ফেব্রিক ইন্সপেকশন এখন যাচাই করা যাচ্ছে না, তাই ইস্যু আটকানো হয়েছে',
+    // The floor meets these two: the storekeeper at the UD gate, the cutting master at the
+    // PP gate. The desk-facing ones (BTB, final inspection) stay English on the same
+    // boundary as the rest of the office namespaces.
+    'gates.ud_balance.insufficient':
+      'এই ইস্যু UD-এর সীমার বেশি হয়ে যাবে। ফ্রি ব্যালেন্স {free} {unit}, চাওয়া হয়েছে {requested} {unit}। ইচ্ছাকৃত ওভারড্র হলে owner অ্যাপ্রুভ ইনবক্সে অনুমোদন দিতে পারেন।',
+    'gates.pp_approval.not_approved':
+      'এই স্টাইলের PP স্যাম্পল বায়ার এখনও অ্যাপ্রুভ করেননি, তাই কাটিং শুরু করা যাবে না।',
+    'gates.pp_approval.no_sample':
+      'এই স্টাইলের কোনো PP স্যাম্পল তোলা হয়নি। বায়ার অ্যাপ্রুভ করার পরেই কাটিং শুরু হয়।',
+    'gates.pp_approval.rejected':
+      'বায়ার PP স্যাম্পল রিজেক্ট করেছেন। নতুন রাউন্ড অ্যাপ্রুভ না হলে এই স্টাইল কাটা যাবে না।',
+    'gates.pp_approval.awaiting_feedback': 'PP স্যাম্পল বায়ারের কাছে আছে, এখনও কোনো ভারডিক্ট আসেনি।',
+    'gates.pp_approval.no_provider':
+      'PP অ্যাপ্রুভাল এখন যাচাই করা যাচ্ছে না, তাই কাটিং খোলার বদলে আটকানো হয়েছে।',
+    'gates.issued_fabric.no_rolls': 'এই অর্ডারের জন্য কোনো ফেব্রিক ইস্যু হয়নি, তাই লে করার কিছু নেই।',
+    'gates.issued_fabric.not_issued_to_order': 'ওই রোলগুলো অন্য একটি অর্ডারের বিপরীতে ইস্যু হয়েছে।',
 
     // ── 6.1 ──
     'production.notifications.partition_default.title':

@@ -227,3 +227,27 @@ describe('the catalogue covers what the code emits', () => {
   })
 })
 
+
+describe('every gate refusal has copy behind it', () => {
+  it('leaves no gate reason rendering as a dotted key', () => {
+    // Twenty-one of twenty-nine had none, so a UD overdraw reached the storekeeper as the
+    // literal string `gate_blocked: gates.ud_balance.insufficient` (audit BE-H3). A gate
+    // that blocks without saying why is a gate people route around.
+    const thrown = new Set<string>()
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const path = `${dir}/${entry.name}`
+        if (entry.isDirectory()) walk(path)
+        else if (entry.name.endsWith('.ts') && !path.includes('__tests__')) {
+          for (const m of readFileSync(path, 'utf8').matchAll(/'(gates\.[a-z_]+\.[a-z_]+)'/g)) {
+            thrown.add(m[1]!)
+          }
+        }
+      }
+    }
+    walk('src/modules')
+
+    const missing = [...thrown].filter((key) => !(key in MESSAGES.en)).sort()
+    expect(missing).toEqual([])
+  })
+})
