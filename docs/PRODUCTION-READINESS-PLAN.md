@@ -8,7 +8,7 @@ Legend: 🅑 blocker · 🅗 high · 🅜 medium
 
 ---
 
-## Phase 0 — Repo hygiene (half a day, do first)
+## Phase 0 — Repo hygiene ✅ **complete 2026-08-06**
 
 - [x] **0.1 🅑 Commit the working tree.** `c9be869` — Tracked `src/components/shell/{sidebar,page-shell}.tsx` import **untracked** files (`factory-chip.tsx`, `nav-icons.tsx`, `search/`); a partial commit breaks the build from a clean checkout. Commit the shell redesign + `/factory` route + search as one reviewable slice. (Two lint fixes were needed on the way in: setState-in-effect and `role="combobox"` in `top-bar-search.tsx`.)
   *Verify:* `git status --porcelain` empty; fresh `git clone && pnpm build` succeeds.
@@ -18,7 +18,7 @@ Legend: 🅑 blocker · 🅗 high · 🅜 medium
   *Verify:* `grep -rlaP '\x00' src --include='*.ts'` → empty; `grep -c recordChange src/modules/orders/service.ts` → 5 (was 0); `file(1)` reports UTF-8 text on all three. ✅ 731 unit · 610 integration.
 - [x] **0.4 🅜 Seed prod-guard (INFRA-M10, code half).** `0c3ffec` — the only guard was a silent early return in `seedCredential()` (`src/db/seed/core-slice.ts:57`); every other slice still wrote, so a seed aimed at production filled a live factory and reported success. Now `src/db/seed/guard.ts` refuses on `NODE_ENV=production` **or** a non-loopback `DATABASE_URL`/`DIRECT_DATABASE_URL` (compose service names count as non-local — that is what production resolves), overridable with `SEED_FORCE=1`. It runs from `guard-boot.ts` imported **above the slices**, because called from `main()` it landed after `@/lib/env` threw its own unrelated error first. `deploy.md`'s claim that the script already refused is now true.
   *Verify:* `NODE_ENV=production pnpm seed` → exit 1 naming the reason; remote host → exit 1 naming the host; normal local seed → exit 0; `SEED_FORCE=1` → proceeds, warning that seeded passwords stay refused. ✅ 743 unit · 610 integration.
-- [ ] **0.5 🅜 Sync the trackers (PROC-3 re-drift).** STUBS still claims "Bangla on 1 of 12 floor routes", "only CORE_SLICE registered" — both false; PROGRESS store row says "first route reading Bangla". Correct both; add the new findings (N1, N2, `/factory` gate, `lcLatestShipment` decision owed) as STUBS rows.
+- [x] **0.5 🅜 Sync the trackers (PROC-3 re-drift).** `709f007` — STUBS claimed Bangla on 1 of 12 floor routes with no picker, only `CORE_SLICE` registered, no approve-inbox HTTP surface, and `delivery.appUrl` on localhost — all four false. PROGRESS called store the "first route reading Bangla" and said production infrastructure did not exist. Every changed claim was re-checked against code, not against the audit prose; two survived in a more precise form (cutting/shipment *do* exercise their machines — what is unasserted is the typed 409). Four new rows added for the re-verification findings (N1 action roles, N2 auth-table RLS, inert `MARBIM_ENABLED`, search layering).
 
 ---
 
