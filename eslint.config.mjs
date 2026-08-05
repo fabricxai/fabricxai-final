@@ -5,6 +5,7 @@ import tseslint from 'typescript-eslint'
 
 import analyticsNoWrites from './eslint-rules/analytics-no-writes.js'
 import noFloatMoney from './eslint-rules/no-float-money.js'
+import noLocalMoneyHelpers from './eslint-rules/no-local-money-helpers.js'
 import requireTenantPredicate from './eslint-rules/require-tenant-predicate.js'
 
 /**
@@ -17,6 +18,7 @@ const fabricxai = {
     'no-float-money': noFloatMoney,
     'analytics-no-writes': analyticsNoWrites,
     'require-tenant-predicate': requireTenantPredicate,
+    'no-local-money-helpers': noLocalMoneyHelpers,
   },
 }
 
@@ -79,6 +81,47 @@ export default tseslint.config(
     // inline so the whole exemption is one visible list rather than scattered comments.
     files: ['src/lib/money.ts', 'src/lib/quantity.ts'],
     rules: { 'fabricxai/no-float-money': 'off' },
+  },
+
+  // ── CLAUDE.md rule 4 · one implementation of scaled-BigInt money ──────────
+  //
+  // `lib/money.ts` and `lib/quantity.ts` are the sanctioned conversions. Fifteen files
+  // carry a private copy of the same two functions (audit BE-M8) — each individually
+  // exact, none sharing the tests, none carrying a currency, and all of them a place to
+  // miss when a rounding convention changes.
+  //
+  // A SHRINK-ONLY list, like the tenant-predicate ratchet: converting twenty files is
+  // module-by-module work, but a sixteenth is banned from today. Removing a file from this
+  // list is the definition of progress; adding one is the thing this exists to stop.
+  {
+    files: ['src/**/*.ts'],
+    ignores: [
+      'src/lib/money.ts',
+      'src/lib/quantity.ts',
+      'src/modules/commercial/bank-docs.ts',
+      'src/modules/commercial/ud.ts',
+      'src/modules/cutting/cutting.ts',
+      'src/modules/cutting/service.ts',
+      'src/modules/finance/finance.ts',
+      'src/modules/finance/service.ts',
+      'src/modules/procurement/procurement.ts',
+      'src/modules/procurement/service.ts',
+      'src/modules/production/metrics.ts',
+      'src/modules/quality/quality.ts',
+      'src/modules/quality/service.ts',
+      'src/modules/rfq/rfq.ts',
+      'src/modules/rfq/service.ts',
+      'src/modules/shipment/service.ts',
+      'src/modules/shipment/shipment.ts',
+      // Caught only once this became a real rule: these are arrow-function copies, which
+      // the selector version could not see. Same debt, five more files.
+      'src/modules/commercial/lc-conflicts.ts',
+      'src/modules/planning/service.ts',
+      'src/modules/store/service.ts',
+      'src/modules/workforce/service.ts',
+      '**/__tests__/**',
+    ],
+    rules: { 'fabricxai/no-local-money-helpers': 'error' },
   },
 
   // ── The factory's today is not UTC's (audit INFRA-H2) ─────────────────────
