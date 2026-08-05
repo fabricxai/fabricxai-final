@@ -13,11 +13,11 @@
  */
 import { randomUUID } from 'node:crypto'
 
-import { eq, sql } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { createDirectClient, createDirectDb } from '@/db/direct'
-import { companies, users } from '@/db/schema/core'
+import { auditLog, companies, users } from '@/db/schema/core'
 import { buyers } from '@/modules/buyers/schema'
 import '@/modules/commercial/register'
 import { btbLcs, docSubmissions, lcAmendments, lcs } from '@/modules/commercial/schema'
@@ -25,6 +25,7 @@ import {
   agingDiscrepancies,
   amendLc,
   buyerRealizationLag,
+  createLc,
   openBtb,
   openSubmission,
   postRealization,
@@ -294,6 +295,49 @@ describe('2.1 · opening a BTB', () => {
         { discrepancyEscalateAfterDays: 5, explainShortfallAbovePct: '5' },
       ),
     ).rejects.toThrow(/no_btb_limit/)
+  })
+})
+
+describe('2.1 · a credit and a presentation leave a trail', () => {
+  it('audits the LC at the moment it comes into existence', async () => {
+    // rule 10 names `lcs` by hand, and this was the write that skipped it: an LC could
+    // appear with an outbox event and no before/after row, so "who entered this value"
+    // had no answer (audit BE-B5).
+    // Through the service, not the fixture: `newLc()` inserts the row directly, which is
+    // fine for setting up other tests and proves nothing about the write path.
+    const { lcId } = await createLc(ctx, {
+      buyerId,
+      number: `LC-AUDIT-${Date.now()}`,
+      value: '250000.00',
+      currency: 'USD',
+      latestShipmentDate: '2026-09-01',
+      expiryDate: '2026-09-20',
+      docsRequired: {},
+    })
+
+    const rows = await db
+      .select({ action: auditLog.action, after: auditLog.after })
+      .from(auditLog)
+      .where(and(eq(auditLog.targetTable, 'lcs'), eq(auditLog.targetId, lcId)))
+
+    expect(rows.some((r) => r.action === 'insert')).toBe(true)
+    expect((rows[0]!.after as Record<string, unknown>).value).toBe('250000.00')
+  })
+
+  it('audits a bank presentation when it is opened', async () => {
+    const { submissionId } = await openSubmission(ctx, {
+      lcId: await newLc(),
+      shipmentId: await newShipment(),
+      docs: [{ kind: 'commercial_invoice', status: 'ready' }],
+      currency: 'USD',
+    })
+
+    const rows = await db
+      .select({ action: auditLog.action })
+      .from(auditLog)
+      .where(and(eq(auditLog.targetTable, 'doc_submissions'), eq(auditLog.targetId, submissionId)))
+
+    expect(rows.some((r) => r.action === 'insert')).toBe(true)
   })
 })
 

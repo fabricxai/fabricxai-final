@@ -54,7 +54,7 @@ import {
 import { createLcPayload, createUdPayload, udAuthorizedItems, udOverrideDraft } from './zod'
 
 /** ⚖ — compliance-bearing; a customs inspector may ask who drew what, and when. */
-registerAuditedTables('uds', 'ud_consumptions')
+registerAuditedTables('uds', 'ud_consumptions', 'lcs', 'btb_lcs', 'lc_amendments', 'doc_submissions')
 
 /** The factory's today. UD validity is a calendar question, in the factory's timezone. */
 function todayInFactoryTz(timeZone = 'Asia/Dhaka'): string {
@@ -862,6 +862,21 @@ export async function openSubmission(
       .returning({ id: docSubmissions.id })
 
     if (!row) throw new Error('doc_submissions insert returned nothing')
+
+    // A presentation is the moment documents leave for the bank. Opening one silently was
+    // the same gap as createLc: the lifecycle updates were audited, the creation was not.
+    await recordChange(ctx, tx, {
+      action: 'insert',
+      targetTable: 'doc_submissions',
+      targetId: row.id,
+      after: {
+        lcId: input.lcId,
+        shipmentId: input.shipmentId ?? null,
+        invoicedAmount: input.invoicedAmount ?? null,
+        currency: input.currency,
+      },
+    })
+
     return { submissionId: row.id }
   })
 }
@@ -1430,6 +1445,22 @@ export async function createLc(
       .returning({ id: lcs.id })
 
     if (!row) throw new Error('lcs insert returned nothing')
+
+    // CLAUDE.md rule 10 names `lcs` explicitly, and this was the one write that skipped it:
+    // a credit could come into existence with an outbox event and no before/after row, so
+    // the question "who entered this value, and when" had no answer (audit BE-B5).
+    await recordChange(ctx, tx, {
+      action: 'insert',
+      targetTable: 'lcs',
+      targetId: row.id,
+      after: {
+        number: payload.number,
+        value: payload.value,
+        currency: payload.currency,
+        latestShipmentDate: payload.latestShipmentDate ?? null,
+        expiryDate: payload.expiryDate ?? null,
+      },
+    })
 
     await emit(ctx, tx, {
       eventName: COMMERCIAL_EVENTS.lcCreated,
