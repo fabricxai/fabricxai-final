@@ -19,6 +19,7 @@
 import { asc, desc, eq, isNull, sql } from 'drizzle-orm'
 
 import type { AnyCtx, RequestCtx } from '@/modules/core/ctx'
+import { scoped } from '@/modules/core/scoped'
 import { withTenantRead } from '@/modules/core/tenancy'
 import { lines } from '@/modules/planning/schema'
 
@@ -56,7 +57,7 @@ export async function roster(ctx: AnyCtx, limit = 200): Promise<RosterRow[]> {
       })
       .from(workers)
       .leftJoin(lines, eq(lines.id, workers.lineId))
-      .where(isNull(workers.exitDate))
+      .where(scoped(workers, ctx, isNull(workers.exitDate)))
       .orderBy(asc(workers.employeeNo))
       .limit(limit),
   )
@@ -77,7 +78,7 @@ export async function headcount(ctx: AnyCtx): Promise<HeadcountRow[]> {
         onLeave: sql<number>`count(*) filter (where ${workers.status} = 'on_leave')`.mapWith(Number),
       })
       .from(workers)
-      .where(isNull(workers.exitDate))
+      .where(scoped(workers, ctx, isNull(workers.exitDate)))
       .groupBy(sql`coalesce(${workers.section}, 'unassigned')`)
       .orderBy(sql`coalesce(${workers.section}, 'unassigned')`)
 
@@ -117,7 +118,7 @@ export async function activeGazette(ctx: RequestCtx): Promise<GazetteView | null
     const [gazette] = await tx
       .select()
       .from(wageGazettes)
-      .where(eq(wageGazettes.status, 'active'))
+      .where(scoped(wageGazettes, ctx, eq(wageGazettes.status, 'active')))
       .orderBy(desc(wageGazettes.effectiveFrom))
       .limit(1)
 
@@ -133,7 +134,7 @@ export async function activeGazette(ctx: RequestCtx): Promise<GazetteView | null
         food: wageGrades.food,
       })
       .from(wageGrades)
-      .where(eq(wageGrades.gazetteId, gazette.id))
+      .where(scoped(wageGrades, ctx, eq(wageGrades.gazetteId, gazette.id)))
       .orderBy(asc(wageGrades.grade))
 
     return {

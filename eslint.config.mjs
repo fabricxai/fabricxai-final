@@ -5,16 +5,18 @@ import tseslint from 'typescript-eslint'
 
 import analyticsNoWrites from './eslint-rules/analytics-no-writes.js'
 import noFloatMoney from './eslint-rules/no-float-money.js'
+import requireTenantPredicate from './eslint-rules/require-tenant-predicate.js'
 
 /**
- * The two custom rules below are not style preferences — they are the only automated
- * enforcement behind CLAUDE.md rules 4 and 9. Everything else in this file is
- * conventional; those two are the reason it exists.
+ * The three custom rules below are not style preferences — they are the only automated
+ * enforcement behind CLAUDE.md rules 2, 4 and 9. Everything else in this file is
+ * conventional; those three are the reason it exists.
  */
 const fabricxai = {
   rules: {
     'no-float-money': noFloatMoney,
     'analytics-no-writes': analyticsNoWrites,
+    'require-tenant-predicate': requireTenantPredicate,
   },
 }
 
@@ -67,6 +69,22 @@ export default tseslint.config(
     // off here rather than disabled inline so the exemption is visible in one place.
     files: ['src/lib/money.ts'],
     rules: { 'fabricxai/no-float-money': 'off' },
+  },
+
+  // ── CLAUDE.md rule 2 · the query names its company (wall 1) ───────────────
+  //
+  // An ADOPTION RATCHET, deliberately not a repo-wide rule. Rule 2 says RLS is "the second
+  // wall, never the only wall", and it was the only wall: eight incidental company
+  // predicates across 466 query sites (audit BE-B1). Converting all of them in one pass
+  // would be a mechanical diff across money and payroll that nobody could review honestly.
+  //
+  // So a file appears here once its queries carry the predicate, and then cannot regress.
+  // What is still outside the list is recorded in docs/STUBS.md rather than implied done.
+  // 10.1 workforce is first because it is the 🔒 module: a leak here is another factory's
+  // wage bill.
+  {
+    files: ['src/modules/workforce/service.ts', 'src/modules/workforce/queries.ts'],
+    rules: { 'fabricxai/require-tenant-predicate': 'error' },
   },
 
   // ── CLAUDE.md rule 9 · analytics is read-only ─────────────────────────────

@@ -13,13 +13,14 @@
  * the shape of the data tells an attacker what exists and tells a curious colleague what
  * to ask for. Every successful read of `payroll_lines` is audited (rule 9).
  */
-import { and, asc, desc, eq, lte, ne, sql } from 'drizzle-orm'
+import { asc, desc, eq, lte, ne, sql } from 'drizzle-orm'
 
 import { recordChange, recordRead, registerAuditedTables } from '../core/audit'
 import type { AnyCtx, RequestCtx, Role } from '../core/ctx'
 import { AppError, conflict, notFound } from '../core/errors'
 import { emit } from '../core/outbox'
 import { defineStateMachine } from '../core/state-machine'
+import { scoped } from '../core/scoped'
 import { type TenantDb, withTenantRead, withTenantTx } from '../core/tenancy'
 
 import { WORKFORCE_EVENTS } from './events'
@@ -196,7 +197,7 @@ export async function activateGazette(
     const [gazette] = await tx
       .select()
       .from(wageGazettes)
-      .where(eq(wageGazettes.id, gazetteId))
+      .where(scoped(wageGazettes, ctx, eq(wageGazettes.id, gazetteId)))
       .for('update')
 
     if (!gazette) throw notFound('workforce.errors.gazette_not_found', { gazetteId })
@@ -204,7 +205,7 @@ export async function activateGazette(
       throw conflict('workforce.errors.gazette_superseded', { gazetteId })
     }
 
-    const grades = await tx.select().from(wageGrades).where(eq(wageGrades.gazetteId, gazetteId))
+    const grades = await tx.select().from(wageGrades).where(scoped(wageGrades, ctx, eq(wageGrades.gazetteId, gazetteId)))
     if (grades.length === 0) {
       // An empty gazette would make every payroll run throw "grade not defined". Refuse
       // it here, where the message can say why.
@@ -220,7 +221,9 @@ export async function activateGazette(
       .update(wageGazettes)
       .set({ status: 'superseded', updatedAt: new Date() })
       .where(
-        and(
+        scoped(
+          wageGazettes,
+          ctx,
           eq(wageGazettes.status, 'active'),
           lte(wageGazettes.effectiveFrom, gazette.effectiveFrom),
         ),
@@ -235,7 +238,7 @@ export async function activateGazette(
         activatedAt: new Date(),
         updatedAt: new Date(),
       })
-      .where(eq(wageGazettes.id, gazetteId))
+      .where(scoped(wageGazettes, ctx, eq(wageGazettes.id, gazetteId)))
 
     await recordChange(ctx, tx, {
       action: 'update',
@@ -274,6 +277,7 @@ export async function activateGazette(
  * ones are excluded because nobody has checked them yet.
  */
 async function gazetteForPeriod(
+  ctx: AnyCtx,
   tx: TenantDb,
   period: string,
 ): Promise<{ id: string; version: string; grades: WageGrade[] }> {
@@ -281,7 +285,9 @@ async function gazetteForPeriod(
     .select()
     .from(wageGazettes)
     .where(
-      and(
+      scoped(
+        wageGazettes,
+        ctx,
         ne(wageGazettes.status, 'draft'),
         lte(wageGazettes.effectiveFrom, `${period}-01`),
       ),
@@ -296,7 +302,7 @@ async function gazetteForPeriod(
   const grades = await tx
     .select()
     .from(wageGrades)
-    .where(eq(wageGrades.gazetteId, gazette.id))
+    .where(scoped(wageGrades, ctx, eq(wageGrades.gazetteId, gazette.id)))
     .orderBy(asc(wageGrades.grade))
 
   return {
@@ -325,21 +331,22 @@ async function gazetteForPeriod(
  * this existed.
  */
 async function gatherWorkerInputs(
+  ctx: AnyCtx,
   tx: TenantDb,
   period: string,
   festival: string | null,
 ): Promise<WorkerPayrollInput[]> {
-  const staff = await tx.select().from(workers).where(eq(workers.status, 'active'))
+  const staff = await tx.select().from(workers).where(scoped(workers, ctx, eq(workers.status, 'active')))
 
   const attendanceRows = await tx
     .select()
     .from(attendance)
-    .where(sql`to_char(${attendance.date}, 'YYYY-MM') = ${period}`)
+    .where(scoped(attendance, ctx, sql`to_char(${attendance.date}, 'YYYY-MM') = ${period}`))
 
   const leaveRows = await tx
     .select()
     .from(leaves)
-    .where(sql`to_char(${leaves.fromDate}, 'YYYY-MM') = ${period}`)
+    .where(scoped(leaves, ctx, sql`to_char(${leaves.fromDate}, 'YYYY-MM') = ${period}`))
 
   const byWorker = new Map<string, WorkerPayrollInput>()
 
@@ -411,13 +418,13 @@ export async function computePayrollRun(
   assertPayrollAccess(ctx)
 
   return withTenantTx(ctx, async (tx) => {
-    const gazette = await gazetteForPeriod(tx, input.period)
+    const gazette = await gazetteForPeriod(ctx, tx, input.period)
     const rules = payrollRules.parse({ ...defaultRules(), ...input.rules })
 
     const [existing] = await tx
       .select()
       .from(payrollRuns)
-      .where(eq(payrollRuns.period, input.period))
+      .where(scoped(payrollRuns, ctx, eq(payrollRuns.period, input.period)))
       .for('update')
 
     if (existing && existing.status !== 'draft' && existing.status !== 'computed') {
@@ -429,7 +436,7 @@ export async function computePayrollRun(
       })
     }
 
-    const workerInputs = await gatherWorkerInputs(tx, input.period, input.festival ?? null)
+    const workerInputs = await gatherWorkerInputs(ctx, tx, input.period, input.festival ?? null)
 
     let lines: PayrollLine[]
     try {
@@ -467,7 +474,7 @@ export async function computePayrollRun(
 
     if (existing) {
       payrollRunMachine.assert(existing.status as PayrollRunStatus, 'computed')
-      await tx.delete(payrollLines).where(eq(payrollLines.runId, runId))
+      await tx.delete(payrollLines).where(scoped(payrollLines, ctx, eq(payrollLines.runId, runId)))
       await tx
         .update(payrollRuns)
         .set({
@@ -476,7 +483,7 @@ export async function computePayrollRun(
           status: 'computed',
           updatedAt: new Date(),
         })
-        .where(eq(payrollRuns.id, runId))
+        .where(scoped(payrollRuns, ctx, eq(payrollRuns.id, runId)))
     }
 
     if (lines.length > 0) {
@@ -554,7 +561,7 @@ export async function getPayrollLines(
     const rows = await tx
       .select()
       .from(payrollLines)
-      .where(eq(payrollLines.runId, runId))
+      .where(scoped(payrollLines, ctx, eq(payrollLines.runId, runId)))
       .orderBy(asc(payrollLines.workerId))
 
     await recordRead(ctx, tx, {
@@ -579,7 +586,7 @@ export async function approvePayrollRun(
   }
 
   return withTenantTx(ctx, async (tx) => {
-    const [run] = await tx.select().from(payrollRuns).where(eq(payrollRuns.id, runId)).for('update')
+    const [run] = await tx.select().from(payrollRuns).where(scoped(payrollRuns, ctx, eq(payrollRuns.id, runId))).for('update')
     if (!run) throw notFound('workforce.errors.run_not_found', { runId })
 
     const from = run.status as PayrollRunStatus
@@ -588,7 +595,7 @@ export async function approvePayrollRun(
     await tx
       .update(payrollRuns)
       .set({ status: 'approved', approvedBy: ctx.userId, approvedAt: new Date(), updatedAt: new Date() })
-      .where(eq(payrollRuns.id, runId))
+      .where(scoped(payrollRuns, ctx, eq(payrollRuns.id, runId)))
 
     await recordChange(ctx, tx, {
       action: 'approve',
@@ -615,5 +622,5 @@ export async function getActiveGazette(
   period: string,
 ): Promise<{ id: string; version: string; grades: WageGrade[] }> {
   assertPayrollAccess(ctx)
-  return withTenantRead(ctx, (tx) => gazetteForPeriod(tx, period))
+  return withTenantRead(ctx, (tx) => gazetteForPeriod(ctx, tx, period))
 }
