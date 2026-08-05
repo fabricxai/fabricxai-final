@@ -1,0 +1,129 @@
+# FabricXAI — Production Readiness Plan (code workstreams)
+
+**Created:** 2026-08-05, from the re-verification audit (see `docs/DEPLOYMENT-READINESS-AUDIT.md` for finding IDs; new findings N1–N4 and the regression evidence are from the 2026-08-05 verification pass).
+**Scope:** everything code-side. **Deployment/ops items are deliberately excluded** — the S3 proxy fix, backup service + pgBackRest wiring + restore rehearsal, compose/Caddy health gating, pgbouncer healthcheck verification, CI deploy job, and `.env.production.example` fixes are tracked separately and remain go-live gates.
+**How to use:** phases are ordered by risk; tasks inside a phase are sized to roughly one working session each. Do them in order unless a dependency note says otherwise. Tick tasks here and note the commit, same convention as the audit file.
+
+Legend: 🅑 blocker · 🅗 high · 🅜 medium
+
+---
+
+## Phase 0 — Repo hygiene (half a day, do first)
+
+- [x] **0.1 🅑 Commit the working tree.** `c9be869` — Tracked `src/components/shell/{sidebar,page-shell}.tsx` import **untracked** files (`factory-chip.tsx`, `nav-icons.tsx`, `search/`); a partial commit breaks the build from a clean checkout. Commit the shell redesign + `/factory` route + search as one reviewable slice. (Two lint fixes were needed on the way in: setState-in-effect and `role="combobox"` in `top-bar-search.tsx`.)
+  *Verify:* `git status --porcelain` empty; fresh `git clone && pnpm build` succeeds.
+- [ ] **0.2 🅑 Close the fail-open route gate.** `src/app/(app)/layout.tsx:81` — `allowed = !item || canSee(...)`: any route without a NAV entry is visible to every role (`/factory` proves it). Add a `factory` NAV entry, flip the default to fail-closed (unregistered route ⇒ 404 or owner/admin only), and add a route-sweep case to `src/components/shell/__tests__/access.test.ts` that enumerates every `src/app/(app)/**/page.tsx` and asserts a NAV entry exists.
+  *Verify:* new test fails if a page is added without a NAV entry.
+- [ ] **0.3 🅜 Replace the NUL-byte separators (BE-H6).** `orders/service.ts:173`, `cutting/cutting.ts:119,183`, `quality/quality.ts:468,477` use `\0` in composite map keys — grep/ripgrep treat the files as binary and silently skip them (this corrupted two audits). Replace with `''`; add a CI step asserting no tracked `.ts` contains a NUL.
+  *Verify:* `grep -rln $'\0' src --include='*.ts'` → empty; CI step red-tested.
+- [ ] **0.4 🅜 Seed prod-guard (INFRA-M10, code half).** The only guard is a silent early-return in `seedCredential()` (`src/db/seed/core-slice.ts:57`); every other slice still writes. Add a top-level refusal in `src/db/seed/index.ts`: refuse when `NODE_ENV==='production'` or the DB host is non-local, unless `SEED_FORCE=1`.
+  *Verify:* `NODE_ENV=production pnpm seed` exits non-zero with a clear message.
+- [ ] **0.5 🅜 Sync the trackers (PROC-3 re-drift).** STUBS still claims "Bangla on 1 of 12 floor routes", "only CORE_SLICE registered" — both false; PROGRESS store row says "first route reading Bangla". Correct both; add the new findings (N1, N2, `/factory` gate, `lcLatestShipment` decision owed) as STUBS rows.
+
+---
+
+## Phase 1 — Authorization & tenancy (BLOCKER class — nothing real goes live before this)
+
+- [ ] **1.1 🅑 Role authorization on every server action (finding N1).** `requireRole` (`src/modules/core/session.ts:95`) has zero callers; all 16 `modules/*/actions.ts` are session-only. Any member can open the PP gate (`sampling/actions.ts:68` `recordBuyerVerdict`), issue a PO, open a BTB, confirm ex-factory, or open an LC submission.
+  Approach: derive the per-action role map from the same source as the nav/sync layers (sync handlers already declare roles — mirror those; for desk actions use the module's HANDOFF/brief roles). Enforce in the action (auth → **role** → zod → service), keep `owner`/`admin` supervisory like `offline-sync.ts:64` does. Do the money-and-gate actions first: sampling, commercial, procurement, shipment, quality, store, workforce, finance; then the rest.
+  *Accept:* every exported action names its roles; refusal is a typed 403 (`errors.role_forbidden`) with i18n copy.
+  *Verify:* new integration suite `role-gates-actions.integration.test.ts` invoking each sensitive action as a wrong-role ctx → 403, right-role → passes (today `role-gates.integration.test.ts` only covers page GETs).
+- [ ] **1.2 🅑 RLS on the auth tables (finding N2).** `users`, `profiles`, `sessions`, `accounts`, `verifications` have no RLS and the app role holds DML (`0002_rls_policies.sql:60-62`, defaults from `:80-84`). Any tenant-scoped query can read every tenant's emails, session tokens, and credential rows.
+  Approach (design decision — record it in the migration header): Better Auth queries these on the pooled handle *outside* `withTenantTx`, so naive deny-all breaks login (same trap as `invitations`/DB-H2). Options: (a) FORCE RLS with policies keyed to a session-var the auth adapter sets, (b) narrow SECURITY DEFINER lookup functions + deny-all, (c) at minimum revoke UPDATE/DELETE broadly and restrict SELECT columns. Follow the pattern that 0069 used for `invitations`, extended to make login still work. Add an integration test: from a scoped tenant tx, `select count(*) from sessions` for another user's rows ⇒ denied/0.
+- [ ] **1.3 🅗 Second tenancy wall (BE-B1).** Zero systematic `company_id` predicates; RLS is the only wall. Build a `scoped(tx, table, ctx)` helper in `modules/core` that injects `eq(table.companyId, ctx.companyId)`, adopt it in the highest-value reads/writes (payroll, commercial, finance, store issues), and add the lint rule (a `.where()` on a tenant table without a company predicate or the helper ⇒ error, with justified disables).
+  *Verify:* lint red on a hand-written unscoped query; existing 609 integration tests still green.
+- [ ] **1.4 🅗 Action-layer lint scope (BE-H1) + search relocation.** `eslint.config.mjs:84-85` bans `@/db/client` only in `src/app/actions/**` and `src/app/api/**`; the 16 real action files and the new `src/components/shell/search/` are outside it. Extend the glob to `src/modules/*/actions.ts` and `src/components/**`; move `search.ts`'s raw six-module SQL into each owner's `queries.ts` (rule 11) and call those from the search action; fix `shipment/actions.ts:161-172` (inline drizzle in an action). While in search: 3-char minimum, rate-limit bucket (mirror `LIMITS.documents`), `import 'server-only'`.
+- [ ] **1.5 🅗 Non-superuser-owner CI job (DB-B1).** CI runs everything as the initdb superuser, so a regression in the eight SECURITY DEFINER helpers that depend on the owner's BYPASSRLS can't be caught. Add a CI variant: create a non-superuser owner with explicit BYPASSRLS per `scripts/setup-db-roles.mjs:88-98`, run migrations + the integration suite against it.
+- [ ] **1.6 🅜 Auth-rate-limit parity in CI.** `rateLimit.enabled` is prod-only (`src/lib/auth.ts:101`); set `RATE_LIMIT_ENFORCE=1` in the CI integration job so the limiter is exercised before it matters.
+
+---
+
+## Phase 2 — Money, dates, audit, gates (legal/money correctness)
+
+- [ ] **2.1 🅗 LC latest-shipment gate (BE-H2).** `GATES.lcLatestShipment` has exactly one reference — its declaration (`core/gates.ts:32`). Implement as a real waivable gate in `confirmExFactory` (`shipment/service.ts:852-898`), copying the final-inspection pattern 60 lines up (`:828-849`): assert + blocked outbox event + role-restricted waiver with a ≥10-char reason. If the business decision is alert-only, demote it formally in CLAUDE.md rule 8 and STUBS instead — but decide.
+  *Verify:* integration test — ex-factory after `latestShipmentDate` ⇒ `gate_blocked`; waiver path audited.
+- [ ] **2.2 🅗 EXP bypass in `openSubmission` (new).** `commercial/service.ts:775-806` opens a bank-presentation row with no EXP check, reachable from the human action `createSubmission` (`commercial/actions.ts:152`). Add the same preflight + under-lock EXP check `handoffDocsToBank` has (`shipment/service.ts:1149-1210`), or route the action through it.
+- [ ] **2.3 🅗 Typed action results + gate facts (BE-H3).** Gate refusals reach the UI as `gate_blocked: gates.ud_balance.insufficient` — 21 of 27 `gates.*` keys have no copy and the computed `facts` ("short by 340 m of 1,200 m") are discarded at the server-action boundary (`src/lib/action-error.ts:14-19` documents it). Introduce an `ActionResult` union (`{ok:true,...} | {ok:false, error: AppErrorJson}`) returned (not thrown) for `gate_blocked` and `illegal_transition`; interpolate facts in the copy; add all 21 missing keys with bn for every floor-reachable one.
+  *Verify:* UD overdraw on `/store/issue` shows the shortfall numbers in Bangla; no raw dotted key rendered anywhere (grep test on the catalogue vs thrown keys).
+- [ ] **2.4 🅗 Close the audit gaps and make the registry enforcing (BE-B5).** `createLc` (`commercial/service.ts:1339-1381`) and `openSubmission` write ⚖ rows with no `recordChange`; `lcs`, `btb_lcs`, `lc_amendments`, `doc_submissions` are unregistered; `isAudited`/`listAuditedTables` have zero callers. Add the two `recordChange` calls + registrations, then a parameterised integration test iterating `listAuditedTables()` asserting each write path produces an `audit_log` row. Pair with DB-M6 (BEFORE UPDATE/DELETE trigger on `audit_log` + a test that the app role cannot mutate it).
+- [ ] **2.5 🅗 Factory-timezone dates (INFRA-H2).** 85 `toISOString().slice(0,10)` sites; `lib/dates.ts` still a stub with zero importers; six private copies; the per-company `timezone` column (`settings/schema.ts:97`) is collected and ignored. Implement `factoryToday(tz)`, `toFactoryDate`, `startOfFactoryDay` reading the company timezone (default Asia/Dhaka); delete the six copies; migrate the ~42 genuine "today" sites (floor boards, `discrepantSince` at `commercial/actions.ts:199`, `inspectedOn` at `quality/service.ts:759` first); ESLint-ban bare `toISOString().slice(0,10)` in `src/modules` and `src/app`.
+  *Verify:* unit tests around the midnight boundary (18:05 UTC = 00:05 Dhaka next day); lint red on the banned pattern.
+- [ ] **2.6 🅜 BTB TOCTOU in `issuePo` (new).** `checkBtbHeadroom` runs in its own `withTenantRead` while `issuePo`'s tx is open — two concurrent import POs can both pass. Re-check under `FOR UPDATE` on the master LC inside the issue tx, exactly as `openBtb` already does (`commercial/service.ts:678-719`).
+- [ ] **2.7 🅜 Float quantity in `commitStockAdjustment` (new) + lint scope.** `store/service.ts:667,695` does `Number()` arithmetic on bonded roll qty feeding UD reconciliation — convert to the scaled-BigInt helpers (`lib/quantity.ts`). Extend `no-float-money` coverage to `src/lib/**` and `src/components/**` (currently exempt wholesale — `eslint.config.mjs:60-62`), and delete the misleading per-file off-switch for `lib/money.ts`.
+- [ ] **2.8 🅜 State machines for the six raw ⚖ status columns (BE-M1 subset).** `uds.status` (`commercial/service.ts:261,334`), `receivables`/`payables.status` (`finance/service.ts:246,378`), `rolls.status`, `wage_gazettes.status`, `lcs.status` (incl. BE-M2: nothing ever expires an LC — add the `expireLapsedLcs` scheduled task). Machines + illegal-transition 409 tests per column.
+- [ ] **2.9 🅜 Money type consolidation (BE-M8, ongoing).** 22 private `toMinor`/`fromMinor` copies across 18 files. Convert module-by-module to `lib/money`/`lib/quantity` as each module is touched in later phases; lint-ban new local re-implementations now (rule: defining a function named `toMinor|fromMinor|mulMinor` outside `src/lib` ⇒ error). Finance first (real invoice arithmetic).
+
+---
+
+## Phase 3 — Approve inbox & trust-spine verification (every ⚖ mutation funnels through this)
+
+- [ ] **3.1 🅗 `approvals/register.ts` + registry entry (BE-B7 fallout).** The module is absent from `src/modules/registry.ts` — no domainPrimer, no pending targets, no zod map. Add it (read-only tools + primer; it registers no commit targets of its own).
+- [ ] **3.2 🅑 Approvals test suite (TEST-B1).** 887 LOC backend + 833 LOC UI, zero tests. Unit: aging buckets, `approversFor` role resolution, correction-rate math. Integration: tenancy on `inboxRows`/`draftDetail` (cross-company ⇒ 0 rows), no-role ⇒ 403, `upsertApprovalRule` audited, `emitAgingEscalations` fires once per level per company.
+- [ ] **3.3 🅗 Drive every registered pending target through `approve()` (TEST-H4).** 10 modules (costing, quality, procurement, rfq, cutting, workforce, store, finance, sampling, commercial) register commit handlers never exercised end-to-end. Build the shared `proposeApproveCommit` helper + one parameterised integration test per registered target asserting the committed row's shape.
+- [ ] **3.4 🅜 Batch-approve partial failure (new).** `inbox-client.tsx:177-179` fires `Promise.all(batch.map(approveDraft))` and surfaces one error for the whole batch. Settle individually and report per-row outcomes.
+- [ ] **3.5 🅜 Remaining replay/machine tests (TEST-H6/H7 residue).** Sampling's two sync handlers have no replay test (duplicate `advance_stage` would double-advance the stage the PP gate reads) — copy the store pattern (`store.integration.test.ts:294-331`). Add the `packingListMachine` illegal-transition 409 test. Also BE-M3: sampling's server actions call the same services as its sync handlers with no `offlineKey` — claim one in the action or route through sync.
+
+---
+
+## Phase 4 — Floor pilot completion
+
+- [ ] **4.1 🅗 Offline path for `quality/final` and `quality/measurements` (FE-H5 residue).** The other two bypasses (`store/rolls`, `quality/fabric`) have sound written rationale — close them as by-design in STUBS. These two have none, and measurements is a real data-loss risk: per-piece writes, no `offlineKey`, documented partial-write on throw (`quality/actions.ts:111-113`). Register sync handlers (roles: `quality`) and switch the clients to `capture()`; make measurement sets atomic per size.
+  *Verify:* replay test (duplicate batch ⇒ `duplicate` status, no double rows); airplane-mode manual test queues and drains.
+- [ ] **4.2 🅗 Bangla for the chrome and the door (new gap).** All 30 sidebar labels (`nav.ts:92-291`), the four auth pages, `ReadOnlyNote`, and the search placeholder are hardcoded English — a Bangla-only worker can't read the link to their translated screen or the login form. Move nav labels to `i18n-ui` keys (the `nav` area is already named at `i18n-ui.ts:34`), convert `(auth)` pages to `requestLocale`+`tui`, translate `shipment.errors` (26 keys — reachable from the packing floor screen).
+- [ ] **4.3 🅜 Pin the i18n allowlist.** The English-only refusal set is computed, not enumerated (`i18n.test.ts:122`) — it can only grow silently. Snapshot the count (or the key list) so adding a new untranslated floor-reachable key fails CI.
+- [ ] **4.4 🅗 Tablet responsiveness (FE-H6).** Fixed 232px sidebar, one media query in the whole app, and the new top bar adds a 240px hard floor for search. Collapse the sidebar to icons under ~900px (nav-icons.tsx exists now — use it), let the top-bar grid drop the search column minimum, audit the 13 floor screens at 768×1024 and 1024×768.
+- [ ] **4.5 🅜 Refused-row reconciliation report (FE-M6).** A rejected offline GRN is dismiss-only today; the plan's report screen (per-day refused rows with reasons, per handler) closes the "silently discarded work" hole.
+
+---
+
+## Phase 5 — Desk write surfaces (the product can advance records; let it originate them)
+
+Order matters: 5.1 unblocks the flagship demo; 5.6 is one line and stops the shell lying today.
+
+- [ ] **5.1 🅗 Orders & TNA operable (FE-B2 + BE-B6 half).** Create `orders/actions.ts` (`createOrder`, `actualizeMilestone`, `applyRevision`, `setOrderStatus` — the services all exist and are worker-only today); make `MilestoneTimeline` interactive (`fx/tna.tsx:67` `onActualize` has no caller; `orders/[orderId]/page.tsx:111` passes no prop); wire revision upload → diff → approve.
+- [ ] **5.2 🅗 Buyers operable (FE-B4).** `moveLeadStage`, `logLeadActivity`, `convertLeadToBuyer` have zero importers. Buyer detail drawer + 2-step convert dialog + stage moves on the pipeline board.
+- [ ] **5.3 🅗 RFQ operable (FE-S2).** No `rfq/actions.ts` at all over a complete service (`createRfq`, `draftQuote`, `sendQuote`, `markWon/Lost`). Ship the actions + RFQ detail with quote entry and win/loss.
+- [ ] **5.4 🅜 Planning operable (FE-S7).** `planning/actions.ts` over the stranded `allocate`/`moveAllocation`/`setAllocationStatus`/scenario services; drag can come after plain buttons.
+- [ ] **5.5 🅗 Wire the 16 orphaned origination actions.** The systematic gap: `openShipment`, `raiseSampleRequest`, `reportMachine`, `raiseCap`, `logAudit`, `saveCertificate`, `logTraining`, `recordQuote`, `compareQuotes`, `updatePoStatus`, `recordGazette`, `makeGazetteActive`, `findSimilarStyles`, plus procurement's missing `createPurchaseRequisition`/`createSupplier` actions and commercial's missing `createLc`/`createUd`. Every root record must be creatable from a screen. One module per session; each new action gets its Phase-1 role check on day one.
+- [ ] **5.6 🅗 Stop the read-only banner lying (new).** `canWrite` defaults `true` when `writeRoles` is undefined (`nav.ts:318`); only 2 of 25 items declare it, and Orders affirmatively claims three writing roles over zero write surface. Set `writeRoles: []` on buyers/rfq/planning/orders until their phase ships; require the field (make it non-optional in the NavItem type).
+- [ ] **5.7 🅗 `/api/production/*` HTTP routes (BE-B6 half, unblocks TEST-B2).** `outputs` (POST, thin: auth → role → zod → service, `offline_key` passthrough) and `board` (GET) — the exact routes `k6/production_burst.js` already targets.
+- [ ] **5.8 🅜 Settings substance (FE-S14).** In order of harm: fix the hardcoded `locale:'en'` (`settings-client.tsx:45` silently writes English on first save — add the control, read the existing value); users/roles matrix with grant/revoke (the invitations flow can stay off); policy override editor; audit-log viewer (10+ modules write `audit_log`, no screen reads it); CSV export.
+
+---
+
+## Phase 6 — MARBIM: make "off" real, then decide "on"
+
+- [ ] **6.1 🅑 A real off-switch (pre-req for any pilot).** `MARBIM_ENABLED` has zero runtime consumers. Consume it: hide `MarbimButton`/`MarbimPanel` (`(app)/layout.tsx:98,118`), drop the nav entry, short-circuit `/marbim`, `/marbim/intake`, `/memory` to a `LockedState`; refuse `readDocument` when `!hasProvider()` so nothing queues into a void; treat a provider-skip as not-success in `recordRun`/`lastSuccessByTask` (or drop `marbim.run_extractions` from `SCHEDULED_TASKS` when off) so job health stops reporting green.
+  *Verify:* boot with flag off — no AI surface, no queued extractions, `marbim.run_extractions` not green.
+- [ ] **6.2 🅗 Remove the false grounding claims now.** `surface-client.tsx:215` "MARBIM states no number it did not read from a tool" and `:129` mapping *requested* tool calls to `state:'done'` rows with an "N tools" receipt — nothing executes. Honest copy until 6.5 lands.
+- [ ] **6.3 🅗 Measured confidence + lint rule (AI-B2 — before any real provider).** Eight modules ship hardcoded `fieldConfidence` literals that drive inbox ranking and the auto-approve floor. Mark them user-draft-class (`fieldConfidence: {}`) or derive from measurement (the good example: `memory/memory.ts:352-363`); add the promised eslint rule (numeric literal inside a `fieldConfidence` object ⇒ error).
+- [ ] **6.4 🅗 Real provider (AI-B1).** One vendor SDK behind the provider interface (extract with per-field confidence, generate, embed), selected by env; prod boot assertion when `MARBIM_ENABLED=true` (real provider or exit); versioned `extractorVersion` from prompt semver + model id (AI-H1).
+- [ ] **6.5 🅗 Tool execution loop (AI-B3) + the gates it exposes.** Model turn → validate+execute → results back → final turn, iteration cap; `runDraftTool` becomes the only write path. Land **with** it: server-side role filtering of tool packs (AI-H6 — the client caption already promises it), intake role gate (AI-H7), chat/token cost ceilings + `marbim_call_log` (AI-H4), conversation history budget (AI-H3), MARBIM events + extraction notifications (AI-H5).
+- [ ] **6.6 🅜 Extraction pipeline hardening.** Outbox→BullMQ instead of the 5-min poller (AI-M4), Redis-counter rate limit (AI-M5), prompt-injection delimiting + documented approval-as-containment (AI-M3), OCR decision (AI-M1).
+
+---
+
+## Phase 7 — Test depth & load verification
+
+- [ ] **7.1 🅗 k6 to a runnable baseline (TEST-B2 + TEST-H5, needs 5.7).** Run `production_burst` against `seed --scale=factory`, automate the zero-lost-rows assertion (it's a comment telling a human to run SQL today), commit the baseline; then `store_grn` and `owner_dashboard`; `mixed_day` (the declared release gate) last, once desks write.
+- [ ] **7.2 🅗 Frontend test rig (TEST-H8).** A vitest jsdom project that can collect `.tsx` (both configs are node-env, `.ts`-only today); jsdom tests for `use-offline-queue.ts` and `inbox-client.tsx`; one Playwright golden path (login → store GRN → approve inbox); axe-core on the five floor screens.
+- [ ] **7.3 🅜 Coverage + CI reporting (TEST-M10).** coverage-v8 with a ratchet floor, JUnit artifacts; add the missing FE/k6 CI homes.
+- [ ] **7.4 🅗 Payroll parallel-run harness.** The quality doc's own regime — one month against the factory's Excel, every net diffed to zero or explained — has never run. Build the diff tool (CSV in → per-worker net comparison vs `computePayrollRun`) so the pilot month can execute it.
+- [ ] **7.5 🅜 Health endpoint split, code half (INFRA-M1/M13).** `/api/health` = liveness only (no scheduler 503, no env/exception leakage); `/api/ready` = deps; `/api/health/jobs` behind a token (the prod compose comment already advertises this route — it doesn't exist).
+
+---
+
+## Phase 8 — Process & contract
+
+- [ ] **8.1 🅗 Backfill HANDOFFs for the pilot modules (PROC-1/BE-B7).** `docs/handoffs/` is empty; zero of 23 modules has a FINAL contract, and X.1 shipped despite its own stated precondition. Write them retroactively for the pilot set first — store, cutting, production, quality, sampling, commercial, workforce, approvals — each §5 operations / §6 machines / §7 gates checked against code as it's written (they become the per-module acceptance checklists). Or formally retire the process and promote the briefs; either way, decide.
+- [ ] **8.2 🅜 Tracker drift automation.** A small CI check that greps the strongest STUBS claims (file-existence class: "no actions.ts", "handler missing") against the tree so the go/no-go documents can't silently rot again.
+
+---
+
+## Dependency map (why this order)
+
+- Phase 1.1 (roles) blocks every new action in Phase 5 from shipping insecure — do it first; new actions adopt the pattern as they land.
+- Phase 2.3 (typed results) is a prerequisite for gate UX in Phases 4–5; 2.5 (dates) touches files Phases 4–5 also touch — land it before them to avoid rebasing pain.
+- Phase 3 (approve inbox tests) should precede Phase 6.4+ — a real provider multiplies traffic through exactly that untested funnel.
+- Phase 5.7 unblocks 7.1. Phase 6.1 is independent and small — it can be pulled forward any time.
+- Phases 0 and 6.1–6.2 are the cheapest honest wins; nothing depends on them being late.
