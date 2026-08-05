@@ -96,6 +96,98 @@ jobs:
       - name: Application role exists and cannot bypass RLS
         run: pnpm db:setup-roles
 
+  # ── The privilege model production actually runs (audit DB-B1) ─────────────
+  #
+  # Every table carries FORCE ROW LEVEL SECURITY, which binds the table OWNER too, and
+  # every policy targets only `fabricxai_app`. Twelve SECURITY DEFINER helpers run as the
+  # owner and read those forced tables. So the design depends on the owner bypassing RLS —
+  # and if it does not, NOTHING ERRORS: the helpers return zero rows, which surfaces as
+  # "nobody can log in", "events stop being delivered" and "the scheduler never ran".
+  #
+  # Every other job here runs as the initdb superuser, where that question cannot be asked.
+  # This one provisions the hardened owner a real deployment uses and asks it.
+  owner-privileges:
+    name: non-superuser owner
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s
+          --health-timeout 5s --health-retries 20
+    env:
+      DIRECT_DATABASE_URL: postgres://fabricxai_owner:owner-secret@localhost:5432/fabricxai
+      DATABASE_URL: postgres://fabricxai_app_rw:app-secret@localhost:5432/fabricxai
+      APP_DB_PASSWORD: app-secret
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # The one-time superuser work a hardened deployment still needs. Discovered by
+      # writing this job: none of it was documented, and `0000_extensions.sql` claimed a
+      # fresh production database was "fully provisioned by pnpm db:migrate alone".
+      #
+      #  · extensions — `vector` is not a trusted extension, so a non-superuser cannot
+      #    CREATE it. `IF NOT EXISTS` then makes migration 0000 a no-op rather than a
+      #    permission error.
+      #  · CREATEROLE — the owner provisions the app and pooler roles in 0070 and
+      #    scripts/setup-db-roles.mjs.
+      #  · pg_shadow — app.pgbouncer_get_auth is SECURITY DEFINER and reads verifiers, so
+      #    it runs with the OWNER's rights. BYPASSRLS does not cover this: without the
+      #    grant the pooler's auth_query fails and every client is refused.
+      - name: Provision the owner a hardened deployment would use
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE fabricxai_owner LOGIN PASSWORD 'owner-secret'
+            NOSUPERUSER BYPASSRLS CREATEROLE;
+          CREATE DATABASE fabricxai OWNER fabricxai_owner;
+          SQL
+          psql -h localhost -U postgres -d fabricxai -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE EXTENSION IF NOT EXISTS vector;
+          CREATE EXTENSION IF NOT EXISTS pg_trgm;
+          CREATE EXTENSION IF NOT EXISTS btree_gin;
+          CREATE EXTENSION IF NOT EXISTS pgcrypto;
+          GRANT SELECT ON pg_shadow TO fabricxai_owner;
+          SQL
+
+      - name: Confirm the owner really is not a superuser
+        env:
+          PGPASSWORD: postgres
+        run: |
+          # Guards the guard: if this ever becomes a superuser, every check below passes
+          # for the wrong reason and DB-B1 goes back to being invisible.
+          actual=$(psql -h localhost -U postgres -d postgres -tAc \
+            "SELECT rolsuper::text FROM pg_roles WHERE rolname = 'fabricxai_owner'")
+          if [ "$actual" != "false" ]; then
+            echo "::error::fabricxai_owner is a superuser — this job proves nothing"
+            exit 1
+          fi
+
+      - name: Migrate, provision roles and seed as that owner
+        run: |
+          pnpm db:migrate
+          pnpm db:setup-roles
+          pnpm seed --scale=pilot
+
+      # The assertion: every SECURITY DEFINER helper still answers. Verified locally to
+      # exit 1 when BYPASSRLS is removed (the owner cannot even read `roles`, i.e. login
+      # is broken) and to refuse to run at all against a superuser.
+      - name: Every SECURITY DEFINER helper still works
+        run: node scripts/verify-owner-privileges.mjs
+
   # ── Services against real infrastructure ───────────────────────────────────
   integration:
     name: integration

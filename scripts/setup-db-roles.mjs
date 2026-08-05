@@ -96,6 +96,35 @@ try {
   }
   console.log(`[roles] verified: ${ownerName} can bypass RLS (owner/migration duties)`)
 
+  // BYPASSRLS is necessary and NOT sufficient for a hardened owner. Two of the owner's
+  // duties need privileges it does not imply, and both fail in ways that do not mention
+  // the owner at all (audit DB-B1, found by the `owner-privileges` CI job):
+  //
+  //   · `app.pgbouncer_get_auth` is SECURITY DEFINER, so it reads verifiers with the
+  //     OWNER's rights. `pg_shadow` is superuser-only, so a non-superuser owner needs an
+  //     explicit grant or the pooler's auth_query fails and every client is refused.
+  //   · `vector` is not a trusted extension: migration 0000 cannot create it as a
+  //     non-superuser, and only passes because `IF NOT EXISTS` makes it a no-op once a
+  //     superuser has.
+  //
+  // Reported rather than fixed here: granting on a system catalogue is a superuser act,
+  // so this script cannot do it — it can only tell the operator, now, instead of leaving
+  // it to be discovered by a pooler that refuses everybody.
+  if (!owner.is_superuser) {
+    const [readsShadow] = await sql`
+      SELECT has_table_privilege(${ownerName}, 'pg_shadow', 'SELECT') AS ok`
+    if (!readsShadow?.ok) {
+      console.warn(
+        `[roles] WARNING: ${ownerName} cannot read pg_shadow.\n` +
+          '        app.pgbouncer_get_auth() runs as this role, so PgBouncer auth_query\n' +
+          `        will fail and refuse every client. Fix, as a superuser:\n` +
+          `          GRANT SELECT ON pg_shadow TO ${quoteIdent(ownerName)};`,
+      )
+    } else {
+      console.log(`[roles] verified: ${ownerName} can read pg_shadow (pooler auth_query)`)
+    }
+  }
+
   // ── The pooler's lookup account ───────────────────────────────────────────────
   //
   // Migration 0070 creates `pgbouncer_auth` and grants it EXECUTE on one function;

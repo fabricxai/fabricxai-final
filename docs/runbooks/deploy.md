@@ -152,6 +152,32 @@ Expected failures and what they mean:
 
 ### Create the first factory
 
+> **If you harden the owner role to non-superuser** — the standard move, and what the
+> `owner-privileges` CI job runs against — three things must be done once, as a superuser,
+> because `BYPASSRLS` does not imply any of them:
+>
+> ```sql
+> -- 1. Extensions. `vector` is not "trusted", so a non-superuser cannot create it.
+> --    Migration 0000 then becomes a no-op via IF NOT EXISTS rather than a hard failure.
+> CREATE EXTENSION IF NOT EXISTS vector;
+> CREATE EXTENSION IF NOT EXISTS pg_trgm;
+> CREATE EXTENSION IF NOT EXISTS btree_gin;
+> CREATE EXTENSION IF NOT EXISTS pgcrypto;
+>
+> -- 2. The pooler's auth_query. app.pgbouncer_get_auth is SECURITY DEFINER, so it reads
+> --    verifiers with the OWNER's rights. Without this, PgBouncer refuses every client.
+> GRANT SELECT ON pg_shadow TO <owner>;
+>
+> -- 3. CREATEROLE on the owner, which provisions the app and pooler roles.
+> ALTER ROLE <owner> CREATEROLE BYPASSRLS;
+> ```
+>
+> `pnpm db:setup-roles` warns if the `pg_shadow` grant is missing, and
+> `node scripts/verify-owner-privileges.mjs` proves all twelve SECURITY DEFINER helpers
+> still answer. Note that `0000_extensions.sql`'s own comment — "a fresh production
+> database is fully provisioned by `pnpm db:migrate` alone" — is true only when the owner
+> is a superuser.
+
 Sign up through the UI at `https://<domain>/signup`. That path creates the company and
 the owner role in one hook; there is no admin CLI, deliberately — one code path for
 creating a factory means one code path that gets exercised.
