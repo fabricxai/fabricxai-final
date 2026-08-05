@@ -276,6 +276,29 @@ jobs:
       - name: Integration tests
         run: pnpm test:integration
 
+      # The auth limiter, actually refusing something (audit INFRA-H7).
+      #
+      # It cannot be enabled for the suite above: signup is three per hour per IP and that
+      # suite signs up nine owners from one address, so a global flag fails unrelated tests
+      # with a 429. So this runs ONE file, alone, against a server started with the flag —
+      # which is the only way the numbers in LIMITS get observed refusing anything.
+      #
+      # The grep is the point: vitest exits 0 when every test is skipped, and this file
+      # skips itself without the flag. Without this the step would pass having asserted
+      # nothing, which is the failure mode the whole job exists to avoid.
+      - name: The auth limiter refuses a guessing loop
+        env:
+          RATE_LIMIT_ENFORCE: '1'
+          INTEGRATION_PORT: '3101'
+        run: |
+          set -o pipefail
+          pnpm vitest run --config vitest.integration.config.ts \
+            src/modules/core/__tests__/auth-rate-limit.integration.test.ts 2>&1 | tee limiter.log
+          grep -q '2 passed' limiter.log || {
+            echo "::error::the enforcing rate-limit tests did not run — they skipped"
+            exit 1
+          }
+
       # Phase 0 exit criterion C.
       - name: Seed is re-runnable
         run: |
