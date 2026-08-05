@@ -20,6 +20,11 @@
  */
 import 'dotenv/config'
 
+// FIRST, and it must stay first: refuses a production or non-local target before any other
+// module in the graph evaluates. See guard-boot.ts — `@/lib/env` throws during its own
+// import, and its message is not the one this moment calls for.
+import './guard-boot'
+
 import { randomUUID } from 'node:crypto'
 
 import { eq, sql } from 'drizzle-orm'

@@ -160,8 +160,16 @@ Verification email is **required** to sign in, so confirm the SMTP block works b
 you need it. If the mail never arrives, the account exists and cannot be used.
 
 > **Do not run `pnpm seed` against production.** It creates verified users with a
-> published password. The script refuses when `NODE_ENV=production`, and that is the only
-> thing standing between a careless invocation and open accounts (audit INFRA-M10).
+> published password. The script now refuses before it opens a connection — on
+> `NODE_ENV=production`, and on any `DATABASE_URL`/`DIRECT_DATABASE_URL` that is not
+> loopback, which covers the compose service names the production stack resolves. It
+> names what it found and exits 1 (audit INFRA-M10).
+>
+> `SEED_FORCE=1` overrides it, for a scratch host or a staging tenant. That flag does not
+> re-enable the seeded passwords: those stay refused whenever `NODE_ENV=production`, so a
+> forced run leaves rows and no way in. An SSH tunnel that publishes a production database
+> on localhost still looks local to this check — the guard is for the careless invocation,
+> not the determined one.
 
 ---
 
