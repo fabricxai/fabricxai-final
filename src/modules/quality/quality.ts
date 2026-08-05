@@ -16,6 +16,8 @@
  *  4. **Measurement tolerances are asymmetric.** +1/2" and −1/4" is normal; treating
  *     tolerance as one number rejects half the garments that should pass.
  */
+import { compositeKey, splitKey } from '@/lib/keys'
+
 export class QualityError extends Error {
   override readonly name = 'QualityError'
 }
@@ -465,7 +467,7 @@ export function repeatDefectRuns(
 
   const byKey = new Map<string, Set<string>>()
   for (const occurrence of occurrences) {
-    const key = `${occurrence.code} ${occurrence.operation}`
+    const key = compositeKey(occurrence.code, occurrence.operation)
     const dates = byKey.get(key) ?? new Set<string>()
     dates.add(occurrence.date)
     byKey.set(key, dates)
@@ -474,7 +476,7 @@ export function repeatDefectRuns(
   const runs: DefectRun[] = []
 
   for (const [key, dateSet] of byKey) {
-    const [code = '', operation = ''] = key.split(' ')
+    const [code = '', operation = ''] = splitKey(key)
     const dates = [...dateSet].sort()
 
     let runStart = 0
