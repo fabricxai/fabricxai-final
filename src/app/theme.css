@@ -400,6 +400,14 @@ a:hover {
   display: var(--fx-mark-white, none);
 }
 
+/* Sidebar: scroll still works; the track just does not take space or attention. */
+.fx-sidebar {
+  scrollbar-width: none;
+}
+.fx-sidebar::-webkit-scrollbar {
+  display: none;
+}
+
 /* 2. The slash rule — three 2px strokes at the wordmark's 34deg.
    Replaces horizontal rules, and fills left-to-right as the progress bar. */
 .fx-slash-rule {

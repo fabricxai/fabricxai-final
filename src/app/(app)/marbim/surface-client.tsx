@@ -145,68 +145,102 @@ export function MarbimSurface({
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 880 }}>
-      {turns.length === 0 ? (
-        <EmptyState
-          title="Ask about an order, a line, or a date"
-          body="MARBIM reads what your role can already read. It proposes changes for you to approve — it never writes to this factory itself."
-        />
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
-          {turns.map((turn) => (
-            <div key={turn.id} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <UserBubble>{turn.question}</UserBubble>
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 16,
+        maxWidth: 880,
+        // Grow into the slide-over body / full-page column so the composer docks.
+        // height:% fails when the parent only has min-height; flex:1 needs a
+        // definite parent height (the page sets one; the panel body is a flex child).
+        flex: 1,
+        minHeight: 0,
+        width: '100%',
+      }}
+    >
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 24,
+        }}
+      >
+        {turns.length === 0 ? (
+          <EmptyState
+            title="Ask about an order, a line, or a date"
+            body="MARBIM reads what your role can already read. It proposes changes for you to approve — it never writes to this factory itself."
+          />
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+            {turns.map((turn) => (
+              <div key={turn.id} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <UserBubble>{turn.question}</UserBubble>
 
-              <div style={{ display: 'flex', gap: 14 }}>
-                <div
-                  style={{
-                    width: 30,
-                    height: 30,
-                    borderRadius: 'var(--fx-radius-full)',
-                    background: 'var(--fx-text-primary)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                  }}
-                >
-                  <MarbimMark
-                    state={turn.answer || turn.failed ? 'rest' : 'thinking'}
-                    size={20}
-                    label={null}
-                  />
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0, flex: 1 }}>
-                  <ToolStrip
-                    steps={turn.toolSteps}
-                    footer={turn.receipt ?? 'MARBIM states no number it did not read from a tool.'}
-                  />
-
-                  {turn.failed ? (
-                    <PartialAnswerNotice
-                      trusted="Nothing above was written."
-                      untrusted="The run stopped before it produced an answer, so there is nothing here to act on."
-                      onRetry={() => send(turn.question)}
+                <div style={{ display: 'flex', gap: 14 }}>
+                  <div
+                    style={{
+                      width: 30,
+                      height: 30,
+                      borderRadius: 'var(--fx-radius-full)',
+                      background: 'var(--fx-bg-surface)',
+                      border: '1px solid var(--fx-border-default)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <MarbimMark
+                      state={turn.answer || turn.failed ? 'rest' : 'thinking'}
+                      size={20}
+                      label={null}
                     />
-                  ) : turn.answer ? (
-                    <AnswerText>{turn.answer}</AnswerText>
-                  ) : (
-                    <AnswerText streaming>{''}</AnswerText>
-                  )}
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 14,
+                      minWidth: 0,
+                      flex: 1,
+                    }}
+                  >
+                    <ToolStrip
+                      steps={turn.toolSteps}
+                      footer={turn.receipt ?? 'MARBIM states no number it did not read from a tool.'}
+                    />
+
+                    {turn.failed ? (
+                      <PartialAnswerNotice
+                        trusted="Nothing above was written."
+                        untrusted="The run stopped before it produced an answer, so there is nothing here to act on."
+                        onRetry={() => send(turn.question)}
+                      />
+                    ) : turn.answer ? (
+                      <AnswerText>{turn.answer}</AnswerText>
+                    ) : (
+                      <AnswerText streaming>{''}</AnswerText>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
 
-      {turns.length === 0 ? (
-        <SuggestedPrompts label={packLabel} prompts={suggestions} onPick={send} />
-      ) : null}
+        {turns.length === 0 ? (
+          <SuggestedPrompts label={packLabel} prompts={suggestions} onPick={send} />
+        ) : null}
+      </div>
 
       <div
         style={{
+          flexShrink: 0,
           border: '1px solid var(--fx-border-default)',
           borderRadius: 'var(--fx-radius-lg)',
           background: 'var(--fx-bg-surface)',

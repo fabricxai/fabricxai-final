@@ -45,13 +45,23 @@ export function ToolStrip({ steps, footer }: { steps: readonly ToolStep[]; foote
             key={`${step.label}-${i}`}
             style={{
               display: 'flex',
-              alignItems: 'center',
+              alignItems: 'flex-start',
               gap: 11,
               padding: '11px 13px',
               borderBottom: '1px solid var(--fx-border-subtle)',
             }}
           >
-            <span style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
+            <span
+              style={{
+                display: 'flex',
+                gap: 4,
+                alignItems: 'center',
+                flexShrink: 0,
+                // Match the label's first-line cap height so the slashes sit level.
+                height: '1.4em',
+                marginTop: 1,
+              }}
+            >
               {[0, 1, 2].map((k) => (
                 <span
                   key={k}
@@ -71,21 +81,33 @@ export function ToolStrip({ steps, footer }: { steps: readonly ToolStep[]; foote
                 />
               ))}
             </span>
-            <span style={{ font: "500 12.5px/1.4 var(--fx-font-mono)", color: colour, minWidth: 0 }}>
-              {step.label}
-            </span>
-            {step.meta ? (
-              <span
-                style={{
-                  font: "400 11.5px/1.3 var(--fx-font-mono)",
-                  color: 'var(--fx-text-tertiary)',
-                  marginLeft: 'auto',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {step.meta}
+            {/* Column, not a row fight: a long nowrap meta was crushing the label
+                (minWidth:0 + flex-shrink) into a one-word-wide stack and then
+                painting over it with overflow:visible. */}
+            <span
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 4,
+                minWidth: 0,
+                flex: 1,
+              }}
+            >
+              <span style={{ font: "500 12.5px/1.4 var(--fx-font-mono)", color: colour }}>
+                {step.label}
               </span>
-            ) : null}
+              {step.meta ? (
+                <span
+                  style={{
+                    font: "400 11.5px/1.35 var(--fx-font-mono)",
+                    color: 'var(--fx-text-tertiary)',
+                    overflowWrap: 'anywhere',
+                  }}
+                >
+                  {step.meta}
+                </span>
+              ) : null}
+            </span>
           </div>
         )
       })}

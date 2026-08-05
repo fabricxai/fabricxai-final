@@ -4,7 +4,6 @@ import { desc, eq } from 'drizzle-orm'
 
 import { compareDecimalStrings } from '@/lib/quantity'
 
-import { Breadcrumbs } from '@/components/fx/data'
 import { PageHeader } from '@/components/shell/page-shell'
 import { getCtx } from '@/modules/core/session'
 import { withTenantRead } from '@/modules/core/tenancy'
@@ -60,13 +59,8 @@ export default async function UdDetailPage({
 
   return (
     <>
-      <div style={{ marginBottom: 18 }}>
-        <Breadcrumbs
-          trail={[{ label: 'UD workbench', href: '/ud' }, { label: balance.udNumber }]}
-        />
-      </div>
-
       <PageHeader
+        back={{ href: '/ud', label: 'UD workbench' }}
         eyebrow="Commercial · bonded warehouse"
         title={balance.udNumber}
         meta={

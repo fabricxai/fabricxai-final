@@ -1,21 +1,22 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 import { MarbimSurface } from '@/app/(app)/marbim/surface-client'
-import { MarbimMark, type MarkState } from '@/components/fx/mark'
+import { MarbimMark } from '@/components/fx/mark'
 
 import { moduleForPath, screenLabelForPath, type MarbimEntry } from './marbim-context'
 import { MARBIM_OPEN_EVENT } from './marbim-open'
 
 /**
- * X.2 MARBIM Surface — the FAB and the slide-over, built to the design canvas.
+ * X.2 MARBIM Surface — the slide-over panel, built to the design canvas.
  *
- * The panel opens OVER the screen rather than replacing it, because the question a person
- * has is almost always about what they are looking at. Navigating away to ask it loses the
- * thing they were pointing at. That is also why the current screen's module is passed as
- * `fromModule`: the answer leads with that department's primer instead of all twenty-one.
+ * Opens via the top-bar "Ask MARBIM" control or ⌘K. The panel opens OVER the screen
+ * rather than replacing it, because the question a person has is almost always about
+ * what they are looking at. Navigating away to ask it loses the thing they were pointing
+ * at. That is also why the current screen's module is passed as `fromModule`: the answer
+ * leads with that department's primer instead of all twenty-one.
  *
  * `/marbim` stays as the full-page surface — the right shape for a long session at a desk.
  *
@@ -38,9 +39,6 @@ import { MARBIM_OPEN_EVENT } from './marbim-open'
  *    screen behind is context, not content.
  */
 
-/** Long-press threshold. Below this a press is a tap and opens the panel. */
-const VOICE_HOLD_MS = 400
-
 export interface MarbimTrustLine {
   drafted: number
   approved: number
@@ -51,15 +49,12 @@ export interface MarbimTrustLine {
 
 export function MarbimPanel({ entry, trust }: { entry: MarbimEntry; trust: MarbimTrustLine }) {
   const [open, setOpen] = useState(false)
-  const [listening, setListening] = useState(false)
   // Lazily created and then stable for the tab's lifetime.
   const [conversationId] = useState(() => globalThis.crypto.randomUUID())
   // "change scope" — narrow to this screen's department, or let MARBIM read across all of
   // them. The canvas puts this on the context chip; it is the one thing about a question
   // the panel cannot infer from where you are standing.
   const [wideScope, setWideScope] = useState(false)
-  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const heldRef = useRef(false)
 
   const pathname = usePathname()
   const screenModule = moduleForPath(pathname)
@@ -81,12 +76,6 @@ export function MarbimPanel({ entry, trust }: { entry: MarbimEntry; trust: Marbi
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        // Escape discards a voice press before it closes the panel — releasing into a
-        // half-heard sentence is worse than dropping it.
-        if (listening) {
-          setListening(false)
-          return
-        }
         if (open) close()
         return
       }
@@ -98,7 +87,7 @@ export function MarbimPanel({ entry, trust }: { entry: MarbimEntry; trust: Marbi
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [open, listening, close])
+  }, [open, close])
 
   // Any "Ask MARBIM" button anywhere — the top bar's, or a future in-context one on a
   // screen — asks through this rather than reaching into the panel's state.
@@ -108,87 +97,8 @@ export function MarbimPanel({ entry, trust }: { entry: MarbimEntry; trust: Marbi
     return () => window.removeEventListener(MARBIM_OPEN_EVENT, onRequest)
   }, [])
 
-  function pressStart() {
-    heldRef.current = false
-    holdTimer.current = setTimeout(() => {
-      heldRef.current = true
-      setListening(true)
-    }, VOICE_HOLD_MS)
-  }
-
-  function pressEnd() {
-    if (holdTimer.current) clearTimeout(holdTimer.current)
-    // A hold that reached Listening releases INTO the composer. Dictation itself needs a
-    // speech provider that is not wired yet, so the honest end of the gesture is an open
-    // composer with the caret in it, not a fabricated transcript.
-    if (heldRef.current) setListening(false)
-    setOpen(true)
-  }
-
-  // The mark carries the state; the circle never changes colour (canvas, P3).
-  const fabState: MarkState = listening ? 'listening' : open ? 'awake' : 'rest'
-
   return (
     <>
-      {/* ── P3 · the FAB ───────────────────────────────────────────────────
-          Hidden while the panel is open: it occupies the same corner the panel's trust
-          footer does, and a launcher floating over the thing it launched is clutter with
-          nothing left to do — the panel carries its own Close and its own mark. */}
-      {open ? null : (
-        <button
-          onClick={() => setOpen(true)}
-          onMouseDown={pressStart}
-          onMouseUp={pressEnd}
-          onMouseLeave={() => holdTimer.current && clearTimeout(holdTimer.current)}
-          aria-expanded={open}
-          aria-haspopup="dialog"
-          aria-label="Ask MARBIM"
-          title="Ask MARBIM (⌘K) · hold to talk"
-          style={{
-            position: 'fixed',
-            right: 28,
-            bottom: 28,
-            zIndex: 70,
-            width: 56,
-            height: 56,
-            borderRadius: 'var(--fx-radius-full)',
-            background: 'var(--fx-text-primary)',
-            border: 'none',
-            boxShadow: 'var(--fx-sh2)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-          }}
-        >
-          <MarbimMark state={fabState} size={32} label={null} />
-          {trust.pending > 0 ? (
-            // The mark holds still and the badge does the talking, so it stays a count and
-            // never reads as a spinner.
-            <span
-              style={{
-                position: 'absolute',
-                top: -3,
-                right: -3,
-                minWidth: 20,
-                height: 20,
-                padding: '0 5px',
-                borderRadius: 'var(--fx-radius-full)',
-                background: 'var(--fx-accent)',
-                color: 'var(--fx-accent-on)',
-                border: '2px solid var(--fx-bg-surface)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                font: '600 11px/1 var(--fx-font-mono)',
-              }}
-            >
-              {trust.pending}
-            </span>
-          ) : null}
-        </button>
-      )}
-
       {/* ── P1 · the panel ───────────────────────────────────────────────── */}
       {open ? (
         <>
@@ -244,14 +154,17 @@ export function MarbimPanel({ entry, trust }: { entry: MarbimEntry; trust: Marbi
                     width: 30,
                     height: 30,
                     borderRadius: 'var(--fx-radius-full)',
-                    background: 'var(--fx-text-primary)',
+                    // Surface plate so the theme's ink/white mark set stays
+                    // legible — an ink circle in light mode hid the ink strokes.
+                    background: 'var(--fx-bg-surface)',
+                    border: '1px solid var(--fx-border-default)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     flexShrink: 0,
                   }}
                 >
-                  <MarbimMark state={listening ? 'listening' : 'rest'} size={20} label={null} />
+                  <MarbimMark state="rest" size={20} label={null} />
                 </span>
                 <span
                   style={{
@@ -347,9 +260,11 @@ export function MarbimPanel({ entry, trust }: { entry: MarbimEntry; trust: Marbi
             <div
               style={{
                 flex: 1,
-                overflowY: 'auto',
-                padding: '20px 22px',
                 minHeight: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+                padding: '20px 22px',
               }}
             >
               <MarbimSurface
@@ -358,8 +273,8 @@ export function MarbimPanel({ entry, trust }: { entry: MarbimEntry; trust: Marbi
                 packLabel={entry.packLabel}
                 readOnly={entry.readOnly}
                 fromModule={wideScope ? undefined : screenModule}
-                // The mark lives in this panel's header and on the FAB; a third one pinned
-                // to the viewport would sit over the screen behind the glass.
+                // The mark lives in this panel's header; a floating one pinned to the
+                // viewport would sit over the screen behind the glass.
                 floatingMark={false}
                 autoFocus
               />

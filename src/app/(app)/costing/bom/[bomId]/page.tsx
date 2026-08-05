@@ -1,7 +1,6 @@
 import { headers } from 'next/headers'
 import { notFound, redirect } from 'next/navigation'
 
-import { Breadcrumbs } from '@/components/fx/data'
 import { InlineAlert } from '@/components/fx/feedback'
 import { Ident } from '@/components/fx/format'
 import { Badge } from '@/components/fx/primitives'
@@ -48,17 +47,8 @@ export default async function BomDetailPage({
 
   return (
     <>
-      <div style={{ marginBottom: 18 }}>
-        <Breadcrumbs
-          trail={[
-            { label: 'Costing studio', href: '/costing' },
-            { label: 'Bills of materials', href: '/costing/bom' },
-            { label: bom.styleCode },
-          ]}
-        />
-      </div>
-
       <PageHeader
+        back={{ href: '/costing/bom', label: 'Bills of materials' }}
         eyebrow={`Bill of materials · ${SOURCE_LABEL[bom.source] ?? bom.source}`}
         title={bom.styleCode}
         meta={`${lines.length} ${lines.length === 1 ? 'line' : 'lines'}`}

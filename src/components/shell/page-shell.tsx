@@ -2,6 +2,8 @@ import type { ReactNode } from 'react'
 
 import { Lockup, ThreadRule } from '@/components/fx/signature'
 
+import { FactoryChip } from './factory-chip'
+import { TopBarSearch } from './search/top-bar-search'
 import { ThemeToggle } from './theme-toggle'
 
 /**
@@ -41,39 +43,37 @@ export function TopBar({
         flexShrink: 0,
         borderBottom: '1px solid var(--fx-border-subtle)',
         background: 'var(--fx-bg-surface)',
-        display: 'flex',
+        display: 'grid',
+        gridTemplateColumns: 'minmax(0, 1fr) minmax(240px, 420px) minmax(0, 1fr)',
         alignItems: 'center',
-        gap: 20,
+        gap: 16,
         padding: '0 24px',
       }}
     >
-      <Lockup height={26} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, minWidth: 0 }}>
+        {/* Lockup pins its imgs with alignSelf:flex-start (to avoid stretch in
+            column layouts). Wrap so that pin is against this box, not the header,
+            and the logo sits on the bar's vertical center with the other chrome. */}
+        <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+          <Lockup height={26} />
+        </span>
 
-      <span
+        <FactoryChip name={companyName} />
+      </div>
+
+      <div style={{ justifySelf: 'center', width: '100%' }}>
+        <TopBarSearch />
+      </div>
+
+      <div
         style={{
-          font: "400 13px/1 var(--fx-font-mono)",
-          color: 'var(--fx-text-tertiary)',
-          paddingLeft: 4,
+          justifySelf: 'end',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 14,
+          minWidth: 0,
         }}
       >
-        {companyName}
-      </span>
-
-      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 14 }}>
-        <span
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            font: "400 13px/1 var(--fx-font-sans)",
-            color: 'var(--fx-text-tertiary)',
-          }}
-        >
-          {/* ⌘K belongs to MARBIM ("⌘K anywhere", X.2 canvas), so this no longer claims it.
-              Search has no handler yet either — advertising a shortcut that does nothing,
-              for a feature that does nothing, twice over, is worse than a plain label. */}
-          Search
-        </span>
         {actions}
         <ThemeToggle />
         {account}
@@ -92,17 +92,36 @@ export function PageHeader({
    * mark, or a single primary action further down. The rule permits one, not both.
    */
   ownsAmber = true,
+  /**
+   * Way back to the parent list. Detail pages need this in the header — a breadcrumb
+   * trail alone reads as decoration, and the sidebar does not say "leave this record".
+   */
+  back,
 }: {
   eyebrow?: ReactNode
   title: ReactNode
   meta?: ReactNode
   actions?: ReactNode
   ownsAmber?: boolean
+  back?: { href: string; label: string }
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 32 }}>
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 20 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 5, minWidth: 0 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
+          {back ? (
+            <a
+              href={back.href}
+              style={{
+                alignSelf: 'flex-start',
+                font: '500 13px/1 var(--fx-font-sans)',
+                color: 'var(--fx-text-secondary)',
+                textDecoration: 'none',
+              }}
+            >
+              ← {back.label}
+            </a>
+          ) : null}
           {eyebrow ? (
             <div
               style={{

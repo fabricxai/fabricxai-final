@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
 import { NAV_SECTIONS, type NavItem, type NavSection } from './nav'
+import { NavIcon } from './nav-icons'
 
 /**
  * The sidebar. The active item is marked by a 2px amber slash at the wordmark's
@@ -21,6 +22,7 @@ export function Sidebar({ items }: { items: readonly NavItem[] }) {
   return (
     <nav
       aria-label="Modules"
+      className="fx-sidebar"
       style={{
         width: 232,
         flexShrink: 0,
@@ -67,7 +69,7 @@ function SidebarLink({ item, active }: { item: NavItem; active: boolean }) {
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 12,
+        gap: 10,
         padding: '10px 12px',
         minHeight: 'var(--fx-tap-min)',
         borderRadius: 'var(--fx-radius-md)',
@@ -87,6 +89,7 @@ function SidebarLink({ item, active }: { item: NavItem; active: boolean }) {
           background: active ? 'var(--fx-accent)' : 'transparent',
         }}
       />
+      <NavIcon id={item.id} />
       {item.label}
     </Link>
   )

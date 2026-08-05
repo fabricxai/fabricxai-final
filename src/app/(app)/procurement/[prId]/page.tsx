@@ -2,7 +2,6 @@ import { headers } from 'next/headers'
 import { notFound, redirect } from 'next/navigation'
 import { eq } from 'drizzle-orm'
 
-import { Breadcrumbs } from '@/components/fx/data'
 import { PageHeader } from '@/components/shell/page-shell'
 import { btbLcs, lcs } from '@/modules/commercial/schema'
 import { getCtx } from '@/modules/core/session'
@@ -145,11 +144,8 @@ export default async function RequisitionPage({
 
   return (
     <>
-      <div style={{ marginBottom: 18 }}>
-        <Breadcrumbs trail={[{ label: 'Procurement', href: '/procurement' }, { label: pr.prNo }]} />
-      </div>
-
       <PageHeader
+        back={{ href: '/procurement', label: 'Procurement' }}
         eyebrow="Procurement · requisition"
         title={pr.prNo}
         meta={pr.neededBy ? `needed by ${pr.neededBy} · ${pr.status}` : String(pr.status)}

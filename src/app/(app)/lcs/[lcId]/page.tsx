@@ -1,7 +1,6 @@
 import { headers } from 'next/headers'
 import { notFound, redirect } from 'next/navigation'
 
-import { Breadcrumbs } from '@/components/fx/data'
 import { PageHeader } from '@/components/shell/page-shell'
 import { lcDetail } from '@/modules/commercial/queries'
 import type { BankDocsPolicy } from '@/modules/commercial/service'
@@ -42,11 +41,8 @@ export default async function LcDetailPage({ params }: { params: Promise<{ lcId:
 
   return (
     <>
-      <div style={{ marginBottom: 18 }}>
-        <Breadcrumbs trail={[{ label: 'LC register', href: '/lcs' }, { label: lc.number }]} />
-      </div>
-
       <PageHeader
+        back={{ href: '/lcs', label: 'LC register' }}
         eyebrow={`Commercial · letters of credit · ${lc.buyerName ?? 'buyer'}`}
         title={lc.number}
         meta={`${lc.value} ${lc.currency} · ${lc.status}`}

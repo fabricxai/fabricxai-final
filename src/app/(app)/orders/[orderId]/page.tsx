@@ -1,7 +1,7 @@
 import { headers } from 'next/headers'
 import { notFound, redirect } from 'next/navigation'
 
-import { Breadcrumbs, Card } from '@/components/fx/data'
+import { Card } from '@/components/fx/data'
 import { Badge } from '@/components/fx/primitives'
 import { RunRateCard } from '@/components/fx/run-rate'
 import { SectionHeading } from '@/components/fx/signature'
@@ -52,13 +52,8 @@ export default async function OrderDetailPage({
 
   return (
     <>
-      <div style={{ marginBottom: 18 }}>
-        <Breadcrumbs
-          trail={[{ label: 'Order desk', href: '/orders' }, { label: po }]}
-        />
-      </div>
-
       <PageHeader
+        back={{ href: '/orders', label: 'Order desk' }}
         eyebrow={order.buyerName ?? 'Order'}
         title={po}
         meta={order.plannedExFactoryDate ? `ship ${order.plannedExFactoryDate}` : undefined}

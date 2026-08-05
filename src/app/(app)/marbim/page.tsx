@@ -26,7 +26,17 @@ export default async function MarbimPage() {
   const entry = marbimEntryFor(ctx.roles)
 
   return (
-    <>
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        // Definite height (not only minHeight) so the flex:1 surface can grow and
+        // dock the composer. Top bar 60 + PageBody top pad 32; leave a thin gap
+        // above the main's bottom pad so the input sits near the viewport floor.
+        height: 'calc(100dvh - 60px - 32px - 16px)',
+        marginBottom: -80,
+      }}
+    >
       <PageHeader
         eyebrow="MARBIM"
         title="Ask about this factory"
@@ -40,6 +50,6 @@ export default async function MarbimPage() {
         packLabel={entry.packLabel}
         readOnly={entry.readOnly}
       />
-    </>
+    </div>
   )
 }

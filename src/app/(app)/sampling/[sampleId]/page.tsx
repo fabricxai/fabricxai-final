@@ -1,7 +1,6 @@
 import { headers } from 'next/headers'
 import { notFound, redirect } from 'next/navigation'
 
-import { Breadcrumbs } from '@/components/fx/data'
 import { PageHeader } from '@/components/shell/page-shell'
 import { getCtx } from '@/modules/core/session'
 import { sampleTimeline } from '@/modules/sampling/service'
@@ -39,13 +38,8 @@ export default async function SampleDetailPage({
 
   return (
     <>
-      <div style={{ marginBottom: 18 }}>
-        <Breadcrumbs
-          trail={[{ label: 'Sampling room', href: '/sampling' }, { label: request.requestNo }]}
-        />
-      </div>
-
       <PageHeader
+        back={{ href: '/sampling', label: 'Sampling room' }}
         eyebrow={`Sampling · ${request.type.toUpperCase()} · ${request.styleCode}`}
         title={request.requestNo}
         meta={request.dueDate ? `due ${request.dueDate}` : undefined}
