@@ -7,6 +7,7 @@ import { InlineAlert, Modal } from '@/components/fx/feedback'
 import { actionErrorMessage } from '@/lib/action-error'
 import { Button } from '@/components/fx/primitives'
 import { requestPayablePayment } from '@/modules/finance/actions'
+import { factoryToday } from '@/lib/dates'
 
 /**
  * "Record a payment" on a payable row (canvas P4).
@@ -43,7 +44,7 @@ export function PayableAction({
         await requestPayablePayment({
           payableId,
           paidAmount: paying.trim(),
-          paidAt: new Date().toISOString().slice(0, 10),
+          paidAt: factoryToday(),
         })
         setAsked(true)
         router.refresh()

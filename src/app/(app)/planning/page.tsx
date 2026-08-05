@@ -9,6 +9,7 @@ import { Ident } from '@/components/fx/format'
 import { PageHeader } from '@/components/shell/page-shell'
 import { getCtx } from '@/modules/core/session'
 import { board, openScenarios, type BoardLine } from '@/modules/planning/queries'
+import { factoryToday } from '@/lib/dates'
 
 /**
  * 5.2 Planning Board.
@@ -26,7 +27,7 @@ export default async function PlanningPage() {
   const ctx = await getCtx(await headers())
   if (!ctx) redirect('/login')
 
-  const from = new Date().toISOString().slice(0, 10)
+  const from = factoryToday()
   const [lines, scenarios] = await Promise.all([
     board(ctx, { from, days: WINDOW_DAYS }),
     openScenarios(ctx),

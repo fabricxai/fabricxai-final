@@ -24,6 +24,7 @@ import {
 } from '@/modules/quality/queries'
 import { repeatDefectAlerts, type QualityPolicy } from '@/modules/quality/service'
 import { getPolicy } from '@/modules/settings/service'
+import { factoryToday } from '@/lib/dates'
 
 /**
  * 7.1 Quality.
@@ -43,7 +44,7 @@ export default async function QualityPage() {
   const locale = await requestLocale()
 
   const policy = await getPolicy<QualityPolicy>(ctx, 'quality')
-  const today = new Date().toISOString().slice(0, 10)
+  const today = factoryToday()
 
   // A fortnight, which is the window the canvas dashboard shows: long enough for a trend
   // to have a shape, short enough that a fix made last week is still visible in it.

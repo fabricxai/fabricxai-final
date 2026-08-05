@@ -14,6 +14,7 @@ import { board } from '@/modules/production/queries'
 import { dailyLinePlans, downtimes } from '@/modules/production/schema'
 
 import { HourlyClient } from './hourly-client'
+import { factoryToday } from '@/lib/dates'
 
 /**
  * 6.1 Line tracking · hourly entry (canvas P1).
@@ -40,7 +41,7 @@ export default async function HourlyPage() {
 
   const locale = await requestLocale()
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = factoryToday()
 
   const [rows, planRows, openStoppages] = await Promise.all([
     board(ctx, { producedOn: today, shiftHours: SHIFT_HOURS }),

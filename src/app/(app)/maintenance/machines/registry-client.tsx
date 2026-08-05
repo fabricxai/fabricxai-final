@@ -8,6 +8,7 @@ import { actionErrorMessage } from '@/lib/action-error'
 import { Ident } from '@/components/fx/format'
 import { Badge, Button } from '@/components/fx/primitives'
 import { addMachine, moveMachine } from '@/modules/maintenance/actions'
+import { factoryToday } from '@/lib/dates'
 
 interface Machine {
   id: string
@@ -283,7 +284,7 @@ function MoveRow({
 }) {
   const [lineId, setLineId] = useState(currentLineId ?? '')
   // Not `new Date()` during render — the clock is read once, in an effect-free initialiser.
-  const [on, setOn] = useState(() => new Date().toISOString().slice(0, 10))
+  const [on, setOn] = useState(() => factoryToday())
 
   return (
     <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>

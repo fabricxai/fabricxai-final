@@ -1,3 +1,4 @@
+import { factoryMonth } from '@/lib/dates'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 
@@ -214,7 +215,7 @@ export default async function WorkforcePage() {
               <SectionHeading eyebrow={`${runs.length} runs`}>Payroll</SectionHeading>
 
               <PayrollRunControl
-                defaultPeriod={new Date().toISOString().slice(0, 7)}
+                defaultPeriod={factoryMonth()}
                 openRun={
                   // The newest run that is not yet disbursed — the one a period's work is
                   // still happening against.

@@ -13,6 +13,7 @@ import { withTenantRead } from '@/modules/core/tenancy'
 import { getPolicy } from '@/modules/settings/service'
 
 import { SubmissionsClient } from './submissions-client'
+import { factoryToday } from '@/lib/dates'
 
 /**
  * 2.1 Commercial · documents at the bank (canvas P3).
@@ -36,7 +37,7 @@ export default async function SubmissionsPage() {
   const ctx = await getCtx(await headers())
   if (!ctx) redirect('/login')
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = factoryToday()
   const policy = await getPolicy<BankDocsPolicy>(ctx, 'commercial')
 
   const [rows, aging] = await Promise.all([

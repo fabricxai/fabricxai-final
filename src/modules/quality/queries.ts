@@ -18,6 +18,7 @@ import { withTenantRead } from '@/modules/core/tenancy'
 import { lines } from '@/modules/planning/schema'
 
 import { dhuDaily, finalInspections, inlineChecks } from './schema'
+import { factoryToday } from '@/lib/dates'
 
 export interface LineDhu {
   lineId: string
@@ -472,7 +473,7 @@ export async function finalInspectionLots(ctx: AnyCtx): Promise<FinalInspectionL
   const { termsFor } = await import('@/modules/buyers/service')
   const { orderStyles, orders } = await import('@/modules/orders/schema')
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = factoryToday()
 
   const rows = await withTenantRead(ctx, (tx) =>
     tx

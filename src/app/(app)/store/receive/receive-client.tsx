@@ -1,5 +1,6 @@
 'use client'
 
+import { factoryToday } from '@/lib/dates'
 import { useEffect, useRef, useState } from 'react'
 
 import { InlineAlert } from '@/components/fx/feedback'
@@ -81,7 +82,7 @@ export function ReceiveClient({
   const { capture, online, queued, syncing, refused, sync, clear } = useOfflineQueue()
 
   const [challanNo, setChallanNo] = useState('')
-  const [receivedAt, setReceivedAt] = useState(() => new Date().toISOString().slice(0, 10))
+  const [receivedAt, setReceivedAt] = useState(() => factoryToday())
   const [itemId, setItemId] = useState(items[0]?.id ?? '')
   const [locationId, setLocationId] = useState(locations[0]?.id ?? '')
   const [qty, setQty] = useState('')

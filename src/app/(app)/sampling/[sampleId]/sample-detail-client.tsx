@@ -1,5 +1,6 @@
 'use client'
 
+import { factoryToday } from '@/lib/dates'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 
@@ -282,7 +283,7 @@ export function SampleDetailClient({
                     sampleRequestId,
                     verdict: verdict as 'approved' | 'approved_with_comments' | 'rejected',
                     comments,
-                    recordedOn: new Date().toISOString().slice(0, 10),
+                    recordedOn: factoryToday(),
                   })
                   setComments([])
                   return r.releasesCutting

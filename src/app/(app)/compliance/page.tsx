@@ -12,6 +12,7 @@ import { getCtx } from '@/modules/core/session'
 import { capExceptions, certificateLadder, openFindings } from '@/modules/compliance/service'
 import type { CompliancePolicy } from '@/modules/compliance/service'
 import { companyProfile, getPolicy } from '@/modules/settings/service'
+import { factoryToday } from '@/lib/dates'
 
 /**
  * 10.2 Compliance & Audit ⚖.
@@ -38,7 +39,7 @@ export default async function CompliancePage() {
     return <LockedState what="compliance" />
   }
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = factoryToday()
   const policy = await getPolicy<CompliancePolicy>(ctx, 'compliance')
 
   const [ladder, exceptions, findings] = await Promise.all([

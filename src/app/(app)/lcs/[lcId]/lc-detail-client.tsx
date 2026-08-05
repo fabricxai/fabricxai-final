@@ -8,6 +8,7 @@ import { actionErrorMessage } from '@/lib/action-error'
 import { Badge, Button } from '@/components/fx/primitives'
 import { SectionHeading } from '@/components/fx/signature'
 import { openBtbCredit, recordLcAmendment } from '@/modules/commercial/actions'
+import { factoryToday } from '@/lib/dates'
 
 interface Amendment {
   id: string
@@ -72,7 +73,7 @@ export function LcDetailClient({
 
   const [field, setField] = useState<string>('latestShipmentDate')
   const [nextValue, setNextValue] = useState('')
-  const [receivedAt, setReceivedAt] = useState(new Date().toISOString().slice(0, 10))
+  const [receivedAt, setReceivedAt] = useState(factoryToday())
 
   const [btbNumber, setBtbNumber] = useState('')
   const [btbValue, setBtbValue] = useState('')
@@ -118,7 +119,7 @@ export function LcDetailClient({
           number: btbNumber.trim(),
           value: asking.toFixed(2),
           currency: lc.currency,
-          openedAt: new Date().toISOString().slice(0, 10),
+          openedAt: factoryToday(),
         })
         setNoted(`Back-to-back ${btbNumber.trim()} opened.`)
         setBtbNumber('')

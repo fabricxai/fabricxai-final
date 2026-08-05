@@ -11,6 +11,7 @@
  */
 import { and, asc, eq, inArray, sql } from 'drizzle-orm'
 
+import { factoryToday } from '@/lib/dates'
 import { compositeKey } from '@/lib/keys'
 import { roundToScale, toMinor } from '@/lib/quantity'
 
@@ -423,7 +424,7 @@ export async function generateTna(
       await tx.delete(tnaMilestones).where(inArray(tnaMilestones.id, replaceable))
     }
 
-    const today = todayInFactoryTz()
+    const today = factoryToday()
     const rows = schedule
       .filter((milestone) => !actualized.has(milestone.name))
       .map((milestone) => ({
@@ -544,7 +545,7 @@ export async function actualizeMilestone(
       actualDate: input.actualDate,
     })
 
-    const today = todayInFactoryTz()
+    const today = factoryToday()
 
     await tx
       .update(tnaMilestones)
@@ -665,28 +666,13 @@ export async function setOrderStatus(
   })
 }
 
-/**
- * The factory's today, in its own timezone.
- *
- * A shift that ends at 11pm in Dhaka is still 5pm UTC the same day; deriving "today" from
- * the server's clock would mark a milestone late a few hours early for anyone standing on
- * the floor. The one place a clock is read at all — `tna.ts` stays pure.
- */
-export function todayInFactoryTz(timeZone = 'Asia/Dhaka'): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date())
-}
 
 /** Recompute derived statuses for a set of orders. Used by the nightly scan. */
 export async function refreshMilestoneStatuses(
   ctx: AnyCtx,
   input: { today?: string; riskWindowDays?: number } = {},
 ): Promise<{ updated: number }> {
-  const today = input.today ?? todayInFactoryTz()
+  const today = input.today ?? factoryToday()
 
   return withTenantTx(ctx, async (tx) => {
     const rows = await tx

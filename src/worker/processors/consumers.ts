@@ -29,6 +29,7 @@ import { markProcessed } from '@/modules/core/outbox'
 import { withTenantRead, withTenantTx } from '@/modules/core/tenancy'
 
 import { QUEUE } from '../queues'
+import { factoryToday } from '@/lib/dates'
 
 export interface EventJobData {
   eventId: string
@@ -170,7 +171,7 @@ const onCuttingComplete: Handler = async (ctx, payload) => {
   await actualiseMilestone(ctx, {
     orderId,
     name: 'cutting',
-    on: typeof payload.completedOn === 'string' ? payload.completedOn : todayInFactoryTz(),
+    on: typeof payload.completedOn === 'string' ? payload.completedOn : factoryToday(),
   })
 }
 
@@ -182,7 +183,7 @@ const onExFactoryConfirmed: Handler = async (ctx, payload) => {
   await actualiseMilestone(ctx, {
     orderId,
     name: 'ex_factory',
-    on: String(payload.actualExFactory ?? todayInFactoryTz()),
+    on: String(payload.actualExFactory ?? factoryToday()),
   })
 }
 
@@ -201,7 +202,7 @@ const onFinalInspectionPassed: Handler = async (ctx, payload) => {
   await actualiseMilestone(ctx, {
     orderId,
     name: 'final_inspection',
-    on: typeof payload.inspectedOn === 'string' ? payload.inspectedOn : todayInFactoryTz(),
+    on: typeof payload.inspectedOn === 'string' ? payload.inspectedOn : factoryToday(),
   })
 }
 
@@ -471,12 +472,3 @@ export async function runEventConsumer(job: Job<EventJobData>): Promise<void> {
   await withTenantTx(ctx, (tx) => markProcessed(tx, job.data.eventId, QUEUE.derive))
 }
 
-/** The factory's today. Milestones are calendar days, in the factory's timezone. */
-function todayInFactoryTz(timeZone = 'Asia/Dhaka'): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date())
-}

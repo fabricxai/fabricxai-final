@@ -21,7 +21,7 @@ import { lcs } from '../commercial/schema'
 import { ORDER_EVENTS } from './events'
 import { orderLcs, orders, tnaMilestones } from './schema'
 import { deriveMilestoneStatus, diffDays } from './tna'
-import { todayInFactoryTz } from './service'
+import { factoryToday } from '@/lib/dates'
 
 /**
  * Nightly TNA scan: recompute every open milestone's status and raise the ones that
@@ -35,7 +35,7 @@ export async function runTnaScan(
   ctx: SystemCtx,
   input: { today?: string; riskWindowDays?: number } = {},
 ): Promise<{ scanned: number; atRisk: number; late: number }> {
-  const today = input.today ?? todayInFactoryTz()
+  const today = input.today ?? factoryToday()
 
   return withTenantTx(ctx, async (tx) => {
     const open = await tx
@@ -126,7 +126,7 @@ export async function runLcCountdown(
   ctx: SystemCtx,
   input: { today?: string } = {},
 ): Promise<{ checked: number; raised: number; conflicts: number }> {
-  const today = input.today ?? todayInFactoryTz()
+  const today = input.today ?? factoryToday()
 
   return withTenantTx(ctx, async (tx) => {
     const live = await tx

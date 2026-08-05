@@ -8,6 +8,7 @@ import { SyncPill } from '@/components/fx/floor'
 import { Badge, Button } from '@/components/fx/primitives'
 import { SectionHeading } from '@/components/fx/signature'
 import { useOfflineQueue } from '@/lib/offline/use-offline-queue'
+import { factoryToday } from '@/lib/dates'
 
 type CellMap = Record<string, number>
 
@@ -82,7 +83,7 @@ export function PackingClient({
       payload: {
         orderId,
         ...(orderStyleId ? { orderStyleId } : {}),
-        outputDate: new Date().toISOString().slice(0, 10),
+        outputDate: factoryToday(),
         cells: { [cell]: CARTON_SIZE },
       },
     })

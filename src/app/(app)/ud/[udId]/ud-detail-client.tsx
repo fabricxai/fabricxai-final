@@ -1,5 +1,6 @@
 'use client'
 
+import { factoryMonth } from '@/lib/dates'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 
@@ -75,7 +76,7 @@ export function UdDetailClient({
   const [qty, setQty] = useState('')
   const [block, setBlock] = useState<UdBlock | null>(null)
   const [clear, setClear] = useState<string | null>(null)
-  const [period, setPeriod] = useState(new Date().toISOString().slice(0, 7))
+  const [period, setPeriod] = useState(factoryMonth())
   const [noted, setNoted] = useState<string | null>(null)
   const [failure, setFailure] = useState<string | null>(null)
 

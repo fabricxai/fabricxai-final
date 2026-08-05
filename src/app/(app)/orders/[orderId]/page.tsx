@@ -10,6 +10,7 @@ import { PageHeader } from '@/components/shell/page-shell'
 import { getCtx } from '@/modules/core/session'
 import { orderDetail } from '@/modules/orders/queries'
 import { orderRunRate } from '@/modules/production/queries'
+import { factoryToday } from '@/lib/dates'
 
 /**
  * 1.3 Order Desk — one order.
@@ -44,7 +45,7 @@ export default async function OrderDetailPage({
     ? await orderRunRate(ctx, {
         orderId: order.id,
         contractedQty,
-        asOf: new Date().toISOString().slice(0, 10),
+        asOf: factoryToday(),
         milestoneDate:
           order.milestones.find((m) => m.name === 'sewing_end')?.plannedDate ?? null,
       })

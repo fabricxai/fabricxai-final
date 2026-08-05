@@ -81,6 +81,32 @@ export default tseslint.config(
     rules: { 'fabricxai/no-float-money': 'off' },
   },
 
+  // ── The factory's today is not UTC's (audit INFRA-H2) ─────────────────────
+  //
+  // `new Date().toISOString().slice(0,10)` answers YESTERDAY between 00:00 and 05:59 in
+  // Dhaka — the night shift, and every nightly cron. Four modules had each written their
+  // own Intl workaround; `lib/dates.ts` is that function once. Seeds and tests are exempt:
+  // their calendar day carries no meaning, and a fixture is allowed to be arbitrary.
+  {
+    files: ['src/modules/**/*.ts', 'src/app/**/*.{ts,tsx}', 'src/components/**/*.{ts,tsx}', 'src/worker/**/*.ts'],
+    ignores: ['**/__tests__/**', 'src/db/seed/**'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          // Only the argument-less `new Date()` — "now". Date arithmetic on an explicit
+          // UTC-anchored calendar string (`new Date(\`${d}T00:00:00Z\`)`) is timezone-
+          // neutral and correct; `lib/dates.ts` does exactly that internally. Banning it
+          // too would be telling people off for the right thing.
+          selector:
+            "CallExpression[callee.property.name='slice'][callee.object.callee.property.name='toISOString'][callee.object.callee.object.callee.name='Date'][callee.object.callee.object.arguments.length=0]",
+          message:
+            "`new Date().toISOString().slice(0,10)` is UTC, and the factory is UTC+6 — it answers yesterday for the whole night shift. Use factoryToday() from @/lib/dates.",
+        },
+      ],
+    },
+  },
+
   // ── CLAUDE.md rule 2 · the query names its company (wall 1) ───────────────
   //
   // An ADOPTION RATCHET, deliberately not a repo-wide rule. Rule 2 says RLS is "the second

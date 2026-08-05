@@ -60,6 +60,7 @@ import { sendNotificationEmail } from '@/lib/mailer'
 import { refreshExceptionsFeed } from './exceptions-feed'
 
 import { getQueue, QUEUE } from '../queues'
+import { factoryToday } from '@/lib/dates'
 
 const FACTORY_TZ = 'Asia/Dhaka'
 
@@ -328,21 +329,6 @@ export async function registerSchedules(): Promise<void> {
   console.log(`[scheduler] ${SCHEDULED_TASKS.length} schedule(s) registered (${FACTORY_TZ})`)
 }
 
-/**
- * The factory's today.
- *
- * Deriving "today" from the server clock would put a 03:00 Dhaka job on the previous
- * calendar date in UTC, so a certificate expiring today would be reported as expiring
- * tomorrow — for one day, every day.
- */
-function factoryToday(): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: FACTORY_TZ,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date())
-}
 
 /**
  * When this company was created — the anchor a never-run task is measured from.

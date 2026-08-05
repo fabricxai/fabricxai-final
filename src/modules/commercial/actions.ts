@@ -20,6 +20,7 @@ import {
   type RealizationResult,
 } from './service'
 import type { UdDrawDecision } from './ud'
+import { factoryToday } from '@/lib/dates'
 
 /**
  * Ask an owner to authorise an overdraw.
@@ -196,7 +197,7 @@ export async function updateSubmissionStatus(input: {
     // A discrepancy starts ageing the day it is raised, and the escalation job counts from
     // here. Defaulting it to today rather than leaving it null is what makes the clock real.
     ...(input.bankStatus === 'discrepant'
-      ? { discrepantSince: new Date().toISOString().slice(0, 10) }
+      ? { discrepantSince: factoryToday() }
       : {}),
   })
 

@@ -13,6 +13,7 @@ import { lines } from '@/modules/planning/schema'
 import { endlineCounts } from '@/modules/production/schema'
 
 import { EndlineClient } from './endline-client'
+import { factoryToday } from '@/lib/dates'
 
 /**
  * 6.1 Line tracking · endline QC (canvas P3).
@@ -33,7 +34,7 @@ export default async function EndlinePage() {
 
   const locale = await requestLocale()
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = factoryToday()
 
   const [lineRows, counts] = await Promise.all([
     withTenantRead(ctx, (tx) =>

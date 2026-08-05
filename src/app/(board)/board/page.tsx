@@ -9,6 +9,7 @@ import { board } from '@/modules/production/queries'
 import { dailyLinePlans } from '@/modules/production/schema'
 
 import { TvBoard } from './tv-board'
+import { factoryToday } from '@/lib/dates'
 
 /**
  * 6.1 Line tracking · the wall board (canvas P2).
@@ -33,7 +34,7 @@ export default async function BoardPage() {
   const ctx = await getCtx(await headers())
   if (!ctx) redirect('/login')
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = factoryToday()
 
   const [rows, plans] = await Promise.all([
     board(ctx, { producedOn: today, shiftHours: SHIFT_HOURS }),

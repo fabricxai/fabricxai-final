@@ -12,6 +12,7 @@ import { pmSchedulesWithReach } from '@/modules/maintenance/service'
 
 import { PmChecklist } from './pm-checklist'
 import { ScheduleEditor } from './schedule-editor'
+import { factoryToday } from '@/lib/dates'
 
 /**
  * 9.1 Preventive maintenance.
@@ -32,15 +33,6 @@ import { ScheduleEditor } from './schedule-editor'
  */
 export const dynamic = 'force-dynamic'
 
-/** The factory's own day. A PM due date is a calendar question in Dhaka, not in UTC. */
-function factoryToday(): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Dhaka',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date())
-}
 
 export default async function PmPage() {
   const ctx = await getCtx(await headers())

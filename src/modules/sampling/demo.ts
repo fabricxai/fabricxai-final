@@ -18,6 +18,7 @@
  *
  * Neither is imported by application code. Both are for seeds, demos and tests.
  */
+import { factoryToday } from '@/lib/dates'
 import type { AnyCtx, RequestCtx } from '../core/ctx'
 import { registerPpApprovalProvider } from '../cutting/gates'
 import { withTenantTx } from '../core/tenancy'
@@ -69,7 +70,7 @@ export async function seedApprovedPpSample(
         round: 1,
         verdict,
         comments,
-        recordedOn: input.recordedOn ?? new Date().toISOString().slice(0, 10),
+        recordedOn: input.recordedOn ?? factoryToday(),
         createdBy: ctx.userId,
       })
       .returning({ id: sampleFeedbackRounds.id })

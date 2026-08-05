@@ -12,6 +12,7 @@ import { getPolicy } from '@/modules/settings/service'
 import { board } from '@/modules/production/queries'
 
 import { LineBoard } from './board-client'
+import { factoryToday } from '@/lib/dates'
 
 /**
  * 6.1 Line Tracking ⚡.
@@ -31,7 +32,7 @@ export default async function LinesPage() {
 
   const locale = await requestLocale()
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = factoryToday()
   // `activeLines(ctx)` used to be fetched here and passed to LineBoard, which consumed it
   // in a `{lines.length === 0 ? null : null}` left from an earlier draft — so it was a
   // database round trip on every load of a floor screen, feeding nothing. The header's

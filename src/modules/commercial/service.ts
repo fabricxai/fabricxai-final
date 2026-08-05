@@ -12,6 +12,7 @@
  */
 import { and, desc, eq, sql } from 'drizzle-orm'
 
+import { factoryToday } from '@/lib/dates'
 import { compareDecimalStrings } from '@/lib/quantity'
 
 import { recordChange, registerAuditedTables } from '../core/audit'
@@ -56,15 +57,6 @@ import { createLcPayload, createUdPayload, udAuthorizedItems, udOverrideDraft } 
 /** ⚖ — compliance-bearing; a customs inspector may ask who drew what, and when. */
 registerAuditedTables('uds', 'ud_consumptions', 'lcs', 'btb_lcs', 'lc_amendments', 'doc_submissions')
 
-/** The factory's today. UD validity is a calendar question, in the factory's timezone. */
-function todayInFactoryTz(timeZone = 'Asia/Dhaka'): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date())
-}
 
 /** Load a UD and its consumption ledger, optionally locking the UD row. */
 async function loadUd(
@@ -128,7 +120,7 @@ export async function checkUdBalance(
       itemRef: input.itemRef,
       qty: input.qty,
       unit: input.unit,
-      today: input.today ?? todayInFactoryTz(),
+      today: input.today ?? factoryToday(),
     })
   })
 }
@@ -190,7 +182,7 @@ export async function drawUd(
     itemRef: input.itemRef,
     qty: input.qty,
     unit: input.unit,
-    today: input.today ?? todayInFactoryTz(),
+    today: input.today ?? factoryToday(),
   })
 
   if (!decision.allowed && !input.approvedOverride) {
@@ -327,7 +319,7 @@ export async function expireLapsedUds(
   ctx: AnyCtx,
   input: { today?: string } = {},
 ): Promise<{ expired: number }> {
-  const today = input.today ?? todayInFactoryTz()
+  const today = input.today ?? factoryToday()
 
   return withTenantTx(ctx, async (tx) => {
     const lapsed = await tx
@@ -931,7 +923,7 @@ export async function setSubmissionStatus(
           input.bankStatus === 'discrepant' ? input.discrepancyNotes! : row.discrepancyNotes,
         discrepantSince:
           input.bankStatus === 'discrepant'
-            ? (input.discrepantSince ?? todayInFactoryTz())
+            ? (input.discrepantSince ?? factoryToday())
             : row.discrepantSince,
         updatedAt: new Date(),
       })

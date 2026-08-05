@@ -1,5 +1,6 @@
 'use client'
 
+import { factoryToday } from '@/lib/dates'
 import { useRouter } from 'next/navigation'
 import { useRef, useState, useTransition } from 'react'
 
@@ -49,7 +50,7 @@ export function ShipmentActions({ state }: { state: ShipmentActionState }) {
   const [pending, startTransition] = useTransition()
 
   const [exp, setExp] = useState(state.expNumber ?? '')
-  const [leftOn, setLeftOn] = useState(new Date().toISOString().slice(0, 10))
+  const [leftOn, setLeftOn] = useState(factoryToday())
   const [reason, setReason] = useState('')
   const [showException, setShowException] = useState(false)
   const [lcReason, setLcReason] = useState('')

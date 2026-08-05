@@ -15,6 +15,7 @@ import { withTenantRead } from '../core/tenancy'
 
 import { inlineChecks } from './schema'
 import { closeDhuDay, repeatDefectAlerts, type QualityPolicy } from './service'
+import { factoryToday } from '@/lib/dates'
 
 function daysBefore(date: string, days: number): string {
   return new Date(Date.parse(`${date}T00:00:00Z`) - days * 86_400_000).toISOString().slice(0, 10)
@@ -32,7 +33,7 @@ export async function runQualityDayClose(
   input: { forDate?: string } = {},
   policy: QualityPolicy,
 ): Promise<{ forDate: string; lines: number; alerts: number }> {
-  const forDate = input.forDate ?? daysBefore(new Date().toISOString().slice(0, 10), 1)
+  const forDate = input.forDate ?? daysBefore(factoryToday(), 1)
 
   const checked = await withTenantRead(ctx, (tx) =>
     tx
@@ -66,7 +67,7 @@ export async function runRepeatDefectAlerts(
   input: { today?: string } = {},
   policy: QualityPolicy,
 ): Promise<{ runs: number }> {
-  const today = input.today ?? new Date().toISOString().slice(0, 10)
+  const today = input.today ?? factoryToday()
   // A window twice the run length, so a run that started before the window still completes
   // inside it. Scanning exactly `repeatDefectDays` would only ever catch a run that began on
   // the first day of the window.

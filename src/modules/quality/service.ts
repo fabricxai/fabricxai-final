@@ -13,6 +13,7 @@
  * the tap carry a severity means two inspectors classify the same defect differently and
  * the AQL verdict depends on who was holding the tablet.
  */
+import { factoryToday } from '@/lib/dates'
 import { and, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm'
 
 import { recordChange, registerAuditedTables } from '../core/audit'
@@ -756,7 +757,7 @@ export async function runFinalInspection(
         // Carried so 1.3 stamps the milestone with the day the lot was actually inspected
         // rather than the day the queue happened to drain it. A worker that was down over
         // a weekend must not record Monday as the inspection date.
-        inspectedOn: new Date().toISOString().slice(0, 10),
+        inspectedOn: factoryToday(),
       },
       aggregateTable: 'final_inspections',
       aggregateId: row.id,

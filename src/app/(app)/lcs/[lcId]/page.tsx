@@ -8,6 +8,7 @@ import { getCtx } from '@/modules/core/session'
 import { getPolicy } from '@/modules/settings/service'
 
 import { LcDetailClient } from './lc-detail-client'
+import { factoryToday } from '@/lib/dates'
 
 /**
  * 2.1 LC register · one credit (canvas P2).
@@ -33,7 +34,7 @@ export default async function LcDetailPage({ params }: { params: Promise<{ lcId:
   const lc = await lcDetail(ctx, lcId, policy.btbLimitPct ?? 75)
   if (!lc) notFound()
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = factoryToday()
   const daysTo = (date: string | null): number | null =>
     date === null
       ? null

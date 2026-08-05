@@ -17,6 +17,7 @@ import type { QualityPolicy } from '@/modules/quality/service'
 import { getPolicy } from '@/modules/settings/service'
 
 import { InlineClient } from './inline-client'
+import { factoryToday } from '@/lib/dates'
 
 /**
  * 7.1 Quality · inline capture (canvas P1).
@@ -42,7 +43,7 @@ export default async function InlineQcPage({
 
   const locale = await requestLocale()
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = factoryToday()
   const lineRows = await withTenantRead(ctx, (tx) =>
     tx
       .select({ id: lines.id, code: lines.code, name: lines.name })

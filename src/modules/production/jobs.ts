@@ -20,6 +20,7 @@ import { ordersInProduction } from '../orders/queries'
 import { PRODUCTION_EVENTS } from './events'
 import { orderRunRate } from './queries'
 import { closeDay } from './service'
+import { factoryMonth, factoryToday } from '@/lib/dates'
 
 /** Months kept ahead of today. A scheduler outage has to be survivable. */
 const PARTITION_LOOKAHEAD_MONTHS = 12
@@ -60,7 +61,7 @@ export async function ensureOutputPartitions(
         titleKey: 'production.notifications.partition_default.title',
         params: { rows: inDefault },
         moduleId: 'production',
-        dedupeKey: `production.partition_default:${new Date().toISOString().slice(0, 7)}`,
+        dedupeKey: `production.partition_default:${factoryMonth()}`,
       })
     }
 
@@ -115,7 +116,7 @@ export async function runRunRateAlerts(
   ctx: SystemCtx,
   input: { today?: string } = {},
 ): Promise<{ checked: number; atRisk: number }> {
-  const today = input.today ?? new Date().toISOString().slice(0, 10)
+  const today = input.today ?? factoryToday()
   const live = await ordersInProduction(ctx)
 
   let atRisk = 0
