@@ -1,7 +1,7 @@
 /**
- * The two custom lint rules are the ONLY automated enforcement behind CLAUDE.md rules 4
- * and 9. A rule that has never been observed firing is not enforcement, it is decoration
- * — so both are exercised here, including the cases they must NOT fire on, because a
+ * The three custom lint rules are the ONLY automated enforcement behind CLAUDE.md rules 2,
+ * 4 and 9. A rule that has never been observed firing is not enforcement, it is decoration
+ * — so all three are exercised here, including the cases they must NOT fire on, because a
  * noisy rule gets disabled and then catches nothing.
  */
 import { RuleTester } from 'eslint'
@@ -11,6 +11,8 @@ import { describe, it } from 'vitest'
 import analyticsNoWrites from '../../../eslint-rules/analytics-no-writes.js'
 // @ts-expect-error — plain JS rule modules, intentionally untyped
 import noFloatMoney from '../../../eslint-rules/no-float-money.js'
+// @ts-expect-error — plain JS rule modules, intentionally untyped
+import requireTenantPredicate from '../../../eslint-rules/require-tenant-predicate.js'
 
 const ruleTester = new RuleTester({
   languageOptions: {
@@ -120,6 +122,53 @@ describe('fabricxai/analytics-no-writes', () => {
           // Rule 11: cross-module reads go through queries.ts, never a service.
           code: `import { recomputeCriticalPath } from '@/modules/orders/service'`,
           errors: [{ messageId: 'serviceImport' }],
+        },
+      ],
+    })
+  })
+})
+
+describe('fabricxai/require-tenant-predicate', () => {
+  it('demands the company in a where-clause, and accepts every honest spelling of it', () => {
+    ruleTester.run('require-tenant-predicate', requireTenantPredicate, {
+      valid: [
+        // The sanctioned helper, with and without extra filters.
+        { code: `const r = await tx.select().from(t).where(scoped(t, ctx, eq(t.id, id)))` },
+        { code: `await tx.select().from(t).where(scoped(t, ctx))` },
+        { code: `await tx.update(t).set(v).where(scoped(t, ctx, eq(t.status, 'active')))` },
+        // The bare predicate is the same wall; the helper is only the readable spelling.
+        { code: `await tx.select().from(t).where(eq(t.companyId, ctx.companyId))` },
+        { code: `await tx.select().from(t).where(and(eq(t.companyId, ctx.companyId), eq(t.id, id)))` },
+        // Nested deep inside a composed clause — the check is a subtree walk, not a match
+        // on the first argument, or every real query would trip it.
+        { code: `await tx.select().from(t).where(or(and(eq(t.companyId, c), a), b))` },
+        { code: `await tx.select().from(t).where(and(sql\`x\`, tenantEq(t, ctx)))` },
+        // Raw SQL naming the column counts.
+        { code: `await tx.select().from(t).where(sql\`company_id = \${id}\`)` },
+        // Not a query at all. The rule keys on `.where(`, so this proves it does not fire
+        // on array filtering that happens to be named the same way.
+        { code: `const found = list.filter((x) => x.id === id)` },
+      ],
+      invalid: [
+        {
+          // The IDOR shape: a uuid lookup with nothing else. If RLS ever fails, this
+          // returns another factory's row.
+          code: `await tx.select().from(t).where(eq(t.id, runId))`,
+          errors: [{ messageId: 'missing' }],
+        },
+        {
+          code: `await tx.select().from(payrollRuns).where(eq(payrollRuns.period, period))`,
+          errors: [{ messageId: 'missing' }],
+        },
+        {
+          // A delete is worse than a read, and must be caught the same way.
+          code: `await tx.delete(payrollLines).where(eq(payrollLines.runId, runId))`,
+          errors: [{ messageId: 'missing' }],
+        },
+        {
+          // `userId` is not `companyId`. A near-miss identifier must not satisfy it.
+          code: `await tx.select().from(t).where(eq(t.userId, ctx.userId))`,
+          errors: [{ messageId: 'missing' }],
         },
       ],
     })
