@@ -17,6 +17,7 @@ import { isSystemCtx, type AnyCtx, type RequestCtx } from '../core/ctx'
 import { AppError, conflict, notFound } from '../core/errors'
 import { notify } from '../core/notifications'
 import { emit } from '../core/outbox'
+import { defineStateMachine } from '../core/state-machine'
 import { withTenantRead, withTenantTx, type TenantDb } from '../core/tenancy'
 
 import { FINANCE_EVENTS } from './events'
@@ -42,6 +43,46 @@ import { invoicePayload, payablePayload, payPayablePayload } from './zod'
 
 /** ⚖ — every row here is money the factory is owed or owes. */
 registerAuditedTables('invoices', 'receivables', 'payables', 'order_profitability')
+
+/**
+ * What money owed to the factory may do next (audit BE-M1).
+ *
+ * Both columns were set by an inline ternary with no declaration of a legal move, on ⚖
+ * tables. The guards existed — realized and written-off were refused earlier in each
+ * function — but as a condition somebody remembered to write, not as a rule the next
+ * writer inherits.
+ *
+ * `part_realized` is reachable and currently unused: nothing produces a genuinely partial
+ * credit against a part shipment yet (docs/STUBS.md). It stays in the machine because the
+ * column has it and a machine that omitted it would refuse the day it lands.
+ */
+export const receivableMachine = defineStateMachine({
+  field: 'status',
+  initial: 'open',
+  transitions: {
+    open: ['part_realized', 'realized', 'written_off'],
+    part_realized: ['realized', 'written_off'],
+    // Terminal: a credit that has been realized is settled, and a correction is a new
+    // document rather than a status moved back.
+    realized: [],
+    written_off: [],
+  },
+})
+
+/** The same, for money the factory owes. */
+export const payableMachine = defineStateMachine({
+  field: 'status',
+  initial: 'open',
+  transitions: {
+    open: ['part_paid', 'paid', 'cancelled'],
+    part_paid: ['paid', 'cancelled'],
+    paid: [],
+    cancelled: [],
+  },
+})
+
+export type ReceivableStatus = (typeof receivableMachine.states)[number]
+export type PayableStatus = (typeof payableMachine.states)[number]
 
 /** Company policy. Owned by Settings (X.3); passed in until that module exists. */
 export interface FinancePolicy {
@@ -244,6 +285,8 @@ export async function postRealizationToReceivable(
     // Short by anything means the bank kept something; that is normal, and the receivable is
     // still closed. `part_realized` is for a genuinely partial credit against a part shipment.
     const status = toMinor(input.realizedAmount) <= 0n ? 'open' : 'realized'
+    // `open → open` is a legal no-op the machine allows for; anything else is asserted.
+    if (status !== row.status) receivableMachine.assert(row.status, status)
 
     await tx
       .update(receivables)
@@ -376,6 +419,7 @@ export async function payPayableIn(
 
     const paid = sumMinor(toMinor(row.paidAmount ?? '0.00'), toMinor(input.paidAmount))
     const status = paid >= toMinor(row.amount) ? 'paid' : 'part_paid'
+    if (status !== row.status) payableMachine.assert(row.status, status)
 
     await tx
       .update(payables)

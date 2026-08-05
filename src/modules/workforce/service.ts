@@ -67,6 +67,29 @@ export function assertPayrollAccess(ctx: AnyCtx): void {
   throw new AppError('forbidden', '', {}, 'payroll access denied')
 }
 
+/**
+ * A wage gazette's life (audit BE-M1).
+ *
+ * Uploaded as `draft` because transcribing a government notification is exactly the kind of
+ * typing that needs a second pair of eyes; activated when it takes effect; superseded when a
+ * newer one does. Superseded is NOT "no longer applies" — the old gazette still governs
+ * every period before the new one's effective date, which is why completed runs pin the
+ * gazette id they were computed against.
+ */
+export const gazetteMachine = defineStateMachine({
+  field: 'status',
+  initial: 'draft',
+  transitions: {
+    draft: ['active'],
+    active: ['superseded'],
+    // Terminal: a superseded gazette is history, and history is what recomputing June next
+    // year depends on.
+    superseded: [],
+  },
+})
+
+export type GazetteStatus = (typeof gazetteMachine.states)[number]
+
 export const payrollRunMachine = defineStateMachine({
   field: 'status',
   initial: 'draft',
@@ -217,6 +240,8 @@ export async function activateGazette(
     // `superseded` marks "no longer the newest", not "never applied": the old gazette
     // still governs every period before the new one takes effect, and completed runs keep
     // pointing at whichever gazette they were computed against.
+    // The WHERE restricts this to `active`; the machine states the rule.
+    gazetteMachine.assert('active', 'superseded')
     const superseded = await tx
       .update(wageGazettes)
       .set({ status: 'superseded', updatedAt: new Date() })
@@ -230,6 +255,7 @@ export async function activateGazette(
       )
       .returning({ id: wageGazettes.id })
 
+    gazetteMachine.assert(gazette.status as GazetteStatus, 'active')
     await tx
       .update(wageGazettes)
       .set({

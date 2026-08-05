@@ -250,6 +250,7 @@ export async function drawUd(
   const anyFree = [...remaining.values()].some((item) => compareDecimalStrings(item.free, '0') > 0)
 
   if (!anyFree && ud.status === 'active') {
+    udMachine.assert(ud.status, 'exhausted')
     await tx.update(uds).set({ status: 'exhausted', updatedAt: new Date() }).where(eq(uds.id, ud.id))
     await emit(ctx, tx, {
       eventName: COMMERCIAL_EVENTS.udExhausted,
@@ -322,6 +323,9 @@ export async function expireLapsedUds(
   const today = input.today ?? factoryToday()
 
   return withTenantTx(ctx, async (tx) => {
+    // The WHERE already restricts this to `active`, and the machine says so out loud —
+    // the predicate is what makes it true, this is what makes it checkable.
+    udMachine.assert('active', 'expired')
     const lapsed = await tx
       .update(uds)
       .set({ status: 'expired', updatedAt: new Date() })
@@ -469,6 +473,34 @@ export async function checkBtbHeadroomIn(
  * re-presented, which is routine. `realized` is terminal — the money has arrived, and a
  * status that could move afterwards would let a settled receivable reopen.
  */
+/**
+ * A customs declaration's lifecycle (audit BE-M1).
+ *
+ * `uds.status` was set by raw update in two places with nothing declaring what a legal
+ * move is. It matters more here than on most columns: the UD gate reads this status to
+ * decide whether bonded fabric may be issued, so a declaration moved backwards — expired
+ * to active — is duty-free fabric drawn against a dead permission, which is the exposure
+ * the gate exists to prevent.
+ *
+ * Terminal both ways on purpose. An exhausted UD has nothing left to draw and an expired
+ * one has no time left to draw it; either way the answer is a new declaration, not a
+ * revived one.
+ */
+export const udMachine = defineStateMachine({
+  field: 'status',
+  initial: 'active',
+  transitions: {
+    active: ['exhausted', 'expired', 'closed'],
+    // Exhausted is about quantity and expiry about time, so a UD with nothing left can
+    // still lapse — the customs record should say which happened.
+    exhausted: ['expired', 'closed'],
+    expired: ['closed'],
+    closed: [],
+  },
+})
+
+export type UdLifecycle = (typeof udMachine.states)[number]
+
 export const submissionMachine = defineStateMachine({
   field: 'bankStatus',
   initial: 'preparing',

@@ -25,6 +25,7 @@ import type { AnyCtx, RequestCtx } from '../core/ctx'
 import { AppError, conflict, notFound } from '../core/errors'
 import { assertGate, GATES } from '../core/gates'
 import { registerSyncHandler } from '../core/offline-sync'
+import { defineStateMachine } from '../core/state-machine'
 import { emit } from '../core/outbox'
 import { type TenantDb, withTenantRead, withTenantTx } from '../core/tenancy'
 
@@ -53,6 +54,31 @@ import { grnReceipt, issueRequest, requisitionRequest, stockAdjustmentDraft } fr
 
 /** ⚖ — adjustments move stock value; GRNs are the customs-facing record of receipt. */
 registerAuditedTables('grns', 'stock_adjustments')
+
+/**
+ * A fabric roll's life (audit BE-M1).
+ *
+ * `rolls.status` was set by raw update in two places. The states are not decorative: the
+ * fabric-inspection gate and the UD draw both read a roll's status to decide whether it may
+ * be issued, so a roll moved back from `issued` to `in_stock` is fabric that exists twice
+ * on paper — once in the store and once in a cutting room.
+ *
+ * `returned` goes back to stock deliberately: goods do come back from the floor, and that
+ * IS the roll being available again. `adjusted_out` is terminal because writing a roll off
+ * is a decision that went through the approve inbox.
+ */
+export const rollMachine = defineStateMachine({
+  field: 'status',
+  initial: 'in_stock',
+  transitions: {
+    in_stock: ['issued', 'adjusted_out'],
+    issued: ['returned', 'adjusted_out'],
+    returned: ['issued', 'adjusted_out'],
+    adjusted_out: [],
+  },
+})
+
+export type RollStatus = (typeof rollMachine.states)[number]
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Stock reads
@@ -529,6 +555,9 @@ export async function issueStockIn(
     })
 
     if (roll) {
+      // Issuing a roll that is already issued would be the same fabric leaving the store
+      // twice — the machine is what turns that into a 409 instead of a silent overwrite.
+      rollMachine.assert(roll.status as RollStatus, 'issued')
       await tx
         .update(rolls)
         .set({ status: 'issued', updatedAt: new Date() })
@@ -714,6 +743,10 @@ export async function commitStockAdjustment(
     }
 
     before = { rollId: roll.id, qty: roll.qty, status: roll.status }
+
+    // Only the write-off changes state; adjusting a quantity down to something above zero
+    // leaves the roll where it is.
+    if (nextMinor === 0n) rollMachine.assert(roll.status as RollStatus, 'adjusted_out')
 
     await tx
       .update(rolls)
