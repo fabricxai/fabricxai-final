@@ -4,7 +4,7 @@ import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 
-import { requireCtx } from '@/modules/core/session'
+import { requireRole } from '@/modules/core/session'
 
 import { convertLead, logActivity, setLeadStage } from './service'
 
@@ -29,7 +29,7 @@ const stageInput = z
   })
 
 export async function moveLeadStage(input: z.input<typeof stageInput>): Promise<void> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'merchandiser', 'commercial')
   const parsed = stageInput.parse(input)
 
   await setLeadStage(ctx, parsed)
@@ -37,7 +37,7 @@ export async function moveLeadStage(input: z.input<typeof stageInput>): Promise<
 }
 
 export async function logLeadActivity(input: unknown): Promise<{ activityId: string }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'merchandiser', 'commercial')
   const result = await logActivity(ctx, input)
 
   // The quiet-lead clock is driven by activity, so logging one changes the board.
@@ -52,7 +52,7 @@ const convertInput = z.object({
 })
 
 export async function convertLeadToBuyer(input: z.input<typeof convertInput>) {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'merchandiser', 'commercial')
   const parsed = convertInput.parse(input)
 
   const result = await convertLead(ctx, parsed)

@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
 
-import { requireCtx } from '@/modules/core/session'
+import { requireRole } from '@/modules/core/session'
 
 import { getPolicy } from '@/modules/settings/service'
 
@@ -36,7 +36,7 @@ export async function requestUdOverride(input: {
   storeIssueId?: string
   reason: string
 }): Promise<{ pendingChangeId: string; decision: UdDrawDecision }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'store', 'commercial')
   const result = await proposeUdOverride(ctx, input)
 
   // The request is in somebody's inbox now; the UD itself has not moved.
@@ -56,7 +56,7 @@ export async function generateUdReconciliation(input: {
   udId: string
   period: string
 }): Promise<{ reconciliationId: string }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'commercial', 'compliance')
   const result = await snapshotReconciliation(ctx, input)
 
   revalidatePath('/ud')
@@ -79,7 +79,7 @@ export async function checkUdDraw(input: {
   qty: string
   unit: string
 }): Promise<UdDrawDecision> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'store', 'commercial', 'compliance')
   return checkUdBalance(ctx, input)
 }
 
@@ -106,7 +106,7 @@ export async function recordLcAmendment(input: {
   }
   receivedAt: string
 }): Promise<{ amendmentId: string; number: number; tightened: boolean }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'commercial')
   const result = await amendLc(ctx, input)
 
   revalidatePath('/lcs')
@@ -133,7 +133,7 @@ export async function openBtbCredit(input: {
   openedAt?: string
   expiryDate?: string
 }): Promise<{ btbLcId: string }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'commercial')
   const policy = await getPolicy<BankDocsPolicy>(ctx, 'commercial')
 
   const result = await openBtb(ctx, input, policy)
@@ -157,7 +157,7 @@ export async function createSubmission(input: {
   invoicedAmount?: string
   currency: string
 }): Promise<{ submissionId: string }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'commercial')
   const result = await openSubmission(ctx, {
     lcId: input.lcId,
     ...(input.shipmentId ? { shipmentId: input.shipmentId } : {}),
@@ -187,7 +187,7 @@ export async function updateSubmissionStatus(input: {
   submittedAt?: string
   discrepancyNotes?: string
 }): Promise<void> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'commercial')
   await setSubmissionStatus(ctx, {
     submissionId: input.submissionId,
     bankStatus: input.bankStatus,
@@ -220,7 +220,7 @@ export async function postLcRealization(input: {
   realizedAt: string
   shortfallReason?: string
 }): Promise<RealizationResult> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'commercial', 'finance')
   const policy = await getPolicy<BankDocsPolicy>(ctx, 'commercial')
 
   const result = await postRealization(

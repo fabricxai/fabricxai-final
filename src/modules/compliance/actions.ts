@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
 
-import { requireCtx } from '@/modules/core/session'
+import { requireRole } from '@/modules/core/session'
 import { getPolicy } from '@/modules/settings/service'
 
 import {
@@ -22,7 +22,7 @@ function refresh(): void {
 }
 
 async function policyFor() {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'compliance')
   return { ctx, policy: await getPolicy<CompliancePolicy>(ctx, 'compliance') }
 }
 
@@ -33,7 +33,7 @@ export async function logAudit(input: {
   auditedOn: string
   findings: { description: string; severity: string; clause?: string }[]
 }): Promise<{ auditId: string }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'compliance')
   const result = await recordAudit(ctx, input)
   refresh()
   return result
@@ -63,7 +63,7 @@ export async function progressCap(input: {
   status: 'in_progress' | 'evidence_submitted'
   note?: string
 }): Promise<{ status: string }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'compliance')
   const result = await advanceCap(ctx, input)
   refresh()
   return { status: String(result.status) }
@@ -81,7 +81,7 @@ export async function attachCapEvidence(input: {
   documentId?: string
   note?: string
 }): Promise<{ evidenceCount: number }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'compliance')
   const result = await addCapEvidence(ctx, input)
   refresh()
   return { evidenceCount: result.evidenceCount }
@@ -118,7 +118,7 @@ export async function saveCertificate(input: {
   expiresOn: string | null
   issuer?: string
 }): Promise<{ certificateId: string }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'compliance')
   const result = await upsertCertificate(ctx, input)
   refresh()
   return result
@@ -130,7 +130,7 @@ export async function logTraining(input: {
   heldOn: string
   attendeesCount: number
 }): Promise<{ trainingId: string }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'compliance')
   const result = await recordTraining(ctx, input)
   refresh()
   return result

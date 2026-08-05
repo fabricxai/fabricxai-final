@@ -28,6 +28,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createDirectClient, createDirectDb } from '@/db/direct'
 import { companies, roles, users } from '@/db/schema/core'
 import type { Role } from '@/modules/core/ctx'
+import { requireRole } from '@/modules/core/session'
 
 const BASE_URL = process.env.APP_URL ?? `http://localhost:${process.env.INTEGRATION_PORT ?? 3100}`
 const RUN = Math.random().toString(36).slice(2, 10)
@@ -257,6 +258,69 @@ describe('permitted screens still render for the roles that own them', () => {
       expect(body, `${path} wrongly locked for ${role}`).not.toContain('have access to')
     })
   }
+})
+
+describe('the action boundary refuses a wrong role, against a real session', () => {
+  /**
+   * The gate every `'use server'` export now runs (audit N1), exercised with real cookies
+   * rather than a constructed ctx — the roles come back from the database on each call, so
+   * a test that hand-built a ctx would be asserting its own fixture.
+   *
+   * The screens above are the LAST wall. This is the one that matters for a write: a
+   * Server Action is a POST addressed by an action id and renders nothing, so no amount of
+   * `canSee` in a layout is between a member and the operation.
+   */
+  const headersFor = (actor: Actor) => new Headers({ cookie: actor.cookie })
+
+  it('refuses the role that does not own the operation', async () => {
+    const store = actors.get('store')!
+
+    // A storekeeper recording the buyer's verdict would open the PP-approval gate and
+    // release cutting. This is the exact call that was open to every member.
+    await expect(requireRole(headersFor(store), 'merchandiser')).rejects.toMatchObject({
+      status: 403,
+      messageKey: 'errors.forbidden',
+    })
+  })
+
+  it('admits the role that does own it', async () => {
+    const quality = actors.get('quality')!
+    const ctx = await requireRole(headersFor(quality), 'quality')
+
+    expect(ctx.roles).toContain('quality')
+    expect(ctx.companyId).toBe(companyId)
+  })
+
+  it('admits an owner to any operation, as supervision', async () => {
+    // The same pair /api/sync grants on every floor handler: an owner covering a shift
+    // must not be locked out of the operation they are covering.
+    const owner = actors.get('owner')!
+    const ctx = await requireRole(headersFor(owner), 'quality')
+
+    expect(ctx.roles).toContain('owner')
+  })
+
+  it('names what was required, so the refusal can be acted on', async () => {
+    const viewer = actors.get('viewer')!
+
+    await expect(requireRole(headersFor(viewer), 'commercial', 'finance')).rejects.toMatchObject({
+      details: { required: ['commercial', 'finance'] },
+    })
+  })
+
+  it('refuses an unauthenticated caller before it considers roles', async () => {
+    await expect(requireRole(new Headers(), 'quality')).rejects.toMatchObject({
+      messageKey: 'errors.unauthenticated',
+    })
+  })
+
+  it('treats an empty role list as a programming error, not as "everyone"', async () => {
+    const viewer = actors.get('viewer')!
+
+    // A door with no keyholder is a door standing open. `registerSyncHandler` refuses the
+    // same way, and this is what makes the source sweep's "no empty gate" check reachable.
+    await expect(requireRole(headersFor(viewer))).rejects.toThrow(/every door needs a keyholder/)
+  })
 })
 
 describe('an unauthenticated request never reaches a screen', () => {

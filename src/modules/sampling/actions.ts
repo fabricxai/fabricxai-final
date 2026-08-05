@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
 
-import { requireCtx } from '@/modules/core/session'
+import { requireRole } from '@/modules/core/session'
 
 import {
   addSampleCost,
@@ -30,7 +30,7 @@ export async function raiseSampleRequest(input: {
   requestNo: string
   dueDate?: string
 }): Promise<{ sampleRequestId: string }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'merchandiser')
   const result = await createSampleRequest(ctx, input)
   refresh()
   return result
@@ -48,7 +48,7 @@ export async function moveSampleStage(input: {
   stage: string
   occurredAt?: string
 }): Promise<{ stage: string }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'merchandiser')
   const result = await advanceStage(ctx, input)
   refresh(input.sampleRequestId)
   return { stage: String(result.stage) }
@@ -71,7 +71,7 @@ export async function recordBuyerVerdict(input: {
   comments: { area: string; comment: string }[]
   recordedOn: string
 }): Promise<{ round: number; releasesCutting: boolean }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'merchandiser')
   const result = await recordFeedback(ctx, input)
   refresh(input.sampleRequestId)
 
@@ -89,7 +89,7 @@ export async function markSampleDispatched(input: {
   courier: string
   awb: string
 }): Promise<{ dispatchId: string }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'merchandiser')
   const result = await dispatchSample(ctx, input)
   refresh(input.sampleRequestId)
   return result
@@ -109,7 +109,7 @@ export async function addCostToSample(input: {
   currency: string
   note?: string
 }): Promise<{ runningTotal: string }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'merchandiser')
 
   // `sample_costs` has no `kind` column and the payload has no such field, so passing one
   // through would be stripped by zod and silently lost — a dropdown that records nothing.
@@ -128,7 +128,7 @@ export async function addCostToSample(input: {
 
 /** Close a request once it has served its purpose. */
 export async function closeSample(input: { sampleRequestId: string }): Promise<void> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'merchandiser')
   await closeSampleRequest(ctx, input)
   refresh(input.sampleRequestId)
 }

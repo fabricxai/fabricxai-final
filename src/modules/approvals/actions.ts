@@ -10,7 +10,7 @@ import {
   reject,
   type ApproveResult,
 } from '@/modules/core/pending-changes'
-import { requireCtx } from '@/modules/core/session'
+import { requireRole } from '@/modules/core/session'
 
 import { draftDetail, draftTarget, type DraftDetail } from './queries'
 
@@ -21,6 +21,28 @@ import { draftDetail, draftTarget, type DraftDetail } from './queries'
  * touches `db`; the transaction, the audit row and the outbox event all belong
  * to `core/pending-changes`, which is what keeps a commit atomic with its trail.
  */
+
+/**
+ * Roles the inbox is offered to — the same list `nav.ts` uses for `/approve`.
+ *
+ * Deliberately broad, and deliberately not the real decision. Which drafts a person may
+ * actually sign is settled per draft by the approval rules in `core/pending-changes`
+ * (`requiredRoles`, plus the refusal to approve one's own draft). This gate only keeps out
+ * the roles with nothing to approve at all — a viewer, a plain member — so that the rule
+ * engine is never the first thing standing between them and a commit.
+ */
+const APPROVER_ROLES = [
+  'merchandiser',
+  'commercial',
+  'planner',
+  'store',
+  'procurement',
+  'production',
+  'quality',
+  'compliance',
+  'finance',
+  'hr',
+] as const
 
 const approveInput = z.object({
   pendingChangeId: z.string().uuid(),
@@ -41,7 +63,7 @@ const rejectInput = z.object({
 })
 
 export async function approveDraft(input: z.input<typeof approveInput>): Promise<ApproveResult> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), ...APPROVER_ROLES)
   const parsed = approveInput.parse(input)
 
   const result = await approve(ctx, parsed)
@@ -51,7 +73,7 @@ export async function approveDraft(input: z.input<typeof approveInput>): Promise
 }
 
 export async function rejectDraft(input: z.input<typeof rejectInput>): Promise<void> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), ...APPROVER_ROLES)
   const { pendingChangeId, reason, note } = rejectInput.parse(input)
 
   // The reason is the first line of the note so it survives into `review_note`,
@@ -81,7 +103,7 @@ export async function rejectDraft(input: z.input<typeof rejectInput>): Promise<v
  * the trail records.
  */
 export async function draftFields(input: { pendingChangeId: string }): Promise<DraftDetail | null> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), ...APPROVER_ROLES)
   const { pendingChangeId } = z.object({ pendingChangeId: z.string().uuid() }).parse(input)
 
   const draft = await draftTarget(ctx, pendingChangeId)

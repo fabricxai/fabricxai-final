@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
 
-import { requireCtx } from '@/modules/core/session'
+import { requireRole } from '@/modules/core/session'
 import { getPolicy } from '@/modules/settings/service'
 
 import type { QuoteComparison } from './procurement'
@@ -43,7 +43,7 @@ export async function recordQuote(input: {
     dutyPct?: string
   }[]
 }): Promise<{ supplierQuoteId: string }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'procurement', 'commercial')
   const result = await recordSupplierQuote(ctx, input)
   refresh(input.purchaseRequisitionId)
   return result
@@ -67,7 +67,7 @@ export async function compareQuotes(input: {
   /** `{ BDT: '0.0083' }` — one unit of the quoted currency in the base currency. */
   rates?: Record<string, string>
 }): Promise<QuoteComparison> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'procurement', 'commercial')
   return compareQuotesForItem(ctx, input)
 }
 
@@ -91,7 +91,7 @@ export async function issuePurchaseOrder(input: {
   expectedDeliveryDate?: string
   lines: { itemId: string; qty: string; unit: string; unitPrice: string }[]
 }): Promise<{ supplierPoId: string; totalValue: string; currency: string }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'procurement', 'commercial')
   const policy = await getPolicy<ProcurementPolicy>(ctx, 'procurement')
 
   const result = await issuePo(ctx, input, policy)
@@ -112,7 +112,7 @@ export async function updatePoStatus(input: {
     | 'received'
     | 'cancelled'
 }): Promise<void> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'procurement', 'commercial')
   await setPoStatus(ctx, input)
   refresh()
 }
@@ -135,7 +135,7 @@ export async function recordReceipt(input: {
   qty: string
   grnId?: string
 }): Promise<ReceiptResult> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'procurement', 'store')
   const policy = await getPolicy<ProcurementPolicy>(ctx, 'procurement')
 
   const result = await applyReceipt(ctx, input, policy)

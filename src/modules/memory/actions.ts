@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
 
-import { requireCtx } from '@/modules/core/session'
+import { requireRole } from '@/modules/core/session'
 
 import { findSimilar, setOutcomeNote, type SimilarStyle } from './service'
 
@@ -23,7 +23,7 @@ export async function saveCloseOutNote(input: {
   orderId: string
   merchandiserNote: string
 }): Promise<{ outcomeId: string }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'merchandiser', 'commercial', 'planner')
   const result = await setOutcomeNote(ctx, input)
 
   revalidatePath('/memory')
@@ -46,6 +46,6 @@ export async function findSimilarStyles(input: {
   attrs?: Record<string, unknown>
   k?: number
 }): Promise<SimilarStyle[]> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'merchandiser', 'commercial', 'planner')
   return findSimilar(ctx, input)
 }

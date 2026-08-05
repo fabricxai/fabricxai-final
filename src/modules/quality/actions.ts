@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
 
-import { requireCtx } from '@/modules/core/session'
+import { requireRole } from '@/modules/core/session'
 import { getPolicy } from '@/modules/settings/service'
 
 import {
@@ -33,7 +33,7 @@ import type { AqlPlan } from './quality'
 export async function recordFabricInspection(
   input: unknown,
 ): Promise<{ fabricInspectionId: string; pointsPer100SqYd: string; result: 'pass' | 'fail' }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'quality')
   const policy = await getPolicy<QualityPolicy>(ctx, 'quality')
 
   const result = await inspectFabric(ctx, input, policy)
@@ -61,7 +61,7 @@ export async function previewAqlPlan(input: {
   majorAql: string
   minorAql: string
 }): Promise<AqlPlan> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'quality', 'production')
   const policy = await getPolicy<QualityPolicy>(ctx, 'quality')
   return aqlPlanFor(ctx, input, policy)
 }
@@ -82,7 +82,7 @@ export async function previewAqlPlan(input: {
 export async function submitFinalInspection(
   input: unknown,
 ): Promise<{ finalInspectionId: string; verdict: 'pass' | 'fail'; reasons: unknown[] }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'quality')
   const policy = await getPolicy<QualityPolicy>(ctx, 'quality')
 
   const result = await runFinalInspection(ctx, input, policy)
@@ -124,7 +124,7 @@ export async function recordMeasuredPieces(input: {
   sampledSize: string
   pieces: Record<string, string>[]
 }): Promise<{ pieces: number; failed: number; outOfTolerance: number; incomplete: number }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'quality')
 
   const results = []
   for (const values of input.pieces) {

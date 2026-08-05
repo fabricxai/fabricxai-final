@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
 
-import { requireCtx } from '@/modules/core/session'
+import { requireRole } from '@/modules/core/session'
 
 import {
   activateGazette,
@@ -27,7 +27,7 @@ export async function runPayroll(input: {
   period: string
   festival?: string | null
 }): Promise<{ runId: string; lines: number; totalNet: string; flagged: number }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'hr')
 
   const result = await computePayrollRun(ctx, {
     period: input.period,
@@ -49,7 +49,7 @@ export async function runPayroll(input: {
 export async function approveRun(input: {
   runId: string
 }): Promise<{ from: string; to: string }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'hr')
   const result = await approvePayrollRun(ctx, input.runId)
 
   revalidatePath('/workforce')
@@ -68,7 +68,7 @@ export async function recordGazette(input: {
   effectiveFrom: string
   grades: { grade: string; basic: string; houseRent: string; medical: string; transport: string; food: string }[]
 }): Promise<{ gazetteId: string }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'hr')
   const result = await uploadGazette(ctx, input)
   revalidatePath('/workforce')
   return result
@@ -76,7 +76,7 @@ export async function recordGazette(input: {
 
 /** Make a recorded gazette the one payroll computes against. */
 export async function makeGazetteActive(input: { gazetteId: string }): Promise<void> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'hr')
   await activateGazette(ctx, input.gazetteId)
   revalidatePath('/workforce')
 }

@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
 
-import { requireCtx } from '@/modules/core/session'
+import { requireRole } from '@/modules/core/session'
 import { getPolicy } from '@/modules/settings/service'
 
 import {
@@ -34,7 +34,7 @@ export async function openShipment(input: {
   forwarder?: string
   mode?: 'sea' | 'air'
 }): Promise<{ shipmentId: string }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'shipment', 'commercial', 'merchandiser')
   const result = await createShipment(ctx, input)
   refresh()
   return result
@@ -52,7 +52,7 @@ export async function recordExpNumber(input: {
   shipmentId: string
   expNumber: string
 }): Promise<void> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'shipment', 'commercial')
   await setExpNumber(ctx, input)
   refresh()
 }
@@ -69,7 +69,7 @@ export async function confirmShipmentLeft(input: {
   shipmentId: string
   actualExFactory: string
 }): Promise<{ lateAgainstLc: boolean }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'shipment', 'commercial')
   const policy = await getPolicy<ShipmentPolicy>(ctx, 'shipment')
   const result = await confirmExFactory(ctx, input, policy)
   refresh()
@@ -87,7 +87,7 @@ export async function regeneratePackingList(input: {
   orderId: string
   shipmentId?: string
 }): Promise<{ packingListId: string; version: number }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'shipment')
   const result = await generatePackingList(ctx, input)
   refresh()
   return { packingListId: result.packingListId, version: result.version }
@@ -104,7 +104,7 @@ export async function lockPackingList(input: {
   packingListId: string
   acceptMismatches?: boolean
 }): Promise<{ version: number }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'shipment')
   const result = await approvePackingList(ctx, input)
   refresh()
   return { version: result.version }
@@ -120,7 +120,7 @@ export async function lockPackingList(input: {
 export async function sendDocsToBank(input: {
   shipmentId: string
 }): Promise<{ submitted: string[]; expNumber: string }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'commercial')
   const result = await handoffDocsToBank(ctx, input)
   refresh()
   revalidatePath('/lcs/submissions')
@@ -137,7 +137,7 @@ export async function requestToleranceException(input: {
   shipmentId: string
   reason: string
 }): Promise<{ pendingChangeId: string }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'commercial', 'merchandiser')
   const result = await proposeToleranceOverride(ctx, input)
   revalidatePath('/approve')
   refresh()
@@ -157,7 +157,7 @@ export async function loadOrderCartons(input: {
   shipmentId: string
   orderId: string
 }): Promise<{ loaded: number }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'shipment', 'commercial', 'merchandiser')
 
   const { withTenantRead } = await import('@/modules/core/tenancy')
   const { and, eq, isNull } = await import('drizzle-orm')
@@ -191,7 +191,7 @@ export async function loadOrderCartons(input: {
 export async function buildShipmentDocChecklist(input: {
   shipmentId: string
 }): Promise<{ kinds: string[] }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'shipment', 'commercial')
   const result = await buildDocChecklist(ctx, input)
   refresh()
   return result
@@ -219,7 +219,7 @@ export async function markShipmentDoc(input: {
    */
   documentId?: string
 }): Promise<void> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'shipment', 'commercial')
   await setDocStatus(ctx, input)
   refresh()
 }

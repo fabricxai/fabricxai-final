@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
 import { z } from 'zod'
 
-import { requireCtx } from '@/modules/core/session'
+import { requireRole } from '@/modules/core/session'
 import { getPolicy } from '@/modules/settings/service'
 import { listModules } from '@/modules/core/registry'
 import { AppError } from '@/modules/core/errors'
@@ -25,6 +25,39 @@ import type { ToolPack } from './tools'
  * assistant to answer a payroll question.
  */
 
+/**
+ * Everyone the nav offers MARBIM to. Asking a question is a read however it is phrased —
+ * MARBIM writes nothing itself, and anything it drafts lands in somebody's approve inbox.
+ */
+const ASK_ROLES = [
+  'merchandiser',
+  'commercial',
+  'planner',
+  'store',
+  'procurement',
+  'cutting',
+  'production',
+  'quality',
+  'shipment',
+  'maintenance',
+  'hr',
+  'compliance',
+  'finance',
+  'member',
+  'viewer',
+] as const
+
+/**
+ * Narrower than asking: intake QUEUES an extraction, which costs a provider call and fills
+ * somebody's approve inbox with drafts to review (audit AI-H7 — the intake path had no role
+ * gate at all, and is not in the nav, so the shell's own check never covered it either).
+ * A viewer or a plain member has nothing to draft and no inbox to answer for.
+ */
+const INTAKE_ROLES = ASK_ROLES.filter(
+  (role): role is Exclude<(typeof ASK_ROLES)[number], 'member' | 'viewer'> =>
+    role !== 'member' && role !== 'viewer',
+)
+
 const askInput = z.object({
   conversationId: z.string().uuid(),
   turnIndex: z.number().int().min(0),
@@ -34,7 +67,7 @@ const askInput = z.object({
 })
 
 export async function ask(input: z.input<typeof askInput>): Promise<ChatResult> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), ...ASK_ROLES)
   const { conversationId, turnIndex, question, fromModule } = askInput.parse(input)
 
   // Only modules that actually registered a primer, and only ones this caller's
@@ -119,7 +152,7 @@ async function contextOptions(ctx: AnyCtx, source: 'buyers' | 'audits'): Promise
 export async function intakeContext(
   kindId: string,
 ): Promise<{ field: string; label: string; options: ContextOption[] }[]> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), ...ASK_ROLES)
   const kind = intakeKind(kindId)
 
   const resolved = []
@@ -160,7 +193,7 @@ export async function readDocument(input: {
   documentId?: string
   contextValues?: Record<string, string>
 }): Promise<{ jobId: string; label: string }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), ...INTAKE_ROLES)
   const policy = await getPolicy<MarbimPolicy>(ctx, 'marbim')
 
   const kind = intakeKind(input.kindId)

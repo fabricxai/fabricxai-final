@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
 
 import { propose } from '@/modules/core/pending-changes'
-import { requireCtx } from '@/modules/core/session'
+import { requireRole } from '@/modules/core/session'
 
 /**
  * Ask for a payment to be released (canvas P4: "finance.recordPayment → Approve inbox ·
@@ -22,7 +22,7 @@ export async function requestPayablePayment(input: {
   paidAmount: string
   paidAt: string
 }): Promise<{ pendingChangeId: string }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'finance', 'commercial')
 
   const { id } = await propose(ctx, {
     moduleId: 'finance',

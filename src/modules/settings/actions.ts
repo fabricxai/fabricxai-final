@@ -3,7 +3,7 @@
 import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 
-import { requireCtx } from '@/modules/core/session'
+import { requireRole } from '@/modules/core/session'
 
 import { upsertCompanyProfile } from './service'
 
@@ -16,7 +16,7 @@ import { upsertCompanyProfile } from './service'
  */
 
 export async function saveCompanyProfile(input: unknown): Promise<{ companyId: string }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'owner', 'admin')
   const result = await upsertCompanyProfile(ctx, input)
 
   // factoryType decides which modules appear in the nav, so the whole shell has

@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
 
-import { requireCtx } from '@/modules/core/session'
+import { requireRole } from '@/modules/core/session'
 import { getPolicy } from '@/modules/settings/service'
 
 import {
@@ -24,7 +24,7 @@ import type { CostSheetResult } from './cost-sheet'
  * cost has to be the same one the approve path enforces (CLAUDE.md rule 8).
  */
 export async function previewSheet(sections: unknown): Promise<CostSheetResult> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'merchandiser', 'commercial', 'finance')
   const policy = await getPolicy<CostingPolicy>(ctx, 'costing')
 
   return previewCostSheet(ctx, { sections }, policy)
@@ -46,7 +46,7 @@ export async function saveCostSheet(input: {
   bomId?: string
   sections: unknown
 }): Promise<{ sheetId: string; version: number; computed: CostSheetResult }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'merchandiser', 'commercial', 'finance')
   const policy = await getPolicy<CostingPolicy>(ctx, 'costing')
 
   const result = await createCostSheet(ctx, input, policy)
@@ -68,7 +68,11 @@ export async function saveCostSheet(input: {
 export async function approveSheet(input: {
   sheetId: string
 }): Promise<{ version: number; belowFloor: boolean }> {
-  const ctx = await requireCtx(await headers())
+  // The same roles as drafting, deliberately. The dangerous case here is a sheet priced
+  // below the margin floor, and the service already refuses that to anyone but an owner —
+  // inventing a second, stricter rule at this boundary would contradict what the nav tells
+  // a merchandiser they may do in costing, with a bare "your role does not allow this".
+  const ctx = await requireRole(await headers(), 'merchandiser', 'commercial', 'finance')
   const policy = await getPolicy<CostingPolicy>(ctx, 'costing')
 
   const result = await approveCostSheet(ctx, input, policy)
@@ -88,7 +92,7 @@ export async function approveSheet(input: {
  * a typed consumption is an estimate and `actual` is a claim about a real order.
  */
 export async function saveBom(input: unknown): Promise<{ bomId: string; lineCount: number }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'merchandiser', 'commercial', 'finance')
   const result = await createBom(ctx, input)
 
   revalidatePath('/costing/bom')

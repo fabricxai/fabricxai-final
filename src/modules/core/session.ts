@@ -89,15 +89,45 @@ export async function requireCtx(headers: Headers): Promise<RequestCtx> {
 }
 
 /**
- * Role gate for the action boundary. Payroll (🔒) additionally returns a bodyless 403 —
- * that lives with module 10.1, since the shape of the refusal is part of its contract.
+ * Roles that may perform any action — supervision, not a department.
+ *
+ * The same pair `offline-sync.ts` grants on every floor handler, for the same reason: an
+ * owner covering a shift must not be locked out of the operation they are covering.
+ */
+const SUPERVISORY_ROLES: readonly Role[] = ['owner', 'admin']
+
+/**
+ * Role gate for the action boundary. **Every `'use server'` export goes through this.**
+ *
+ * It existed before this and had zero callers (audit N1). All sixteen `actions.ts` files
+ * authenticated with `requireCtx` and stopped there, so any authenticated member of the
+ * company could record the buyer verdict that opens the PP gate for cutting, issue a
+ * purchase order, open a BTB credit, confirm ex-factory, or open an LC bank submission.
+ * `/api/sync` had already been hardened to require roles per handler (BE-H4); this is the
+ * second and much larger door into the same services.
+ *
+ * The shell's `canSee`/`canWrite` is not this check and cannot be: it decides what to
+ * render, and a Server Action is a POST addressed by action id that renders nothing. By
+ * the time a layout computes `readOnly`, the write has already committed.
+ *
+ * Owner and admin are added to every call. Passing no roles at all is a programming error
+ * rather than "everyone" — an action open to the whole company must say so by listing the
+ * roles, exactly as a sync handler does.
+ *
+ * Payroll (🔒) is stricter than anything expressible here — `hr` and `owner` only, admin
+ * included in the refusal — and returns a bodyless 403. That stays in module 10.1, because
+ * the shape of that refusal is part of its contract.
  */
 export async function requireRole(
   headers: Headers,
   ...allowed: readonly Role[]
 ): Promise<RequestCtx> {
+  if (allowed.length === 0) {
+    throw new Error('requireRole called with no roles — every door needs a keyholder')
+  }
+
   const ctx = await requireCtx(headers)
-  if (!allowed.some((role) => ctx.roles.includes(role))) {
+  if (![...allowed, ...SUPERVISORY_ROLES].some((role) => ctx.roles.includes(role))) {
     throw forbidden('errors.forbidden', { required: allowed })
   }
   return ctx

@@ -4,7 +4,7 @@ import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 
 import { propose } from '@/modules/core/pending-changes'
-import { requireCtx } from '@/modules/core/session'
+import { requireRole } from '@/modules/core/session'
 
 /**
  * Draft a stock correction.
@@ -20,7 +20,7 @@ import { requireCtx } from '@/modules/core/session'
  * refuses any target `store/register.ts` has not whitelisted (CLAUDE.md rule 3).
  */
 export async function draftStockAdjustment(input: unknown): Promise<{ id: string }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'store')
 
   const result = await propose(ctx, {
     moduleId: 'store',

@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
 
-import { requireCtx } from '@/modules/core/session'
+import { requireRole } from '@/modules/core/session'
 
 import {
   assignMachineToLine,
@@ -37,7 +37,7 @@ export async function reportMachine(input: {
   priority: 'high' | 'normal'
   notes?: string
 }): Promise<{ ticketId: string }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'maintenance', 'production')
   const result = await openTicket(ctx, input)
   refresh()
   return { ticketId: result.ticketId }
@@ -45,7 +45,7 @@ export async function reportMachine(input: {
 
 /** A mechanic takes the ticket. One claimant, so two do not walk to the same machine. */
 export async function takeTicket(input: { ticketId: string }): Promise<{ status: string }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'maintenance')
   const result = await claimTicket(ctx, input)
   refresh()
   return { status: String(result.status) }
@@ -66,7 +66,7 @@ export async function resolveMachineTicket(input: {
   partsUsed?: { partId: string; qty: number }[]
   notes?: string
 }): Promise<{ downMinutes: number | null }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'maintenance')
   const result = await resolveTicket(ctx, input)
   refresh()
   return { downMinutes: (result as { downMinutes?: number }).downMinutes ?? null }
@@ -77,7 +77,7 @@ export async function dropTicket(input: {
   ticketId: string
   reason: string
 }): Promise<{ status: string }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'maintenance')
   const result = await cancelTicket(ctx, input)
   refresh()
   return { status: String(result.status) }
@@ -96,7 +96,7 @@ export async function markPmDone(input: {
   completedOn: string
   checked: { step: string; ok: boolean; note?: string }[]
 }): Promise<{ alreadyRecorded: boolean }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'maintenance')
   const result = await completePm(ctx, input)
   refresh()
   return { alreadyRecorded: result.alreadyRecorded }
@@ -110,7 +110,7 @@ export async function addMachine(input: {
   serial?: string
   lineId?: string
 }): Promise<{ machineId: string }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'maintenance')
   const result = await registerMachine(ctx, input)
   refresh()
   return result
@@ -128,7 +128,7 @@ export async function moveMachine(input: {
   lineId: string | null
   on: string
 }): Promise<void> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'maintenance')
   await assignMachineToLine(ctx, input)
   refresh()
 }
@@ -145,7 +145,7 @@ export async function savePmSchedule(input: {
   cadence: 'daily' | 'weekly' | 'monthly'
   checklist: string[]
 }): Promise<{ replaced: boolean }> {
-  const ctx = await requireCtx(await headers())
+  const ctx = await requireRole(await headers(), 'maintenance')
   const result = await upsertPmSchedule(ctx, input)
   refresh()
   return { replaced: result.replaced }
