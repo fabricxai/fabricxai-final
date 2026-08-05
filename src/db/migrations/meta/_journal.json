@@ -519,6 +519,13 @@
       "when": 1785760566735,
       "tag": "0073_auth_tables_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1785963371039,
+      "tag": "0074_wandering_ezekiel_stane",
+      "breakpoints": true
     }
   ]
 }

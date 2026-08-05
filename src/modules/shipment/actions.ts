@@ -19,6 +19,7 @@ import {
   setDocStatus,
   setExpNumber,
   type ShipmentPolicy,
+  waiveLcDate,
 } from './service'
 
 function refresh(): void {
@@ -141,6 +142,23 @@ export async function requestToleranceException(input: {
   const ctx = await requireRole(await headers(), 'commercial', 'merchandiser')
   const result = await proposeToleranceOverride(ctx, input)
   revalidatePath('/approve')
+  refresh()
+  return result
+}
+
+/**
+ * Accept, on the record, that this shipment goes against a credit that cannot take its date.
+ *
+ * The escape hatch for the LC date gate. Owner and commercial only — the credit is
+ * commercial's instrument, and the service refuses anyone else with the same message rather
+ * than trusting this boundary alone.
+ */
+export async function acceptLcDateBreach(input: {
+  shipmentId: string
+  reason: string
+}): Promise<{ shipmentId: string; waivedBy: string }> {
+  const ctx = await requireRole(await headers(), 'commercial')
+  const result = await waiveLcDate(ctx, input)
   refresh()
   return result
 }

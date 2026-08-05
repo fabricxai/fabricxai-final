@@ -23,6 +23,7 @@ import { buyers } from '@/modules/buyers/schema'
 import { lcs } from '@/modules/commercial/schema'
 import type { RequestCtx } from '@/modules/core/ctx'
 import { syncBatch } from '@/modules/core/offline-sync'
+import { outbox } from '@/db/schema/core'
 import { approve } from '@/modules/core/pending-changes'
 import { withTenantRead } from '@/modules/core/tenancy'
 import { orderBreakdowns, orders, orderStyles } from '@/modules/orders/schema'
@@ -54,6 +55,7 @@ import {
   setDocStatus,
   setExpNumber,
   waiveFinalInspection,
+  waiveLcDate,
 } from '@/modules/shipment/service'
 
 const client = createDirectClient()
@@ -546,19 +548,86 @@ describe('8.1 · ex-factory', () => {
     expect(row!.actualExFactory).toBe('2026-08-10')
   })
 
-  it('raises the LC latest-shipment conflict on the ACTUAL date', async () => {
+  it('REFUSES a departure the credit cannot accept, on the ACTUAL date', async () => {
     // The LC's latest shipment was 1 July. This shipment was PLANNED for 25 June — inside
     // the deadline — and actually left on 10 August. Checking the plan would clear it.
+    //
+    // This used to record the departure and merely count the conflict (audit BE-H2): the
+    // gate id existed and nothing referenced it, so the first objection came from the bank
+    // refusing the presentation weeks later.
     const shipmentId = await loadedShipment({
       lcId: lateLcId,
       plannedExFactory: '2026-06-25',
     })
+
+    await expect(
+      confirmExFactory(ctx, { shipmentId, actualExFactory: '2026-08-10' }),
+    ).rejects.toMatchObject({ code: 'gate_blocked' })
+
+    // Not recorded as departed — the refusal is the point, and a half-applied confirm
+    // would be worse than either outcome.
+    const [row] = await db.select().from(shipments).where(eq(shipments.id, shipmentId))
+    expect(row!.portStatus).toBe('planned')
+    expect(row!.actualExFactory).toBeNull()
+  })
+
+  it('keeps the trail of the attempt, which is what an auditor reads', async () => {
+    // The refusal rolls back the transaction, so the blocked event is emitted in its own —
+    // otherwise the only record of somebody trying to ship against a dead credit would
+    // vanish with the throw.
+    const shipmentId = await loadedShipment({ lcId: lateLcId, plannedExFactory: '2026-06-25' })
+    await expect(
+      confirmExFactory(ctx, { shipmentId, actualExFactory: '2026-08-10' }),
+    ).rejects.toThrow()
+
+    const events = await db
+      .select({ name: outbox.eventName, payload: outbox.payload })
+      .from(outbox)
+      .where(eq(outbox.aggregateId, shipmentId))
+
+    const blocked = events.find((e) => e.name === 'shipment.lc_date.blocked')
+    expect(blocked, 'no blocked event survived the refusal').toBeDefined()
+    expect((blocked!.payload as Record<string, unknown>).kind).toBe('latest_shipment')
+  })
+
+  it('lets commercial accept the breach on the record, and then it ships', async () => {
+    // A factory does ship late and negotiate afterwards. The decision is allowed; what the
+    // gate buys is that somebody with authority made it, in writing, before the truck left.
+    const shipmentId = await loadedShipment({ lcId: lateLcId, plannedExFactory: '2026-06-25' })
+
+    await waiveLcDate(approverCtx, {
+      shipmentId,
+      reason: 'Buyer confirmed by email they will amend the credit to 15 August.',
+    })
     const result = await confirmExFactory(ctx, { shipmentId, actualExFactory: '2026-08-10' })
 
+    // Still reported — waived is not the same as compliant, and the desk must still see it.
     expect(result.lcConflicts.length).toBeGreaterThan(0)
-    // Recorded anyway — the container is on a truck, and refusing does not put it back.
     const [row] = await db.select().from(shipments).where(eq(shipments.id, shipmentId))
     expect(row!.portStatus).toBe('ex_factory')
+    expect((row!.lcWaiver as Record<string, unknown>).waivedBy).toBe(ctx.userId)
+  })
+
+  it('refuses a waiver without a role, a reason, or a shipment still at the factory', async () => {
+    const shipmentId = await loadedShipment({ lcId: lateLcId, plannedExFactory: '2026-06-25' })
+
+    // A shipment clerk cannot decide to ship against a dead credit — `ctx` here IS the
+    // clerk, which is the suite's default actor.
+    await expect(
+      waiveLcDate(ctx, { shipmentId, reason: 'buyer said it is fine' }),
+    ).rejects.toMatchObject({ code: 'forbidden' })
+
+    // "ok" is not a justification, even from somebody who may waive.
+    await expect(waiveLcDate(approverCtx, { shipmentId, reason: 'ok' })).rejects.toMatchObject({
+      code: 'validation_failed',
+    })
+
+    // And it cannot be backdated once the departure is recorded.
+    await waiveLcDate(approverCtx, { shipmentId, reason: 'Buyer amending the credit, confirmed.' })
+    await confirmExFactory(ctx, { shipmentId, actualExFactory: '2026-08-10' })
+    await expect(
+      waiveLcDate(approverCtx, { shipmentId, reason: 'Retrospective justification attempt.' }),
+    ).rejects.toMatchObject({ code: 'conflict' })
   })
 
   it('flags a SHORT shipment against the tolerance band', async () => {

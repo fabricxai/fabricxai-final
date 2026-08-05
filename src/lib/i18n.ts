@@ -335,6 +335,10 @@ export const MESSAGES: Catalogue = {
       'No back-to-back credit is linked, and an import PO cannot be issued without one — the factory would be committed to a supplier with nothing funding it.',
     'gates.exp_number.missing':
       'No EXP number on this shipment. Bangladesh Bank requires one before documents can be presented, so the handoff is blocked rather than delayed.',
+    'gates.lc_date.after_latest_shipment':
+      'This shipment left on {plannedExFactoryDate}, {daysOver} day(s) after the credit\'s latest shipment date of {latestShipmentDate}. The bank will refuse the presentation. Commercial can accept the breach on the record before the departure is confirmed.',
+    'gates.lc_date.expired':
+      'The credit expired on {expiryDate}, {daysOver} day(s) before this shipment date. There is nothing left to present against. Commercial can accept the breach on the record before the departure is confirmed.',
     'maintenance.errors.invalid': 'That does not fit what this maintenance record accepts.',
     'maintenance.errors.part_not_found': 'That spare part is not in the store.',
     'maintenance.errors.ticket_not_found': 'That ticket no longer exists.',
@@ -498,9 +502,9 @@ export const MESSAGES: Catalogue = {
     'shipment.errors.tolerance_not_breached':
       'The shipped quantity is inside the LC’s tolerance, so there is nothing to override.',
     'shipment.errors.waiver_needs_commercial':
-      'Only commercial or an owner waives a failed final inspection.',
+      'Only commercial or an owner may waive this — a failed final inspection, or a credit that cannot accept the shipment date.',
     'shipment.errors.waiver_needs_reason':
-      'Waiving a failed inspection needs a stated reason — it is the entire justification a later auditor has.',
+      'A waiver needs a stated reason — it is the entire justification a later auditor has.',
     'store.errors.adjustment_below_zero': 'That adjustment would take stock below zero.',
     'store.errors.bom_item_unknown': 'That item is not on the style’s bill of materials.',
     'store.errors.bonded_requires_ud':

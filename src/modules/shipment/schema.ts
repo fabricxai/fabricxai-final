@@ -180,6 +180,18 @@ export const shipments = pgTable(
      * alternative is a shipment that departed against its own QC verdict with no trace.
      */
     qcWaiver: jsonb('qc_waiver').$type<Record<string, unknown> | null>(),
+    /**
+     * Set when a shipment was knowingly sent against a credit that cannot accept its date —
+     * past the latest shipment date, or past expiry.
+     *
+     * A factory does ship late and then negotiates: the buyer amends the credit, or accepts
+     * the discrepancy at the counter, or takes the goods on collection instead. All of those
+     * are decisions somebody makes on purpose, so the waiver records who and why. Without
+     * it, `confirmExFactory` refuses — which is the point, because the alternative is a
+     * container leaving against a dead credit and nobody finding out until the bank refuses
+     * the presentation weeks later (audit BE-H2).
+     */
+    lcWaiver: jsonb('lc_waiver').$type<Record<string, unknown> | null>(),
 
     createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

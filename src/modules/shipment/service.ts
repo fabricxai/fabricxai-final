@@ -899,6 +899,59 @@ export async function confirmExFactory(
       }
     }
 
+    /*
+     * ── The LC date gate (CLAUDE.md rule 8, audit BE-H2) ──
+     *
+     * `GATES.lcLatestShipment` was declared and never referenced: the conflict was
+     * computed, counted into the audit blob, returned to the caller — and blocked nothing.
+     * A container could leave against a credit that was already dead, and the first
+     * objection came from the bank refusing the presentation weeks later, when the goods
+     * were overseas and the remedy was a discount.
+     *
+     * This function RECORDS a departure, and the codebase argued with itself about what
+     * that means: the final-inspection gate above blocks because "the goods have not left
+     * yet", while the test for these same LC checks said "the container is on a truck, and
+     * refusing does not put it back". Both are right about different moments, and a gate
+     * that makes reality unrecordable is the worse failure — an ERP that refuses to admit
+     * a shipment left is lying about the floor.
+     *
+     * The waiver is what resolves it. Blocked by default, so the decision to ship against
+     * a dead credit is made deliberately by somebody who may make it; waivable BEFORE the
+     * departure is recorded, so reality is never unrecordable — it just costs a signature.
+     *
+     * Scope is the two conflicts about the DATE ITSELF: `latest_shipment` and `expiry`.
+     * Both mean the credit as it stands cannot accept this shipment. `presentation_window`
+     * is deliberately excluded — there the shipping date is fine and the risk is document
+     * turnaround, which is a reason to hurry, not to hold the truck.
+     */
+    const blockingConflicts = lcConflicts.filter(
+      (conflict): conflict is { kind: string; facts?: Record<string, unknown> } =>
+        typeof conflict === 'object' &&
+        conflict !== null &&
+        'kind' in conflict &&
+        (conflict.kind === 'latest_shipment' || conflict.kind === 'expiry'),
+    )
+
+    if (blockingConflicts.length > 0 && !shipment.lcWaiver) {
+      const blocked = blockingConflicts[0]!
+      const reasonKey =
+        blocked.kind === 'expiry' ? 'gates.lc_date.expired' : 'gates.lc_date.after_latest_shipment'
+      const facts = { shipmentId: shipment.id, lcId: shipment.lcId, ...(blocked.facts ?? {}) }
+
+      // Its own transaction, for the same reason the EXP and QC refusals use one: emitting
+      // inside this one would roll the trail back with the throw that follows.
+      await withTenantTx(ctx, async (trail) => {
+        await emit(ctx, trail, {
+          eventName: SHIPMENT_EVENTS.lcDateBlocked,
+          payload: { ...facts, kind: blocked.kind, reasonKey, attemptedBy: ctx.userId },
+          aggregateTable: 'shipments',
+          aggregateId: shipment.id,
+        })
+      })
+
+      assertGate(GATES.lcLatestShipment, { passed: false, reasonKey, facts })
+    }
+
     await tx
       .update(shipments)
       .set({
@@ -1593,6 +1646,84 @@ export async function waiveFinalInspection(
 
     await emit(ctx, tx, {
       eventName: SHIPMENT_EVENTS.finalInspectionWaived,
+      payload: { shipmentId: shipment.id, orderId: shipment.orderId, ...waiver },
+      aggregateTable: 'shipments',
+      aggregateId: shipment.id,
+    })
+
+    return { shipmentId: shipment.id, waivedBy: ctx.userId }
+  })
+}
+
+/**
+ * Accept, on the record, that this shipment goes against a credit that cannot take its date.
+ *
+ * The escape hatch for the gate in `confirmExFactory`. A factory does ship late and then
+ * negotiates — the buyer amends the credit, or accepts the discrepancy at the counter, or
+ * takes the goods on collection — and none of that is visible to this system at the moment
+ * the truck leaves. So the decision is allowed, and recorded: who made it, when, against
+ * which conflict, and why in their own words.
+ *
+ * Same shape as `waiveFinalInspection` on purpose: owner or commercial only, a reason long
+ * enough to be a reason, and refused once the departure is already recorded. Backdating a
+ * decision after the fact is the thing an auditor is looking for.
+ */
+export async function waiveLcDate(
+  ctx: RequestCtx,
+  input: { shipmentId: string; reason: string },
+): Promise<{ shipmentId: string; waivedBy: string }> {
+  if (!ctx.roles.some((role) => role === 'owner' || role === 'commercial')) {
+    // The credit is commercial's instrument. A shipment clerk deciding to ship against a
+    // dead one is exactly the decision this gate exists to lift out of the loading bay.
+    throw new AppError('forbidden', 'shipment.errors.waiver_needs_commercial', {
+      gate: GATES.lcLatestShipment,
+      roles: ctx.roles,
+    })
+  }
+
+  if (input.reason.trim().length < 10) {
+    throw new AppError('validation_failed', 'shipment.errors.waiver_needs_reason', {})
+  }
+
+  return withTenantTx(ctx, async (tx) => {
+    const [shipment] = await tx
+      .select()
+      .from(shipments)
+      .where(eq(shipments.id, input.shipmentId))
+      .for('update')
+
+    if (!shipment) {
+      throw notFound('shipment.errors.shipment_not_found', { shipmentId: input.shipmentId })
+    }
+    if (shipment.portStatus !== 'planned') {
+      throw conflict('shipment.errors.shipment_already_departed', {
+        shipmentId: shipment.id,
+        portStatus: shipment.portStatus,
+      })
+    }
+
+    const waiver = {
+      reason: input.reason,
+      waivedBy: ctx.userId,
+      waivedAt: new Date().toISOString(),
+      lcId: shipment.lcId,
+    }
+
+    await tx
+      .update(shipments)
+      .set({ lcWaiver: waiver, updatedAt: new Date() })
+      .where(eq(shipments.id, shipment.id))
+
+    await recordChange(ctx, tx, {
+      action: 'update',
+      targetTable: 'shipments',
+      targetId: shipment.id,
+      before: { lcWaiver: shipment.lcWaiver },
+      after: { lcWaiver: waiver },
+    })
+
+    await emit(ctx, tx, {
+      eventName: SHIPMENT_EVENTS.lcDateWaived,
       payload: { shipmentId: shipment.id, orderId: shipment.orderId, ...waiver },
       aggregateTable: 'shipments',
       aggregateId: shipment.id,

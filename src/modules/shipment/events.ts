@@ -21,6 +21,14 @@ export const SHIPMENT_EVENTS = {
   finalInspectionBlocked: 'shipment.final_inspection.blocked',
   /** A failed final inspection was knowingly waived, by whom and why. */
   finalInspectionWaived: 'shipment.final_inspection.waived',
+  /**
+   * Departure refused because the credit cannot accept the shipment date. Emitted in its
+   * own transaction so the attempt survives the refusal — the trail of who tried to ship
+   * against a dead credit is worth more than the refusal itself.
+   */
+  lcDateBlocked: 'shipment.lc_date.blocked',
+  /** Shipping against a credit that cannot accept the date was knowingly accepted. */
+  lcDateWaived: 'shipment.lc_date.waived',
 } as const
 
 export type ShipmentEventName = (typeof SHIPMENT_EVENTS)[keyof typeof SHIPMENT_EVENTS]
