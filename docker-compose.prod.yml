@@ -54,9 +54,18 @@ x-app-env: &app-env
   # Optional. Set it and errors are aggregated and alertable; leave it and the app warns
   # at startup and logs to stdout only. Logs are structured JSON either way.
   SENTRY_DSN: ${SENTRY_DSN:-}
+  # Bearer token for /api/health/jobs — the route the worker's own healthcheck is disabled
+  # in favour of (see the worker service below). WITHOUT IT the route refuses with a 503
+  # and says so, deliberately: it names every scheduled task and what is currently broken,
+  # which is reconnaissance rather than a status page. Generate with `openssl rand -hex 24`.
+  HEALTH_TOKEN: ${HEALTH_TOKEN:-}
   WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-4}
   # Off until a real provider is registered (audit AI-B1). With it on, env.ts requires
   # at least one of the three keys below — not all three, as it used to.
+  # Enabling this requires ANTHROPIC_API_KEY specifically, not just any of the three: the
+  # assistant button and /marbim do exactly one thing, ask the reason model, so a
+  # Gemini-only deployment ships a copilot that renders perfectly and fails on every
+  # question (plan 6.4).
   MARBIM_ENABLED: ${MARBIM_ENABLED:-false}
   ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
   GEMINI_API_KEY: ${GEMINI_API_KEY:-}
@@ -116,6 +125,21 @@ services:
       - /app/.next/cache
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
+    # LIVENESS, and only that (plan 7.5). `/api/health` answers 200 because the request
+    # arrived; it touches no dependency, so a database blip can no longer make Docker
+    # restart a process that is serving requests perfectly well. Readiness is Caddy's
+    # question — see the active health check on the upstream — because taking an instance
+    # out of ROTATION and restarting it are different remedies for different faults.
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      start_period: 60s
+      retries: 3
     deploy:
       resources:
         limits:

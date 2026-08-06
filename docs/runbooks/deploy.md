@@ -151,7 +151,8 @@ Expected failures and what they mean:
 | Caddy cannot get a certificate | DNS does not resolve to this host yet, or 80/tcp is blocked. |
 | App healthy, worker restarting | Check `PGBOUNCER_AUTH_PASSWORD` reached the userlist — the worker connects through the pooler too. |
 | `/api/ready` 503 | Postgres or Redis unreachable from the app. The body says which; the reason is in the container logs, deliberately not in the response. |
-| `/api/health/jobs` 503, `health_token_not_configured` | `HEALTH_TOKEN` is unset. The route refuses rather than publishing the schedule — set one (`openssl rand -hex 24`). |
+| `/api/health/jobs` 503, `health_token_not_configured` | `HEALTH_TOKEN` is unset in `.env.production`. The route refuses rather than publishing the schedule — set one (`openssl rand -hex 24`) and `compose up -d app`. |
+| Caddy 502s while the app container is healthy | Caddy routes on `/api/ready`, not `/api/health`. A 502 here means the app is alive but cannot reach Postgres or Redis — check those, not the app. |
 | `/api/health/jobs` 503, tasks `silent` | Expected for one cycle after a first boot; the baseline is set from first observed run. |
 
 ### Create the first factory

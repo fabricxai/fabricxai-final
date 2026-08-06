@@ -37,6 +37,24 @@
 		# added here — two sources for one header is how a CSP ends up doubled and
 		# silently ignored by the browser.
 		header_up X-Forwarded-Proto {scheme}
+
+		# READINESS, which is a different question from liveness (plan 7.5).
+		#
+		# /api/ready checks Postgres and Redis through the pooled path a real request
+		# takes, with a 2s deadline per dependency so it answers rather than hangs. If
+		# the app cannot reach its database, Caddy stops sending traffic here and the
+		# caller gets a 502 it can retry — instead of a 500 from a request that got
+		# halfway in.
+		#
+		# NOT /api/health: that is liveness and answers 200 from a process that cannot
+		# reach anything, which is correct for Docker and useless here. And not the
+		# scheduler either — a quiet nightly job does not stop this instance serving a
+		# merchandiser, and routing on it would take a working app out of rotation for
+		# another process's problem.
+		health_uri /api/ready
+		health_interval 10s
+		health_timeout 5s
+		health_status 200
 	}
 
 	# A floor tablet posting a shift's worth of offline rows, plus a 25MB challan photo,
