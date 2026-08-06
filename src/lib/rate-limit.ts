@@ -90,6 +90,23 @@ export const LIMITS = {
    * which stops a stuck client from turning a search box into a load generator.
    */
   search: { limit: 60, windowSeconds: 60 },
+
+  /**
+   * Hourly output posts per user.
+   *
+   * The real shape is a burst, not a stream: fifty supervisors hit submit within a minute
+   * of 17:00 and then nothing happens for an hour. Each post carries up to 600 cells, so
+   * this is a ceiling on REQUESTS and the batch size is the ceiling on rows. Sized above
+   * a whole shift's catch-up after an outage and well below anything that hurts.
+   */
+  productionWrite: { limit: 120, windowSeconds: 60 },
+
+  /**
+   * Board reads per user. Twenty tablets and a TV poll this through a shift; a poll every
+   * two seconds per client is far faster than any of them refresh, and it stops a stuck
+   * dashboard turning into a load generator against a partitioned table.
+   */
+  productionBoard: { limit: 180, windowSeconds: 60 },
 } as const satisfies Record<string, RateLimit>
 
 /**

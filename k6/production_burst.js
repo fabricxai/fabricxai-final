@@ -15,7 +15,33 @@
  *   zero lost or duplicated rows — asserted from row counts after the run, not from
  *   response codes. A 200 that wrote nothing is the failure this is looking for.
  *
- *   pnpm k6 production_burst
+ *   pnpm k6 k6/production_burst.js
+ *
+ * ## Both routes require a session (plan 5.7)
+ *
+ * They exist now — `/api/production/outputs` and `/api/production/board` landed with 5.7,
+ * and until then this scenario had nothing to hit, which is why TEST-B2 could not run. Both
+ * are gated: the write is `production` only, the board also allows `planner` and `quality`.
+ * So `AUTH_COOKIE` is not optional in practice — without it every request is a 401 and
+ * `http_req_failed` reports 100%, which looks like a broken server rather than a missing
+ * cookie.
+ *
+ *   AUTH_COOKIE="$(curl -s -i -X POST http://localhost:3000/api/auth/sign-in/email \
+ *     -H 'content-type: application/json' \
+ *     -d '{"email":"...","password":"..."}' \
+ *     | grep -i '^set-cookie' | cut -d' ' -f2 | cut -d';' -f1 | paste -sd'; ')" \
+ *   LINE_ID=<a line uuid> pnpm k6 k6/production_burst.js
+ *
+ * ## One cookie will be rate-limited, and that is the limit being right
+ *
+ * Both routes are capped per USER — 120 writes and 180 board reads a minute — which is
+ * enormously generous for a supervisor who posts once an hour and corrects it twice, and
+ * far below what ten `constant-vus` on a single identity generate. That is not a limit that
+ * needs raising for the run; it is the run needing to look like load, which means fifty
+ * lines posted by fifty people rather than by one.
+ *
+ * So: sign in per VU, or seed N accounts and pass `AUTH_COOKIE_0..N`. A run on one cookie
+ * measures the rate limiter, and `http_req_failed` reports 100% for a server that is fine.
  */
 import http from 'k6/http'
 import { check, group } from 'k6'
