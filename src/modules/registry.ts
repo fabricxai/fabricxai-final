@@ -20,6 +20,7 @@
  * Order does not matter; registration is idempotent per module id.
  */
 import '@/modules/analytics/register'
+import '@/modules/approvals/register'
 import '@/modules/buyers/register'
 import '@/modules/commercial/register'
 import '@/modules/compliance/register'

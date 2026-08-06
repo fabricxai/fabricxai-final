@@ -90,8 +90,11 @@ export function marbimEntryFor(roles: readonly string[]): MarbimEntry {
  * Keyed on the first path segment, which is also how `nav.ts` addresses screens.
  */
 const MODULE_BY_SEGMENT: Record<string, string> = {
-  // `approve` is deliberately absent: the inbox holds drafts from every module, so there is
-  // no one primer to lead with, and `core` is not a registered module anyway.
+  // `approve` is deliberately absent, and stays absent now that `approvals` IS a registered
+  // module with a primer of its own. Naming a lead NARROWS the scope to that one module, and
+  // the inbox holds drafts from every department — somebody standing here asking "is this
+  // fabric price right?" needs costing's tools, which a lead of `approvals` would take away.
+  // Unmapped means every primer leads, including this one.
   buyers: 'buyers',
   compliance: 'compliance',
   costing: 'costing',

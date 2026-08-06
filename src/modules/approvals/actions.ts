@@ -26,10 +26,17 @@ import { draftDetail, draftTarget, type DraftDetail } from './queries'
  * Roles the inbox is offered to — the same list `nav.ts` uses for `/approve`.
  *
  * Deliberately broad, and deliberately not the real decision. Which drafts a person may
- * actually sign is settled per draft by the approval rules in `core/pending-changes`
- * (`requiredRoles`, plus the refusal to approve one's own draft). This gate only keeps out
- * the roles with nothing to approve at all — a viewer, a plain member — so that the rule
- * engine is never the first thing standing between them and a commit.
+ * actually sign is settled per draft by the approval rules in `core/pending-changes`:
+ * `requiredRoles`, and `approvalsRequired` counted over DISTINCT approvers. This gate only
+ * keeps out the roles with nothing to approve at all — a viewer, a plain member — so that
+ * the rule engine is never the first thing standing between them and a commit.
+ *
+ * This comment used to claim the rules also refuse somebody approving their own draft. They
+ * do not, and never did. Whether they should is a real question with two sides — the intended
+ * flow for a document intake is that the person who uploaded the PO reviews the extraction
+ * and signs it, so a blanket ban would break the main path — but a comment asserting a
+ * control that does not exist is worse than either answer. What IS enforced is that a rule
+ * demanding two approvals gets two different people. Recorded in docs/STUBS.md.
  */
 const APPROVER_ROLES = [
   'merchandiser',
