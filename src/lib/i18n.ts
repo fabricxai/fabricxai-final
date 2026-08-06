@@ -180,8 +180,10 @@ export const MESSAGES: Catalogue = {
     // the value needs actions to return a typed failure rather than throw — a larger change
     // than this catalogue. `commit-handlers.test.ts`' sibling, `i18n.test.ts`, fails if a
     // service gains a key with no copy here.
+    'errors.confidence_not_measured':
+      'This draft was composed in conversation, so nothing measured how sure it is. A confidence score on it would be invented, and it was refused rather than shown as though it meant something.',
     'errors.confidence_required':
-      'An AI-authored draft has to carry a confidence for every field it filled — a draft without one cannot be reviewed for how hard to look at it.',
+      'An extraction has to carry a confidence for every field it filled — a draft without one cannot be reviewed for how hard to look at it.',
     'errors.invalid_tenant_scope':
       'That request is not scoped to a company, so it was refused rather than run against everything.',
     'orders.errors.breakdown_outside_tolerance':
@@ -776,8 +778,10 @@ export const MESSAGES: Catalogue = {
     // Same rule as the English: say what happened and what to do next. No `{placeholder}`
     // here — `AppError.details` does not survive a server action, so a template would reach
     // a storekeeper with the braces still in it.
+    'errors.confidence_not_measured':
+      'এই ড্রাফটটি কথোপকথন থেকে তৈরি, তাই এটি কতটা নির্ভরযোগ্য তা কেউ মাপেনি। এখানে confidence স্কোর দিলে সেটি বানানো হতো, তাই অর্থপূর্ণ কিছুর মতো দেখানোর বদলে এটি বাতিল করা হয়েছে।',
     'errors.confidence_required':
-      'AI যে ঘরগুলো পূরণ করেছে, ড্রাফটে তার প্রতিটির জন্য confidence থাকতে হবে — না থাকলে কোন ঘরটা ভালো করে দেখতে হবে তা বোঝার উপায় নেই।',
+      'Extraction যে ঘরগুলো পূরণ করেছে, তার প্রতিটির জন্য confidence থাকতে হবে — না থাকলে কোন ঘরটা ভালো করে দেখতে হবে তা বোঝার উপায় নেই।',
     'errors.invalid_tenant_scope':
       'অনুরোধটিতে কোন কোম্পানির কাজ তা বলা নেই, তাই সবার ডেটার উপর চালানোর বদলে এটি বাতিল করা হয়েছে।',
 

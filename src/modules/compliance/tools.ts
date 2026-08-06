@@ -146,13 +146,11 @@ const proposeFindings: DraftTool = {
         auditId: batch.auditId,
         findings: batch.findings.map((f) => ({ ...f, evidence: [] })),
       },
-      fieldConfidence: {
-        auditId: 0.96,
-        // The wording is usually verbatim; the SEVERITY is a judgement read off a form,
-        // and it is what sets the clock.
-        findings: 0.67,
-      },
-      method: 'transcribed from an audit report · severity drives the CAP deadline',
+      // Read `severity` first. The wording of a finding is usually verbatim off the
+      // report; the severity is a judgement somebody made about it, and it is what sets
+      // the corrective-action clock.
+      method:
+        'transcribed from an audit report · severity is a judgement, and it sets the CAP deadline',
     }
   },
 }

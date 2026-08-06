@@ -158,15 +158,11 @@ const proposeMarker: DraftTool = {
       payload,
       // Transcribed identifiers score higher than measured lengths: a code copied wrong is
       // usually obvious, a lay length rounded by a tenth of a metre is not.
-      fieldConfidence: {
-        code: 0.95,
-        styleCode: 0.95,
-        sizeRatio: 0.88,
-        layLengthMeters: 0.74,
-        ...(marker.efficiencyPct ? { efficiencyPct: 0.7 } : {}),
-        ...(marker.fabricWidthInches ? { fabricWidthInches: 0.8 } : {}),
-      },
-      method: 'read from a marker plan · identifiers transcribed, lengths measured',
+      // Read the lengths first. The codes are transcription — right or obviously wrong —
+      // but `layLengthMeters` and the efficiency are measurements off a plan, and a wrong
+      // one buys fabric that will not be there.
+      method:
+        'read from a marker plan · identifiers transcribed, lengths and efficiency measured off it',
     }
   },
 }

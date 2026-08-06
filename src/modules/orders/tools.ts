@@ -129,14 +129,10 @@ const proposeRevision: DraftTool = {
       operation: 'insert' as const,
       zodSchemaKey: 'order_revision_v1',
       payload: revision,
-      fieldConfidence: {
-        orderStyleId: 0.96,
-        // The grid itself. Read every cell back before approving.
-        cells: 0.64,
-        reason: 0.7,
-        ...(revision.documentId ? { documentId: 0.95 } : {}),
-      },
-      method: 'read from a buyer amendment · cells transcribed from prose into a grid',
+      // Read every cell back. The grid is prose turned into numbers by a machine, and a
+      // colour-size cell nobody re-read is a quantity the factory will cut to.
+      method:
+        'read from a buyer amendment · cells transcribed from prose into a grid, cell by cell',
     }
   },
 }

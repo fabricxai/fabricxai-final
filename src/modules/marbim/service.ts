@@ -22,6 +22,7 @@ import { withTenantRead, withTenantTx } from '../core/tenancy'
 import { MARBIM_EVENTS } from './events'
 import {
   assembleSystemPrompt,
+  assertDraftProvenance,
   assertExtractionConfidence,
   MarbimError,
   redactForPrompt,
@@ -147,13 +148,15 @@ export function toolsInScope(packs: readonly ToolPack[]): ModuleTool[] {
  * This is the only path from a tool to `pending_changes`, and it is deliberately narrow:
  *
  *  - the tool's own zod validates the arguments before its executor sees them;
- *  - `assertExtractionConfidence` refuses a proposal whose confidence is a constant, which
- *    is the check the whole module exists for (rule 3);
+ *  - `assertDraftProvenance` refuses a proposal that cannot say where its payload came from;
  *  - `propose` re-validates the payload against the module's registered schema and refuses
  *    a target the module never whitelisted.
  *
- * Nothing is committed. The draft lands in the approve inbox with its per-field confidence,
- * where a person reads the fields and signs — or does not.
+ * Nothing is committed, and nothing here is scored. A chat-composed draft has no extractor
+ * behind it and therefore no per-field confidence (plan 6.3 — the eight modules that shipped
+ * one had typed the numbers). It lands in the inbox reading "no confidence" on every field,
+ * which is true, and `confidenceMin` of `null` means it can never clear an auto-approve
+ * floor — so it always gets a human, which is what a machine-composed row deserves.
  */
 export async function runDraftTool(
   ctx: RequestCtx,
@@ -174,12 +177,7 @@ export async function runDraftTool(
   }
 
   wrapMarbimError(() =>
-    assertExtractionConfidence({
-      payload: proposal.payload,
-      fieldConfidence: proposal.fieldConfidence,
-      method: proposal.method,
-      uniformConfidenceJustification: proposal.uniformConfidenceJustification,
-    }),
+    assertDraftProvenance({ payload: proposal.payload, method: proposal.method }),
   )
 
   const proposed = await propose(ctx, {
@@ -189,7 +187,9 @@ export async function runDraftTool(
     operation: proposal.operation,
     payload: proposal.payload,
     zodSchemaKey: proposal.zodSchemaKey,
-    fieldConfidence: proposal.fieldConfidence,
+    // No `fieldConfidence`, and `propose` now REFUSES one on this source. Nothing measured
+    // anything: the payload is arguments a model wrote into a tool call.
+    //
     // `ai_chat`, not `ai_extraction`: nothing was read off a document here, somebody asked
     // MARBIM a question. The inbox reads the two differently and should.
     source: 'ai_chat',

@@ -129,17 +129,11 @@ const proposeAdjustment: DraftTool = {
       operation: 'insert' as const,
       zodSchemaKey: 'stock_adjustment_v1',
       payload: adjustment,
-      fieldConfidence: {
-        itemId: 0.95,
-        ...(adjustment.rollId ? { rollId: 0.93 } : {}),
-        // The count itself — the one thing with nothing to check it against.
-        qtyDelta: 0.62,
-        unit: 0.9,
-        reasonCode: 0.85,
-        // A note somebody dictated. Read it; it is the entire justification later.
-        note: 0.8,
-      },
-      method: 'stated by the storekeeper · quantity is a physical count with no second source',
+      // Read `qtyDelta` and the note. An adjustment is the one store write with no
+      // physical event behind it: the quantity is somebody's count of a shelf with nothing
+      // to check it against, and the note is the entire justification later.
+      method:
+        'stated by the storekeeper · the quantity is a physical count with no second source',
     }
   },
 }

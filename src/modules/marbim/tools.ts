@@ -6,10 +6,10 @@
  *
  * ## Why two kinds of tool and not one with a flag
  *
- * A READ tool returns data. A DRAFT tool returns a PROPOSAL — a payload plus the per-field
- * confidence behind it — and nothing else. It cannot write, because it is not given anything
- * to write with: its executor returns a value, and `runDraftTool` is the only thing that
- * turns that value into a `pending_changes` row.
+ * A READ tool returns data. A DRAFT tool returns a PROPOSAL — a payload plus its provenance
+ * — and nothing else. It cannot write, because it is not given anything to write with: its
+ * executor returns a value, and `runDraftTool` is the only thing that turns that value into
+ * a `pending_changes` row.
  *
  * Making them separate types rather than one type with `writes: true` means the compiler
  * carries the rule. A draft tool cannot accidentally be registered as a read tool that
@@ -51,11 +51,29 @@ export interface ReadTool<TArgs = unknown, TResult = unknown> extends ToolBase {
 }
 
 /**
- * What a draft tool hands back: a payload, and the measurement behind every field of it.
+ * What a draft tool hands back: a payload, and where it came from.
  *
- * `method` and `fieldConfidence` are not optional. A proposal with no per-field confidence
- * is refused before it becomes a draft, because the approve inbox sorts by exactly that and
- * a missing number would sort as though it were a good one.
+ * ## There is no `fieldConfidence` here, and that is the point (plan 6.3, audit AI-B2)
+ *
+ * There used to be, and eight modules filled it with numbers somebody typed — `itemId: 0.95`,
+ * `qtyDelta: 0.62` — the same numbers on every draft the tool ever produced. They read
+ * exactly like measurement: per-field, varied, each with a comment arguing for its value.
+ * That made them worse than a flat constant, which `assertExtractionConfidence` would have
+ * caught. They drove inbox ranking, the auto-approve floor and the correction-rate report,
+ * none of which can mean anything when the number does not move.
+ *
+ * A draft tool has nothing to measure. Its arguments are structured data a model composed
+ * from a conversation — there is no document, no extractor, no second pass, and no logprob
+ * per field. The honest confidence for one of these is *unknown*, and `pending_changes`
+ * already renders unknown correctly: every field shows "no confidence", and `confidenceMin`
+ * of `null` can never clear an auto-approve floor. So an unscored draft is strictly safer
+ * than the fabricated 0.95 it replaces — it always gets a human.
+ *
+ * Removing the field from the type is deliberate belt-and-braces with
+ * `fabricxai/no-invented-confidence`: the lint rule catches the shape anywhere in the repo,
+ * and this makes the eight sites that had it a compile error rather than a warning somebody
+ * can disable. If a real per-field score for chat-composed drafts ever exists (a scoring
+ * pass over the payload, not a vibe), it comes back here WITH the thing that produces it.
  */
 export interface ToolProposal {
   /** Which registered target this becomes. Checked against the module's whitelist. */
@@ -65,10 +83,17 @@ export interface ToolProposal {
   payload: Record<string, unknown>
   /** The named schema `pending_changes` re-validates with at approve time. */
   zodSchemaKey: string
-  fieldConfidence: Record<string, number>
-  /** How the confidence was produced. Constants are refused — see `marbim.ts`. */
+  /**
+   * Where the payload came from, in the reviewer's terms — "stated by the storekeeper ·
+   * quantity is a physical count with no second source".
+   *
+   * Provenance, not a score. It says what kind of evidence is behind the row and which part
+   * of it nothing downstream re-checks, which is the durable half of what the deleted
+   * confidence numbers were reaching for: WHICH field to read first is a property of the
+   * domain and is legitimately constant; HOW SURE the machine is is a measurement, and was
+   * not being taken.
+   */
   method: string
-  uniformConfidenceJustification?: string
   sourceDocumentId?: string
   /** What the model was looking at. Shown to the reviewer beside the draft. */
   evidence?: { label: string; page?: number; quote?: string }[]

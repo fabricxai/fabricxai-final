@@ -20,6 +20,7 @@ import { z } from 'zod'
 
 import {
   assembleSystemPrompt,
+  assertDraftProvenance,
   assertExtractionConfidence,
   MarbimError,
   redactForPrompt,
@@ -121,6 +122,41 @@ describe('assertExtractionConfidence · constants are forbidden', () => {
         method: '',
       }),
     ).toThrow(/method/i)
+  })
+})
+
+describe('assertDraftProvenance · the other door, which has nothing to measure', () => {
+  /*
+   * A draft tool composes a payload from arguments a model wrote in conversation. There is
+   * no document, no extractor and no second pass, so there is no confidence to check — the
+   * type no longer has anywhere to put one (plan 6.3, audit AI-B2).
+   *
+   * What IS checkable is provenance. `assertExtractionConfidence` catches only the crude
+   * fake (every field the same score); the eight modules that shipped varied typed-in
+   * numbers sailed through it, which is why the fix is removing the field rather than
+   * detecting harder.
+   */
+  it('1 · accepts a payload that says where it came from', () => {
+    expect(() =>
+      assertDraftProvenance({
+        payload: { itemId: 'a', qtyDelta: '-40' },
+        method: 'stated by the storekeeper · a physical count with no second source',
+      }),
+    ).not.toThrow()
+  })
+
+  it('2 · refuses a draft that cannot say where it came from', () => {
+    // A reviewer looking at a stock adjustment needs to know somebody said it out loud far
+    // more than they need a number between 0 and 1.
+    expect(() =>
+      assertDraftProvenance({ payload: { itemId: 'a' }, method: '   ' }),
+    ).toThrow(MarbimError)
+  })
+
+  it('3 · refuses an empty payload', () => {
+    expect(() => assertDraftProvenance({ payload: {}, method: 'stated in chat' })).toThrow(
+      /not a draft/,
+    )
   })
 })
 

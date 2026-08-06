@@ -5,17 +5,19 @@ import tseslint from 'typescript-eslint'
 
 import analyticsNoWrites from './eslint-rules/analytics-no-writes.js'
 import noFloatMoney from './eslint-rules/no-float-money.js'
+import noInventedConfidence from './eslint-rules/no-invented-confidence.js'
 import noLocalMoneyHelpers from './eslint-rules/no-local-money-helpers.js'
 import requireTenantPredicate from './eslint-rules/require-tenant-predicate.js'
 
 /**
- * The three custom rules below are not style preferences — they are the only automated
- * enforcement behind CLAUDE.md rules 2, 4 and 9. Everything else in this file is
- * conventional; those three are the reason it exists.
+ * The custom rules below are not style preferences — they are the only automated
+ * enforcement behind CLAUDE.md rules 2, 3, 4 and 9. Everything else in this file is
+ * conventional; these are the reason it exists.
  */
 const fabricxai = {
   rules: {
     'no-float-money': noFloatMoney,
+    'no-invented-confidence': noInventedConfidence,
     'analytics-no-writes': analyticsNoWrites,
     'require-tenant-predicate': requireTenantPredicate,
     'no-local-money-helpers': noLocalMoneyHelpers,
@@ -164,6 +166,27 @@ export default tseslint.config(
   {
     files: ['src/modules/workforce/service.ts', 'src/modules/workforce/queries.ts'],
     rules: { 'fabricxai/require-tenant-predicate': 'error' },
+  },
+
+  // ── CLAUDE.md rule 3 · confidence is measured, never typed ────────────────
+  //
+  // "Confidence is per-field and comes from the extractor — constants are forbidden" had
+  // one runtime check behind it, and that check only catches every field scoring the SAME
+  // (`assertExtractionConfidence`). Eight modules defeated it with varied per-field
+  // constants — `qtyDelta: 0.62`, the same 0.62 on every draft forever — which look more
+  // like measurement than a flat 0.8 does, and which drove inbox order, the auto-approve
+  // floor and the correction-rate report (audit AI-B2).
+  //
+  // Repo-wide from the start, not a ratchet: unlike the tenant predicate there was nothing
+  // to convert. The eight sites are deleted, and computed confidence — the mock provider's
+  // match-quality table, memory's `seededLineConfidence` — was never the target.
+  //
+  // Tests and seeds are exempt. A fixture's job is to BE a plausible extraction result, and
+  // the seeded approve inbox needs a confidence spread or it demonstrates nothing.
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['**/__tests__/**', 'src/db/seed/**'],
+    rules: { 'fabricxai/no-invented-confidence': 'error' },
   },
 
   // ── CLAUDE.md rule 9 · analytics is read-only ─────────────────────────────

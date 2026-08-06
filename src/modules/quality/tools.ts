@@ -167,14 +167,11 @@ const proposeSpec: DraftTool = {
       operation: 'insert' as const,
       zodSchemaKey: 'measurement_spec',
       payload: spec,
-      fieldConfidence: {
-        styleCode: 0.95,
-        unit: 0.9,
-        // The whole table as one field, at the weakest thing in it. Tolerances are small
-        // numbers in small type and are what a reviewer must actually re-read.
-        points: 0.71,
-      },
-      method: 'transcribed from a buyer spec sheet · tolerances scored lowest',
+      // Read the tolerances. They are small numbers in small type on a spec sheet, and
+      // they are the entire difference between a garment that passes and one that is
+      // rejected at the buyer's QC.
+      method:
+        'transcribed from a buyer spec sheet · tolerances are small numbers in small type',
     }
   },
 }

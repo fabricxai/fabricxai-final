@@ -176,18 +176,11 @@ const proposeQuote: DraftTool = {
       operation: 'insert' as const,
       zodSchemaKey: 'supplier_quote',
       payload: quote,
-      fieldConfidence: {
-        purchaseRequisitionId: 0.96,
-        supplierId: 0.96,
-        currency: 0.92,
-        quotedOn: 0.9,
-        ...(quote.validUntil ? { validUntil: 0.85 } : {}),
-        ...(quote.documentId ? { documentId: 0.95 } : {}),
-        // Prices and lead times together. The lead time is the one nothing downstream
-        // re-checks until the fabric fails to arrive.
-        lines: 0.68,
-      },
-      method: 'read from a supplier proforma · lead times are the least verifiable field',
+      // Read the lead times. A wrong price surfaces at the next costing; a wrong lead
+      // time surfaces on the day the fabric does not arrive, and nothing between here and
+      // there re-checks it.
+      method:
+        'read from a supplier proforma · nothing downstream re-checks a lead time until it is late',
       ...(quote.documentId ? { sourceDocumentId: quote.documentId } : {}),
     }
   },

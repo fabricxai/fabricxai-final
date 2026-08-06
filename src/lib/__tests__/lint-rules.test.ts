@@ -1,8 +1,8 @@
 /**
- * The three custom lint rules are the ONLY automated enforcement behind CLAUDE.md rules 2,
- * 4 and 9. A rule that has never been observed firing is not enforcement, it is decoration
- * — so all three are exercised here, including the cases they must NOT fire on, because a
- * noisy rule gets disabled and then catches nothing.
+ * The custom lint rules are the ONLY automated enforcement behind CLAUDE.md rules 2, 3, 4
+ * and 9. A rule that has never been observed firing is not enforcement, it is decoration —
+ * so each is exercised here, including the cases it must NOT fire on, because a noisy rule
+ * gets disabled and then catches nothing.
  */
 import { RuleTester } from 'eslint'
 import { describe, it } from 'vitest'
@@ -11,6 +11,8 @@ import { describe, it } from 'vitest'
 import analyticsNoWrites from '../../../eslint-rules/analytics-no-writes.js'
 // @ts-expect-error — plain JS rule modules, intentionally untyped
 import noFloatMoney from '../../../eslint-rules/no-float-money.js'
+// @ts-expect-error — plain JS rule modules, intentionally untyped
+import noInventedConfidence from '../../../eslint-rules/no-invented-confidence.js'
 // @ts-expect-error — plain JS rule modules, intentionally untyped
 import requireTenantPredicate from '../../../eslint-rules/require-tenant-predicate.js'
 
@@ -169,6 +171,74 @@ describe('fabricxai/require-tenant-predicate', () => {
           // `userId` is not `companyId`. A near-miss identifier must not satisfy it.
           code: `await tx.select().from(t).where(eq(t.userId, ctx.userId))`,
           errors: [{ messageId: 'missing' }],
+        },
+      ],
+    })
+  })
+})
+
+describe('fabricxai/no-invented-confidence', () => {
+  it('bans a typed-in confidence and leaves a computed one alone', () => {
+    /*
+     * The rule exists because eight modules got past `assertExtractionConfidence` — which
+     * only catches every field scoring the SAME — by typing VARIED numbers per field
+     * (audit AI-B2). `qtyDelta: 0.62` on every stock-adjustment draft the tool ever made.
+     *
+     * The valid cases matter more than the invalid ones here. This rule has to be able to
+     * tell an estimate from a derivation, or the two legitimate confidence sources in the
+     * repo — the mock provider's match-quality lookup and memory's evidence-weighted score
+     * — start erroring and somebody switches it off.
+     */
+    ruleTester.run('no-invented-confidence', noInventedConfidence, {
+      valid: [
+        // Derived from HOW the value was matched. The number moves with the evidence,
+        // which is the entire distinction the rule is drawing.
+        { code: `fieldConfidence[field] = CONFIDENCE[found.how]` },
+        { code: `const fieldConfidence = { qty: seededLineConfidence(line) }` },
+        { code: `const fieldConfidence = { qty: measure(a) * weight }` },
+        // Not estimates. A field the user picked off a list carries no reading risk, and
+        // `extract` scores exactly those at 1 with its reasoning written out.
+        { code: `const fieldConfidence = { buyerId: 1, unread: 0 }` },
+        // A different object of numbers. The rule keys on the name, and a tolerance table
+        // or a weighting map must not trip it.
+        { code: `const tolerances = { xs: 0.5, s: 0.75 }` },
+        { code: `const proposal = { fieldConfidence, method: 'x' }` },
+        // Shorthand: the object is somewhere else, and is checked where it is written.
+        { code: `const proposal = { fieldConfidence }` },
+      ],
+      invalid: [
+        {
+          // The shape that shipped, in the property form.
+          code: `const p = { fieldConfidence: { itemId: 0.95, qtyDelta: 0.62 } }`,
+          errors: [{ messageId: 'literal' }, { messageId: 'literal' }],
+        },
+        {
+          // The same object one line earlier — which is exactly how it would be rewritten
+          // the moment the property form started erroring.
+          code: `const fieldConfidence = { verdict: 0.66 }`,
+          errors: [{ messageId: 'literal' }],
+        },
+        {
+          // The optional-field dialect all eight sites used. A naive property walk sees a
+          // SpreadElement and moves on, so this is the case that decides whether the rule
+          // is worth having.
+          code: `const p = { fieldConfidence: { ...(doc ? { documentId: 0.95 } : {}) } }`,
+          errors: [{ messageId: 'literal' }],
+        },
+        {
+          code: `const p = { fieldConfidence: { ...(doc && { documentId: 0.95 }) } }`,
+          errors: [{ messageId: 'literal' }],
+        },
+        {
+          // Nonsense as a confidence, but still a number somebody typed — better said here
+          // than as a runtime range error three layers down.
+          code: `const fieldConfidence = { qty: -0.5 }`,
+          errors: [{ messageId: 'literal' }],
+        },
+        {
+          // A quoted key is the same property.
+          code: `const fieldConfidence = { 'lines.0.qty': 0.7 }`,
+          errors: [{ messageId: 'literal' }],
         },
       ],
     })

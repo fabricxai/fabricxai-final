@@ -35,8 +35,10 @@ Next.js 16 (app router, server actions) + Drizzle + PostgreSQL 16 + Redis/BullMQ
    never the only wall.
 3. AI writes ONLY via `pending_changes` (core): target_table must be registered
    in the module's `register.ts`, payload validated by the module's zod at
-   insert AND approve. Confidence is per-field and comes from the extractor —
-   constants are forbidden.
+   insert AND approve. Confidence is per-field and comes from a measurement —
+   constants are lint-banned (`no-invented-confidence`). A source with nothing
+   to measure (`ai_chat`: a model composed tool args in conversation) carries
+   NO confidence and is refused if it offers one; unscored never auto-approves.
 4. Money: `Money` type from `lib/money`; string numerics; `parseFloat`/`Number()`
    on money is lint-banned. Every amount carries currency; USD buyer-facing,
    BDT local.

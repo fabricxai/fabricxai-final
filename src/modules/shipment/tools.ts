@@ -151,17 +151,11 @@ const proposeOverride: DraftTool = {
       operation: 'update' as const,
       zodSchemaKey: 'tolerance_override',
       payload: override,
-      fieldConfidence: {
-        shipmentId: 0.97,
-        lcQty: 0.94,
-        shippedQty: 0.94,
-        tolerancePct: 0.92,
-        direction: 0.93,
-        varianceQty: 0.9,
-        // The part somebody will actually be judged on.
-        reason: 0.6,
-      },
-      method: 'quantities read from the LC and the manifest · reason stated by the requester',
+      // Read the reason. The quantities come off the LC and the manifest and can be
+      // checked against them; the reason is the requester's account of why, and it is the
+      // part somebody is later judged on.
+      method:
+        'quantities read from the LC and the manifest · the reason is the requester’s own account',
     }
   },
 }

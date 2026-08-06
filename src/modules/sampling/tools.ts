@@ -191,16 +191,10 @@ const proposeFeedback: DraftTool = {
       operation: 'insert' as const,
       zodSchemaKey: 'feedback_round',
       payload: feedback,
-      fieldConfidence: {
-        sampleRequestId: 0.96,
-        // The field that clears a floor. Three words apart from each other in meaning and
-        // one word apart on the page.
-        verdict: 0.66,
-        comments: 0.78,
-        recordedOn: 0.88,
-        ...(feedback.documentId ? { documentId: 0.95 } : {}),
-      },
-      method: 'read from a buyer comment sheet · verdict scored lowest, it gates cutting',
+      // Read the verdict. `approved`, `approved_with_comments` and `rejected` are one
+      // word apart on the page and a floor apart in meaning — this is the field that
+      // opens cutting.
+      method: 'read from a buyer comment sheet · the verdict is what gates cutting',
       ...(feedback.documentId ? { sourceDocumentId: feedback.documentId } : {}),
     }
   },

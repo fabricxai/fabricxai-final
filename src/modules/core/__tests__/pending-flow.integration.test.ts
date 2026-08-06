@@ -177,11 +177,44 @@ describe('gate B · propose → approve → commit → audit', () => {
     expect(after).toHaveLength(before.length)
   })
 
-  it('3b · refuses an AI draft with no per-field confidence', async () => {
-    // Confidence comes from the extractor or the draft does not exist. Constants forbidden.
+  it('3b · refuses an EXTRACTION with no per-field confidence', async () => {
+    // A document was read. There is an extractor, it reports per field, and a draft without
+    // those numbers cannot be reviewed for how hard to look at it.
     await expect(
       propose(ctxA, { ...draft(), fieldConfidence: {} }),
     ).rejects.toMatchObject({ messageKey: 'errors.confidence_required' })
+  })
+
+  it('3c · refuses a CHAT draft that offers confidence, because nothing measured it', async () => {
+    /*
+     * The inversion (plan 6.3, audit AI-B2). `ai_chat` is a model composing tool arguments
+     * from a conversation: no document, no extractor, no second pass. Requiring a number
+     * here is what produced eight modules of typed-in ones, so offering one is now the
+     * error.
+     */
+    await expect(
+      propose(ctxA, {
+        ...draft(),
+        source: 'ai_chat' as const,
+        fieldConfidence: { name: 0.95, quantity: 0.62 },
+      }),
+    ).rejects.toMatchObject({ messageKey: 'errors.confidence_not_measured' })
+  })
+
+  it('3d · accepts an unscored chat draft, and every field reads as unknown', async () => {
+    const { id, status } = await propose(ctxA, {
+      ...draft(),
+      source: 'ai_chat' as const,
+      fieldConfidence: {},
+    })
+
+    expect(status).toBe('pending')
+
+    const [row] = await db.select().from(pendingChanges).where(eq(pendingChanges.id, id))
+    expect(row?.fieldConfidence).toEqual({})
+    // `null`, not 0. The inbox renders "no confidence" from this; a 0 would sort as the
+    // worst draft in the queue rather than as one nothing scored.
+    expect(row?.confidenceMin).toBeNull()
   })
 
   it('4 · approve commits the row, the audit entry and the event in one transaction', async () => {
@@ -303,6 +336,22 @@ describe('gate B · propose → approve → commit → audit', () => {
         fieldConfidence: { name: 0.99, quantity: 0.96 },
       })
       expect(high.status).toBe('committed')
+
+      /*
+       * And an unscored chat draft under the SAME auto-approving rule stays pending —
+       * `confidenceMin` is null, so there is nothing to compare against the floor and the
+       * comparison fails closed.
+       *
+       * This is the safety half of 6.3. `store.propose_stock_adjustment` used to report a
+       * weakest field of 0.62; under a 0.6 floor it auto-approved every stock adjustment a
+       * model proposed, on a number nobody had measured. Unscored, it cannot.
+       */
+      const chat = await propose(ctxA, {
+        ...draft(),
+        source: 'ai_chat' as const,
+        fieldConfidence: {},
+      })
+      expect(chat.status).toBe('pending')
     } finally {
       await db.delete(approvalRules).where(eq(approvalRules.companyId, COMPANY_A))
     }

@@ -90,6 +90,35 @@ export function assertExtractionConfidence(input: ConfidenceCheck): void {
   }
 }
 
+/**
+ * Refuse a draft proposal that cannot say where it came from.
+ *
+ * The counterpart to `assertExtractionConfidence`, for the other door into `pending_changes`
+ * — a tool the model called in conversation rather than an extractor reading a document.
+ *
+ * There is no confidence to check here, and that is the finding (plan 6.3, audit AI-B2).
+ * The uniform-value guard above only catches the CRUDE fake: every field the same. Eight
+ * modules shipped the sophisticated one — varied per-field constants, identical on every
+ * draft, indistinguishable from measurement at the point of use and therefore never caught.
+ * The fix is not a better detector; it is that a draft tool has no measurement to offer, so
+ * it is no longer given anywhere to put one (`ToolProposal`).
+ *
+ * What survives is provenance. "Where did this row come from" is answerable for a
+ * conversation-composed draft — somebody said it, out loud, to a model — and a reviewer
+ * reading a stock adjustment needs that far more than a number.
+ */
+export function assertDraftProvenance(input: {
+  payload: Record<string, unknown>
+  method: string
+}): void {
+  if (!input.method.trim()) {
+    throw new MarbimError('a draft must record where its payload came from')
+  }
+  if (Object.keys(input.payload).length === 0) {
+    throw new MarbimError('a draft with no fields is not a draft')
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Prompt assembly
 // ─────────────────────────────────────────────────────────────────────────────

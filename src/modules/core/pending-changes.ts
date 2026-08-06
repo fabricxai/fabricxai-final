@@ -10,7 +10,8 @@
  *  - The payload is validated by the module's Zod schema at insert AND AGAIN at approve.
  *    Schemas tighten over time; a draft written under a looser one must not commit under
  *    the newer one (PLAYBOOK §3, the X.1 re-validation test).
- *  - Confidence is per field and comes from the extractor. A constant is a bug.
+ *  - Confidence is per field and comes from a measurement. A constant is a bug, and a
+ *    source with nothing to measure carries none at all rather than a plausible number.
  *  - Approve is idempotent under contention: the row is locked, and a second approve gets
  *    a typed 409 while exactly one commit happens (architecture §9).
  *
@@ -39,7 +40,10 @@ export interface ProposeInput {
   operation: Operation
   payload: Record<string, unknown>
   zodSchemaKey: string
-  /** Per field, straight from the extractor. Empty is allowed only for human drafts. */
+  /**
+   * Per field, straight from the extractor. Required for `ai_extraction` and REFUSED for
+   * `ai_chat`, which has no extractor to ask — see `validateConfidence`.
+   */
   fieldConfidence?: Record<string, number>
   source: Source
   sourceDocumentId?: string
@@ -68,20 +72,46 @@ export interface ApproveInput {
 const IDENTIFIER_RE = /^[a-z_][a-z0-9_]*$/
 
 /**
- * Confidence must come from the extractor. A model-authored draft carrying none is
- * exactly what the approve inbox exists to make visible, so it is refused at the door
- * rather than displayed as though the number meant something.
+ * Confidence must come from a measurement, and only one source has one.
+ *
+ * `ai_extraction` read a document. There is an extractor, it reports per field, and a draft
+ * arriving without those numbers is exactly what the approve inbox exists to make visible —
+ * so it is refused at the door rather than displayed as though the absence meant nothing.
+ *
+ * `ai_chat` did not. A model composed tool arguments from a conversation: no document, no
+ * extractor, no second pass, nothing that could produce a number. Requiring one here for a
+ * year produced precisely what a requirement with no source of truth always produces —
+ * eight modules that typed plausible numbers into their draft tools and shipped them
+ * (plan 6.3, audit AI-B2). So the requirement is inverted for this source: a chat draft
+ * carries NO confidence, and offering one is refused.
+ *
+ * That is stricter than it sounds, not looser. An empty map gives `confidenceMin = null`,
+ * which can never clear an auto-approve floor and shows the reviewer "no confidence" on
+ * every field. The drafts this changes were auto-approvable on a fabricated 0.95; now they
+ * always get a human.
+ *
+ * If a real score for chat drafts ever exists — a pass that reads the payload back against
+ * the conversation, not a developer's estimate — it arrives here with the thing that
+ * computes it, and this branch changes with it.
  */
 function validateConfidence(source: Source, fieldConfidence: Record<string, number>): void {
-  const machineAuthored = source === 'ai_extraction' || source === 'ai_chat'
   const entries = Object.entries(fieldConfidence)
 
-  if (machineAuthored && entries.length === 0) {
+  if (source === 'ai_extraction' && entries.length === 0) {
     throw new AppError(
       'validation_failed',
       'errors.confidence_required',
       { source },
-      'AI-sourced drafts must carry per-field confidence from the extractor',
+      'an extraction must carry per-field confidence from the extractor',
+    )
+  }
+
+  if (source === 'ai_chat' && entries.length > 0) {
+    throw new AppError(
+      'validation_failed',
+      'errors.confidence_not_measured',
+      { source, fields: entries.length },
+      'a chat-composed draft has no extractor behind it — a per-field score here is invented',
     )
   }
 
