@@ -27,6 +27,7 @@ import { assertGate, GATES } from '../core/gates'
 import { registerSyncHandler } from '../core/offline-sync'
 import { defineStateMachine } from '../core/state-machine'
 import { emit } from '../core/outbox'
+import { scoped } from '../core/scoped'
 import { type TenantDb, withTenantRead, withTenantTx } from '../core/tenancy'
 
 import { STORE_EVENTS } from './events'
@@ -99,7 +100,7 @@ export async function getStock(
     const rollRows = await tx
       .select()
       .from(rolls)
-      .where(filter.itemIds?.length ? inArray(rolls.itemId, [...filter.itemIds]) : undefined)
+      .where(scoped(rolls, ctx, filter.itemIds?.length ? inArray(rolls.itemId, [...filter.itemIds]) : undefined))
 
     const reservationRows = await tx
       .select({
@@ -192,7 +193,7 @@ export async function receiveGrnIn(
 
   let rollCount = 0
   for (const line of payload.lines) {
-    const [item] = await tx.select().from(items).where(eq(items.id, line.itemId))
+    const [item] = await tx.select().from(items).where(scoped(items, ctx, eq(items.id, line.itemId)))
     if (!item) throw notFound('store.errors.item_not_found', { itemId: line.itemId })
 
     if (item.uom !== line.unit) {
@@ -283,7 +284,7 @@ export async function setGrnInspectionStatus(
   const [before] = await tx
     .select({ inspectionStatus: grns.inspectionStatus })
     .from(grns)
-    .where(eq(grns.id, input.grnId))
+    .where(scoped(grns, ctx, eq(grns.id, input.grnId)))
 
   if (!before) throw notFound('store.errors.grn_not_found', { grnId: input.grnId })
   if (before.inspectionStatus === input.status) return
@@ -291,7 +292,7 @@ export async function setGrnInspectionStatus(
   await tx
     .update(grns)
     .set({ inspectionStatus: input.status, updatedAt: new Date() })
-    .where(eq(grns.id, input.grnId))
+    .where(scoped(grns, ctx, eq(grns.id, input.grnId)))
 
   await recordChange(ctx, tx, {
     action: 'update',
@@ -435,7 +436,7 @@ export async function issueStockIn(
     ? await tx
         .select()
         .from(rolls)
-        .where(inArray(rolls.id, rollIds))
+        .where(scoped(rolls, ctx, inArray(rolls.id, rollIds)))
         .orderBy(rolls.id)
         .for('update')
     : []
@@ -466,7 +467,7 @@ export async function issueStockIn(
     .from(issueLines)
     .innerJoin(issues, eq(issues.id, issueLines.issueId))
     .innerJoin(rolls, eq(rolls.id, issueLines.rollId))
-    .where(eq(issues.orderId, payload.orderId))
+    .where(scoped(issueLines, ctx, eq(issues.orderId, payload.orderId)))
 
   const shade = checkShadeMix({
     alreadyIssued: alreadyIssued.map((row) => row.shadeGroup),
@@ -479,12 +480,12 @@ export async function issueStockIn(
       const [reqLine] = await tx
         .select()
         .from(requisitionLines)
-        .where(
+        .where(scoped(requisitionLines, ctx, 
           and(
             eq(requisitionLines.requisitionId, payload.requisitionId),
             eq(requisitionLines.itemId, line.itemId),
           ),
-        )
+        ))
         .for('update')
 
       if (!reqLine) {
@@ -531,7 +532,7 @@ export async function issueStockIn(
     // let those lines skip the customs gate entirely — bonded material leaving with no
     // draw recorded against it.
     if (line.udId) {
-      const [item] = await tx.select().from(items).where(eq(items.id, line.itemId))
+      const [item] = await tx.select().from(items).where(scoped(items, ctx, eq(items.id, line.itemId)))
       const itemRef = item?.code ?? line.itemId
 
       await drawUd(ctx, tx, {
@@ -561,23 +562,23 @@ export async function issueStockIn(
       await tx
         .update(rolls)
         .set({ status: 'issued', updatedAt: new Date() })
-        .where(eq(rolls.id, roll.id))
+        .where(scoped(rolls, ctx, eq(rolls.id, roll.id)))
     }
 
     if (payload.requisitionId) {
       await tx
         .update(requisitionLines)
         .set({ issuedQty: sql`${requisitionLines.issuedQty} + ${line.qty}`, updatedAt: new Date() })
-        .where(
+        .where(scoped(requisitionLines, ctx, 
           and(
             eq(requisitionLines.requisitionId, payload.requisitionId),
             eq(requisitionLines.itemId, line.itemId),
           ),
-        )
+        ))
     }
   }
 
-  if (payload.requisitionId) await advanceRequisitionStatus(tx, payload.requisitionId)
+  if (payload.requisitionId) await advanceRequisitionStatus(ctx, tx, payload.requisitionId)
 
   await emit(ctx, tx, {
     eventName: STORE_EVENTS.stockIssued,
@@ -600,11 +601,17 @@ export async function issueStock(ctx: RequestCtx, input: unknown): Promise<Issue
 }
 
 /** open → partial → fulfilled, derived from what has actually been issued. */
-async function advanceRequisitionStatus(tx: TenantDb, requisitionId: string): Promise<void> {
+async function advanceRequisitionStatus(
+  // `ctx` so both queries name the company (plan 1.3). A requisition's status is what the
+  // floor plans issues against; deriving it from another factory's lines would be silent.
+  ctx: AnyCtx,
+  tx: TenantDb,
+  requisitionId: string,
+): Promise<void> {
   const lines = await tx
     .select()
     .from(requisitionLines)
-    .where(eq(requisitionLines.requisitionId, requisitionId))
+    .where(scoped(requisitionLines, ctx, eq(requisitionLines.requisitionId, requisitionId)))
 
   const anyIssued = lines.some((line) => compareDecimal(line.issuedQty, '0') > 0)
   const allDone = lines.every((line) => compareDecimal(line.issuedQty, line.requiredQty) >= 0)
@@ -615,7 +622,7 @@ async function advanceRequisitionStatus(tx: TenantDb, requisitionId: string): Pr
       status: allDone ? 'fulfilled' : anyIssued ? 'partial' : 'open',
       updatedAt: new Date(),
     })
-    .where(eq(requisitions.id, requisitionId))
+    .where(scoped(requisitions, ctx, eq(requisitions.id, requisitionId)))
 }
 
 function compareDecimal(a: string, b: string): number {
@@ -664,7 +671,7 @@ async function resolveItemsByRef(
     const rows = await tx
       .select({ id: items.id, code: items.code })
       .from(items)
-      .where(inArray(items.code, [...refs]))
+      .where(scoped(items, ctx, inArray(items.code, [...refs])))
 
     return new Map(rows.map((row) => [row.code, row.id]))
   })
@@ -712,7 +719,7 @@ export async function commitStockAdjustment(
     const [roll] = await tx
       .select({ id: rolls.id, qty: rolls.qty, unit: rolls.unit, status: rolls.status, itemId: rolls.itemId })
       .from(rolls)
-      .where(eq(rolls.id, payload.rollId))
+      .where(scoped(rolls, ctx, eq(rolls.id, payload.rollId)))
 
     if (!roll) throw notFound('store.errors.roll_not_found', { rollId: payload.rollId })
 
@@ -755,7 +762,7 @@ export async function commitStockAdjustment(
           ? { status: 'adjusted_out', updatedAt: new Date() }
           : { qty: fromMinor(nextMinor), updatedAt: new Date() },
       )
-      .where(eq(rolls.id, payload.rollId))
+      .where(scoped(rolls, ctx, eq(rolls.id, payload.rollId)))
   }
 
   const [row] = await tx

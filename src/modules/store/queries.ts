@@ -12,6 +12,7 @@ import { z } from 'zod'
 
 import type { AnyCtx } from '@/modules/core/ctx'
 import { readJsonbObject } from '@/modules/core/jsonb'
+import { scoped } from '@/modules/core/scoped'
 import { withTenantRead } from '@/modules/core/tenancy'
 
 /**
@@ -71,11 +72,11 @@ export async function stockOnHand(ctx: AnyCtx): Promise<StockRow[]> {
           spec: items.spec,
         })
         .from(items)
-        .where(inArray(items.id, itemIds)),
+        .where(scoped(items, ctx, inArray(items.id, itemIds))),
       tx
         .select({ itemId: rolls.itemId, shadeGroup: rolls.shadeGroup, status: rolls.status })
         .from(rolls)
-        .where(inArray(rolls.itemId, itemIds)),
+        .where(scoped(rolls, ctx, inArray(rolls.itemId, itemIds))),
     ])
 
     return itemRows
@@ -135,12 +136,12 @@ export async function recentGrns(ctx: AnyCtx, limit = 25): Promise<GrnRow[]> {
     const lines = await tx
       .select({ grnId: grnLines.grnId })
       .from(grnLines)
-      .where(
+      .where(scoped(grnLines, ctx, 
         inArray(
           grnLines.grnId,
           rows.map((r) => r.id),
         ),
-      )
+      ))
 
     return rows.map((r) => ({
       ...r,
@@ -157,7 +158,7 @@ export async function itemList(
     tx
       .select({ id: items.id, code: items.code, name: items.name, uom: items.uom })
       .from(items)
-      .where(eq(items.isActive, true))
+      .where(scoped(items, ctx, eq(items.isActive, true)))
       .orderBy(asc(items.code)),
   )
 }
@@ -206,7 +207,7 @@ export async function rollsForItem(ctx: AnyCtx, itemId: string): Promise<RollRow
       .innerJoin(locations, eq(locations.id, rolls.locationId))
       .innerJoin(grnLines, eq(grnLines.id, rolls.grnLineId))
       .innerJoin(grns, eq(grns.id, grnLines.grnId))
-      .where(eq(rolls.itemId, itemId))
+      .where(scoped(rolls, ctx, eq(rolls.itemId, itemId)))
       // Nulls last: an ungrouped roll is not "group zero", it is a roll nobody has
       // shade-matched, and it belongs at the bottom of the pick list.
       .orderBy(asc(rolls.shadeGroup), asc(rolls.rollNo)),
@@ -255,7 +256,7 @@ export async function outstandingRequisitions(ctx: AnyCtx): Promise<OutstandingL
       .innerJoin(requisitions, eq(requisitions.id, requisitionLines.requisitionId))
       .innerJoin(orders, eq(orders.id, requisitions.orderId))
       .innerJoin(items, eq(items.id, requisitionLines.itemId))
-      .where(inArray(requisitions.status, ['open', 'partial']))
+      .where(scoped(requisitionLines, ctx, inArray(requisitions.status, ['open', 'partial'])))
       .orderBy(asc(items.code))
 
     return rows
