@@ -12,6 +12,7 @@
 import { and, asc, eq, gte, isNull, lte, sql } from 'drizzle-orm'
 
 import type { AnyCtx } from '@/modules/core/ctx'
+import { scoped } from '@/modules/core/scoped'
 import { withTenantRead } from '@/modules/core/tenancy'
 // `lines` belongs to planning (rule 11: one writer module per shared table);
 // production reads it rather than owning it.
@@ -51,7 +52,7 @@ export async function board(
       tx
         .select({ id: lines.id, code: lines.code, name: lines.name })
         .from(lines)
-        .where(eq(lines.isActive, true))
+        .where(scoped(lines, ctx, eq(lines.isActive, true)))
         .orderBy(asc(lines.code)),
       tx
         .select({
@@ -61,7 +62,7 @@ export async function board(
           actual: hourlyOutputs.actual,
         })
         .from(hourlyOutputs)
-        .where(eq(hourlyOutputs.producedOn, input.producedOn))
+        .where(scoped(hourlyOutputs, ctx, eq(hourlyOutputs.producedOn, input.producedOn)))
         .orderBy(asc(hourlyOutputs.hourSlot)),
       tx
         .select({
@@ -73,7 +74,7 @@ export async function board(
         .from(downtimes)
         // A downtime with no end is still happening — that is the one the board
         // has to show, because it explains the hour that is going wrong now.
-        .where(isNull(downtimes.endedAt)),
+        .where(scoped(downtimes, ctx, isNull(downtimes.endedAt))),
     ])
 
     return lineRows.map((line): LineRow => {
@@ -164,7 +165,7 @@ export async function sewnAgainstOrder(ctx: AnyCtx, orderId: string): Promise<nu
     tx
       .select({ sewn: sql<string>`coalesce(sum(${hourlyOutputs.actual}), 0)::text` })
       .from(hourlyOutputs)
-      .where(eq(hourlyOutputs.orderId, orderId)),
+      .where(scoped(hourlyOutputs, ctx, eq(hourlyOutputs.orderId, orderId))),
   )
   return Number(row?.sewn ?? 0)
 }
@@ -191,13 +192,13 @@ export async function trailingOutput(
         output: sql<string>`sum(${hourlyOutputs.actual})::text`,
       })
       .from(hourlyOutputs)
-      .where(
+      .where(scoped(hourlyOutputs, ctx, 
         and(
           eq(hourlyOutputs.orderId, input.orderId),
           gte(hourlyOutputs.producedOn, from),
           lte(hourlyOutputs.producedOn, input.asOf),
         ),
-      )
+      ))
       .groupBy(hourlyOutputs.producedOn)
       .orderBy(asc(hourlyOutputs.producedOn)),
   )
@@ -221,7 +222,7 @@ export async function activeLines(
     tx
       .select({ id: lines.id, code: lines.code, name: lines.name })
       .from(lines)
-      .where(and(eq(lines.isActive, true)))
+      .where(scoped(lines, ctx, and(eq(lines.isActive, true))))
       .orderBy(asc(lines.code)),
   )
 }

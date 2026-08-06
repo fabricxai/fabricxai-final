@@ -175,6 +175,8 @@ export default tseslint.config(
       'src/modules/approvals/queries.ts',
       'src/modules/store/service.ts',
       'src/modules/store/queries.ts',
+      'src/modules/production/service.ts',
+      'src/modules/production/queries.ts',
     ],
     rules: { 'fabricxai/require-tenant-predicate': 'error' },
   },

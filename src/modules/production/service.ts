@@ -24,6 +24,7 @@ import type { AnyCtx, RequestCtx } from '../core/ctx'
 import { AppError, conflict, notFound } from '../core/errors'
 import { registerSyncHandler } from '../core/offline-sync'
 import { emit } from '../core/outbox'
+import { scoped } from '../core/scoped'
 import { type TenantDb, withTenantRead, withTenantTx } from '../core/tenancy'
 
 import { PRODUCTION_EVENTS } from './events'
@@ -158,7 +159,7 @@ export async function getBoard(
     tx
       .select()
       .from(hourlyOutputs)
-      .where(eq(hourlyOutputs.producedOn, input.producedOn))
+      .where(scoped(hourlyOutputs, ctx, eq(hourlyOutputs.producedOn, input.producedOn)))
       .orderBy(hourlyOutputs.lineId, hourlyOutputs.hourSlot),
   )
 }
@@ -200,7 +201,7 @@ export async function openLineDowntimeIn(
     const [existing] = await tx
       .select()
       .from(downtimes)
-      .where(and(eq(downtimes.lineId, payload.lineId), isNull(downtimes.endedAt)))
+      .where(scoped(downtimes, ctx, and(eq(downtimes.lineId, payload.lineId), isNull(downtimes.endedAt))))
 
     if (existing) {
       throw conflict('production.errors.downtime_already_open', {
@@ -266,7 +267,7 @@ export async function closeLineDowntimeIn(
     const [row] = await tx
       .select()
       .from(downtimes)
-      .where(eq(downtimes.id, payload.downtimeId))
+      .where(scoped(downtimes, ctx, eq(downtimes.id, payload.downtimeId)))
       .for('update')
 
     if (!row) throw notFound('production.errors.downtime_not_found', { id: payload.downtimeId })
@@ -285,7 +286,7 @@ export async function closeLineDowntimeIn(
     await tx
       .update(downtimes)
       .set({ endedAt, note: payload.note ?? row.note })
-      .where(eq(downtimes.id, row.id))
+      .where(scoped(downtimes, ctx, eq(downtimes.id, row.id)))
 
     const minutes = Math.round((endedAt.getTime() - row.startedAt.getTime()) / 60_000)
 
@@ -393,7 +394,7 @@ export async function closeDay(
         output: sql<string>`sum(${hourlyOutputs.actual})::text`,
       })
       .from(hourlyOutputs)
-      .where(eq(hourlyOutputs.producedOn, input.forDate))
+      .where(scoped(hourlyOutputs, ctx, eq(hourlyOutputs.producedOn, input.forDate)))
       .groupBy(hourlyOutputs.lineId)
 
     let written = 0
@@ -402,9 +403,9 @@ export async function closeDay(
       const [plan] = await tx
         .select()
         .from(dailyLinePlans)
-        .where(
+        .where(scoped(dailyLinePlans, ctx, 
           and(eq(dailyLinePlans.lineId, row.lineId), eq(dailyLinePlans.planDate, input.forDate)),
-        )
+        ))
 
       // No plan means no SMV and no manpower — there is nothing to compute an efficiency
       // against, and inventing one would put a fabricated number on a board.
