@@ -10,7 +10,7 @@
  * this module's. What lives here is: who should be looking at what, how long it has been
  * waiting, and the chain from a draft to the row it became.
  */
-import { and, asc, count, desc, eq, inArray, isNotNull, lte, ne, sql } from 'drizzle-orm'
+import { and, asc, count, desc, eq, inArray, isNotNull, isNull, lte, ne, sql } from 'drizzle-orm'
 
 import {
   approvalRules,
@@ -20,6 +20,7 @@ import {
   users,
 } from '@/db/schema/core'
 
+import { recordChange, registerAuditedTables } from '../core/audit'
 import type { AnyCtx, RequestCtx, Role } from '../core/ctx'
 import { AppError, notFound } from '../core/errors'
 import { emit } from '../core/outbox'
@@ -27,6 +28,17 @@ import { getModule } from '../core/registry'
 import { withTenantRead, withTenantTx, type TenantDb } from '../core/tenancy'
 
 import { APPROVALS_EVENTS } from './events'
+
+/**
+ * ⚖ — and arguably the most ⚖ table in the system.
+ *
+ * `approval_rules` decides who may approve what, so a change here is a change to every other
+ * control: four modules already carry a comment saying "a floor that lives only in
+ * `approval_rules` is a floor somebody can edit their way past". It was the one such table
+ * writing no `audit_log` row at all, which meant the edit that widened a control left less
+ * trace than the change it then let through.
+ */
+registerAuditedTables('approval_rules')
 
 /** Company policy. Owned by Settings (X.3); passed in until that module exists. */
 export interface ApprovalsPolicy {
@@ -152,15 +164,33 @@ async function loadRules(tx: TenantDb, ctx: AnyCtx) {
     .orderBy(desc(approvalRules.priority))
 }
 
+/** Just enough of an `approval_rules` row to decide a match. */
+export interface MatchableRule {
+  moduleId: string
+  targetTable: string | null
+  operation: string | null
+  requiredRoles: readonly Role[]
+  approvalsRequired: number
+}
+
 /**
  * Which rule governs a draft.
  *
  * Deliberately the same matching order as core's `resolveRule`: highest priority first, and
  * a null `target_table` or `operation` means "every one". If the inbox and the approve path
  * disagreed about who may approve, a reviewer would see a draft they are then refused on.
+ *
+ * Note what this does NOT do: it does not prefer a specific rule to a wildcard. The list
+ * arrives ordered by priority, and the FIRST match wins — so a `target_table: null` rule at
+ * priority 200 beats an exact-table rule at 100. Surprising, and correct only because core
+ * does exactly the same thing; the pair are tested against each other rather than each
+ * against its own reading of the intent.
+ *
+ * Exported for that test. It is the one piece of routing logic in this module that exists
+ * twice in the codebase, which makes it the one piece that can silently drift.
  */
-function matchRule(
-  rules: Awaited<ReturnType<typeof loadRules>>,
+export function matchRule(
+  rules: readonly MatchableRule[],
   draft: { moduleId: string; targetTable: string; operation: string },
 ): { requiredRoles: readonly Role[]; approvalsRequired: number } {
   const match = rules.find(
@@ -276,7 +306,20 @@ export async function agingDrafts(
   })
 }
 
-/** Raise the aging escalations. Idempotent per run by the outbox's own dedupe. */
+/**
+ * Raise the aging escalations.
+ *
+ * **Not idempotent, and this used to claim it was.** The comment here said "idempotent per
+ * run by the outbox's own dedupe"; `emit` is a plain INSERT with no dedupe key, and the
+ * dedupe that does exist is consumer-side (`markProcessed`) keyed on the outbox row's own
+ * id — which is new on every insert. So two runs produce two events for the same draft and
+ * both get delivered.
+ *
+ * That matters because the scheduler runs this daily and a draft stays aging until somebody
+ * acts on it: a draft ignored for a week raises seven escalations. A daily nudge is arguably
+ * the intended behaviour for something that is, by definition, being ignored — but it was
+ * never decided, only assumed away by a comment. Recorded in docs/STUBS.md.
+ */
 export async function emitAgingEscalations(
   // `AnyCtx`, not `RequestCtx`: this is a nightly job and the scheduler runs it as a system
   // actor. It reads nothing off the caller but the company — nobody authored these alerts.
@@ -405,13 +448,22 @@ export async function correctionRates(
         moduleId: row.moduleId,
         reviewed: row.reviewed,
         corrected,
-        correctionRate:
-          row.reviewed === 0
-            ? '0.00'
-            : ((corrected * 10000) / row.reviewed / 100).toFixed(2),
+        correctionRate: correctionRate(row.reviewed, corrected),
       }
     })
   })
+}
+
+/**
+ * Corrected drafts as a percentage of reviewed ones, to two places.
+ *
+ * A percentage with no denominator is the lie this guards against: zero of zero is not a
+ * perfect record, and reporting it as `0.00` alongside a real 0.00 would make a module
+ * nobody has reviewed look like a module nobody has ever had to correct. The caller gets
+ * `reviewed` back beside the rate for exactly that reason — quote both or neither.
+ */
+export function correctionRate(reviewed: number, corrected: number): string {
+  return reviewed === 0 ? '0.00' : ((corrected / reviewed) * 100).toFixed(2)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -419,11 +471,28 @@ export async function correctionRates(
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Create or update an approval rule.
+ * Create or replace an approval rule.
  *
  * Owner-only, and deliberately so: a rule decides who may approve what, so somebody who can
  * edit rules can approve anything. That is the one privilege that cannot be delegated to the
  * role it governs.
+ *
+ * ## It used to only ever insert
+ *
+ * The name said upsert and the body was a bare INSERT, so calling it twice for the same
+ * (module, target, operation) left TWO active rules. `matchRule` takes the first by priority
+ * — on equal priority, whichever Postgres returned first. An owner tightening a rule from
+ * one approver to two could therefore get the old rule back on the next draft, with nothing
+ * anywhere saying which one applied. A control that silently fails open is worse than one
+ * that is missing, because the screen shows it as set.
+ *
+ * So the prior rule for the same scope is superseded — `is_active = false`, never deleted.
+ * "Who was allowed to approve this in March" is a question a deleted row cannot answer, and
+ * it is the question this table exists for.
+ *
+ * Scope is (module, target, operation) exactly. A rule for one target and a rule for the
+ * whole module are different rules and both stay live; the priority ordering already decides
+ * between them, deterministically, because their scopes differ.
  */
 export async function upsertApprovalRule(
   ctx: RequestCtx,
@@ -437,7 +506,7 @@ export async function upsertApprovalRule(
     minConfidence?: string
     priority?: number
   },
-): Promise<{ ruleId: string }> {
+): Promise<{ ruleId: string; supersededRuleIds: string[] }> {
   if (!ctx.roles.includes('owner')) {
     throw new AppError('forbidden', 'approvals.errors.rules_are_owner_only', { roles: ctx.roles })
   }
@@ -451,14 +520,45 @@ export async function upsertApprovalRule(
     throw new AppError('validation_failed', 'approvals.errors.auto_approve_needs_floor', {})
   }
 
+  const targetTable = input.targetTable ?? null
+  const operation = input.operation ?? null
+
   return withTenantTx(ctx, async (tx) => {
+    // The exact scope this rule governs. `is null` rather than `= null`, because a rule for
+    // the whole module and a rule for one table are different rules — and `= null` is never
+    // true, so an equality comparison would supersede nothing and leave the duplicate.
+    const sameScope = and(
+      eq(approvalRules.companyId, ctx.companyId),
+      eq(approvalRules.moduleId, input.moduleId),
+      targetTable === null
+        ? isNull(approvalRules.targetTable)
+        : eq(approvalRules.targetTable, targetTable),
+      operation === null
+        ? isNull(approvalRules.operation)
+        : eq(approvalRules.operation, operation),
+      eq(approvalRules.isActive, true),
+    )
+
+    const superseded = await tx
+      .update(approvalRules)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(sameScope)
+      .returning({
+        id: approvalRules.id,
+        requiredRoles: approvalRules.requiredRoles,
+        approvalsRequired: approvalRules.approvalsRequired,
+        autoApprove: approvalRules.autoApprove,
+        minConfidence: approvalRules.minConfidence,
+        priority: approvalRules.priority,
+      })
+
     const [row] = await tx
       .insert(approvalRules)
       .values({
         companyId: ctx.companyId,
         moduleId: input.moduleId,
-        targetTable: input.targetTable ?? null,
-        operation: input.operation ?? null,
+        targetTable,
+        operation,
         requiredRoles: input.requiredRoles,
         approvalsRequired: input.approvalsRequired ?? 1,
         autoApprove: input.autoApprove ?? false,
@@ -468,10 +568,42 @@ export async function upsertApprovalRule(
       .returning({ id: approvalRules.id })
 
     if (!row) throw new Error('approval_rules insert returned nothing')
-    return { ruleId: row.id }
+
+    // ⚖ — in the same transaction, so the trail and the change share a fate. `before` is the
+    // rule that was in force, which is the whole point: "who widened this, and from what".
+    // Recorded as an update when it replaced something, so the trail reads as one edit
+    // rather than as an unexplained new rule beside a silently retired one.
+    await recordChange(ctx, tx, {
+      action: superseded.length > 0 ? 'update' : 'insert',
+      targetTable: 'approval_rules',
+      targetId: row.id,
+      before: superseded[0] ? { ...superseded[0] } : null,
+      after: {
+        id: row.id,
+        moduleId: input.moduleId,
+        targetTable,
+        operation,
+        requiredRoles: input.requiredRoles,
+        approvalsRequired: input.approvalsRequired ?? 1,
+        autoApprove: input.autoApprove ?? false,
+        minConfidence: input.minConfidence ?? null,
+        priority: input.priority ?? 100,
+        supersededRuleIds: superseded.map((r) => r.id),
+      },
+    })
+
+    return { ruleId: row.id, supersededRuleIds: superseded.map((r) => r.id) }
   })
 }
 
-function hoursBetween(from: Date, to: Date): number {
+/**
+ * Whole hours waited, rounded DOWN.
+ *
+ * Down, so a draft never reports an hour it has not actually waited — the number sits next
+ * to an escalation threshold, and rounding up would escalate things forty minutes early and
+ * teach people the threshold is approximate. `aging` itself is decided on the same floored
+ * number, so what the row says and what escalates cannot disagree.
+ */
+export function hoursBetween(from: Date, to: Date): number {
   return Math.floor((to.getTime() - from.getTime()) / 3_600_000)
 }
