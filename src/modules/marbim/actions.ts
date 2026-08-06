@@ -14,7 +14,9 @@ import { buyerAccounts } from '@/modules/buyers/queries'
 import { recentAudits } from '@/modules/compliance/queries'
 
 import { intakeKind } from './intake'
-import { hasProvider } from './provider'
+import { extractorVersionFor } from './marbim'
+import { EXTRACTOR_PROMPT_VERSION } from './providers/gemini'
+import { hasProvider, modelForRole } from './provider'
 import { chat, queueExtraction, type ChatResult, type MarbimPolicy } from './service'
 import type { ToolPack } from './tools'
 
@@ -257,8 +259,13 @@ export async function readDocument(input: {
       zodSchemaKey: kind.zodSchemaKey,
       extractorName: `intake.${kind.id}`,
       // Versioned so a rewritten extractor's results are never pooled with its
-      // predecessor's — the whole reason the field is required.
-      extractorVersion: '1',
+      // predecessor's — the whole reason the field is required. It was the literal `'1'`
+      // until plan 6.4, which made the correction-rate report one lifetime average across
+      // every prompt and every model the system had ever run.
+      extractorVersion: extractorVersionFor({
+        promptVersion: EXTRACTOR_PROMPT_VERSION,
+        model: modelForRole('extract'),
+      }),
       sourceText: input.sourceText,
       sourceDocumentId: input.documentId,
       contextValues: Object.keys(contextValues).length > 0 ? contextValues : undefined,

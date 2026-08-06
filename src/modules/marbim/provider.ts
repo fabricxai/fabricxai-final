@@ -89,6 +89,15 @@ export interface TextResult {
 
 export interface MarbimProvider {
   readonly id: string
+  /**
+   * Which model serves each role, where they differ.
+   *
+   * Absent for a single-model provider — the deterministic one answers every role itself, and
+   * its `id` says so. The real provider routes each role to a different vendor (plan 6.4), so
+   * "which model answered" has three answers and `id` alone cannot be truthful about all of
+   * them. A role absent from this map is one the deployment has no key for.
+   */
+  readonly models?: Partial<Record<ModelRole, string>>
   extract<T>(request: ExtractRequest<T>): Promise<ExtractResult<T>>
   generate(request: TextRequest): Promise<TextResult>
   /** Required, not optional: 1.6 Order Memory cannot fingerprint a style without it. */
@@ -137,3 +146,20 @@ export const hasProvider = (): boolean => provider !== null
  * Null when nothing is registered — the caller shows nothing rather than guessing.
  */
 export const providerId = (): string | null => provider?.id ?? null
+
+/**
+ * The model serving one role, for a caller that needs to name it specifically.
+ *
+ * Falls back to the provider id, which is correct for a single-model provider and is the
+ * best available answer for a role the composite has no key for — the caller is about to get
+ * a refusal from that role anyway, and naming the provider is more use than naming nothing.
+ */
+export const modelForRole = (role: ModelRole): string | null =>
+  provider?.models?.[role] ?? provider?.id ?? null
+
+/** Roles this deployment can actually serve. Empty when no provider is registered. */
+export function availableRoles(): ModelRole[] {
+  if (!provider) return []
+  if (!provider.models) return ['extract', 'reason', 'embed']
+  return (Object.keys(provider.models) as ModelRole[]).filter((role) => provider?.models?.[role])
+}

@@ -120,6 +120,57 @@ export function assertDraftProvenance(input: {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Extractor identity
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** `extraction_jobs.extractor_version` and `pending_changes.extractor_version`. */
+const MAX_EXTRACTOR_VERSION = 40
+
+/** Stable across processes and machines; `Math.random` and hashing by object identity are not. */
+function fnv1a(text: string): number {
+  let hash = 0x811c9dc5
+  for (let i = 0; i < text.length; i += 1) {
+    hash ^= text.charCodeAt(i)
+    hash = Math.imul(hash, 0x01000193) >>> 0
+  }
+  return hash >>> 0
+}
+
+/**
+ * What produced an extraction, as one comparable string (plan 6.4, audit AI-H1).
+ *
+ * It was the literal `'1'`, on every extraction ever queued. `extractor_version` is what the
+ * correction-rate report groups by — the honest measure of whether the extractor is any good,
+ * and the number X.2's primer tells MARBIM to quote instead of confidence — so a constant
+ * made that report a single lifetime average across every prompt and every model the system
+ * had ever run. A prompt rewrite that halved the error rate was invisible; so was a model
+ * swap that doubled it.
+ *
+ * Both halves belong in it because both change the answers:
+ *
+ *  - the PROMPT semver, bumped when the extraction instruction is reworded;
+ *  - the MODEL id, because the same prompt against a different model is a different extractor
+ *    and pooling the two is how a regression hides behind an improvement.
+ *
+ * ## When the model id is too long
+ *
+ * The column is 40 characters and a dated preview id can eat most of them. Rather than
+ * truncate — which would collide `gemini-2.5-flash-preview-04-17` with `-05-20`, silently
+ * pooling exactly what this exists to separate — a too-long id is replaced by a hash of
+ * itself. Unreadable, but distinct, and the readable form is on `pending_changes.model`.
+ */
+export function extractorVersionFor(input: { promptVersion: string; model: string | null }): string {
+  // A queued extraction with no extract model configured still needs an identity: the job
+  // will fail, and the failure is worth being able to group by later.
+  const model = input.model ?? 'unconfigured'
+  const full = `${input.promptVersion}+${model}`
+
+  if (full.length <= MAX_EXTRACTOR_VERSION) return full
+
+  return `${input.promptVersion}+${fnv1a(model).toString(36)}`
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Prompt assembly
 // ─────────────────────────────────────────────────────────────────────────────
 

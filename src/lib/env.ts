@@ -59,6 +59,26 @@ const baseSchema = z.object({
   ANTHROPIC_API_KEY: z.string().min(1).optional(),
   GEMINI_API_KEY: z.string().min(1).optional(),
   OPENAI_API_KEY: z.string().min(1).optional(),
+  /**
+   * The model serving each ROLE (plan 6.4). Never a provider id in module code — modules ask
+   * for `extract` / `reason` / `embed` and the registry routes it, which is what makes
+   * swapping a vendor an env change rather than a refactor.
+   *
+   * The defaults are the intended production mix, one vendor per role for a reason:
+   *
+   *  - **extract → Gemini**, because it is the only one of the three that returns per-token
+   *    log-probabilities with a schema-constrained response, and without those an extraction
+   *    has no measured per-field confidence to carry (rule 3, plan 6.3). A model here that
+   *    does not support `responseLogprobs` makes every extraction fail, loudly, by design.
+   *  - **reason → Anthropic**, because the department primers are the product and this is the
+   *    model that reads nineteen of them to answer a merchandiser.
+   *  - **embed → OpenAI**, into the `vector(1536)` column 1.6 searches. `text-embedding-3-small`
+   *    is natively 1536, so the width is exact rather than truncated; `-3-large` is a better
+   *    embedding and a one-variable upgrade if the similarity results warrant the cost.
+   */
+  MARBIM_MODEL_EXTRACT: z.string().min(1).default('gemini-2.5-flash'),
+  MARBIM_MODEL_REASON: z.string().min(1).default('claude-sonnet-5'),
+  MARBIM_MODEL_EMBED: z.string().min(1).default('text-embedding-3-small'),
   /** Serve MARBIM from fixtures — no provider calls. Dev/test only. */
   MARBIM_MOCK: bool.default(false),
   /**
@@ -83,7 +103,14 @@ const baseSchema = z.object({
   WORKER_CONCURRENCY: z.coerce.number().int().positive().default(5),
 })
 
-const envSchema = baseSchema.superRefine((env, ctx) => {
+/**
+ * Exported so the production-only rules can be exercised without a production process.
+ *
+ * They are boot ASSERTIONS — the whole value is that a misconfigured deploy dies at startup
+ * instead of at 3am — and an assertion nothing has ever been seen to fire is decoration, the
+ * same argument that put the four custom lint rules under a RuleTester.
+ */
+export const envSchema = baseSchema.superRefine((env, ctx) => {
   if (env.NODE_ENV !== 'production') return
 
   // ── A working mail path, by either route ────────────────────────────────────
@@ -128,6 +155,26 @@ const envSchema = baseSchema.superRefine((env, ctx) => {
       code: 'custom',
       path: ['MARBIM_MOCK'],
       message: 'MARBIM_MOCK must be off in production',
+    })
+  }
+
+  // The reason role specifically, not just "any key" (plan 6.4). MARBIM_ENABLED puts two
+  // surfaces in front of every user — the assistant button on every screen and `/marbim` —
+  // and both of them do exactly one thing: ask the REASON model a question. A production
+  // deployment with a Gemini key and no Anthropic key therefore ships a copilot that renders
+  // perfectly and fails on every question, which is the state 6.1 was written to end.
+  //
+  // Extraction and embedding are different: those are features that can be absent. A factory
+  // that has not bought document intake gets a copilot that answers questions and refuses to
+  // read a PO, and says so at the point of use.
+  if (env.MARBIM_ENABLED && !env.ANTHROPIC_API_KEY) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['ANTHROPIC_API_KEY'],
+      message:
+        'MARBIM_ENABLED is set in production but there is no reasoning model — set ' +
+        'ANTHROPIC_API_KEY, or unset MARBIM_ENABLED. Every question asked of the copilot ' +
+        'goes to the reason role, so without it the panel opens and nothing works.',
     })
   }
 
