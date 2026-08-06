@@ -34,6 +34,17 @@ export interface ExtractionRunResult {
 /** How many extractions one pass will run, so a backlog cannot monopolise the worker. */
 const BATCH = 10
 
+/**
+ * The safety net, not the mechanism (plan 6.6, audit AI-M4).
+ *
+ * Since `marbim.extraction.queued` routes to the derive queue, the common case runs within
+ * seconds of somebody pressing the button. This still runs every five minutes, and it should:
+ * it picks up what an event cannot — a retryable failure waiting for its next attempt, a job
+ * queued while the worker was down, an event lost between the outbox and Redis.
+ *
+ * The two can overlap. `runExtraction` re-reads the row and returns early when it is no
+ * longer `queued` or `failed`, so whichever gets there second does nothing.
+ */
 export async function runQueuedExtractions(
   ctx: SystemCtx,
   policy: MarbimPolicy,

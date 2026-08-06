@@ -11,8 +11,10 @@
  * plain: a model call is seconds of latency with a real failure rate, and a merchandiser
  * uploading a tech pack should not be watching a spinner that might end in a 504.
  */
-import { and, count, desc, eq, gte, sql } from 'drizzle-orm'
+import { and, desc, eq, gte, sql } from 'drizzle-orm'
 import { z } from 'zod'
+
+import { consume } from '@/lib/rate-limit'
 
 import type { AnyCtx, RequestCtx } from '../core/ctx'
 import { AppError, conflict, notFound } from '../core/errors'
@@ -283,20 +285,45 @@ export async function queueExtraction(
     })
   }
 
+  /*
+   * The per-company hourly limit, in Redis (plan 6.6, audit AI-M5).
+   *
+   * It was `select count(*) from extraction_jobs where created_at > now() - 1 hour`, inside
+   * the insert transaction, on every queue. Three problems, in ascending order of how much
+   * they matter:
+   *
+   *  1. **It is a scan that grows with the table**, run on the path a person is waiting on.
+   *  2. **It counts the wrong thing.** Rows, not attempts — so a company that queued sixty
+   *     documents and deleted them has a fresh allowance, and one whose jobs all failed and
+   *     retried is charged once for work the provider did five times.
+   *  3. **It does not hold under concurrency.** Two simultaneous requests both read 59 and
+   *     both insert. `READ COMMITTED` gives no protection here and the count is not a
+   *     constraint, so the limit was advisory at exactly the moment it was being tested.
+   *
+   * `INCR` is atomic, so the third problem simply goes away. The counter is consumed BEFORE
+   * the insert and deliberately not returned if the insert then fails: a refused document
+   * still cost a check, and a limit that refunds itself on error is one a client can spin
+   * against for free.
+   *
+   * `consume` fails OPEN when Redis is unreachable — the considered exception documented in
+   * `lib/rate-limit.ts`. Here that means an unavailable Redis lets extractions through
+   * uncounted, which is the right trade: the ceiling in 6.5 counts real token spend, so the
+   * cost is bounded by something else anyway.
+   */
+  const limit = await consume(`marbim:extract:${ctx.companyId}`, {
+    limit: policy.extractionsPerHour,
+    windowSeconds: 3_600,
+  })
+
+  if (!limit.ok) {
+    throw new AppError('rate_limited', 'marbim.errors.rate_limited', {
+      limit: policy.extractionsPerHour,
+      windowHours: 1,
+      retryAfterSeconds: limit.resetSeconds,
+    })
+  }
+
   return withTenantTx(ctx, async (tx) => {
-    const since = new Date(Date.now() - 3_600_000)
-    const [recent] = await tx
-      .select({ n: count() })
-      .from(extractionJobs)
-      .where(gte(extractionJobs.createdAt, since))
-
-    if ((recent?.n ?? 0) >= policy.extractionsPerHour) {
-      throw new AppError('rate_limited', 'marbim.errors.rate_limited', {
-        limit: policy.extractionsPerHour,
-        windowHours: 1,
-      })
-    }
-
     const [row] = await tx
       .insert(extractionJobs)
       .values({

@@ -17,6 +17,7 @@ import { randomUUID } from 'node:crypto'
 import { eq, sql } from 'drizzle-orm'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 
+import { getRedis } from '@/lib/redis'
 import { createDirectClient, createDirectDb } from '@/db/direct'
 import { approvalRules, companies, pendingChanges, users } from '@/db/schema/core'
 import { buyers } from '@/modules/buyers/schema'
@@ -110,6 +111,18 @@ const reset = async () => {
   await db.delete(extractionJobs).where(eq(extractionJobs.companyId, COMPANY))
   await db.delete(chatTurns).where(eq(chatTurns.companyId, COMPANY))
   await db.delete(pendingChanges).where(eq(pendingChanges.companyId, COMPANY))
+
+  /*
+   * The rate-limit counter lives in Redis now, not in a `count(*)` over the table above
+   * (plan 6.6, audit AI-M5) — so deleting the rows no longer resets the allowance, and a
+   * fixture that only truncated the database would leave every case after the first few
+   * running against an exhausted hour.
+   *
+   * Written before running the suite rather than after watching it go red: the whole point
+   * of moving the counter out of the transaction is that it is no longer derived from the
+   * rows, and a `reset` that does not know that is a fixture lying about the state it made.
+   */
+  await getRedis().del(`marbim:extract:${COMPANY}`)
 }
 
 const queue = (over: Record<string, unknown> = {}) =>

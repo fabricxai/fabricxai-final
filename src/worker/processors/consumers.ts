@@ -28,6 +28,11 @@ import { isAppError } from '@/modules/core/errors'
 import { markProcessed } from '@/modules/core/outbox'
 import { withTenantRead, withTenantTx } from '@/modules/core/tenancy'
 
+import { hasProvider } from '@/modules/marbim/provider'
+import { runExtraction } from '@/modules/marbim/service'
+import type { MarbimPolicy } from '@/modules/marbim/service'
+import { getPolicy } from '@/modules/settings/service'
+
 import { QUEUE } from '../queues'
 import { factoryToday } from '@/lib/dates'
 
@@ -397,6 +402,61 @@ async function onMachineDowntime(ctx: SystemCtx, payload: Record<string, unknown
   })
 }
 
+/**
+ * A document was queued for extraction — read it now (plan 6.6, audit AI-M4).
+ *
+ * The poller runs every five minutes and stays, but as a SAFETY NET rather than the
+ * mechanism. Five minutes is a very long time to watch a spinner after pasting a buyer's PO,
+ * and it was the whole latency of the feature: median wait 2.5 minutes for work that takes
+ * seconds. This makes the common case immediate and leaves the poller to pick up what events
+ * cannot — a retryable failure waiting for its next attempt, a job queued while the worker
+ * was down, a redelivery that arrived before the row was visible.
+ *
+ * ## Why this is safe to run twice
+ *
+ * `runExtraction` re-reads the job and returns early when it is no longer `queued` or
+ * `failed`, so a redelivery racing the poller finds the row already succeeded and does
+ * nothing. That is the same idempotency every handler in this file relies on, and it is
+ * load-bearing here because the poller and this handler genuinely can overlap.
+ *
+ * ## Why it does not throw when there is no provider
+ *
+ * A deployment with the copilot enabled and no provider registered is a misconfiguration, and
+ * 6.1 made it visible in job health. Throwing here would additionally retry the event five
+ * times and park it — noise about a condition already reported, on a queue that has real work
+ * on it.
+ */
+async function onExtractionQueued(ctx: SystemCtx, payload: Record<string, unknown>): Promise<void> {
+  const jobId = String(payload.jobId ?? '')
+  if (!jobId) return
+
+  if (!hasProvider()) {
+    console.warn(`[consumer] extraction ${jobId} left for the poller: no MARBIM provider`)
+    return
+  }
+
+  const policy = await getPolicy<MarbimPolicy>(ctx, 'marbim')
+
+  try {
+    await runExtraction(ctx, { jobId }, policy)
+  } catch (error) {
+    /*
+     * A rejected job throws `conflict`. Reachable here through a redelivery that arrives
+     * after the poller already ran the job and rejected it — the work is terminally done,
+     * and retrying the EVENT five times to rediscover that is noise on a queue with real
+     * work on it.
+     *
+     * Anything else is rethrown: `runExtraction` records its own failures on the row, so an
+     * exception escaping it is unexpected and worth a retry.
+     */
+    if (isAppError(error) && error.code === 'conflict') {
+      console.warn(`[consumer] extraction ${jobId} was already closed: ${error.messageKey}`)
+      return
+    }
+    throw error
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // The routing table
 // ─────────────────────────────────────────────────────────────────────────────
@@ -417,6 +477,9 @@ export const EVENT_HANDLERS: Readonly<Record<string, Handler>> = {
   'production.downtime.machine': onMachineDowntime,
   'quality.final.passed': onFinalInspectionPassed,
   'maintenance.ticket.resolved': onTicketResolved,
+  // Not a cross-module write, but the same argument: a fact committed in one place that has
+  // to cause work somewhere else, promptly, rather than on a five-minute tick.
+  'marbim.extraction.queued': onExtractionQueued,
 }
 
 /**

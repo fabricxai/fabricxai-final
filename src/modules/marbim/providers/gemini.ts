@@ -21,6 +21,7 @@
 import { GoogleGenAI } from '@google/genai'
 import { z } from 'zod'
 
+import { DOCUMENT_GUARD, fenceDocument } from '../marbim'
 import { ProviderError, type ExtractRequest, type ExtractResult } from '../provider'
 
 import { fieldConfidenceFromTokens, ConfidenceError, type ChosenToken } from './field-confidence'
@@ -37,13 +38,18 @@ const LOGPROBS_TOP_K = 1
 /**
  * The instruction wrapped around every extraction.
  *
- * Versioned with the module (see `EXTRACTOR_PROMPT_VERSION`), because `extractor_version` on
- * the draft is what the correction-rate report groups by: change the wording and the numbers
- * from before and after must not pool.
+ * Versioned because `extractor_version` on the draft is what the correction-rate report
+ * groups by: change the wording and the numbers from before and after must not pool.
+ *
+ * **Bump this whenever `SYSTEM` or the fencing changes.** 1.1.0 is the injection guard
+ * (plan 6.6) — a real change to what the model is told, so its drafts are a different
+ * population from 1.0.0's and averaging the two would hide whichever direction it moved.
  */
-export const EXTRACTOR_PROMPT_VERSION = '1.0.0'
+export const EXTRACTOR_PROMPT_VERSION = '1.1.0'
 
 const SYSTEM = `You read documents for a Bangladeshi garment export factory and return structured data.
+
+${DOCUMENT_GUARD}
 
 Rules:
 - Return ONLY the fields the schema asks for.
@@ -111,7 +117,9 @@ export function geminiExtractor({ apiKey, model }: GeminiOptions) {
           contents: [
             {
               role: 'user',
-              parts: [{ text: `${request.instruction}\n\n---\n${request.input}` }],
+              // Fenced, not `---`-separated. A buyer's amendment sheet is full of `---`, so
+              // the old separator was one a document could forge by accident (audit AI-M3).
+              parts: [{ text: `${request.instruction}\n\n${fenceDocument(request.input)}` }],
             },
           ],
           config: {

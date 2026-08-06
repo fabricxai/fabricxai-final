@@ -248,8 +248,9 @@ export const SCHEDULED_TASKS = [
   {
     id: 'extractions-every-5-min',
     task: 'marbim.run_extractions',
-    // Every five minutes, all day. An extraction is somebody waiting for a tech pack to
-    // become a draft; nightly would make the feature useless.
+    // Every five minutes, all day — as a SAFETY NET since plan 6.6. The queue event now
+    // triggers the extraction within seconds; this sweeps up retryable failures waiting for
+    // their next attempt, and anything queued while the worker was down.
     pattern: '*/5 * * * *',
   },
 

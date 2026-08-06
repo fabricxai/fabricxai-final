@@ -135,6 +135,10 @@ describe('the routing table', () => {
       'cutting.order.complete',
       'finance.realized',
       'maintenance.ticket.resolved',
+      // Not a cross-module write like the others — it is the extraction runner reacting to
+      // its own queue event so a pasted PO is read in seconds rather than on the poller's
+      // five-minute tick (plan 6.6, audit AI-M4).
+      'marbim.extraction.queued',
       'orders.order.status_changed',
       'production.downtime.machine',
       'quality.final.passed',

@@ -44,14 +44,18 @@ const READABLE = /\.(txt|csv|md|eml|json)$/i
  * afterwards.
  *
  * **Text is required, the file is not, and that ordering is the honest one.** The extractor
- * reads `sourceText`. Nothing in this system converts a scan to text — no OCR, no PDF parser —
- * so a screen that accepted only a PDF would queue a job that reads an empty string and
- * report it as queued. Pasting from the PDF viewer or the buyer's email is what a
+ * reads `sourceText`. Nothing in this system converts a scan to text yet — no OCR, no PDF
+ * parser — so a screen that accepted only a PDF would queue a job that reads an empty string
+ * and report it as queued. Pasting from the PDF viewer or the buyer's email is what a
  * merchandiser does today anyway; attaching the original is what lets an approver check it.
+ * Plan 6.6 decided how scans will be read (Gemini reads a PDF natively, no OCR library) —
+ * when that lands, the file becomes sufficient on its own and this ordering relaxes.
  *
- * **Queued, not done.** Extraction runs on a five-minute schedule, so the confirmation says
- * queued rather than implying a draft exists. A screen that said "drafted" would send
- * somebody to an approve inbox that is still empty.
+ * **Queued, not done.** The queue is now immediate rather than a five-minute tick (plan 6.6:
+ * `marbim.extraction.queued` routes to the derive queue), but the confirmation still says
+ * queued rather than implying a draft exists — a model call is seconds with a real failure
+ * rate, and a screen that said "drafted" would send somebody to an approve inbox that is
+ * still empty.
  */
 export function IntakeClient({ kinds }: { kinds: readonly Kind[] }) {
   const router = useRouter()
@@ -141,8 +145,9 @@ export function IntakeClient({ kinds }: { kinds: readonly Kind[] }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
       {queued ? (
         <InlineAlert tone="success">
-          {queued} queued. MARBIM reads it on the next pass and files a draft — it will appear
-          in the approve inbox, not in the module, until somebody signs it.
+          {queued} queued. MARBIM starts reading it now and files a draft — it will appear in
+          the approve inbox, not in the module, until somebody signs it. You will be told when
+          it is ready.
         </InlineAlert>
       ) : null}
 

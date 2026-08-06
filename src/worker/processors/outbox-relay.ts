@@ -74,6 +74,10 @@ const QUEUE_ROUTES: readonly { prefix: string; queue: QueueName }[] = [
   { prefix: 'maintenance.ticket.resolved', queue: QUEUE.derive },
   // Closing an order compiles its outcome into order memory.
   { prefix: 'orders.order.status_changed', queue: QUEUE.derive },
+  // A queued extraction is read immediately instead of on the five-minute tick (plan 6.6,
+  // audit AI-M4). Only `queued` — the succeeded/failed/rejected events are somebody being
+  // told something, and they belong on `notify` where the rules for them live.
+  { prefix: 'marbim.extraction.queued', queue: QUEUE.derive },
 
   // Document rendering (`procurement.po.issued`, `shipment.packing_list.approved`) is NOT
   // routed yet, on purpose. `renderPdf` has no worker and lib/pdf.ts is a stub — a route
