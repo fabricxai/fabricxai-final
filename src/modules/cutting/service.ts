@@ -22,6 +22,7 @@ import { AppError, conflict, notFound } from '../core/errors'
 import { assertGate, GATES, type GateResult } from '../core/gates'
 import { emit } from '../core/outbox'
 import { defineStateMachine } from '../core/state-machine'
+import { scoped } from '../core/scoped'
 import { withTenantRead, withTenantTx, type TenantDb } from '../core/tenancy'
 
 import {
@@ -164,7 +165,7 @@ async function createMarkerIn(
   const [existing] = await tx
     .select({ id: markers.id })
     .from(markers)
-    .where(eq(markers.code, payload.code))
+    .where(scoped(markers, ctx, eq(markers.code, payload.code)))
 
   if (existing) {
     // A typed conflict rather than a unique-index violation. The code is how the floor
@@ -203,6 +204,9 @@ async function createMarkerIn(
  * disagree — and on bonded fabric that is a customs exposure, not a clerical one.
  */
 async function checkIssuedFabric(
+  // `ctx` so the gate's own reads name the company. A gate that decided from another
+  // factory's rolls would refuse or allow for reasons nobody could reconstruct.
+  ctx: AnyCtx,
   tx: TenantDb,
   input: { orderId: string; rollIds: readonly string[] },
 ): Promise<{ passed: boolean; reasonKey?: string; facts?: Record<string, unknown> }> {
@@ -217,7 +221,7 @@ async function checkIssuedFabric(
     .from(issueLines)
     .innerJoin(issues, eq(issueLines.issueId, issues.id))
     .innerJoin(rolls, eq(issueLines.rollId, rolls.id))
-    .where(inArray(issueLines.rollId, [...input.rollIds]))
+    .where(scoped(issueLines, ctx, inArray(issueLines.rollId, [...input.rollIds])))
 
   const issuedToThisOrder = new Set(
     found.filter((row) => row.orderId === input.orderId).map((row) => row.rollId),
@@ -275,7 +279,7 @@ async function createLayIn(
   tx: TenantDb,
   payload: ReturnType<typeof createLayPayload.parse>,
 ): Promise<CreateLayResult> {
-  const [marker] = await tx.select().from(markers).where(eq(markers.id, payload.markerId))
+  const [marker] = await tx.select().from(markers).where(scoped(markers, ctx, eq(markers.id, payload.markerId)))
   if (!marker) throw notFound('cutting.errors.marker_not_found', { markerId: payload.markerId })
 
   assertGate(
@@ -286,7 +290,7 @@ async function createLayIn(
     }),
   )
 
-  const fabric = await checkIssuedFabric(tx, {
+  const fabric = await checkIssuedFabric(ctx, tx, {
     orderId: payload.orderId,
     rollIds: payload.rollsDrawn,
   })
@@ -353,6 +357,7 @@ async function createLayIn(
 
 /** The buyer's grid as the floor is cutting to it right now. */
 async function activeBreakdown(
+  ctx: AnyCtx,
   tx: TenantDb,
   orderStyleId: string,
 ): Promise<{ revision: number; cells: BreakdownCell[] }> {
@@ -361,7 +366,7 @@ async function activeBreakdown(
   const [style] = await tx
     .select({ activeRevision: orderStyles.activeRevision })
     .from(orderStyles)
-    .where(eq(orderStyles.id, orderStyleId))
+    .where(scoped(orderStyles, ctx, eq(orderStyles.id, orderStyleId)))
 
   if (!style) throw notFound('cutting.errors.style_not_found', { orderStyleId })
 
@@ -372,12 +377,12 @@ async function activeBreakdown(
       qty: orderBreakdowns.qty,
     })
     .from(orderBreakdowns)
-    .where(
+    .where(scoped(orderBreakdowns, ctx, 
       and(
         eq(orderBreakdowns.orderStyleId, orderStyleId),
         eq(orderBreakdowns.revision, style.activeRevision),
       ),
-    )
+    ))
 
   if (cells.length === 0) {
     // Cutting against an empty grid would validate anything at all.
@@ -391,12 +396,12 @@ async function activeBreakdown(
 }
 
 /** Everything cut so far for a style, across every lay. */
-async function cutSoFar(tx: TenantDb, orderStyleId: string): Promise<CutCell[]> {
+async function cutSoFar(ctx: AnyCtx, tx: TenantDb, orderStyleId: string): Promise<CutCell[]> {
   const rows = await tx
     .select({ cells: cutReports.cells })
     .from(cutReports)
     .innerJoin(lays, eq(cutReports.layId, lays.id))
-    .where(eq(lays.orderStyleId, orderStyleId))
+    .where(scoped(cutReports, ctx, eq(lays.orderStyleId, orderStyleId)))
 
   const totals = new Map<string, number>()
   for (const row of rows) {
@@ -440,12 +445,12 @@ async function recordCutReportIn(
   payload: ReturnType<typeof cutReportPayload.parse>,
   policy: CuttingPolicy,
 ): Promise<CutReportResult> {
-  const [lay] = await tx.select().from(lays).where(eq(lays.id, payload.layId)).for('update')
+  const [lay] = await tx.select().from(lays).where(scoped(lays, ctx, eq(lays.id, payload.layId))).for('update')
   if (!lay) throw notFound('cutting.errors.lay_not_found', { layId: payload.layId })
 
   layMachine.assert(lay.status as LayStatus, 'cut')
 
-  const breakdown = await activeBreakdown(tx, lay.orderStyleId)
+  const breakdown = await activeBreakdown(ctx, tx, lay.orderStyleId)
   const reported = parseCells(payload.cells)
 
   const validation = wrapCuttingError(() =>
@@ -471,7 +476,7 @@ async function recordCutReportIn(
   await tx
     .update(lays)
     .set({ status: 'cut', updatedAt: new Date() })
-    .where(eq(lays.id, lay.id))
+    .where(scoped(lays, ctx, eq(lays.id, lay.id)))
 
   await recordChange(ctx, tx, {
     action: 'insert',
@@ -534,7 +539,7 @@ async function recordCutReportIn(
 
   // Completion is judged across EVERY lay for the style, not this report alone — an
   // order is cut when the whole grid is met, not when one lay came off the table.
-  const cutAcrossLays = await cutSoFar(tx, lay.orderStyleId)
+  const cutAcrossLays = await cutSoFar(ctx, tx, lay.orderStyleId)
   const completion = wrapCuttingError(() => cutCompletion(breakdown.cells, cutAcrossLays))
 
   if (completion.complete) {
@@ -588,7 +593,7 @@ async function generateBundlesIn(
     const [report] = await tx
       .select()
       .from(cutReports)
-      .where(eq(cutReports.id, input.cutReportId))
+      .where(scoped(cutReports, ctx, eq(cutReports.id, input.cutReportId)))
       .for('update')
 
     if (!report) {
@@ -598,7 +603,7 @@ async function generateBundlesIn(
     const existing = await tx
       .select({ id: bundles.id })
       .from(bundles)
-      .where(eq(bundles.cutReportId, report.id))
+      .where(scoped(bundles, ctx, eq(bundles.cutReportId, report.id)))
       .limit(1)
 
     if (existing.length > 0) {
@@ -645,7 +650,7 @@ export async function scanBundle(
     const [row] = await tx
       .select()
       .from(bundles)
-      .where(eq(bundles.qrToken, input.qrToken))
+      .where(scoped(bundles, ctx, eq(bundles.qrToken, input.qrToken)))
       .for('update')
 
     if (!row) throw notFound('cutting.errors.bundle_not_found', {})
@@ -655,7 +660,7 @@ export async function scanBundle(
     await tx
       .update(bundles)
       .set({ status: input.status, updatedAt: new Date() })
-      .where(eq(bundles.id, row.id))
+      .where(scoped(bundles, ctx, eq(bundles.id, row.id)))
 
     return { bundleId: row.id, status: input.status }
   })
@@ -702,7 +707,7 @@ async function recomputeWastageIn(
         fabricDrawnMeters: lays.fabricDrawnMeters,
       })
       .from(lays)
-      .where(and(eq(lays.orderId, input.orderId), eq(lays.status, 'cut')))
+      .where(scoped(lays, ctx, and(eq(lays.orderId, input.orderId), eq(lays.status, 'cut'))))
 
     if (rows.length === 0) {
       throw notFound('cutting.errors.no_cut_lays', { orderId: input.orderId })
@@ -735,7 +740,7 @@ async function recomputeWastageIn(
     const [existing] = await tx
       .select({ id: cutWastage.id, wastagePct: cutWastage.wastagePct })
       .from(cutWastage)
-      .where(eq(cutWastage.orderId, input.orderId))
+      .where(scoped(cutWastage, ctx, eq(cutWastage.orderId, input.orderId)))
 
     if (existing) {
       await tx
@@ -746,7 +751,7 @@ async function recomputeWastageIn(
           wastagePct: result.wastagePct,
           computedAt: new Date(),
         })
-        .where(eq(cutWastage.id, existing.id))
+        .where(scoped(cutWastage, ctx, eq(cutWastage.id, existing.id)))
     } else {
       await tx.insert(cutWastage).values({
         companyId: ctx.companyId,
@@ -810,8 +815,8 @@ export async function cutPosition(
   input: { orderStyleId: string },
 ): Promise<{ complete: boolean; pct: string; shortCells: unknown[] }> {
   return withTenantRead(ctx, async (tx) => {
-    const breakdown = await activeBreakdown(tx, input.orderStyleId)
-    const cut = await cutSoFar(tx, input.orderStyleId)
+    const breakdown = await activeBreakdown(ctx, tx, input.orderStyleId)
+    const cut = await cutSoFar(ctx, tx, input.orderStyleId)
     const result = wrapCuttingError(() => cutCompletion(breakdown.cells, cut))
     return { complete: result.complete, pct: result.pct, shortCells: result.shortCells }
   })
@@ -835,14 +840,14 @@ export async function commitCutReportCorrection(
   const [report] = await tx
     .select()
     .from(cutReports)
-    .where(eq(cutReports.id, payload.cutReportId))
+    .where(scoped(cutReports, ctx, eq(cutReports.id, payload.cutReportId)))
     .for('update')
 
   if (!report) {
     throw notFound('cutting.errors.report_not_found', { cutReportId: payload.cutReportId })
   }
 
-  const [lay] = await tx.select().from(lays).where(eq(lays.id, report.layId))
+  const [lay] = await tx.select().from(lays).where(scoped(lays, ctx, eq(lays.id, report.layId)))
   if (!lay) throw notFound('cutting.errors.lay_not_found', { layId: report.layId })
 
   // Re-validated against the revision the ORIGINAL report was checked against, not
@@ -852,12 +857,12 @@ export async function commitCutReportCorrection(
   const cells = await tx
     .select({ color: orderBreakdowns.color, size: orderBreakdowns.size, qty: orderBreakdowns.qty })
     .from(orderBreakdowns)
-    .where(
+    .where(scoped(orderBreakdowns, ctx, 
       and(
         eq(orderBreakdowns.orderStyleId, lay.orderStyleId),
         eq(orderBreakdowns.revision, report.breakdownRevision),
       ),
-    )
+    ))
 
   const validation = wrapCuttingError(() =>
     validateCutReport(cells, parseCells(payload.cells), { tolerancePct: report.tolerancePct }),
@@ -869,7 +874,7 @@ export async function commitCutReportCorrection(
       cells: payload.cells,
       variances: validation.cells.filter((cell) => cell.status !== 'ok'),
     })
-    .where(eq(cutReports.id, report.id))
+    .where(scoped(cutReports, ctx, eq(cutReports.id, report.id)))
 
   return {
     rowId: report.id,

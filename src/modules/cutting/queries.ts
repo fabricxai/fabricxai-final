@@ -10,6 +10,7 @@
 import { and, asc, desc, eq, inArray } from 'drizzle-orm'
 
 import type { AnyCtx } from '@/modules/core/ctx'
+import { scoped } from '@/modules/core/scoped'
 import { withTenantRead } from '@/modules/core/tenancy'
 import { orderStyles, orders } from '@/modules/orders/schema'
 
@@ -88,18 +89,18 @@ export async function recentLays(ctx: AnyCtx, limit = 40): Promise<LayRow[]> {
       tx
         .select({ layId: cutReports.layId, id: cutReports.id, cells: cutReports.cells })
         .from(cutReports)
-        .where(inArray(cutReports.layId, layIds)),
+        .where(scoped(cutReports, ctx, inArray(cutReports.layId, layIds))),
       tx.select({ cutReportId: bundles.cutReportId }).from(bundles),
       tx
         .select({ id: orders.id, poNumbers: orders.poNumbers })
         .from(orders)
-        .where(inArray(orders.id, orderIds)),
+        .where(scoped(orders, ctx, inArray(orders.id, orderIds))),
       tx
         .select({ id: orderStyles.id, styleCode: orderStyles.styleCode })
         .from(orderStyles)
-        .where(
+        .where(scoped(orderStyles, ctx, 
           inArray(orderStyles.id, [...new Set(rows.map((r) => r.orderStyleId).filter(Boolean))]),
-        ),
+        )),
     ])
 
     return rows.map((r): LayRow => {
@@ -141,7 +142,7 @@ export async function cuttableOrders(
       })
       .from(orders)
       .innerJoin(orderStyles, eq(orderStyles.orderId, orders.id))
-      .where(inArray(orders.status, ['confirmed', 'in_production']))
+      .where(scoped(orders, ctx, inArray(orders.status, ['confirmed', 'in_production'])))
       .orderBy(asc(orders.plannedExFactoryDate))
 
     return rows.map((r) => ({
@@ -191,13 +192,13 @@ export async function issuedRollsForOrder(ctx: AnyCtx, orderId: string): Promise
       .innerJoin(issues, eq(issues.id, issueLines.issueId))
       .innerJoin(rolls, eq(rolls.id, issueLines.rollId))
       .innerJoin(items, eq(items.id, issueLines.itemId))
-      .where(eq(issues.orderId, orderId))
+      .where(scoped(issueLines, ctx, eq(issues.orderId, orderId)))
 
     // A roll drawn by one lay cannot be drawn by another — the fabric is on the table.
     const spread = await tx
       .select({ layNo: lays.layNo, rollsDrawn: lays.rollsDrawn })
       .from(lays)
-      .where(eq(lays.orderId, orderId))
+      .where(scoped(lays, ctx, eq(lays.orderId, orderId)))
 
     const usedBy = new Map<string, string>()
     for (const lay of spread) {
@@ -260,31 +261,31 @@ export async function layForReport(ctx: AnyCtx, layId: string): Promise<LayForRe
       })
       .from(lays)
       .innerJoin(markers, eq(markers.id, lays.markerId))
-      .where(eq(lays.id, layId))
+      .where(scoped(lays, ctx, eq(lays.id, layId)))
 
     if (!lay) return null
 
     const [style] = await tx
       .select({ styleCode: orderStyles.styleCode, activeRevision: orderStyles.activeRevision })
       .from(orderStyles)
-      .where(eq(orderStyles.id, lay.orderStyleId))
+      .where(scoped(orderStyles, ctx, eq(orderStyles.id, lay.orderStyleId)))
 
     const [order] = await tx
       .select({ poNumbers: orders.poNumbers })
       .from(orders)
-      .where(eq(orders.id, lay.orderId))
+      .where(scoped(orders, ctx, eq(orders.id, lay.orderId)))
 
     const breakdown = style
       ? await tx
           .select({ size: orderBreakdowns.size, qty: orderBreakdowns.qty })
           .from(orderBreakdowns)
-          .where(
+          .where(scoped(orderBreakdowns, ctx, 
             and(
               eq(orderBreakdowns.orderStyleId, lay.orderStyleId),
               eq(orderBreakdowns.revision, style.activeRevision),
               eq(orderBreakdowns.color, lay.color),
             ),
-          )
+          ))
       : []
 
     // What earlier lays of this style and colour already reported, per size.
@@ -292,7 +293,7 @@ export async function layForReport(ctx: AnyCtx, layId: string): Promise<LayForRe
       .select({ cells: cutReports.cells, layColor: lays.color })
       .from(cutReports)
       .innerJoin(lays, eq(lays.id, cutReports.layId))
-      .where(and(eq(lays.orderStyleId, lay.orderStyleId), eq(lays.color, lay.color)))
+      .where(scoped(cutReports, ctx, and(eq(lays.orderStyleId, lay.orderStyleId), eq(lays.color, lay.color))))
 
     const alreadyCut = new Map<string, number>()
     for (const report of priorReports) {
