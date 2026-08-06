@@ -6,7 +6,7 @@ import { z } from 'zod'
 
 import { env } from '@/lib/env'
 import { requireRole } from '@/modules/core/session'
-import { getPolicy } from '@/modules/settings/service'
+import { companyProfile, getPolicy } from '@/modules/settings/service'
 import { listModules } from '@/modules/core/registry'
 import { AppError } from '@/modules/core/errors'
 import type { AnyCtx } from '@/modules/core/ctx'
@@ -17,6 +17,7 @@ import { intakeKind } from './intake'
 import { extractorVersionFor } from './marbim'
 import { EXTRACTOR_PROMPT_VERSION } from './providers/gemini'
 import { hasProvider, modelForRole } from './provider'
+import { primerModulesForRoles, toolsForRoles } from './scope'
 import { chat, queueExtraction, type ChatResult, type MarbimPolicy } from './service'
 import type { ToolPack } from './tools'
 
@@ -93,13 +94,39 @@ export async function ask(input: z.input<typeof askInput>): Promise<ChatResult> 
     .map((m) => m.toolPack)
     .filter((pack): pack is ToolPack => isToolPack(pack))
 
+  /*
+   * Filtered by ROLE before the model ever sees the list (plan 6.5, audit AI-H6).
+   *
+   * The caption under the composer has always said "MARBIM reads what your role can already
+   * read", and until now it did not: every pack in scope went into the prompt whoever was
+   * asking, so a viewer's conversation advertised `workforce.payroll_run`. That was a
+   * disclosure of shape rather than data while nothing executed. Since the loop landed it
+   * would be the data.
+   *
+   * Read tools need `canSee` on the module, draft tools need `canWrite` — the nav's own
+   * answers, not a second list that could drift from the one the sidebar uses.
+   */
+  const profile = await companyProfile(ctx)
+  const factoryType = profile?.factoryType ?? 'woven'
+  const tools = toolsForRoles({ packs, roles: ctx.roles, factoryType })
+
+  const policy = await getPolicy<MarbimPolicy>(ctx, 'marbim')
+
   return chat(ctx, {
     conversationId,
     turnIndex,
     question,
-    moduleIds: inScope.map((m) => m.id),
+    // Primers follow the same audience. A primer for a module whose tools this person cannot
+    // call is prompt they can only be frustrated by, and it is paid for on every request.
+    moduleIds: primerModulesForRoles(
+      inScope.map((m) => m.id),
+      ctx.roles,
+      factoryType,
+    ),
     scope: lead ? { moduleId: lead } : {},
     packs,
+    tools,
+    policy,
   })
 }
 

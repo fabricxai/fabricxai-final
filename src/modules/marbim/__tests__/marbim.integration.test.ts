@@ -58,7 +58,7 @@ const ctx: RequestCtx = { companyId: COMPANY, userId: USER, roles: ['merchandise
 const ownerCtx: RequestCtx = { companyId: COMPANY, userId: USER, roles: ['owner'] }
 const otherCtx: RequestCtx = { companyId: OTHER, userId: USER, roles: ['merchandiser'] }
 
-const POLICY = { extractionsPerHour: 20, maxAttempts: 3 }
+const POLICY = { extractionsPerHour: 20, maxAttempts: 3, dailyTokenCeiling: 2_000_000 }
 
 let buyerId: string
 
@@ -309,7 +309,7 @@ describe('X.2 · failure states', () => {
 
   it('rate-limits a company rather than queueing a hundred jobs that fail one at a time', async () => {
     await reset()
-    const tight = { extractionsPerHour: 2, maxAttempts: 3 }
+    const tight = { extractionsPerHour: 2, maxAttempts: 3, dailyTokenCeiling: 2_000_000 }
 
     await queueExtraction(ctx, { moduleId: 'rfq', targetTable: 'rfqs', zodSchemaKey: 'rfq', extractorName: 'e', extractorVersion: '1', sourceText: 'x' }, tight)
     await queueExtraction(ctx, { moduleId: 'rfq', targetTable: 'rfqs', zodSchemaKey: 'rfq', extractorName: 'e', extractorVersion: '1', sourceText: 'x' }, tight)

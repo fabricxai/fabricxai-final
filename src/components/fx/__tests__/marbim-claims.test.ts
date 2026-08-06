@@ -1,28 +1,27 @@
 /**
- * The surface does not claim a grounding it does not have (plan 6.2, audit AI-B3).
+ * The surface claims exactly the grounding it has — no more, and no less (plan 6.2 → 6.5).
  *
- * `chat` hands the model a list of tool names and records which ones it ASKED for. Nothing
- * executes them — there is no execution loop, and `runDraftTool`, the only path from a tool
- * to a write, has no production caller. So until 6.5 lands, every answer comes from the
- * department primers and the model's own knowledge, and no figure in one has been read from
- * the factory's data.
- *
- * The screen said otherwise. Every requested call was rendered as a completed read with
- * three amber slashes, the receipt counted them as "3 tools", and the footer promised
- * "MARBIM states no number it did not read from a tool."
+ * Before the execution loop, `chat` handed the model a list of tool names and recorded which
+ * ones it ASKED for. Nothing ran them. The screen said otherwise: every requested call
+ * rendered as a completed read with three amber slashes, the receipt counted them as "3
+ * tools", and the footer promised "MARBIM states no number it did not read from a tool."
  *
  * That is the worst shape of wrong for this product specifically. The entire argument for
  * letting a model near an order book is that its claims are traceable — and a fabricated
  * citation is more dangerous than no citation, because it is precisely what stops somebody
  * checking a number before they act on it.
  *
+ * 6.5 landed the loop, so tools now genuinely run and the strip is genuinely a citation. What
+ * this file guards therefore changed shape rather than going away: the claim must be
+ * CONDITIONAL on what happened. A turn where nothing ran still says so, in the same words,
+ * because that turn is still common and still exactly as ungrounded as it ever was.
+ *
  * ## Prompts are not copy
  *
- * "Never state a number you did not read from a tool result" appears in the system prompt
- * and in five module primers, and it stays: it is an INSTRUCTION to the model, and with no
- * tool results a model following it says no numbers at all — which is the behaviour wanted.
- * The same sentence shown to a person is a promise the product cannot keep. This test tells
- * the two apart by where they live.
+ * "Never state a number you did not read from a tool result" appears in the system prompt and
+ * in five module primers, and it stays: it is an INSTRUCTION to the model. The same sentence
+ * shown to a PERSON is a promise about the product, and it is only true for the parts of an
+ * answer a tool produced. This test tells the two apart by where they live.
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
@@ -93,19 +92,25 @@ describe('no screen promises a grounding that does not exist', () => {
 })
 
 describe('a requested tool is not shown as a completed one', () => {
-  it('maps the model’s tool calls to `requested`', () => {
+  it('shows a tool as done only when it actually ran', () => {
     const surface = read('src/app/(app)/marbim/surface-client.tsx')
 
-    expect(surface).toContain("state: 'requested'")
-    // The specific regression: `result.toolCalls.map(... state: 'done')`, which turned every
-    // request into a citation.
-    expect(surface).not.toMatch(/toolCalls\.map[\s\S]{0,160}state:\s*'done'/)
+    /*
+     * The step's state comes from the EXECUTION's own `ok`, never from a literal. The
+     * regression this replaces was `result.toolCalls.map(... state: 'done')` — a constant
+     * that turned every request into a citation, and which would now silently turn every
+     * FAILED read into one too.
+     */
+    expect(surface).toContain("c.ok ? 'done' : 'failed'")
+    expect(surface).not.toMatch(/toolCalls\.map[\s\S]{0,120}state:\s*'done'\s*,/)
   })
 
-  it('offers `requested` as a state at all', () => {
-    // A union without it means the only honest option is `pending`, which reads as "about
-    // to happen" rather than "asked for, and nothing will".
+  it('keeps `requested` for the one case that is still a request', () => {
+    // The iteration cap. The model asked for more tools, was refused because it had used its
+    // four rounds, and answered from what it had — which is a request that was not run, and
+    // the only remaining honest use of the state 6.2 introduced.
     expect(readFileSync('src/components/fx/ai.tsx', 'utf8')).toContain("'requested'")
+    expect(read('src/app/(app)/marbim/surface-client.tsx')).toContain('cappedAtIterationLimit')
   })
 
   it('never paints an unrun step amber', () => {
@@ -124,11 +129,26 @@ describe('a requested tool is not shown as a completed one', () => {
     expect(slash).not.toContain("step.state === 'requested'")
   })
 
-  it('does not count unrun tools as work in the receipt', () => {
-    // "3 tools" beside an answer that read nothing is the same fabricated citation in one
-    // line of mono text.
+  it('says plainly when nothing ran', () => {
+    /*
+     * "3 tools" beside an answer that read nothing is the same fabricated citation in one
+     * line of mono text. The zero case has to keep its own wording — a receipt that simply
+     * omitted the tool count when there was none would read as though the question had been
+     * answered the same way as one that read four tables.
+     */
     const surface = read('src/app/(app)/marbim/surface-client.tsx')
 
-    expect(surface).toContain('none run')
+    expect(surface).toContain('no tools run')
+    // And the footer's ungrounded branch survives, in the words 6.2 chose.
+    expect(surface).toContain('No tool was run')
+  })
+
+  it('only claims the factory’s data when a tool produced it', () => {
+    // The conditional is the whole point. A footer that claimed grounding unconditionally
+    // once tools existed would be the 6.2 bug again, one release later and harder to see.
+    const surface = read('src/app/(app)/marbim/surface-client.tsx')
+
+    expect(surface).toContain('toolsRun > 0')
+    expect(surface).toContain('came from the department primers')
   })
 })

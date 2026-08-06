@@ -11,6 +11,10 @@
  *  2. **`chat_turns`** — what was asked, what tools ran, what was said. Kept because a
  *     model that told somebody a wrong number is a thing that has to be reconstructable,
  *     and because the primer versions on the row are what make it reproducible.
+ *  3. **`marbim_call_log`** — one row per PROVIDER call, which is not the same as a turn:
+ *     an answer that needed three tools is four calls, and the ceiling that stops a runaway
+ *     conversation costing a factory a month's software budget has to count what was
+ *     actually spent (plan 6.5, audit AI-H4).
  */
 import { sql } from 'drizzle-orm'
 import {
@@ -27,6 +31,8 @@ import {
 } from 'drizzle-orm/pg-core'
 
 import { companies, documents, users } from '@/db/schema/core'
+
+export const modelRoleEnum = pgEnum('model_role', ['extract', 'reason', 'embed'])
 
 export const extractionStatusEnum = pgEnum('extraction_status', [
   'queued',
@@ -151,5 +157,76 @@ export const chatTurns = pgTable(
     index('chat_turns_company_created_idx').on(t.companyId, t.createdAt.desc()),
     index('chat_turns_conversation_idx').on(t.conversationId),
     check('chat_turns_index_nonneg', sql`${t.turnIndex} >= 0`),
+  ],
+).enableRLS()
+
+/**
+ * Every call to a model, and what it cost (plan 6.5, audit AI-H4).
+ *
+ * ## Why a call and not a turn
+ *
+ * `chat_turns` records the conversation. This records the SPEND, and they differ by however
+ * many tools the model asked for: an answer needing three reads is four provider calls, and
+ * a loop that stopped at the iteration cap is five. A ceiling counted per turn would let a
+ * tool-heavy conversation cost five times what it appeared to.
+ *
+ * Extraction and embedding land here too. A factory that uploads two hundred POs in an
+ * afternoon has spent real money, and the daily ceiling has to see it — otherwise the budget
+ * only governs the cheapest of the three roles.
+ *
+ * ## Written outside the caller's transaction, deliberately
+ *
+ * The call already happened and has already been billed by the vendor. Rolling the log row
+ * back because a later insert failed would make the ledger disagree with the invoice in the
+ * one direction that matters — under-counting — and the ceiling would drift up over time.
+ *
+ * ## No prompt or answer text
+ *
+ * `chat_turns` holds those, once, redacted. Duplicating them per call would double the
+ * storage of the most sensitive text in the system for no question it answers.
+ */
+export const marbimCallLog = pgTable(
+  'marbim_call_log',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    companyId: uuid('company_id')
+      .notNull()
+      .references(() => companies.id, { onDelete: 'cascade' }),
+
+    role: modelRoleEnum('role').notNull(),
+    model: text('model').notNull(),
+
+    /** Present for chat; null for extraction and embedding, which have no conversation. */
+    conversationId: uuid('conversation_id'),
+    /**
+     * Which pass of the execution loop this was. 0 is the first ask; the last is either the
+     * turn that answered or the forced answer after the iteration cap.
+     */
+    iteration: integer('iteration').notNull().default(0),
+
+    /**
+     * As the vendor reported them. Null when a call failed before returning usage — the row
+     * still exists, because "we were billed for something that errored" is a real state and
+     * a missing row would read as a call that never happened.
+     */
+    inputTokens: integer('input_tokens'),
+    outputTokens: integer('output_tokens'),
+    durationMs: integer('duration_ms').notNull(),
+
+    /** `ok`, or the ProviderError's message. Truncated by the writer. */
+    outcome: text('outcome').notNull(),
+
+    createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // The ceiling query: this company's spend since a cutoff. Covers the only read there is.
+    index('marbim_call_log_company_created_idx').on(t.companyId, t.createdAt.desc()),
+    index('marbim_call_log_conversation_idx').on(t.conversationId),
+    check('marbim_call_log_iteration_nonneg', sql`${t.iteration} >= 0`),
+    check(
+      'marbim_call_log_tokens_nonneg',
+      sql`(${t.inputTokens} IS NULL OR ${t.inputTokens} >= 0) AND (${t.outputTokens} IS NULL OR ${t.outputTokens} >= 0)`,
+    ),
   ],
 ).enableRLS()

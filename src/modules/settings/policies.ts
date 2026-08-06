@@ -498,6 +498,7 @@ const analytics = {
 const marbimSchema = z.object({
   extractionsPerHour: z.number().int().min(1),
   maxAttempts: z.number().int().min(1),
+  dailyTokenCeiling: z.number().int().min(1),
 })
 
 const marbim = {
@@ -506,7 +507,13 @@ const marbim = {
   schema: marbimSchema,
   // A model bill is a real cost and a runaway loop is a real way to incur one. Three
   // attempts is enough to ride out a provider timeout without retrying a PDF forever.
-  defaults: { extractionsPerHour: 60, maxAttempts: 3 },
+  //
+  // The token ceiling is a rolling 24h budget across every role (audit AI-H4). 2M is a
+  // working day of heavy use for one factory — roughly 150 tool-using conversations, or 400
+  // document extractions — and it exists to bound the afternoon somebody discovers that
+  // pasting a whole tech pack gets a long answer, not to ration ordinary work. A factory
+  // that hits it regularly should raise it deliberately rather than discover the bill.
+  defaults: { extractionsPerHour: 60, maxAttempts: 3, dailyTokenCeiling: 2_000_000 },
 } satisfies PolicyDefinition<MarbimPolicy>
 
 export const POLICY_REGISTRY: Readonly<Record<string, PolicyDefinition<never>>> = {

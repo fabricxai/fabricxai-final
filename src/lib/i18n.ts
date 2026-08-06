@@ -401,6 +401,16 @@ export const MESSAGES: Catalogue = {
       'MARBIM is not available on this factory, so there is nothing to read your document. Nothing has been queued — what you typed is still here.',
     'marbim.errors.rate_limited':
       'Too many documents have been sent for reading in the last hour. Try again shortly.',
+    'marbim.errors.token_ceiling':
+      'This factory has used up its model budget for the day. MARBIM will answer again once the last 24 hours clear, or an owner can raise the daily limit in Settings.',
+    'marbim.notifications.extraction_succeeded.title':
+      'The document you sent to MARBIM has been read — the draft is waiting for you to approve it.',
+    'marbim.notifications.extraction_succeeded.body':
+      'Check every field before you approve. The weakest one is the one to read twice.',
+    'marbim.notifications.extraction_rejected.title':
+      'MARBIM could not read the document you sent, and will not try again.',
+    'marbim.notifications.extraction_rejected.body':
+      'Nothing was drafted. Enter it by hand, or send a clearer copy.',
     'marbim.errors.target_not_registered':
       'That module does not allow drafts against this table, so nothing read from a document could ever land there.',
     'marbim.errors.unknown_intake_kind': 'That is not a kind of document MARBIM knows how to file.',
@@ -871,6 +881,16 @@ export const MESSAGES: Catalogue = {
       'স্যাম্পলের ধাপ শুধু সামনে এগোয়। প্যাটার্নে ফিরে যাওয়া মানে আবার নতুন করে বানানো, সেটা নতুন রিকোয়েস্ট।',
     'marbim.errors.unavailable':
       'এই ফ্যাক্টরিতে MARBIM নেই, তাই আপনার ডকুমেন্ট পড়ার কেউ নেই। কিছু জমা হয়নি — আপনি যা লিখেছেন তা এখানেই আছে।',
+    'marbim.errors.token_ceiling':
+      'এই ফ্যাক্টরির আজকের model বাজেট শেষ হয়ে গেছে। গত ২৪ ঘণ্টার হিসাব শেষ হলে MARBIM আবার উত্তর দেবে, অথবা owner চাইলে Settings-এ দৈনিক সীমা বাড়াতে পারেন।',
+    'marbim.notifications.extraction_succeeded.title':
+      'আপনি MARBIM-কে যে ডকুমেন্ট পাঠিয়েছিলেন তা পড়া হয়েছে — draft আপনার approve-এর অপেক্ষায়।',
+    'marbim.notifications.extraction_succeeded.body':
+      'approve করার আগে প্রতিটি ঘর দেখে নিন। যেটির confidence সবচেয়ে কম, সেটি দুইবার পড়ুন।',
+    'marbim.notifications.extraction_rejected.title':
+      'আপনি যে ডকুমেন্ট পাঠিয়েছিলেন MARBIM সেটি পড়তে পারেনি, এবং আর চেষ্টা করবে না।',
+    'marbim.notifications.extraction_rejected.body':
+      'কোনো draft তৈরি হয়নি। হাতে এন্ট্রি করুন, অথবা আরও পরিষ্কার একটি কপি পাঠান।',
 
     // ── shipment · 8.1 · the packing floor reads these ──
     'shipment.errors.carton_already_loaded': 'এই কার্টন আগেই একটি শিপমেন্টে লোড হয়েছে।',

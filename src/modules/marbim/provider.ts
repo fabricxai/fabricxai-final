@@ -53,6 +53,7 @@ export interface ExtractResult<T> {
   method: string
   uniformConfidenceJustification?: string
   model: string
+  usage?: TokenUsage
 }
 
 export interface EmbedRequest {
@@ -70,21 +71,72 @@ export interface EmbedRequest {
 export interface EmbedResult {
   vectors: number[][]
   model: string
+  usage?: TokenUsage
+}
+
+/** A tool the model asked for. The `id` is what a result is matched back to. */
+export interface ToolCall {
+  /** Vendor-assigned, and opaque. Anthropic will not accept a result without it. */
+  id: string
+  name: string
+  args: Record<string, unknown>
+}
+
+/** What running one tool produced, on its way back into the conversation. */
+export interface ToolResult {
+  /** The `ToolCall.id` this answers. */
+  id: string
+  /** Serialised for the model to read. Never a raw row — see `redactForPrompt`. */
+  content: string
+  /** A refusal or a failure. The model is told, so it can say so rather than retry blindly. */
+  isError?: boolean
+}
+
+/**
+ * One turn of the conversation as the provider sees it.
+ *
+ * `toolCalls` and `toolResults` are what make an execution loop possible (plan 6.5). A model
+ * that asked for three tools must be replayed its OWN request alongside the answers, or the
+ * next turn has results it never asked for — vendors reject that, and rightly: it is how a
+ * conversation gets rewritten underneath a model.
+ */
+export interface TextMessage {
+  role: 'user' | 'assistant'
+  content: string
+  /** Assistant turns only: what this turn asked to run. */
+  toolCalls?: readonly ToolCall[]
+  /** User turns only: answers to the previous assistant turn's calls, in any order. */
+  toolResults?: readonly ToolResult[]
 }
 
 export interface TextRequest {
   role: ModelRole
   system: string
-  messages: { role: 'user' | 'assistant'; content: string }[]
-  /** Tool descriptions the model may choose from. */
-  tools?: { name: string; description: string }[]
+  messages: readonly TextMessage[]
+  /**
+   * Tool descriptions the model may choose from.
+   *
+   * Absent or empty means the model must answer from what it already has. The execution loop
+   * uses that deliberately on its final turn: once the iteration cap is reached, offering
+   * tools again would invite a request that will not be run (plan 6.5).
+   */
+  tools?: { name: string; description: string; schema?: unknown }[]
+}
+
+/** What a call cost, when the vendor says. Recorded per call for the ceiling (audit AI-H4). */
+export interface TokenUsage {
+  inputTokens: number
+  outputTokens: number
 }
 
 export interface TextResult {
   text: string
   /** Tools the model asked to run, in order. */
-  toolCalls: { name: string; args: Record<string, unknown> }[]
+  toolCalls: ToolCall[]
   model: string
+  usage?: TokenUsage
+  /** Why the model stopped. `max_tokens` means the answer is cut off, and it is worth saying. */
+  stopReason?: string
 }
 
 export interface MarbimProvider {

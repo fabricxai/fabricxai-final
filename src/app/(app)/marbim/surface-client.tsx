@@ -24,6 +24,8 @@ interface Turn {
   failed: boolean
   /** `marbim-large · 4 tools · 2.4 s` in the canvas — the run's receipt. */
   receipt: string | null
+  /** How many tools actually ran. Decides what the footer is allowed to claim. */
+  toolsRun: number
 }
 
 /**
@@ -36,39 +38,42 @@ interface Turn {
 function receiptOf(model: string, toolCount: number, durationMs: number): string {
   const seconds = (durationMs / 1000).toFixed(1)
   /*
-   * "N tools" used to go here, and it counted tool calls the model REQUESTED — nothing
-   * executes them (plan 6.2, audit AI-B3). A receipt reading "3 tools" beside an answer
-   * that read nothing is a fabricated citation, and a fabricated citation is worse than
-   * none because it stops the reader checking.
+   * "N tools" means N tools RAN, and since 6.5 that is finally true. It counted requests
+   * before the execution loop existed, which is a fabricated citation — worse than no
+   * citation, because it stops the reader checking (plan 6.2, audit AI-B3).
    */
   const tools =
-    toolCount === 0
-      ? 'no tools run'
-      : `${toolCount === 1 ? '1 tool' : `${toolCount} tools`} asked for, none run`
+    toolCount === 0 ? 'no tools run' : toolCount === 1 ? '1 tool' : `${toolCount} tools`
   return `${model} · ${tools} · ${seconds} s`
 }
 
 /**
- * What the strip is allowed to claim (plan 6.2, audit AI-B3).
+ * What the strip is allowed to claim (plan 6.2 → 6.5, audit AI-B3).
  *
  * The caveat used to be the FALLBACK — `turn.receipt ?? 'MARBIM states no number it did not
- * read from a tool'` — which put a grounding promise under an empty strip and then replaced
- * it with a receipt the moment an answer arrived. Both halves were wrong. The promise was
- * false, because nothing executes a tool; and it vanished at exactly the moment it mattered,
- * which is when there is an answer somebody is about to act on.
+ * read from a tool'` — which put a grounding promise under an empty strip and replaced it
+ * with a receipt the moment an answer arrived. Both halves were wrong: the promise was false
+ * because nothing executed a tool, and it vanished at exactly the moment it mattered.
  *
- * So the caveat is always there and the receipt joins it. When 6.5 lands the execution loop
- * this becomes conditional on whether anything actually ran — and until then it says the
- * true thing, which is that no figure on this screen came out of the factory's data.
+ * 6.2 made it unconditional and true. 6.5 landed the execution loop, so it is now CONDITIONAL
+ * on what actually happened — which is the state this was always heading for and the reason
+ * the wording was kept precise rather than softened:
+ *
+ *  - tools ran → say what the strip above already lists, and that the rest is the model;
+ *  - no tools ran → the 6.2 sentence, unchanged, because it is still exactly true.
+ *
+ * A turn where the model answered from the primers alone is COMMON and not a failure. Most
+ * questions to a department copilot are "how does UD work", not "what is order 4410's
+ * balance" — and the difference between those two is precisely what a reader needs to see.
  */
-function StripFooter({ receipt }: { receipt?: string | null }) {
+function StripFooter({ receipt, toolsRun }: { receipt?: string | null; toolsRun: number }) {
   return (
     <span style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
       {receipt ? <span>{receipt}</span> : null}
       <span>
-        Answered from the department primers and the model’s own knowledge. No tool was run,
-        so no figure here has been read from your factory’s data — check anything you are
-        about to act on.
+        {toolsRun > 0
+          ? `Read from your factory’s data through the ${toolsRun === 1 ? 'tool' : 'tools'} above. Anything not listed there came from the department primers and the model’s own knowledge.`
+          : 'Answered from the department primers and the model’s own knowledge. No tool was run, so no figure here has been read from your factory’s data — check anything you are about to act on.'}
       </span>
     </span>
   )
@@ -135,11 +140,13 @@ export function MarbimSurface({
         id: localId,
         question: text,
         answer: null,
-        // Until tool packs are wired per module, the strip shows the one step
-        // that is genuinely happening rather than inventing a plausible trace.
+        // One step, and it is the one genuinely happening. What the model will go on to
+        // read is not knowable yet, and a plausible trace drawn ahead of the work is the
+        // fabricated citation this screen spent 6.2 removing.
         toolSteps: [{ label: 'reading the department primers', state: 'active' }],
         failed: false,
         receipt: null,
+        toolsRun: 0,
       },
     ])
     setMark('thinking')
@@ -161,13 +168,33 @@ export function MarbimSurface({
                         .join(' · '),
                       state: 'done',
                     },
-                    // `requested`, not `done`. These are the tools the model asked for;
-                    // there is no execution loop, so none of them ran (plan 6.5 lands it).
+                    /*
+                     * `done` and `failed` are real again (plan 6.5). These are EXECUTIONS —
+                     * the loop validated each call against the tool's own zod, ran it, and
+                     * fed the result back — so the strip is a citation rather than a list
+                     * of wishes. `requested` stays in the union for the capped case below.
+                     */
                     ...result.toolCalls.map(
-                      (c): ToolStep => ({ label: c.name, state: 'requested' }),
+                      (c): ToolStep => ({
+                        label: c.name,
+                        state: c.ok ? 'done' : 'failed',
+                        ...(c.error ? { meta: c.error } : c.ms ? { meta: `${c.ms} ms` } : {}),
+                      }),
                     ),
+                    // Said on the strip, because an answer forced out at the cap is one the
+                    // model wanted more information for and did not get.
+                    ...(result.cappedAtIterationLimit
+                      ? [
+                          {
+                            label: 'stopped asking for tools',
+                            meta: 'the answer was written from what had been read by then',
+                            state: 'requested' as const,
+                          },
+                        ]
+                      : []),
                   ],
                   receipt: receiptOf(result.model, result.toolCalls.length, result.durationMs),
+                  toolsRun: result.toolCalls.length,
                 }
               : turn,
           ),
@@ -251,7 +278,7 @@ export function MarbimSurface({
                   >
                     <ToolStrip
                       steps={turn.toolSteps}
-                      footer={<StripFooter receipt={turn.receipt} />}
+                      footer={<StripFooter receipt={turn.receipt} toolsRun={turn.toolsRun} />}
                     />
 
                     {turn.failed ? (

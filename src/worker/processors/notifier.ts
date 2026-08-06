@@ -213,6 +213,67 @@ export const NOTIFY_RULES: Readonly<Record<string, NotifyRule>> = {
     entityId: str(p.measurementCheckId),
     dedupeKey: `quality.measurement_failed:${str(p.measurementCheckId) || id}`,
   }),
+
+  /**
+   * A document a person typed out has become a draft (plan 6.5, audit AI-H5).
+   *
+   * Told to the PERSON who queued it, not to a role — the exception to this file's usual
+   * rule, and for a good reason. Extraction is the one asynchronous thing in the product a
+   * user starts by hand and then waits on: they paste a buyer's PO, get "queued", and the
+   * poller runs up to five minutes later. Without this they learn their draft is ready by
+   * going back and looking, which most people do not, which is how an approve inbox fills
+   * with drafts nobody opens.
+   *
+   * `requestedBy` can be null when the job was seeded or its user was deleted. `notify()`
+   * refuses a notification addressed to nobody, so the rule declines instead — a dropped
+   * notification is better than a throw that retries five times and pages somebody.
+   */
+  'marbim.extraction.succeeded': (p, id) => {
+    const userId = str(p.requestedBy)
+    if (!userId) return null
+
+    return {
+      userId,
+      kind: 'marbim.extraction.succeeded',
+      severity: 'info' as const,
+      titleKey: 'marbim.notifications.extraction_succeeded.title',
+      bodyKey: 'marbim.notifications.extraction_succeeded.body',
+      params: { extractorName: str(p.extractorName) },
+      moduleId: 'marbim',
+      entityTable: 'pending_changes',
+      entityId: str(p.pendingChangeId),
+      href: '/approve',
+      dedupeKey: `marbim.extraction_succeeded:${str(p.jobId) || id}`,
+    }
+  },
+
+  /**
+   * The document will not be read, and nobody is going to retry it.
+   *
+   * `rejected` only — NOT `failed`. A failed job is retryable and will be picked up again by
+   * the next poll, and telling somebody about a provider timeout that fixes itself in five
+   * minutes is how a notification bell becomes something people mute. This is the terminal
+   * one: attempts exhausted, or an input this extractor cannot read, and the answer is to
+   * enter it by hand.
+   */
+  'marbim.extraction.rejected': (p, id) => {
+    const userId = str(p.requestedBy)
+    if (!userId) return null
+
+    return {
+      userId,
+      kind: 'marbim.extraction.rejected',
+      severity: 'warning' as const,
+      titleKey: 'marbim.notifications.extraction_rejected.title',
+      bodyKey: 'marbim.notifications.extraction_rejected.body',
+      params: { reason: str(p.reason).slice(0, 200) },
+      moduleId: 'marbim',
+      entityTable: 'extraction_jobs',
+      entityId: str(p.jobId),
+      href: '/marbim/intake',
+      dedupeKey: `marbim.extraction_rejected:${str(p.jobId) || id}`,
+    }
+  },
 }
 
 /**

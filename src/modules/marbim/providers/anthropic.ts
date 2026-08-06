@@ -7,22 +7,58 @@
  * and the value of the copilot is almost entirely how well the model uses them, which is why
  * reasoning is the role that gets the strongest model rather than the cheapest.
  *
- * ## Tools are advertised, not executed
+ * ## The tool round trip
  *
- * `TextRequest.tools` carries names and descriptions. The Messages API needs an
- * `input_schema` per tool, and there isn't one here — the tool contract's zod lives in
- * `ModuleTool.input` and is not threaded through the provider seam. Until 6.5 lands the
- * execution loop, nothing runs what the model asks for, so a permissive schema is honest:
- * the model can express which tool it wants, `chat` records that, and the surface says
- * plainly that it was asked for and not run (plan 6.2).
+ * Since 6.5 this carries the real per-tool JSON schema (from the tool's own zod) and replays
+ * the conversation properly: an assistant turn that asked for three tools goes back with its
+ * OWN `tool_use` blocks, and the answers follow as `tool_result` blocks referencing them by
+ * id. Anything else is rewriting the conversation underneath the model, and the API rejects
+ * it — correctly.
  *
- * When 6.5 lands, the real schemas come through with the executor and this gets replaced by
- * the round trip. Passing a fabricated per-tool schema now would be the same class of
- * mistake 6.2 and 6.3 just finished removing.
+ * A tool with no schema still gets a permissive object rather than being dropped. Dropping
+ * it would silently shrink what the model can ask for; the loop validates every call against
+ * the tool's zod before executing it regardless, so the schema here is guidance to the model,
+ * never the enforcement.
  */
 import Anthropic from '@anthropic-ai/sdk'
 
-import { ProviderError, type TextRequest, type TextResult } from '../provider'
+import { ProviderError, type TextMessage, type TextRequest, type TextResult } from '../provider'
+
+/**
+ * One of our messages as the Messages API wants it.
+ *
+ * A turn carrying tool calls or tool results becomes a CONTENT ARRAY; a plain turn stays a
+ * string. Both are valid, and keeping the simple case simple means the overwhelming majority
+ * of turns — a question and an answer — read as what they are on the wire.
+ */
+function toAnthropicMessage(message: TextMessage): Anthropic.MessageParam {
+  const blocks: Anthropic.ContentBlockParam[] = []
+
+  // Results first. Anthropic requires every `tool_result` at the START of the user turn that
+  // follows the `tool_use`, before any other content.
+  for (const result of message.toolResults ?? []) {
+    blocks.push({
+      type: 'tool_result',
+      tool_use_id: result.id,
+      content: result.content,
+      ...(result.isError ? { is_error: true } : {}),
+    })
+  }
+
+  if (message.content) blocks.push({ type: 'text', text: message.content })
+
+  for (const call of message.toolCalls ?? []) {
+    blocks.push({ type: 'tool_use', id: call.id, name: call.name, input: call.args })
+  }
+
+  if (blocks.length === 0) {
+    // An empty turn is rejected by the API. This is only reachable from a bug in the loop,
+    // and a placeholder is a kinder failure than a 400 with no context.
+    blocks.push({ type: 'text', text: '(no content)' })
+  }
+
+  return { role: message.role, content: blocks }
+}
 
 /**
  * Long enough for a full department answer with a table in it, short enough that a runaway
@@ -65,18 +101,16 @@ export function anthropicReasoner({ apiKey, model }: AnthropicOptions) {
           model,
           max_tokens: MAX_TOKENS,
           system: request.system,
-          messages: request.messages.map((message) => ({
-            role: message.role,
-            content: message.content,
-          })),
+          messages: request.messages.map(toAnthropicMessage),
           ...(request.tools && request.tools.length > 0
             ? {
                 tools: request.tools.map((tool) => ({
                   name: tool.name,
                   description: tool.description,
-                  // Permissive by necessity, and it costs nothing today: nothing executes
-                  // what comes back. See the header.
-                  input_schema: { type: 'object' as const, additionalProperties: true },
+                  input_schema: (tool.schema as Anthropic.Tool['input_schema']) ?? {
+                    type: 'object' as const,
+                    additionalProperties: true,
+                  },
                 })),
               }
             : {}),
@@ -94,6 +128,7 @@ export function anthropicReasoner({ apiKey, model }: AnthropicOptions) {
       const toolCalls = response.content
         .filter((block): block is Anthropic.ToolUseBlock => block.type === 'tool_use')
         .map((block) => ({
+          id: block.id,
           name: block.name,
           args: (block.input ?? {}) as Record<string, unknown>,
         }))
@@ -107,7 +142,16 @@ export function anthropicReasoner({ apiKey, model }: AnthropicOptions) {
         })
       }
 
-      return { text, toolCalls, model: response.model }
+      return {
+        text,
+        toolCalls,
+        model: response.model,
+        usage: {
+          inputTokens: response.usage.input_tokens,
+          outputTokens: response.usage.output_tokens,
+        },
+        ...(response.stop_reason ? { stopReason: response.stop_reason } : {}),
+      }
     },
   }
 }

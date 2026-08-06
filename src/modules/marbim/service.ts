@@ -12,9 +12,11 @@
  * uploading a tech pack should not be watching a spinner that might end in a 504.
  */
 import { and, count, desc, eq, gte, sql } from 'drizzle-orm'
+import { z } from 'zod'
 
 import type { AnyCtx, RequestCtx } from '../core/ctx'
 import { AppError, conflict, notFound } from '../core/errors'
+import { emit } from '../core/outbox'
 import { propose } from '../core/pending-changes'
 import { getModule, resolvePendingSchema } from '../core/registry'
 import { withTenantRead, withTenantTx } from '../core/tenancy'
@@ -30,8 +32,14 @@ import {
   type PrimerFragment,
   type PromptScope,
 } from './marbim'
-import { getProvider, ProviderError } from './provider'
-import { chatTurns, extractionJobs } from './schema'
+import {
+  budgetedHistory,
+  runToolCalls,
+  MAX_TOOL_ITERATIONS,
+  type ExecutedCall,
+} from './loop'
+import { getProvider, ProviderError, type TextMessage } from './provider'
+import { chatTurns, extractionJobs, marbimCallLog } from './schema'
 import {
   collectTools,
   validateToolPack,
@@ -47,7 +55,25 @@ export interface MarbimPolicy {
   extractionsPerHour: number
   /** Attempts before a retryable failure stops being retried. */
   maxAttempts: number
+  /**
+   * Tokens this company may spend across ALL roles in a rolling 24 hours (audit AI-H4).
+   *
+   * A ceiling and not a rate limit: the failure being prevented is not bursty traffic, it is
+   * a month's software budget spent in an afternoon — by a loop that keeps asking for tools,
+   * by two hundred POs uploaded at once, or by somebody discovering that a long paste gets a
+   * long answer. Counted from `marbim_call_log`, which records what the vendor said it cost
+   * rather than what we guessed.
+   */
+  dailyTokenCeiling: number
 }
+
+/**
+ * How much conversation to carry forward, in characters (audit AI-H3).
+ *
+ * ~4 characters to a token, so this is roughly 3k tokens of transcript on top of a system
+ * prompt that is already the bulk of the request. See `budgetedHistory` for why characters.
+ */
+const HISTORY_BUDGET_CHARS = 12_000
 
 /**
  * What to record on a failed job.
@@ -120,6 +146,25 @@ export function buildPrompt(input: {
   return wrapMarbimError(() =>
     assembleSystemPrompt({ primers: collectPrimers(input.moduleIds), scope: input.scope }),
   )
+}
+
+/**
+ * A tool's argument schema, as JSON Schema, for the vendor to guide the model with.
+ *
+ * Guidance only. The tool's zod parses the args again before the executor sees them
+ * (`runToolCalls`), because a model is an untrusted client that happens to be helpful and a
+ * schema the vendor was *asked* to honour is not a schema anything enforced.
+ *
+ * Returns undefined rather than throwing on an exotic schema. A tool whose zod cannot be
+ * expressed as JSON Schema should still be offered — the model gets a permissive object and
+ * a description, and the validation that matters is unaffected.
+ */
+function toJsonSchema(tool: ModuleTool): unknown {
+  try {
+    return z.toJSONSchema(tool.input as never)
+  } catch {
+    return undefined
+  }
 }
 
 /** Every tool in scope, validated against what each module actually registered. */
@@ -272,7 +317,19 @@ export async function queueExtraction(
 
     if (!row) throw new Error('extraction_jobs insert returned nothing')
 
-    await tx.execute(sql`select 1`)
+    // In the same transaction as the job, so a queued job and the event saying so cannot
+    // disagree (rule 6). Declared since X.2 and emitted by nothing until 6.5.
+    await emit(ctx, tx, {
+      eventName: MARBIM_EVENTS.extractionQueued,
+      payload: {
+        jobId: row.id,
+        moduleId: payload.moduleId,
+        extractorName: payload.extractorName,
+        requestedBy: ctx.userId,
+      },
+      aggregateTable: 'extraction_jobs',
+      aggregateId: row.id,
+    })
 
     return { jobId: row.id, status: 'queued' as const }
   })
@@ -397,6 +454,29 @@ export async function runExtraction(
         })
         .where(eq(extractionJobs.id, job.id))
 
+      /*
+       * The event, in the same transaction as the status (rule 6, audit AI-H5).
+       *
+       * `MARBIM_EVENTS` has been declared since X.2 and emitted by NOTHING, so the one job
+       * that runs on a schedule and produces work for a person was the one job that told
+       * nobody it had finished. Somebody who typed out a buyer's PO learned their draft was
+       * ready by going back and looking.
+       */
+      await emit(ctx, tx, {
+        eventName: MARBIM_EVENTS.extractionSucceeded,
+        payload: {
+          jobId: job.id,
+          pendingChangeId: proposed.id,
+          moduleId: job.moduleId,
+          targetTable: job.targetTable,
+          extractorName: job.extractorName,
+          // Who to tell. The job carries it because the queueing action recorded it.
+          requestedBy: job.createdBy,
+        },
+        aggregateTable: 'extraction_jobs',
+        aggregateId: job.id,
+      })
+
       return { jobId: job.id, status: 'succeeded' as const, pendingChangeId: proposed.id }
     })
   } catch (error) {
@@ -431,6 +511,27 @@ export async function runExtraction(
           updatedAt: new Date(),
         })
         .where(eq(extractionJobs.id, job.id))
+
+      // Two events, because they mean different things to whoever is listening: `failed` is
+      // "this will be tried again", `rejected` is "this document is not going to be read,
+      // enter it by hand". A consumer that could not tell them apart would either nag about
+      // a transient timeout or stay silent about a dead job.
+      await emit(ctx, tx, {
+        eventName:
+          status === 'failed'
+            ? MARBIM_EVENTS.extractionFailed
+            : MARBIM_EVENTS.extractionRejected,
+        payload: {
+          jobId: job.id,
+          moduleId: job.moduleId,
+          extractorName: job.extractorName,
+          reason: describeFailure(error),
+          attempts: job.attempts + 1,
+          requestedBy: job.createdBy,
+        },
+        aggregateTable: 'extraction_jobs',
+        aggregateId: job.id,
+      })
     })
 
     return { jobId: job.id, status, error: describeFailure(error) }
@@ -541,11 +642,81 @@ export async function extractorScores(ctx: AnyCtx): Promise<ExtractorScore[]> {
 export interface ChatResult {
   turnId: string
   answer: string
-  toolCalls: { name: string; args: Record<string, unknown> }[]
+  /** Tools that RAN, with whether each worked. Since 6.5 these are executions, not requests. */
+  toolCalls: ExecutedCall[]
   primerVersions: Record<string, string>
   /** Which provider answered, and how long it took — the surface prints both. */
   model: string
   durationMs: number
+  /** Drafts this turn put in the approve inbox. Empty for a question that only read. */
+  proposedChangeIds: string[]
+  /** True when the iteration cap forced the final answer. The surface says so. */
+  cappedAtIterationLimit: boolean
+}
+
+/**
+ * Tokens this company has spent in the last 24 hours (audit AI-H4).
+ *
+ * Reads the log rather than a counter, because a counter would have to be maintained
+ * transactionally with a call that has already been billed — and the failure mode of a drifting
+ * counter is a ceiling that silently stops applying.
+ */
+export async function tokensSpentToday(ctx: AnyCtx, now = new Date()): Promise<number> {
+  const since = new Date(now.getTime() - 86_400_000)
+
+  const [row] = await withTenantRead(ctx, async (tx) =>
+    tx
+      .select({
+        total: sql<string>`coalesce(sum(coalesce(${marbimCallLog.inputTokens}, 0) + coalesce(${marbimCallLog.outputTokens}, 0)), 0)`,
+      })
+      .from(marbimCallLog)
+      .where(and(eq(marbimCallLog.companyId, ctx.companyId), gte(marbimCallLog.createdAt, since))),
+  )
+
+  return Number(row?.total ?? 0)
+}
+
+/**
+ * Record one provider call.
+ *
+ * Its own transaction, outside the caller's. The vendor has already billed for this call, so
+ * rolling the row back because something later failed would make the ledger disagree with the
+ * invoice in the only direction that matters — under-counting — and the ceiling would drift
+ * upward over time as failures accumulated.
+ *
+ * Never throws. Observability that can take down the thing it observes is a net loss, and the
+ * same argument is written out at length in `core/job-runs.ts`.
+ */
+async function logCall(
+  ctx: RequestCtx,
+  entry: {
+    role: 'extract' | 'reason' | 'embed'
+    model: string
+    conversationId?: string
+    iteration: number
+    usage?: { inputTokens: number; outputTokens: number }
+    durationMs: number
+    outcome: string
+  },
+): Promise<void> {
+  try {
+    await withTenantTx(ctx, async (tx) => {
+      await tx.insert(marbimCallLog).values({
+        companyId: ctx.companyId,
+        role: entry.role,
+        model: entry.model,
+        conversationId: entry.conversationId ?? null,
+        iteration: entry.iteration,
+        inputTokens: entry.usage?.inputTokens ?? null,
+        outputTokens: entry.usage?.outputTokens ?? null,
+        durationMs: entry.durationMs,
+        outcome: entry.outcome.slice(0, 500),
+        createdBy: ctx.userId,
+      })
+    })
+  } catch (error) {
+    console.error('[marbim] could not record a provider call:', error)
+  }
 }
 
 /**
@@ -564,22 +735,150 @@ export async function chat(
     moduleIds: readonly string[]
     scope?: PromptScope
     packs?: readonly ToolPack[]
+    /** Role-filtered by the action (audit AI-H6). Empty means "answer without tools". */
+    tools?: readonly ModuleTool[]
+    policy?: MarbimPolicy
   },
 ): Promise<ChatResult> {
   const question = redactForPrompt(input.question)
   const prompt = buildPrompt({ moduleIds: input.moduleIds, scope: input.scope ?? {} })
-  const tools = input.packs ? toolsInScope(input.packs) : []
 
-  // Measured around the provider call alone, not the transaction that records it: the
-  // number under the tool strip answers "how long did MARBIM take", and a slow disk on the
-  // insert is not MARBIM taking a long time to think.
+  // `packs` still validates what the modules registered; `tools` is what this CALLER may
+  // reach. Passing both means a role filter cannot accidentally widen the set — the
+  // intersection is what runs.
+  const registered = input.packs ? toolsInScope(input.packs) : []
+  const tools = input.tools
+    ? registered.filter((tool) => input.tools!.some((allowed) => allowed.name === tool.name))
+    : registered
+
+  const moduleOf = (name: string): string | undefined => name.split('.')[0]
+
+  /*
+   * The ceiling, checked before the first call and not after (audit AI-H4).
+   *
+   * Refused rather than truncated: a factory that has spent its day's budget should be told
+   * so, in words, at the moment it asks — not given a shorter answer it cannot tell from a
+   * complete one. The window is rolling, so it clears itself without an operator.
+   */
+  if (input.policy) {
+    const spent = await tokensSpentToday(ctx)
+    if (spent >= input.policy.dailyTokenCeiling) {
+      throw new AppError('rate_limited', 'marbim.errors.token_ceiling', {
+        spent,
+        ceiling: input.policy.dailyTokenCeiling,
+      })
+    }
+  }
+
+  const history = await withTenantRead(ctx, async (tx) =>
+    tx
+      .select({ question: chatTurns.question, answer: chatTurns.answer })
+      .from(chatTurns)
+      .where(
+        and(
+          eq(chatTurns.companyId, ctx.companyId),
+          eq(chatTurns.conversationId, input.conversationId),
+        ),
+      )
+      .orderBy(chatTurns.turnIndex),
+  )
+
+  const messages: TextMessage[] = [
+    ...budgetedHistory(history, HISTORY_BUDGET_CHARS),
+    { role: 'user', content: question },
+  ]
+
+  const executed: ExecutedCall[] = []
+  const pendingChangeIds: string[] = []
+
+  // Measured across the whole loop, not one call: the number under the tool strip answers
+  // "how long did MARBIM take", and four rounds of reads is what it took.
   const startedAt = Date.now()
-  const result = await getProvider().generate({
-    role: 'reason',
-    system: prompt.text,
-    messages: [{ role: 'user', content: question }],
-    tools: tools.map((tool) => ({ name: tool.name, description: tool.description })),
-  })
+  let answer = ''
+  let model = ''
+  let capped = false
+
+  for (let iteration = 0; ; iteration += 1) {
+    /*
+     * The last pass offers NO tools, which forces an answer from what the model already has.
+     * Offering them again would invite a request nobody will run — the state 6.2 had to
+     * write honest copy for, and the one this whole item exists to end.
+     */
+    const finalPass = iteration >= MAX_TOOL_ITERATIONS
+    const callStartedAt = Date.now()
+
+    let result
+    try {
+      result = await getProvider().generate({
+        role: 'reason',
+        system: prompt.text,
+        messages,
+        ...(finalPass || tools.length === 0
+          ? {}
+          : {
+              tools: tools.map((tool) => ({
+                name: tool.name,
+                description: tool.description,
+                schema: toJsonSchema(tool),
+              })),
+            }),
+      })
+    } catch (error) {
+      await logCall(ctx, {
+        role: 'reason',
+        model: 'unknown',
+        conversationId: input.conversationId,
+        iteration,
+        durationMs: Date.now() - callStartedAt,
+        outcome: error instanceof Error ? error.message : String(error),
+      })
+      throw error
+    }
+
+    await logCall(ctx, {
+      role: 'reason',
+      model: result.model,
+      conversationId: input.conversationId,
+      iteration,
+      ...(result.usage ? { usage: result.usage } : {}),
+      durationMs: Date.now() - callStartedAt,
+      outcome: 'ok',
+    })
+
+    model = result.model
+    answer = result.text
+
+    if (finalPass || result.toolCalls.length === 0) {
+      /*
+       * `capped` is simply whether this was the forced pass.
+       *
+       * Reaching `finalPass` at all means the model used all four tool rounds and was asked
+       * once more with none offered — so it answered from what it had. Written first as a
+       * three-way expression that returned the PREVIOUS `capped` when the final pass came
+       * back with no tool calls, which is always: the final pass is the one where no tools
+       * are offered. It reported false in exactly the case it exists to report.
+       */
+      capped = finalPass
+      break
+    }
+
+    // `runToolCalls` has already parsed the args with the tool's own zod, so the runner is
+    // the execution and nothing else.
+    const round = await runToolCalls(ctx, result.toolCalls, { tools, moduleOf }, {
+      read: (readCtx, tool, args) =>
+        (tool as Extract<ModuleTool, { kind: 'read' }>).execute(readCtx, args),
+      draft: (draftCtx, tool, args, moduleId) => runDraftTool(draftCtx, tool, args, { moduleId }),
+    })
+
+    executed.push(...round.executed)
+    pendingChangeIds.push(...round.pendingChangeIds)
+
+    // The model's own request replayed alongside the answers. Anything else rewrites the
+    // conversation underneath it, and the vendors reject that.
+    messages.push({ role: 'assistant', content: result.text, toolCalls: result.toolCalls })
+    messages.push({ role: 'user', content: '', toolResults: round.results })
+  }
+
   const durationMs = Date.now() - startedAt
 
   return withTenantTx(ctx, async (tx) => {
@@ -590,9 +889,10 @@ export async function chat(
         conversationId: input.conversationId,
         turnIndex: input.turnIndex,
         question,
-        answer: result.text,
-        toolCalls: result.toolCalls,
-        model: result.model,
+        answer,
+        toolCalls: executed,
+        proposedChangeIds: pendingChangeIds,
+        model,
         primerVersions: prompt.primerVersions,
         scope: (input.scope ?? {}) as Record<string, unknown>,
         createdBy: ctx.userId,
@@ -603,11 +903,13 @@ export async function chat(
 
     return {
       turnId: row.id,
-      answer: result.text,
-      toolCalls: result.toolCalls,
+      answer,
+      toolCalls: executed,
       primerVersions: prompt.primerVersions,
-      model: result.model,
+      model,
       durationMs,
+      proposedChangeIds: pendingChangeIds,
+      cappedAtIterationLimit: capped,
     }
   })
 }

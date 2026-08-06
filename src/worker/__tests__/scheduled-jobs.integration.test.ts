@@ -355,10 +355,10 @@ describe('the model-dependent jobs do nothing without a provider', () => {
         extractorVersion: '1.0.0',
         sourceText: 'quantity: 12,000 pcs',
       },
-      { extractionsPerHour: 20, maxAttempts: 3 },
+      { extractionsPerHour: 20, maxAttempts: 3, dailyTokenCeiling: 2_000_000 },
     )
 
-    const result = await runQueuedExtractions(ctx, { extractionsPerHour: 20, maxAttempts: 3 })
+    const result = await runQueuedExtractions(ctx, { extractionsPerHour: 20, maxAttempts: 3, dailyTokenCeiling: 2_000_000 })
 
     expect(result.skipped).toMatch(/provider/)
     expect(result.picked).toBe(0)
@@ -387,6 +387,7 @@ describe('the model-dependent jobs do nothing without a provider', () => {
     const extractions = await runQueuedExtractions(ctx, {
       extractionsPerHour: 20,
       maxAttempts: 3,
+      dailyTokenCeiling: 2_000_000,
     })
     expect(extractions.skipped).toBeUndefined()
   })
