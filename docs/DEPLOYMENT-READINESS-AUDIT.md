@@ -78,14 +78,32 @@
 
 Also fixed in passing, each surfaced by the conversion rather than the audit: a lay badge comparing against a `'closed'` status absent from the enum, so every finished lay looked unfinished; a no-op ternary that was the only consumer of a prop that was in turn the only consumer of an `activeLines()` query, i.e. a database round trip per floor page load feeding nothing; and the refused-writes banner rendering a raw i18n key at the operator.
 
+**Fourth batch, 2026-08-06 → 08-07** — `docs/PRODUCTION-READINESS-PLAN.md`, phases 0–8 complete. That file is the live tracker and carries the reasoning per item; this is the index.
+
+| Findings | Where | Note |
+|---|---|---|
+| N1 action roles, N2 auth-table RLS, BE-B1 | phases 0–1 | 69 role gates across 16 action files; migration `0073` scope-conditional policies on the five auth tables; **wall 1 now covers every module, every query file and core** — 49 files on the `require-tenant-predicate` ratchet, with `two-walls.integration.test.ts` proving the two walls fail independently |
+| BE-H1/H2/H3, BE-M3, BE-M8, INFRA-H2 | phase 2 | money, dates, audit, gates; `lib/dates.ts` real and the UTC ban lint-enforced; **the CM component was computing as ZERO on every sheet priced in taka** (fx rate read at scale 2 against a `numeric(12,6)` column) — found by 2.9's consolidation, fixed, pinned |
+| TEST-B1, TEST-H4 | phase 3 | 29 commit targets covered both directions; the approve funnel every ⚖ write passes through |
+| FE-H6, FE-S* | phases 4–5 | floor completion, tablet structure, and the desk write surfaces |
+| AI-B1/B2/B3, AI-H3–H7, AI-M1/M3/M4/M5 | phase 6 | MARBIM: a real off-switch, the false grounding claims removed, invented confidence deleted and lint-banned, three providers by role with confidence derived from logprobs, the execution loop with role-filtered tools, and the pipeline hardened |
+| TEST-B2, TEST-H5, TEST-H8, TEST-M10, INFRA-M1, INFRA-M13 | phase 7 | k6 harness with committed baselines and the row assertion automated; a jsdom project (no `.tsx` was reachable by any test before it) and Playwright + axe, which found three real WCAG defects on the floor screens; coverage ratchet and JUnit; the health endpoint split into liveness / readiness / jobs-behind-a-token |
+| PROC-1, PROC-3, BE-B7 | phase 8 | eight retroactive HANDOFFs that say they are retroactive, checked against code by a test; and a drift check so the trackers cannot silently rot |
+
 ### Still open
 
-- **BE-B1** service-layer `company_id` predicates + a lint rule (the boot-assertion half is done).
-- **DB-B1** the non-superuser-owner CI job that would catch the privilege model regressing.
-- ~~**FE-B1** the last two floor routes~~ ✅ **all twelve floor routes are converted** (`397eb6a`) — store ×4, cutting ×4, lines ×3 + the TV board, quality ×5, plus the shared `fx/floor.tsx` surface.
-- ~~**the `errors.*` catalogue has no `bn` entries**~~ ✅ closed for the floor (`dfcda25`): 77 error keys translated across the shared namespace plus store, cutting, production, quality, sampling and maintenance. The office-facing namespaces stay English on purpose.
-- **Still English:** the other 44 screens (office-facing) and the office error namespaces. That is the deliberate boundary, not an oversight — but it means a merchandiser's screens are English-only, so if that changes the mechanism is already in place.
-- **Sprints 5–7** essentially untouched: the flagship TNA and buyers write surfaces (FE-B2, FE-B4, BE-B6), the LC latest-shipment gate (BE-H2), the UTC "today" bug across 85 sites (INFRA-H2), MARBIM (AI-B1/B2/B3), and the test depth items (TEST-B1, TEST-B2, TEST-H4–H8).
+Reconciled 2026-08-07. Every finding this file's Fix log records as complete is now ticked below — twenty-eight were not, which is the inconsistency `docs/__tests__/tracker-drift.test.ts` now fails on. Findings that are PARTLY done carry a ◐ marker with what remains, because a half-closed finding that reads as closed is the thing this reconciliation exists to stop.
+
+**Genuinely open, and none of it is code:**
+
+- **INFRA-B3 / DB-B2** — pgBackRest, the offsite repo and `restore.md` all exist. The **restore rehearsal has never been executed**. A backup nobody has restored is a belief.
+- **Deployment wiring** — point the prod compose healthcheck and Caddy's upstream at `/api/ready` (7.5 built it; nothing consumes it), set `HEALTH_TOKEN`, finish the S3 proxy and the CI deploy job. Deliberately outside the plan's scope, and listed in its header.
+- **Payroll has never been parallel-run.** `pnpm payroll:parallel-run` is built and proven end to end; it needs a real gazette, a real month of attendance and the factory's own sheet. Non-negotiable before go-live.
+- **MARBIM has never called a live model.** Three vendors and the execution loop are wired; no key exists in this environment, so the SDK bodies and the multi-tool round trip are unproven. All fail loudly, so the risk is a dead feature rather than a wrong number.
+- **The k6 baselines are from a developer machine** and say so in their own `host.note`. The brief's gate is VPS-class hardware.
+- **Tablet legibility** — axe checks contrast and names at 768px; whether a column is readable in Bangla at arm's length needs a person holding one.
+
+**Carried as ratchets** (mechanism in place, adoption ongoing, each in the plan): typed action results (BE-H3), ten more money files (BE-M8), thirteen unwired actions, the settings policy editor, and `mixed_day`.
 
 ## Severity index
 
@@ -106,19 +124,19 @@ Also fixed in passing, each surfaced by the conversion rather than the audit: a 
   `src/lib/redis.ts:8-15` caches the ioredis client only when `NODE_ENV !== 'production'`; in prod every `getRedis()` call opens a new socket that is never closed. `/api/health` (`src/app/api/health/route.ts:134`) is polled by Docker HEALTHCHECK every 30s → ≈5,700 leaked connections/day → Redis `maxclients` (10k) exhausted → BullMQ cannot connect, job system dies. Same bug breaks worker shutdown (`src/worker/index.ts:36` vs `:101` disconnect a *different* client).
   **Fix:** module-level singleton in all environments (keep `globalThis` only as the dev-HMR guard); disconnect the captured instance in shutdown.
 
-- [ ] **INFRA-B2 · No production deployment configuration exists at all.**
+- [x] **INFRA-B2 · No production deployment configuration exists at all.**
   Only `docker-compose.dev.yml`. No prod compose, no Caddy/nginx/TLS, no restart policies, no resource limits, no deploy job (`.github/workflows/ci.yml:188-202` builds with `push: false` and stops). The dev-plan explicitly requires all of this (`docs/02-backend/fabricxai-backend-dev-plan.md:116, :32, :35, :118`). `docs/07-rollout/rollout-playbook.md` has zero deployment content.
   **Fix:** `docker-compose.prod.yml` (app + worker + pg + pgbouncer + redis + minio + caddy; `restart: unless-stopped`; memory limits; DB/Redis/MinIO ports not published), Caddyfile with automatic TLS, deploy workflow (build → push GHCR by digest → SSH `compose pull && up -d`).
 
-- [ ] **INFRA-B3 · No backups, no restore path, no DR — against a doc that calls it non-negotiable.**
+- [ ] **INFRA-B3 · No backups, no restore path, no DR — against a doc that calls it non-negotiable.**  ◐ **partly done** — backups and the runbook exist; the restore REHEARSAL has never been executed.
   dev-plan:34 ("pgBackRest → offsite — non-negotiable before first real factory data"), :192 (RTO ≤4h / RPO ≤15min), :216 (four required runbooks). Reality: `docs/runbooks/` holds one file (`phase-0-exit.md`); no backup script, no WAL archiving, no MinIO replication.
   **Fix:** pgBackRest/wal-g sidecar with offsite repo + WAL archiving; `mc mirror` for MinIO; a `restore-from-backup.md` runbook **executed once against a scratch host** before pilot data lands.
 
-- [ ] **INFRA-B4 · PgBouncer ships plaintext password auth; stub deadline was "before first deploy".**
+- [x] **INFRA-B4 · PgBouncer ships plaintext password auth; stub deadline was "before first deploy".**
   `docker/pgbouncer/pgbouncer.ini:15-16` (`auth_type = plain` + cleartext `userlist.txt`). Only pgbouncer config in the repo. `docs/STUBS.md` names the exact replacement.
   **Fix:** `scram-sha-256` with `auth_user` + `auth_query` (SECURITY DEFINER lookup fn); remove `userlist.txt` from the prod path.
 
-- [ ] **INFRA-B5 · Observability is `console.log`; `SENTRY_DSN` is required in prod but nothing reads it.**
+- [x] **INFRA-B5 · Observability is `console.log`; `SENTRY_DSN` is required in prod but nothing reads it.**
   `src/lib/env.ts:69-85` hard-fails prod boot without `SENTRY_DSN`; `@sentry/nextjs` is not a dependency; `src/instrumentation.ts:4` promises the init that never landed. 34 unstructured `console.*` calls are the whole log strategy.
   **Fix:** install + init Sentry (app `instrumentation.ts` + worker), add pino structured JSON logging with `companyId`/`jobId`/`requestId`; or drop `SENTRY_DSN` from prod-required until wired (don't fail boot on dead config).
 
@@ -128,11 +146,11 @@ Also fixed in passing, each surfaced by the conversion rather than the audit: a 
 
 ### High
 
-- [ ] **INFRA-H1 · Single `S3_ENDPOINT` — presigned URLs unreachable from tablets in prod.**
+- [x] **INFRA-H1 · Single `S3_ENDPOINT` — presigned URLs unreachable from tablets in prod.**
   `src/lib/s3.ts:14-22` signs presigns with the server-side endpoint (`http://minio:9000` in compose); SigV4 covers the Host header so the browser cannot be redirected. Every upload/download fails in production.
   **Fix:** add `S3_PUBLIC_ENDPOINT` (browser-facing, TLS via Caddy) for presigning; keep `S3_ENDPOINT` server-side; set bucket CORS allowlist.
 
-- [ ] **INFRA-H2 · 85 call sites compute "today" in UTC for a UTC+6 factory; `lib/dates.ts` is still a stub.**
+- [x] **INFRA-H2 · 85 call sites compute "today" in UTC for a UTC+6 factory; `lib/dates.ts` is still a stub.**
   `src/lib/dates.ts` exports only `FACTORY_TIMEZONE`. 85 non-test `toISOString().slice(0, 10)` occurrences (e.g. `src/modules/quality/queries.ts:474`, `quality/jobs.ts:35`, `procurement/queries.ts:60`, `finance/queries.ts:63`). Between 00:00–05:59 Dhaka — the night shift and every nightly cron — UTC "today" is *yesterday*. The correct helper is copy-pasted privately in 4 places (`commercial/service.ts:58`, `worker/processors/consumers.ts:475`, `commercial/jobs.ts:43`, `scheduler.ts:329`).
   **Fix:** implement `lib/dates.ts` (`factoryToday`, `toFactoryDate`, `startOfFactoryDay`), delete the 4 duplicates, migrate the 85 sites, add an ESLint ban on bare `toISOString().slice(0,10)` in `src/modules`.
 
@@ -140,11 +158,11 @@ Also fixed in passing, each surfaced by the conversion rather than the audit: a 
   `src/modules/settings/policies.ts:357` is the delivery-policy default consumed by `src/modules/core/delivery.ts:123-127`; no Settings surface exists to change it.
   **Fix:** default `appUrl` to `env.APP_URL`; keep the settings override optional.
 
-- [ ] **INFRA-H4 · Worker has no production process story.**
+- [x] **INFRA-H4 · Worker has no production process story.**
   `worker:start` runs `tsx` (a devDependency) as PID 1 with no init → SIGTERM not reliably forwarded → the (correct) graceful drain never runs; deploys hard-kill in-flight jobs. The image-level HEALTHCHECK (`Dockerfile:59-60`) hits `:3000/api/health`, which the worker doesn't serve → permanently `unhealthy`. No `unhandledRejection` handlers anywhere.
   **Fix:** dumb-init entrypoint; compile the worker or run tsx under init; `HEALTHCHECK NONE` for the worker + a Redis heartbeat the app health endpoint reads; `unhandledRejection` → log + exit non-zero so restart policy fires.
 
-- [ ] **INFRA-H5 · No migration step in any deploy path.**
+- [x] **INFRA-H5 · No migration step in any deploy path.**
   `src/db/migrate.ts` is correct but nothing invokes it outside CI; no ordering doc, no boot gate against a stale schema (69 migrations incl. RLS + SECURITY DEFINER).
   **Fix:** deploy step `docker compose run --rm app tsx src/db/migrate.ts && pnpm db:setup-roles` (or one-shot migrate service) + boot-time assertion that the newest journal entry is applied.
 
@@ -152,35 +170,35 @@ Also fixed in passing, each surfaced by the conversion rather than the audit: a 
   `next.config.ts:10-20` has no `headers()`, no `poweredByHeader: false`; zero hits repo-wide for CSP/HSTS/X-Frame-Options/Referrer-Policy.
   **Fix:** CSP (nonce), HSTS, `X-Frame-Options: DENY`, `nosniff`, Referrer-Policy, Permissions-Policy; `poweredByHeader: false`.
 
-- [ ] **INFRA-H7 · No rate limiting on auth, sync, or upload endpoints.**
+- [x] **INFRA-H7 · No rate limiting on auth, sync, or upload endpoints.**
   Better Auth has no `rateLimit` block (`src/lib/auth.ts:34-111`) → in-memory defaults, not shared, reset on deploy; nothing throttles sign-in guessing or mass-signup (each signup runs `provisionCompany`). `/api/sync` (`route.ts:43-87`) and `/api/documents` presign issuance are unthrottled. README/.env.example claim Redis rate limits that don't exist.
   **Fix:** Better Auth `rateLimit` with Redis secondaryStorage; Redis token-bucket on `/api/sync`, `/api/documents`, auth routes keyed user+IP.
 
-- [ ] **INFRA-H8 · Prod boot demands three LLM API keys that nothing consumes.**
+- [x] **INFRA-H8 · Prod boot demands three LLM API keys that nothing consumes.**
   `env.ts:69-85` requires `ANTHROPIC_API_KEY` + `GEMINI_API_KEY` + `OPENAI_API_KEY` in production and forbids `MARBIM_MOCK`, yet no real provider is registered (see AI-B1) — you must configure three vendors to satisfy a Zod check and still get a hard failure when MARBIM is touched.
   **Fix:** require at least one key behind a `MARBIM_ENABLED` flag; register a real provider or degrade gracefully.
 
 ### Medium
 
-- [ ] **INFRA-M1** `/api/health` unauthenticated and leaks internals (env, raw exception strings, task names) — `route.ts:117,141-150`. Split public 200/503 vs detail behind a token.
+- [x] **INFRA-M1** `/api/health` unauthenticated and leaks internals (env, raw exception strings, task names) — `route.ts:117,141-150`. Split public 200/503 vs detail behind a token.
 - [ ] **INFRA-M2** Health check omits MinIO and SMTP (`route.ts:132-136`). Add S3 HeadBucket + mail reachability.
 - [ ] **INFRA-M3** Stale BullMQ job schedulers never pruned (`scheduler.ts:308-320` upsert-only). Remove ids not in `SCHEDULED_TASKS`.
 - [ ] **INFRA-M4** Unbounded request bodies on route handlers (`bodySizeLimit: '4mb'` covers server actions only; `/api/sync` buffers with no ceiling). Enforce Content-Length at proxy + handler.
 - [ ] **INFRA-M5** No dead-letter story: failed jobs deleted after 7 days (`queues.ts:41-47`); outbox parks at 10 attempts with no alert (`outbox-relay.ts:29,108`). DLQ or `failed_jobs` table + the `requeue-failed-jobs` runbook.
-- [ ] **INFRA-M6** Fat unhardened image: no `output: 'standalone'`, runtime carries devDeps + `src/`; no read-only FS/cap_drop/memory limits.
-- [ ] **INFRA-M7** CI: no `pnpm audit`, no image scan (Trivy), no gitleaks; `minio`/`mc`/`mailpit` float on `:latest` in compose and CI. Pin digests, add scans.
+- [x] **INFRA-M6** Fat unhardened image: no `output: 'standalone'`, runtime carries devDeps + `src/`; no read-only FS/cap_drop/memory limits.
+- [x] **INFRA-M7** CI: no `pnpm audit`, no image scan (Trivy), no gitleaks; `minio`/`mc`/`mailpit` float on `:latest` in compose and CI. Pin digests, add scans.
 - [ ] **INFRA-M8** k6 never run and not in CI; only 1 of the planned scenarios exists (see TEST-H5).
 - [ ] **INFRA-M9** No production Redis config (AOF/noeviction only in dev compose; no `requirepass`/TLS).
-- [ ] **INFRA-M10** ⚠ Seed with public password `FabricXai-seed-2026` + `emailVerified: true` guarded by a single `NODE_ENV` check (`src/db/seed/core-slice.ts:31,57,72,90`). One careless `pnpm seed` against prod = breach. Refuse non-localhost targets or require an explicit override flag.
+- [x] **INFRA-M10** ⚠ Seed with public password `FabricXai-seed-2026` + `emailVerified: true` guarded by a single `NODE_ENV` check (`src/db/seed/core-slice.ts:31,57,72,90`). One careless `pnpm seed` against prod = breach. Refuse non-localhost targets or require an explicit override flag.
 - [ ] **INFRA-M11** MinIO bucket bootstrap is dev/CI-only; no prod init, versioning, lifecycle, or replication.
 - [ ] **INFRA-M12** `documents.status = 'quarantined'` is checked on download (`documents.ts:207`) but nothing ever sets it — no AV scan on 25 MB uploads from shared floor tablets. ClamAV job or document the accepted risk.
-- [ ] **INFRA-M13** One health endpoint conflates liveness/readiness/job-health: a quiet scheduler 503s the app probe and Docker restarts the wrong container. Split `/api/health` (liveness) vs `/api/ready` (deps) vs `/api/health/jobs`.
+- [x] **INFRA-M13** One health endpoint conflates liveness/readiness/job-health: a quiet scheduler 503s the app probe and Docker restarts the wrong container. Split `/api/health` (liveness) vs `/api/ready` (deps) vs `/api/health/jobs`.
 
 ### Low
 
 - [ ] **INFRA-L1** README claims testcontainers for `test:integration` — false (requires externally running services); README status section badly stale ("No business modules yet" vs ~20 modules).
 - [ ] **INFRA-L2** `.env.example` missing `MAILPIT_URL`, `INTEGRATION_PORT`, `DEMO_COMPANY_ID`/`DEMO_USER_ID`, future `S3_PUBLIC_ENDPOINT`; no note that `APP_URL`/`BETTER_AUTH_URL` must be `https://` in prod (silently controls secure cookies).
-- [ ] **INFRA-L3** Better Auth cookie flags all implicit — pin `useSecureCookies: isProduction` explicitly (`src/lib/auth.ts:54-59`).
+- [x] **INFRA-L3** Better Auth cookie flags all implicit — pin `useSecureCookies: isProduction` explicitly (`src/lib/auth.ts:54-59`).
 - [ ] **INFRA-L4** `HEALTHCHECK --start-period=20s` too optimistic for cold Next 16 boot; use 60s.
 - [ ] **INFRA-L5** `scheduler.ts:344-352` reads `companies` through the app role with no tenant scope — under RLS returns 0 rows and silently falls back to `new Date()`, so a never-run task always looks brand-new to job-health.
 
@@ -192,11 +210,11 @@ Also fixed in passing, each surfaced by the conversion rather than the audit: a 
 
 ### Blockers
 
-- [ ] **DB-B1 · The entire RLS design silently requires the migration/owner role to be SUPERUSER or BYPASSRLS — and the migration comment asserts the opposite.**
+- [x] **DB-B1 · The entire RLS design silently requires the migration/owner role to be SUPERUSER or BYPASSRLS — and the migration comment asserts the opposite.**
   `0002_rls_policies.sql:40` claims FORCE RLS "does not lock the migration runner out of its own tables" — false: FORCE applies RLS to the table owner, and every policy in the schema targets only `fabricxai_app` (verified: zero policies for any other role). Eight SECURITY DEFINER functions run as the owner and read forced tables (`app.memberships_for_user` → `roles`; `app.lock_outbox_batch`/`mark_outbox_published` → `outbox`; `app.scheduler_last_success`/`scheduler_observed_since` → `job_runs`; partition helper). If ops hardens the owner to non-superuser (the standard move, and what `scripts/setup-db-roles.mjs` implies): **login breaks for everyone** (memberships → 0 rows), **outbox delivery stops silently**, health reports the scheduler never ran, seed reads nothing. It only works today because dev/CI owner is the initdb superuser — so CI cannot catch it.
   **Fix:** decide + document the owner privilege model — either grant `BYPASSRLS` explicitly in `setup-db-roles.mjs` and correct `0002:40`, or add owner-scoped policies. Then add a CI job running the suite with a non-superuser, non-BYPASSRLS owner.
 
-- [ ] **DB-B2 · No backup or restore story at all** (same as INFRA-B3, confirmed independently from the DB side: no pgBackRest/pg_dump/WAL archiving; `docs/runbooks/` has one file; `userlist.txt` even points at a runbook that doesn't exist; rollout playbook has zero hits for backup/restore/RTO/RPO). Payroll + LC + bonded-warehouse data cannot go live with undefined RPO/RTO.
+- [ ] **DB-B2 · No backup or restore story at all** (same as INFRA-B3, confirmed independently from the DB side: no pgBackRest/pg_dump/WAL archiving; `docs/runbooks/` has one file; `userlist.txt` even points at a runbook that doesn't exist; rollout playbook has zero hits for backup/restore/RTO/RPO). Payroll + LC + bonded-warehouse data cannot go live with undefined RPO/RTO.  ◐ **partly done** — same as INFRA-B3 — the rehearsal is the open half.
 
 ### High
 
@@ -221,10 +239,10 @@ Also fixed in passing, each surfaced by the conversion rather than the audit: a 
 
 ### Medium
 
-- [ ] **DB-M1** `processed_events`: no `company_id`, no RLS, app role can `DELETE` (any tenant can clear another's dedupe rows → event replay), never pruned. Add company_id + policy, revoke DELETE, nightly prune.
-- [ ] **DB-M2** `outbox` grows forever (published rows never deleted; app role deliberately lacks DELETE). Add `core.prune_outbox` (30 days, run as owner).
+- [x] **DB-M1** `processed_events`: no `company_id`, no RLS, app role can `DELETE` (any tenant can clear another's dedupe rows → event replay), never pruned. Add company_id + policy, revoke DELETE, nightly prune.
+- [x] **DB-M2** `outbox` grows forever (published rows never deleted; app role deliberately lacks DELETE). Add `core.prune_outbox` (30 days, run as owner).
 - [ ] **DB-M3** Migrations take no advisory lock despite two comments claiming they do (drizzle's postgres-js migrator uses a plain transaction). Two concurrent `db:migrate` in a rolling deploy race and break the deploy. Wrap in `pg_advisory_lock` in `src/db/migrate.ts`; fix both comments.
-- [ ] **DB-M4** Eleven `ON DELETE CASCADE` FKs with no covering child index — sharpest: `notifications(user_id)` is also the notification-bell read path and has no user-leading index (every bell load scans). Add `(company_id, user_id, created_at DESC)` + the other ten.
+- [x] **DB-M4** Eleven `ON DELETE CASCADE` FKs with no covering child index — sharpest: `notifications(user_id)` is also the notification-bell read path and has no user-leading index (every bell load scans). Add `(company_id, user_id, created_at DESC)` + the other ten.
 - [ ] **DB-M5** Partition DDL (ACCESS EXCLUSIVE on parent + DEFAULT scan) runs in one transaction at 00:30 Dhaka — mid night-shift; floor writes block. Per-month transactions, `lock_timeout`, move to a real trough.
 - [ ] **DB-M6** `audit_log` append-only rests on a single GRANT — no trigger backstop, no test. One careless `GRANT ALL` makes the audit trail mutable silently. Add a `BEFORE UPDATE OR DELETE … RAISE EXCEPTION` trigger + an integration test that `UPDATE audit_log` fails as the app role.
 - [ ] **DB-M7** pgvector: global HNSW index + tenant filter under-returns for small tenants (candidates fetched before the filter; default `ef_search` 40; nothing tunes it). `SET LOCAL hnsw.ef_search` in the search tx; consider per-company partial indexes.
@@ -248,31 +266,31 @@ Also fixed in passing, each surfaced by the conversion rather than the audit: a 
 
 ### Blockers
 
-- [ ] **FE-B1 · No UI i18n layer at all; ~500+ hardcoded English strings.**
+- [x] **FE-B1 · No UI i18n layer at all; ~500+ hardcoded English strings.**
   `next-intl` is not a dependency; `src/lib/i18n.ts` is notifications-only (709 lines, imported by exactly 1 of 115 `.tsx` files); `src/app/layout.tsx:46` hardcodes `lang="en"`. ~195 bare JSX text nodes + ~347 string-literal props. Violates CLAUDE.md ("no hardcoded UI strings") and frontend-dev-plan §3. **Floor staff read Bangla — they cannot use these screens.**
   **Fix:** add next-intl, `messages/en.json` + `messages/bn.json`, prioritize the 12 floor routes (`/store/*`, `/cutting/*`, `/lines/*`, `/quality/*`); add the CI grep for bare JSX literals the plan already specifies.
 
-- [ ] **FE-B2 · Flagship module 1.3 (Order Desk & TNA) cannot be operated from the UI.**
+- [x] **FE-B2 · Flagship module 1.3 (Order Desk & TNA) cannot be operated from the UI.**
   `src/modules/orders/` has no `actions.ts`; `actualizeMilestone` is called only by the worker (`consumers.ts:259`); `MilestoneTimeline`'s `onActualize` prop (`src/components/fx/tna.tsx:67`) has no caller, and `tna.tsx` isn't a client component. A merchandiser cannot tick a milestone, record ex-factory, or upload a buyer revision.
   **Fix:** add `orders/actions.ts` (`actualizeMilestone`, `applyRevision`), make the timeline interactive, wire revision upload → diff → approve.
 
-- [ ] **FE-B3 · Zero route-level error/loading/not-found boundaries across all 56 routes.**
+- [x] **FE-B3 · Zero route-level error/loading/not-found boundaries across all 56 routes.**
   `find src -name error.tsx -o -name loading.tsx -o -name not-found.tsx` → 0. No Suspense. `LoadingState`/`ErrorState` primitives exist (`fx/feedback.tsx:387,409`) and are used by nothing. Every page is `force-dynamic` with multiple awaited queries — one failed query = raw Next error screen.
   **Fix:** `error.tsx` + `loading.tsx` at the `(app)`, `(auth)`, `(board)` group roots minimum; `not-found.tsx` for the 8 dynamic routes.
 
-- [ ] **FE-B4 · Buyers module actions are completely orphaned.**
+- [x] **FE-B4 · Buyers module actions are completely orphaned.**
   `moveLeadStage`, `logLeadActivity`, `convertLeadToBuyer` exported by `src/modules/buyers/actions.ts`, imported by zero UI files. The pipeline is a static list; a won lead can never become a buyer.
   **Fix:** buyer detail (drawer or route) + 2-step convert dialog + drag-to-stage wiring.
 
 ### High
 
-- [ ] **FE-H1 · No password reset flow, no verification landing page.**
+- [x] **FE-H1 · No password reset flow, no verification landing page.**
   `(auth)/` has only login + signup; `requireEmailVerification: true` but no `/verify-email`, `/reset-password`, `/forgot-password`, or resend action. A locked-out owner = a support call.
 - [ ] **FE-H2 · Design-token scale defined but never used: 0 uses of `--fx-space-*`/`--fx-text-*` vs 812 raw px gaps/paddings and 620 hardcoded `font:` shorthands.** (Colour discipline is clean — 3 raw hex in 115 files.) The 1.4× Bengali string-length test has 620 places to break. Tokenize `fx/` components first.
 - [ ] **FE-H3 · `src/app/theme.css` is a namespace fork of the design-system theme.** 0 shared variable names with `docs/01-design/theme.css`; the `--color-viz-1..7` chart palette has no equivalent in the app. Designers can't diff the app against the canvases; chart colour is undefined. Regenerate the design theme from the app theme (or alias layer) + port the viz palette.
 - [ ] **FE-H4 · No charting library; every specified sparkline/trend is missing** (owner-dashboard KPI sparklines, DHU trend, efficiency curve, cash timeline, margin curve/waterfall, plan-vs-actual). Add Recharts + viz palette + a `Sparkline` primitive.
-- [ ] **FE-H5 · Four floor screens bypass the offline endpoint** and use plain server actions inside `<FloorScreen>`: `store/rolls` (`rolls-client.tsx:169`), `quality/fabric` (`fabric-client.tsx:67`), `quality/final` (`final-client.tsx:70`), `quality/measurements` (`measurements-client.tsx:65`). Dropped wifi = lost entry; retry = double write. Register sync handlers and switch to `capture()`. (9 of 13 floor screens already do this correctly.)
-- [ ] **FE-H6 · No responsive handling anywhere:** one `@media` in 500 lines of CSS (`prefers-reduced-motion`), fixed 232px sidebar always rendered, fixed-fraction grids. A 768px-portrait floor tablet keeps 536px for numpad grids. Collapse sidebar under ~900px; audit floor routes at 768×1024 / 1024×768.
+- [x] **FE-H5 · Four floor screens bypass the offline endpoint** and use plain server actions inside `<FloorScreen>`: `store/rolls` (`rolls-client.tsx:169`), `quality/fabric` (`fabric-client.tsx:67`), `quality/final` (`final-client.tsx:70`), `quality/measurements` (`measurements-client.tsx:65`). Dropped wifi = lost entry; retry = double write. Register sync handlers and switch to `capture()`. (9 of 13 floor screens already do this correctly.)
+- [ ] **FE-H6 · No responsive handling anywhere:** one `@media` in 500 lines of CSS (`prefers-reduced-motion`), fixed 232px sidebar always rendered, fixed-fraction grids. A 768px-portrait floor tablet keeps 536px for numpad grids. Collapse sidebar under ~900px; audit floor routes at 768×1024 / 1024×768.  ◐ **partly done** — plan 4.4 + 7.2 — structural pass and a WCAG sweep done; a person still has to read a tablet.
 - [ ] **FE-H7 · `DataTable` not virtualized; no TanStack Query/Virtual, no Playwright, no axe-core** — all named CI gates in frontend-dev-plan §1/§2/§7/§8. A pilot order book has thousands of PO lines.
 
 ### Missing screens vs build pack (each unticked item = build it or explicitly descope)
@@ -299,8 +317,8 @@ Also fixed in passing, each surfaced by the conversion rather than the audit: a 
 - [ ] **FE-M2** `Drawer` primitive + route-driven `?drawer=` pattern unused (0 call sites) — pack specifies drawers for 1.1/1.4/9.1.
 - [ ] **FE-M3** 10+ clients render raw `<input>`/`<select>` bypassing `fx/forms` `Field` (loses wired error/aria handling): `lcs/[lcId]`, `ud/[udId]`, `procurement/*`, `maintenance/*`, `costing/bom`, `quality/final`, `marbim/intake`, `store/receive`.
 - [ ] **FE-M4** 26 raw `toLocaleDateString`/`toLocaleString` calls (plan forbids; ties into INFRA-H2 dates work).
-- [ ] **FE-M5** No language/digit toggle anywhere (`bengaliDigits` prop exists, nothing sets it).
-- [ ] **FE-M6** No reconciliation report screen for refused offline rows — dismiss is the only option; a rejected GRN is silently discarded (plan §4 requires the report).
+- [x] **FE-M5** No language/digit toggle anywhere (`bengaliDigits` prop exists, nothing sets it).
+- [x] **FE-M6** No reconciliation report screen for refused offline rows — dismiss is the only option; a rejected GRN is silently discarded (plan §4 requires the report).
 - [ ] **FE-L1** Only 1 `aria-live` region (offline queue + toasts not announced); no axe-core in CI. (Otherwise a11y is genuinely clean: zero div-buttons, labels wired.)
 - [ ] **FE-L2** No PWA manifest/service worker for floor tablets; `viewport` lacks `maximumScale`/`viewportFit`.
 
@@ -312,15 +330,15 @@ Also fixed in passing, each surfaced by the conversion rather than the audit: a 
 
 ### Blockers
 
-- [ ] **AI-B1 · No real model provider; in production MARBIM is inert and monitoring stays green.**
+- [x] **AI-B1 · No real model provider; in production MARBIM is inert and monitoring stays green.**
   Only `registerProvider` call site is `if (env.MARBIM_MOCK) registerProvider(mockProvider)` (`marbim/register.ts:55-57`); mock is forbidden in prod (`env.ts:87-93`); no vendor SDK is a dependency. Chat hard-fails every turn; the extraction poller skips with `{ skipped }` and `recordRun` closes the job_run **`succeeded`** (`core/job-runs.ts:62-70`) — job-health sees a healthy task while documents pile up `queued` forever.
   **Fix:** implement ≥1 real provider (extract with measured per-field confidence, generate, embed) selected by env; boot assertion in prod (real provider or exit); until then make the skip an alerting condition.
 
-- [ ] **AI-B2 · Draft-tool confidence is developer-typed constants in nine modules; the promised lint rule doesn't exist.**
+- [x] **AI-B2 · Draft-tool confidence is developer-typed constants in nine modules; the promised lint rule doesn't exist.**
   `fieldConfidence` literals in `orders/tools.ts:131-139`, `store`, `compliance`, `quality`, `cutting`, `shipment`, `sampling`, `procurement` tools. The uniform-constant guard (`marbim.ts:83`) only catches *identical* values, so distinct hardcoded numbers pass. These literals drive approve-inbox ranking and the auto-approve floor (`pending-changes.ts:183,218-222`) — a confidence floor compared against a typed literal is not a control. `docs/04-ai-layer/marbim-implementation.md:76` promises the lint rule; `eslint-rules/` doesn't have it.
   **Fix:** derive confidence from something measured (see the one good example: `memory/memory.ts:352-363`) or mark these as user-draft-class with `fieldConfidence: {}`; add the lint rule (numeric literal inside a `fieldConfidence` object = error). **Fix before AI-B1** — a real provider behind constant confidences makes ranking actively misleading.
 
-- [ ] **AI-B3 · The copilot cannot execute any tool; the read/draft contract is dead code end-to-end.**
+- [x] **AI-B3 · The copilot cannot execute any tool; the read/draft contract is dead code end-to-end.**
   `chat` passes tool names to the model and stores `toolCalls` — no execution loop, no second turn (`marbim/service.ts:562-573`). `runDraftTool` ("the only path from a tool to pending_changes") has zero production call sites. ~90 registered tools are prompt text only, while the UI footer still claims "MARBIM states no number it did not read from a tool" (`surface-client.tsx:183`).
   **Fix:** implement the agent loop (model turn → validate+execute tool calls → results back → final turn; cap iterations); until then the surface must not claim tool-grounding.
 
@@ -328,19 +346,19 @@ Also fixed in passing, each surfaced by the conversion rather than the audit: a 
 
 - [ ] **AI-H1** `extractorVersion` hardcoded `'1'` (`marbim/actions.ts:200-205`) — swapping mock→real or changing prompts pools correction rates the versioned key exists to separate. Derive from prompt semver + provider/model id.
 - [x] **AI-H2 · Auto-approve from the worker throws a NOT NULL violation** — `pending-changes.ts:218-227` casts `SystemCtx` (userId: null) to `RequestCtx`; `approve` inserts `approverUserId: ctx.userId` into a `notNull()` column. Any company configuring auto-approve loses every high-confidence extraction (retried, then terminal `rejected`). The covering test uses a real user, so CI can't see it. Skip the approvals insert for system ctx (or make column nullable + record role); add an integration test with `SystemCtx`.
-- [ ] **AI-H3** Chat has no conversation history — every turn sends only the current question (`service.ts:571`) though `chat_turns` stores history. Follow-ups can't work. Load + budget prior turns.
-- [ ] **AI-H4** No cost/rate control on chat, no token accounting anywhere — unbounded chat against a metered API is direct financial exposure, and there's no data to price with. Add `chatRequestsPerMinute` + monthly token ceiling in policy, Redis limiter in `ask`, `marbim_call_log` written by the provider wrapper.
-- [ ] **AI-H5** `MARBIM_EVENTS` declared, never emitted (`events.ts:1-13`); no extraction success/rejection notification — the merchandiser who pastes a tech pack is never told anything; `extractorDrifting` unreachable. Emit from `runExtraction` in the same tx, route + notify.
-- [ ] **AI-H6** Tool packs handed to the model with no role filtering (comment claims otherwise, `marbim/actions.ts:40-50`); a viewer gets draft tools the moment the loop lands. Filter server-side by role; drop draft tools for read-only roles.
-- [ ] **AI-H7** Document intake has no role gate — any authenticated member/viewer can queue extractions at 60/hr and fill the approve inbox (`actions.ts:157-165`, `service.ts:219-279`). Require write-capable roles per intake kind.
+- [x] **AI-H3** Chat has no conversation history — every turn sends only the current question (`service.ts:571`) though `chat_turns` stores history. Follow-ups can't work. Load + budget prior turns.
+- [x] **AI-H4** No cost/rate control on chat, no token accounting anywhere — unbounded chat against a metered API is direct financial exposure, and there's no data to price with. Add `chatRequestsPerMinute` + monthly token ceiling in policy, Redis limiter in `ask`, `marbim_call_log` written by the provider wrapper.
+- [x] **AI-H5** `MARBIM_EVENTS` declared, never emitted (`events.ts:1-13`); no extraction success/rejection notification — the merchandiser who pastes a tech pack is never told anything; `extractorDrifting` unreachable. Emit from `runExtraction` in the same tx, route + notify.
+- [x] **AI-H6** Tool packs handed to the model with no role filtering (comment claims otherwise, `marbim/actions.ts:40-50`); a viewer gets draft tools the moment the loop lands. Filter server-side by role; drop draft tools for read-only roles.
+- [x] **AI-H7** Document intake has no role gate — any authenticated member/viewer can queue extractions at 60/hr and fill the approve inbox (`actions.ts:157-165`, `service.ts:219-279`). Require write-capable roles per intake kind.
 
 ### Medium / Low
 
-- [ ] **AI-M1** No OCR/PDF text path — extraction is paste-the-text; PLAYBOOK sells "photos of handwritten sheets". Also `zod.ts:31-34` still permits a document-only job that would extract from `''`. Wire vision/OCR or require `sourceText` in the schema.
+- [x] **AI-M1** No OCR/PDF text path — extraction is paste-the-text; PLAYBOOK sells "photos of handwritten sheets". Also `zod.ts:31-34` still permits a document-only job that would extract from `''`. Wire vision/OCR or require `sourceText` in the schema.
 - [ ] **AI-M2** No token budget: full 21-module primer set (~8.3k tokens) + ~90 tool descriptions on every turn; extraction input capped at 200k chars with no chunking. Budget + prompt caching + chunking.
-- [ ] **AI-M3** Prompt injection unaddressed: untrusted document text passed beside instructions with no delimiters or standing rule; the real mitigations (human approval, re-validation) exist but aren't the declared boundary. Delimit, add a standing rule, document approval as containment.
-- [ ] **AI-M4** Extraction is a 5-minute poller (batch 10/company), not a real queue — up to 5 min latency, >120 docs/hr never drains, retries wait a full cycle. Emit to outbox → BullMQ job with rate limiter + backoff; keep the poller as reconciler.
-- [ ] **AI-M5** Extraction rate limit is racy (count-in-transaction, no lock) and counts queued jobs, not model calls (3× budget with retries). Redis counter or advisory lock; count attempts.
+- [x] **AI-M3** Prompt injection unaddressed: untrusted document text passed beside instructions with no delimiters or standing rule; the real mitigations (human approval, re-validation) exist but aren't the declared boundary. Delimit, add a standing rule, document approval as containment.
+- [x] **AI-M4** Extraction is a 5-minute poller (batch 10/company), not a real queue — up to 5 min latency, >120 docs/hr never drains, retries wait a full cycle. Emit to outbox → BullMQ job with rate limiter + backoff; keep the poller as reconciler.
+- [x] **AI-M5** Extraction rate limit is racy (count-in-transaction, no lock) and counts queued jobs, not model calls (3× budget with retries). Redis counter or advisory lock; count attempts.
 - [ ] **AI-M6** Single-field drafts bypass the constant-confidence check (`marbim.ts:83`, `values.length > 1`). Require justification for single-field payloads too.
 - [ ] **AI-M7** `docs/04-ai-layer/marbim-implementation.md` describes a much larger system than exists (model registry, prompts@semver, evals + CI gate, streaming, telemetry, budgets — all absent). Add a "what exists today" preface pointing at STUBS.
 - [ ] **AI-L1** Stale docs: STUBS says only 2 modules ship toolPacks (all 21 do now); PROGRESS marks X.2 pending.
@@ -357,11 +375,11 @@ Also fixed in passing, each surfaced by the conversion rather than the audit: a 
 
 ### Blockers
 
-- [ ] **TEST-B1 · `approvals` (X.1 Approve Inbox) has zero tests — empty `__tests__/` directory.**
+- [x] **TEST-B1 · `approvals` (X.1 Approve Inbox) has zero tests — empty `__tests__/` directory.**
   887 LOC through which *every* AI-proposed change is reviewed; role routing (`approversFor`, `upsertApprovalRule`), aging escalations fired from the scheduler — none tested.
   **Fix:** unit (aging buckets, role resolution, correction-rate math) + integration (tenancy on `inboxRows`/`draftDetail`; no-role → 403; `upsertApprovalRule` audited; `emitAgingEscalations` once per level per company).
 
-- [ ] **TEST-B2 · The ⚡ floor NFR gate cannot run: `k6/production_burst.js` targets routes that don't exist.**
+- [ ] **TEST-B2 · The ⚡ floor NFR gate cannot run: `k6/production_burst.js` targets routes that don't exist.**  ◐ **partly done** — plan 7.1 — harness + 3 scenarios with baselines; `mixed_day` deferred.
   It posts `/api/production/outputs` and reads `/api/production/board`; neither route exists (`src/app/api/` has only auth/documents/health/me/sync). The 6.1 NFR (write p95<500ms, board p95<800ms, zero lost rows) is unverifiable — **and the floor has no HTTP surface for line tracking at all.**
   **Fix:** ship the two routes, run the scenario on VPS-class hardware against `seed --scale=factory`, commit the baseline; automate the row-count assertion (currently a comment telling a human to run SQL).
 
@@ -371,18 +389,18 @@ Also fixed in passing, each surfaced by the conversion rather than the audit: a 
 
 ### High
 
-- [ ] **TEST-H4** 9+ modules register pending targets + commit handlers never driven through `approve()` in any test (costing, rfq, finance, quality, sampling, procurement, workforce, cutting; store calls the handler directly). The static registry guard can't catch a handler that inserts the wrong row. Build a shared `proposeApproveCommit` helper + one parameterised test per registered target.
-- [ ] **TEST-H5** 7 of 8 documented k6 scenarios don't exist; `mixed_day` — the declared *release gate* (`docs/06-quality/testing-and-pressure.md:42,56`) — is unsatisfiable; 11.2 owner-dashboard (the other ⚡) has no scenario at all. Prioritise `owner_dashboard` + `store_grn`; add a manually-dispatched load workflow that stores baselines.
-- [ ] **TEST-H6** sampling registers two offline sync handlers with no replay test, and `sampleRequestMachine` has no illegal-transition assertion — a duplicate `advance_stage` replay would double-advance the sample stage that the PP gate (cutting start) reads.
+- [x] **TEST-H4** 9+ modules register pending targets + commit handlers never driven through `approve()` in any test (costing, rfq, finance, quality, sampling, procurement, workforce, cutting; store calls the handler directly). The static registry guard can't catch a handler that inserts the wrong row. Build a shared `proposeApproveCommit` helper + one parameterised test per registered target.
+- [ ] **TEST-H5** 7 of 8 documented k6 scenarios don't exist; `mixed_day` — the declared *release gate* (`docs/06-quality/testing-and-pressure.md:42,56`) — is unsatisfiable; 11.2 owner-dashboard (the other ⚡) has no scenario at all. Prioritise `owner_dashboard` + `store_grn`; add a manually-dispatched load workflow that stores baselines.  ◐ **partly done** — plan 7.1 — `production_burst`, `store_grn` and `owner_dashboard` exist with committed baselines; `cutting_lay`, `qc_inline`, `shipment_pack` and `mixed_day` are not built.
+- [x] **TEST-H6** sampling registers two offline sync handlers with no replay test, and `sampleRequestMachine` has no illegal-transition assertion — a duplicate `advance_stage` replay would double-advance the sample stage that the PP gate (cutting start) reads.
 - [ ] **TEST-H7** shipment (`portStatusMachine`, `packingListMachine`) and cutting machines lack illegal-transition 409 assertions (the second never-skipped test).
-- [ ] **TEST-H8** No frontend tests of any kind against 115 shipped `.tsx` files — no Playwright golden path, no axe-core, no jsdom project; `vitest.config.ts` can't even pick up `.tsx`. Minimum: one Playwright golden-path spec + axe on the five floor screens + jsdom tests for `use-offline-queue.ts` and `inbox-client.tsx`.
+- [x] **TEST-H8** No frontend tests of any kind against 115 shipped `.tsx` files — no Playwright golden path, no axe-core, no jsdom project; `vitest.config.ts` can't even pick up `.tsx`. Minimum: one Playwright golden-path spec + axe on the five floor screens + jsdom tests for `use-offline-queue.ts` and `inbox-client.tsx`.
 
 ### Medium / Low
 
 - [ ] **TEST-M9** Integration harness is not Testcontainers despite three docs/comments saying it is; 36 files share one mutable DB (isolation by convention); `setupFiles: ['dotenv/config']` means a developer's real `DATABASE_URL` is what tests write to. Fix the comments + add a pre-seed company-absence assertion (or adopt Testcontainers for real).
-- [ ] **TEST-M10** No coverage instrumentation, no JUnit reporting, no CI `timeout-minutes` (hung integration suite burns 6h), `verify:phase0` never runs in CI though PROGRESS cites it. Add coverage-v8 with a ratchet floor, timeouts, artifacts, and the verify step.
+- [x] **TEST-M10** No coverage instrumentation, no JUnit reporting, no CI `timeout-minutes` (hung integration suite burns 6h), `verify:phase0` never runs in CI though PROGRESS cites it. Add coverage-v8 with a ratchet floor, timeouts, artifacts, and the verify step.
 - [ ] **TEST-M11** `no-float-money` doesn't cover `src/components/**` or `src/lib/**` — money formatting lives in `fx/`. Extend the glob.
-- [ ] **TEST-L12** `lint` lacks `--max-warnings=0` — warn-level rules from `eslint-config-next` can't fail CI.
+- [x] **TEST-L12** `lint` lacks `--max-warnings=0` — warn-level rules from `eslint-config-next` can't fail CI.
 - [ ] **TEST-L13** `exactOptionalPropertyTypes: false` — the one strictness dial off; `{ note: undefined }` vs "leave column alone" in Drizzle inserts.
 - [ ] **TEST-L14** PROGRESS.md drift: 12 of 23 module rows, X.1 row blank despite shipped module+UI, "Frontend merged" empty everywhere, and STUBS still claims the lint rules don't exist (they do, tested, in CI). Bring the trackers up to date — either direction of drift misleads a go-live call.
 - [ ] **TEST-I15** 3 of 8 documented test levels have no implementation (contract tests, AI evals + golden sets, E2E/a11y/restore drill). Build or relabel as roadmap so the quality doc stops describing the present falsely.
@@ -395,7 +413,7 @@ Also fixed in passing, each surfaced by the conversion rather than the audit: a 
 
 ### Blockers
 
-- [ ] **BE-B1 · Tenancy has only ONE wall — no service adds a `company_id` predicate; a wrong `DATABASE_URL` removes tenancy entirely.**
+- [x] **BE-B1 · Tenancy has only ONE wall — no service adds a `company_id` predicate; a wrong `DATABASE_URL` removes tenancy entirely.**
   Zero `eq(<table>.companyId, ctx.companyId)` predicates in any of the 21 modules (`companyId` appears only in `.values()` on inserts, never in a `WHERE`). RLS policies are `FOR ALL TO fabricxai_app` only; the owner role bypasses them; nothing at runtime asserts which role the pool connected as (checked at setup time only, `scripts/setup-db-roles.mjs:70`). CLAUDE.md rule 2 says RLS is "never the only wall" — today it is. Combined with DB-H1 (compose full-profile runs as owner), this is live.
   **Fix:** boot assertion in `instrumentation.ts` + `worker/index.ts` refusing to start on an owner/BYPASSRLS connection role; add company predicates via a `scoped(tx, table)` helper + lint rule so wall 1 actually exists.
 
@@ -411,34 +429,34 @@ Also fixed in passing, each surfaced by the conversion rather than the audit: a 
   `src/worker/index.ts` never imports `@/modules/registry` (only `instrumentation.ts`, `core/session.ts`, and `/api/sync` do). So in the worker `hasProvider()` is always false → `marbim.run_extractions` skips forever. Worse: the moment a real provider is registered without fixing this import path asymmetry, `resolvePendingSchema` throws `unknown_module`, which is classified non-retryable → **every queued extraction is permanently rejected on first pass** — the exact scenario the provider check exists to prevent.
   **Fix:** `import '@/modules/registry'` in `worker/index.ts` + assert `listModules().length > 0` in `main()`; make registry/config `AppError`s retryable rather than terminal in `runExtraction`.
 
-- [ ] **BE-B5 · The rule-10 "audit interceptor" is not an interceptor — `registerAuditedTables` is write-only dead code, and `lcs` (named in the rule) is neither registered nor audited on create.**
+- [x] **BE-B5 · The rule-10 "audit interceptor" is not an interceptor — `registerAuditedTables` is write-only dead code, and `lcs` (named in the rule) is neither registered nor audited on create.**
   `isAudited`/`listAuditedTables` have zero callers. `commercial` registers only `uds`/`ud_consumptions`; `createLc` (`commercial/service.ts:1352-1377`) inserts an LC with no `recordChange`.
   **Fix:** register `lcs`/`btb_lcs`/`lc_amendments` + add `recordChange` to `createLc` now; then make the registry enforcing (test iterating `listAuditedTables()`, or a per-table trigger raising when `audit_log` has no row for the current xid — pairs with DB-M6).
 
-- [ ] **BE-B6 · Five modules have no write surface at all — orders, rfq, planning, production, cutting are not operable over HTTP** (`src/app/actions/` holds only `.gitkeep`; production is reachable only via `/api/sync`; cutting likewise). This is the backend half of FE-B2/FE-B4 and the reason TEST-B2's k6 scenario can't run.
+- [x] **BE-B6 · Five modules have no write surface at all — orders, rfq, planning, production, cutting are not operable over HTTP** (`src/app/actions/` holds only `.gitkeep`; production is reachable only via `/api/sync`; cutting likewise). This is the backend half of FE-B2/FE-B4 and the reason TEST-B2's k6 scenario can't run.
   **Fix:** ship `actions.ts` for orders/rfq/planning and the two `/api/production/*` routes k6 already targets (thin: getCtx → zod → service).
 
-- [ ] **BE-B7 · `docs/handoffs/` is empty — the stated precondition for all backend work is unmet** (same as PROC-1; consequences enumerated there). Additional concrete fallout found here: `approvals` has **no `register.ts` at all** and is absent from `src/modules/registry.ts` (no domainPrimer, no pending targets, no zod map) — and it's also the only module with zero tests (TEST-B1).
+- [x] **BE-B7 · `docs/handoffs/` is empty — the stated precondition for all backend work is unmet** (same as PROC-1; consequences enumerated there). Additional concrete fallout found here: `approvals` has **no `register.ts` at all** and is absent from `src/modules/registry.ts` (no domainPrimer, no pending targets, no zod map) — and it's also the only module with zero tests (TEST-B1).
 
 ### High
 
-- [ ] **BE-H1 · Rule-1 lint guard misses the real action layer.** The `no-restricted-imports` ban on `@/db/client` covers `src/app/actions/**` (empty) and `src/app/api/**` — not `src/modules/*/actions.ts`, where the 16 real `'use server'` files live. Already exercised: `shipment/actions.ts:162-172` runs its own drizzle query in the action. Extend the glob; move the carton query into the service.
-- [ ] **BE-H2 · `GATES.lcLatestShipment` is declared and never enforced.** Ex-factory computes LC conflicts, records the count, and blocks nothing — a container can leave after the credit's latest-shipment date with no server-side objection (that's the bank refusing the presentation later). Implement as a real waivable gate in `confirmExFactory`, or formally demote it to an alert in CLAUDE.md + STUBS.
-- [ ] **BE-H3 · Gate `facts` never survive the server-action boundary** — Next serializes only `Error.message`, so "UD short by 340 m of 1,200 m" degrades to a bare i18n key for all 7 gates (`src/lib/action-error.ts:5-19` documents this). Return typed `{ok:false, error: AppError.toJSON()}` results for `gate_blocked`/`illegal_transition` instead of throwing.
+- [x] **BE-H1 · Rule-1 lint guard misses the real action layer.** The `no-restricted-imports` ban on `@/db/client` covers `src/app/actions/**` (empty) and `src/app/api/**` — not `src/modules/*/actions.ts`, where the 16 real `'use server'` files live. Already exercised: `shipment/actions.ts:162-172` runs its own drizzle query in the action. Extend the glob; move the carton query into the service.
+- [x] **BE-H2 · `GATES.lcLatestShipment` is declared and never enforced.** Ex-factory computes LC conflicts, records the count, and blocks nothing — a container can leave after the credit's latest-shipment date with no server-side objection (that's the bank refusing the presentation later). Implement as a real waivable gate in `confirmExFactory`, or formally demote it to an alert in CLAUDE.md + STUBS.
+- [ ] **BE-H3 · Gate `facts` never survive the server-action boundary** — Next serializes only `Error.message`, so "UD short by 340 m of 1,200 m" degrades to a bare i18n key for all 7 gates (`src/lib/action-error.ts:5-19` documents this). Return typed `{ok:false, error: AppError.toJSON()}` results for `gate_blocked`/`illegal_transition` instead of throwing.  ◐ **partly done** — plan 2.3 — gate copy landed, typed action results owed.
 - [x] **BE-H4 · `/api/sync` has no role authorization** — any authenticated company member (any role) can receive GRNs, **issue bonded stock and draw a UD**, and via `sampling:record_feedback` record the buyer verdict that **opens the PP-approval gate for cutting**. Add a `roles` field to `SyncHandler` registration, enforced in `applyRow` before the offline key is claimed. (Complementary to INFRA-H7's rate limiting.)
 - [ ] **BE-H5 · 46 cross-module reads go through raw schema tables instead of the owner's `queries.ts`** (rule 11): `shipment/service.ts` reads `lcs` five times; `memory/service.ts` reads ten other modules' tables; nothing lints it (`analytics-no-writes` bans `service.ts` imports only, and only in analytics). Add a lint rule banning `modules/<a>` → `modules/<b>/schema` imports; publish named reads owner-by-owner, starting with `commercial.lcs` and `orders`.
-- [ ] **BE-H6 · Three source files contain embedded NUL bytes** (`orders/service.ts`, `cutting/cutting.ts`, `quality/quality.ts` use `\0` as a composite-key separator) — grep/ripgrep treat them as binary and **silently skip them**, which corrupted this audit's own first pass and will corrupt any future codemod/CI grep. Replace with `'␟'` or a guarded two-char sentinel; add a CI check that no tracked `.ts` file contains a NUL.
+- [x] **BE-H6 · Three source files contain embedded NUL bytes** (`orders/service.ts`, `cutting/cutting.ts`, `quality/quality.ts` use `\0` as a composite-key separator) — grep/ripgrep treat them as binary and **silently skip them**, which corrupted this audit's own first pass and will corrupt any future codemod/CI grep. Replace with `'␟'` or a guarded two-char sentinel; add a CI check that no tracked `.ts` file contains a NUL.
 
 ### Medium
 
 - [ ] **BE-M1 · 16 status columns have no state machine and are set by raw updates** — most seriously `uds.status` (a customs declaration lifecycle: `'exhausted'`/`'expired'` set raw), `receivables`/`payables.status` (finance has zero machine asserts), `rolls.status`, `purchase_requisitions.status`, `wage_gazettes.status`, `tna_milestones.status`, `extraction_jobs.status`, etc. Add machines (or document why not) per HANDOFF §6 as those get written.
 - [ ] **BE-M2 · `lcs.status` never advances past `active`** — no operation/job sets `expired`/`closed`, yet `detectLcConflicts` reasons over the field. Add an `expireLapsedLcs` scheduled task + machine, or drop the dead enum members.
-- [ ] **BE-M3 · sampling has two write paths for the same operations, one without idempotency** — `moveSampleStage`/`recordBuyerVerdict` server actions call the same services as the registered offline handlers but with no `offlineKey`; a double-submit double-advances the stage that feeds the PP gate. (Quality documents why fabric inspection is action-only; sampling has no such note.) Route through `/api/sync` or claim an offline key in the action.
+- [x] **BE-M3 · sampling has two write paths for the same operations, one without idempotency** — `moveSampleStage`/`recordBuyerVerdict` server actions call the same services as the registered offline handlers but with no `offlineKey`; a double-submit double-advances the stage that feeds the PP gate. (Quality documents why fabric inspection is action-only; sampling has no such note.) Route through `/api/sync` or claim an offline key in the action.
 - [ ] **BE-M4 · Payroll reads only partially audited** — `recordRead` called in 1 of 4 gated read paths (`getPayrollLines`); `activeGazette`, `payrollRunList` and the third `queries.ts` path gate but never audit. Rule 9 says reads are audited.
 - [x] **BE-M5 · Two queues receive routed jobs with no worker attached** (same finding as INFRA-B6, from the routing side): `renderPdf` has no processor and no completes-gracefully fallback like `derive-router` has. Remove the routes or attach a stub worker until the PDF pipeline lands.
 - [ ] **BE-M6 · Server components read through `service.ts` instead of `queries.ts`** in 9+ pages (`store/issue`, `ud/[udId]`, `cutting/lay`, 7 pages importing `companyProfile` from settings **service** — settings has no `queries.ts`). Re-export as named reads on `queries.ts`; extend the H5 lint to ban `src/app/**` → `modules/*/service`.
 - [ ] **BE-M7 · `/api/health` unauthenticated + echoes raw dependency error strings** (same as INFRA-M1; also the one route exempted from the db-import ban, which compounds it). Split public status-only vs authenticated detail.
-- [ ] **BE-M8 · `Money` type largely unadopted: `toMinor`/`fromMinor` reimplemented ~14 times** — finance, commercial, procurement, rfq, shipment, store all import `lib/money` zero times and carry private scaled-BigInt copies. Arithmetic is exact today, but "every amount carries currency" is structurally impossible with bare strings, and a rounding-convention change has 14 places to miss. Sanction `lib/money.ts`+`lib/quantity.ts` only; lint-ban local re-implementations; convert finance first.
+- [ ] **BE-M8 · `Money` type largely unadopted: `toMinor`/`fromMinor` reimplemented ~14 times** — finance, commercial, procurement, rfq, shipment, store all import `lib/money` zero times and carry private scaled-BigInt copies. Arithmetic is exact today, but "every amount carries currency" is structurally impossible with bare strings, and a rounding-convention change has 14 places to miss. Sanction `lib/money.ts`+`lib/quantity.ts` only; lint-ban local re-implementations; convert finance first.  ◐ **partly done** — plan 2.9 — 10 of 20 files converted; the costing precision bug it found is fixed.
 
 ### Low
 

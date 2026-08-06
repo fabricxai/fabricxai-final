@@ -25,7 +25,7 @@ import { join } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
-const TRACKERS = ['docs/STUBS.md', 'docs/PROGRESS.md'] as const
+const TRACKERS = ['docs/STUBS.md', 'docs/PROGRESS.md', 'docs/DEPLOYMENT-READINESS-AUDIT.md'] as const
 
 /** Every source file in the repo, as a path list, for suffix resolution. */
 function tree(dir: string, out: string[] = []): string[] {
@@ -47,7 +47,10 @@ const FILES = tree('src').concat(
   tree('scripts'),
   tree('k6'),
   tree('docs'),
-  ['eslint.config.mjs'],
+  // Root config the trackers cite by name. Not a tree walk: the repo root holds lockfiles
+  // and dotfiles that would make the citation check meaningless.
+  ['eslint.config.mjs', 'vitest.config.ts', 'vitest.jsdom.config.ts',
+   'vitest.integration.config.ts', 'playwright.config.ts', 'next.config.ts', 'Dockerfile'],
 )
 
 /**
@@ -115,6 +118,11 @@ const PLANNED = new Set([
   'cutting_lay.js',
   'qc_inline.js',
   'shipment_pack.js',
+  // The audit PROPOSED next-intl. The project chose the existing resolver instead and the
+  // catalogues live in `lib/i18n-ui.ts`, so these two were never created — the audit cites
+  // them as a recommendation, not as a fact about the tree.
+  'messages/en.json',
+  'messages/bn.json',
 ])
 
 describe('every file the trackers cite exists', () => {
@@ -235,5 +243,71 @@ describe('the trackers are not stale on their face', () => {
     const undated = rows.filter((row) => !/\d{4}-\d{2}-\d{2}/.test(row))
 
     expect(undated.map((row) => row.slice(0, 70)), 'rows with no date').toEqual([])
+  })
+})
+
+/**
+ * The audit cannot contradict its own fix log.
+ *
+ * `DEPLOYMENT-READINESS-AUDIT.md` has two halves: a **fix log** recording what was closed and
+ * when, and the **itemised findings** with checkboxes. They drifted apart — on 2026-08-07,
+ * twenty-eight findings the log recorded as complete were still sitting unticked below,
+ * `INFRA-B2` among them, which is a deployment BLOCKER that had been done for four days.
+ *
+ * Somebody reading the checkboxes for go/no-go would have chased a fortnight of resolved
+ * work. That is the same failure `STUBS.md` had in plan 0.5, in a file nobody thought to
+ * check because it looks like a historical record rather than a live tracker.
+ *
+ * The two exceptions are declared, not inferred: a finding whose fix is PARTIAL stays
+ * unticked and carries a ◐ marker saying what remains. Requiring that marker is what stops
+ * "partial" being used to park a finding indefinitely.
+ */
+describe('the audit agrees with itself', () => {
+  const AUDIT = 'docs/DEPLOYMENT-READINESS-AUDIT.md'
+  const FINDING = /\b((?:INFRA|DB|BE|FE|AI|TEST|PROC)-[BHML]\d+)\b/g
+
+  const audit = readFileSync(AUDIT, 'utf8')
+  const fixLog = audit.slice(audit.indexOf('## Fix log'), audit.indexOf('### Still open'))
+  const logged = new Set([...fixLog.matchAll(FINDING)].map((m) => m[1]!))
+
+  /** `- [ ] **ID …` — a finding the itemised sections still show as open. */
+  const untickedLines = audit
+    .split('\n')
+    .filter((line) => /^- \[ \] \*\*(?:INFRA|DB|BE|FE|AI|TEST|PROC)-[BHML]\d+/.test(line))
+
+  it('ticks every finding its own fix log says is closed', () => {
+    const contradictions = untickedLines
+      .filter((line) => {
+        const id = FINDING.exec(line)?.[1]
+        FINDING.lastIndex = 0
+        // A ◐ marker is the declared exception: partly done, and it says what remains.
+        return id && logged.has(id) && !line.includes('◐')
+      })
+      .map((line) => line.slice(0, 90))
+
+    expect(
+      contradictions,
+      `these are in the fix log AND unticked below. Somebody reading the checkboxes for ` +
+        `go/no-go would chase work that is already done:\n${contradictions.join('\n')}`,
+    ).toEqual([])
+  })
+
+  it('makes every partial say what is left', () => {
+    // "◐ partly done" with no explanation is a way to park a finding forever.
+    const bare = untickedLines
+      .filter((line) => line.includes('◐') && !/partly done\*\* — .{20,}/.test(line))
+      .map((line) => line.slice(0, 90))
+
+    expect(bare, 'a ◐ marker must name what remains').toEqual([])
+  })
+
+  it('has a fix log and findings to compare at all', () => {
+    // Guards the guard: a rename of either section would make both checks above pass over
+    // nothing, silently and forever.
+    expect(logged.size, 'no findings parsed from the fix log').toBeGreaterThan(20)
+    expect(
+      audit.split('\n').filter((l) => /^- \[x\] \*\*(?:INFRA|DB)/.test(l)).length,
+      'no ticked findings parsed',
+    ).toBeGreaterThan(10)
   })
 })
