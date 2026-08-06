@@ -1,0 +1,2 @@
+ALTER TABLE "sample_feedback_rounds" ADD COLUMN "offline_key" text;--> statement-breakpoint
+CREATE UNIQUE INDEX "sample_feedback_rounds_offline_key" ON "sample_feedback_rounds" USING btree ("company_id","offline_key") WHERE offline_key IS NOT NULL;

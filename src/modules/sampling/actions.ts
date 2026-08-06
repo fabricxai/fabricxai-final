@@ -64,12 +64,23 @@ export async function moveSampleStage(input: {
  *
  * Comments are itemised. A rejection with no readable comment is a sample nobody can remake
  * correctly, and "rejected" on its own sends a sampling room guessing for a week.
+ *
+ * **`offlineKey` is the client's, and it matters here more than anywhere else in this
+ * module** (audit BE-M3). This action and the `record_feedback` sync handler call the same
+ * service; the handler carried an idempotency key and the action did not. A submit retried
+ * by the browser — a dropped response, a double tap on a tablet — wrote a SECOND round with
+ * the same words, and the round in force is whichever is latest. One buyer email became a
+ * two-round history, and a merchandiser reading "round 2" concluded the buyer had come back.
+ *
+ * Optional rather than required so a caller that has no key still works; the screen supplies
+ * one per composed verdict and rotates it once the round lands.
  */
 export async function recordBuyerVerdict(input: {
   sampleRequestId: string
   verdict: 'approved' | 'approved_with_comments' | 'rejected'
   comments: { area: string; comment: string }[]
   recordedOn: string
+  offlineKey?: string
 }): Promise<{ round: number; releasesCutting: boolean }> {
   const ctx = await requireRole(await headers(), 'merchandiser')
   const result = await recordFeedback(ctx, input)

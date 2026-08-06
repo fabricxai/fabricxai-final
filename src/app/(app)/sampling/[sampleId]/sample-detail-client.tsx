@@ -85,6 +85,16 @@ export function SampleDetailClient({
   const [comment, setComment] = useState('')
   const [comments, setComments] = useState<{ area: string; comment: string }[]>([])
 
+  /*
+   * One key per verdict being composed (audit BE-M3).
+   *
+   * The server refuses to number a second round for a key it has already seen, so a dropped
+   * response or a double tap returns the round that landed instead of inventing another. It
+   * rotates only once a round is successfully recorded — a retry after a failure has to
+   * reuse the same key, which is the entire point.
+   */
+  const [verdictKey, setVerdictKey] = useState(() => crypto.randomUUID())
+
   const [courier, setCourier] = useState('DHL')
   const [awb, setAwb] = useState('')
 
@@ -284,8 +294,10 @@ export function SampleDetailClient({
                     verdict: verdict as 'approved' | 'approved_with_comments' | 'rejected',
                     comments,
                     recordedOn: factoryToday(),
+                    offlineKey: verdictKey,
                   })
                   setComments([])
+                  setVerdictKey(crypto.randomUUID())
                   return r.releasesCutting
                     ? `Round ${r.round} recorded — cutting is released.`
                     : `Round ${r.round} recorded — cutting stays blocked.`

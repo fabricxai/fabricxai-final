@@ -78,6 +78,12 @@ export const feedbackRoundPayload = z.object({
   comments: z.array(buyerComment).default([]),
   recordedOn: isoDate,
   documentId: z.string().uuid().optional(),
+  /**
+   * The client's idempotency key (audit BE-M3). Optional because a round drafted through
+   * the approve inbox has no client behind it — a reviewer clicking approve is already
+   * protected by the draft's own status lock.
+   */
+  offlineKey: z.string().min(1).max(120).optional(),
 })
 
 export const sampleCostPayload = z.object({

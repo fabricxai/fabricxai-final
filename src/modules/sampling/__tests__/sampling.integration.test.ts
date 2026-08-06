@@ -21,6 +21,7 @@ import { createDirectClient, createDirectDb } from '@/db/direct'
 import { companies, users } from '@/db/schema/core'
 import { buyers } from '@/modules/buyers/schema'
 import type { RequestCtx } from '@/modules/core/ctx'
+import { syncBatch } from '@/modules/core/offline-sync'
 import { withTenantRead } from '@/modules/core/tenancy'
 import { grnLines, grns, issueLines, issues, items, locations, rolls } from '@/modules/store/schema'
 import { createLay, createMarker } from '@/modules/cutting/service'
@@ -29,7 +30,7 @@ import { orderBreakdowns, orders, orderStyles, tnaMilestones } from '@/modules/o
 // Importing this module is what registers the PP provider — see the last describe block.
 import '@/modules/sampling/register'
 import { seedApprovedPpSample } from '@/modules/sampling/demo'
-import { sampleFeedbackRounds, sampleRequests } from '@/modules/sampling/schema'
+import { sampleFeedbackRounds, sampleRequests, sampleStageEvents } from '@/modules/sampling/schema'
 import {
   addSampleCost,
   advanceStage,
@@ -539,5 +540,188 @@ describe('1.4 · tenancy', () => {
 
     const gate = await checkPpApprovalFor(ctx, { orderId, orderStyleId })
     expect(gate.passed).toBe(false)
+  })
+})
+
+describe('1.4 · offline replay is a no-op (audit TEST-H7, BE-M3)', () => {
+  /*
+   * The sample room runs on a tablet, and a tablet on a bad network sends its queue more
+   * than once. Both of this module's sync handlers were unexercised, and the two failures
+   * are not the same shape.
+   *
+   * A replayed `advance_stage` would move a sample past a stage it never left — and the PP
+   * gate reads that history. A replayed `record_feedback` is worse: rounds are NUMBERED and
+   * the latest one is the verdict in force, so a duplicate becomes round 2 saying whatever
+   * round 1 said. One buyer email, two rounds, and a merchandiser who now believes the
+   * buyer came back.
+   */
+  it('a tablet resending an advance does not move the sample twice', async () => {
+    await clearSamples()
+    const { sampleRequestId } = await newPp()
+    const offlineKey = `stage-${randomUUID()}`
+
+    const batch = [
+      {
+        offlineKey,
+        moduleId: 'sampling',
+        operation: 'advance_stage',
+        payload: { sampleRequestId, stage: 'pattern' },
+      },
+    ]
+
+    const first = await syncBatch(ctx, batch)
+    expect(first[0]?.status).toBe('applied')
+
+    // The network dropped before the device saw the response; it sends the batch again.
+    const replay = await syncBatch(ctx, batch)
+    expect(replay[0]?.status).toBe('duplicate')
+    expect((replay[0] as { rowId: string }).rowId).toBe(sampleRequestId)
+
+    const events = await db
+      .select()
+      .from(sampleStageEvents)
+      .where(eq(sampleStageEvents.sampleRequestId, sampleRequestId))
+
+    expect(events).toHaveLength(1)
+    // The key is on the business row, not only in the sync ledger — a merchandiser
+    // reconciling a tablet looks at the sample, not at an internal table.
+    expect(events[0]?.offlineKey).toBe(offlineKey)
+  })
+
+  it('refuses a second advance to the same stage even under a fresh key', async () => {
+    // The device that cleared its queue and regenerated keys. The ledger cannot help here;
+    // the "must move forward" rule is what stops the history gaining a duplicate.
+    await clearSamples()
+    const { sampleRequestId } = await newPp()
+
+    const send = (key: string) =>
+      syncBatch(ctx, [
+        {
+          offlineKey: key,
+          moduleId: 'sampling',
+          operation: 'advance_stage',
+          payload: { sampleRequestId, stage: 'pattern' },
+        },
+      ])
+
+    expect((await send(`a-${randomUUID()}`))[0]?.status).toBe('applied')
+
+    const second = await send(`b-${randomUUID()}`)
+    expect(second[0]?.status).toBe('rejected')
+    expect((second[0] as { errorKey: string }).errorKey).toBe('sampling.errors.stage_not_forward')
+
+    const events = await db
+      .select()
+      .from(sampleStageEvents)
+      .where(eq(sampleStageEvents.sampleRequestId, sampleRequestId))
+    expect(events).toHaveLength(1)
+  })
+
+  it('a resent verdict does not become a second round', async () => {
+    await clearSamples()
+    const { sampleRequestId } = await newPp()
+    const offlineKey = `verdict-${randomUUID()}`
+
+    const batch = [
+      {
+        offlineKey,
+        moduleId: 'sampling',
+        operation: 'record_feedback',
+        payload: {
+          sampleRequestId,
+          verdict: 'approved',
+          comments: [],
+          recordedOn: TODAY,
+        },
+      },
+    ]
+
+    const first = await syncBatch(ctx, batch)
+    expect(first[0]?.status).toBe('applied')
+
+    const replay = await syncBatch(ctx, batch)
+    expect(replay[0]?.status).toBe('duplicate')
+
+    const rounds = await db
+      .select()
+      .from(sampleFeedbackRounds)
+      .where(eq(sampleFeedbackRounds.sampleRequestId, sampleRequestId))
+
+    expect(rounds).toHaveLength(1)
+    expect(rounds[0]?.round).toBe(1)
+    expect(rounds[0]?.offlineKey).toBe(offlineKey)
+  })
+
+  it('a retried desk submit returns the round that landed rather than numbering another', async () => {
+    /*
+     * BE-M3, and the reason the column exists.
+     *
+     * The action and the sync handler call the same service; the handler carried a key and
+     * the action did not. So a browser retrying a submit — a dropped response, a double tap
+     * — wrote round 2 with the same words, and the round in force is whichever is latest.
+     * This goes through the SERVICE, not through syncBatch, because the sync ledger is not
+     * what protects the desk.
+     */
+    await clearSamples()
+    const { sampleRequestId } = await newPp()
+    const offlineKey = `desk-${randomUUID()}`
+
+    const submit = () =>
+      recordFeedback(ctx, {
+        sampleRequestId,
+        verdict: 'approved_with_comments',
+        comments: [{ area: 'collar', comment: 'ease the neckline by 2mm' }],
+        recordedOn: TODAY,
+        offlineKey,
+      })
+
+    const first = await submit()
+    const again = await submit()
+
+    expect(again.roundId).toBe(first.roundId)
+    expect(again.round).toBe(1)
+
+    const rounds = await db
+      .select()
+      .from(sampleFeedbackRounds)
+      .where(eq(sampleFeedbackRounds.sampleRequestId, sampleRequestId))
+    expect(rounds).toHaveLength(1)
+
+    // And the retry says nothing downstream. Re-emitting would tell the cutting floor a
+    // second time that it may start, for a verdict it has already been told about.
+    const emitted = await db.execute<{ n: string }>(
+      sql`select count(*)::text as n from outbox
+          where company_id = ${COMPANY}
+            and event_name = 'sampling.feedback.recorded'
+            and aggregate_id = ${sampleRequestId}`,
+    )
+    expect(Number(emitted[0]!.n)).toBe(1)
+  })
+
+  it('still numbers a genuinely new round under a new key', async () => {
+    // The guard must not swallow real second rounds — a buyer who approves, sees the
+    // corrected sample and rejects has withdrawn the approval, and that is the whole
+    // reason the gate reads the latest round.
+    await clearSamples()
+    const { sampleRequestId } = await newPp()
+
+    await recordFeedback(ctx, {
+      sampleRequestId,
+      verdict: 'approved',
+      comments: [],
+      recordedOn: TODAY,
+      offlineKey: `r1-${randomUUID()}`,
+    })
+
+    const second = await recordFeedback(ctx, {
+      sampleRequestId,
+      verdict: 'rejected',
+      comments: [{ area: 'fit', comment: 'sleeve length short' }],
+      recordedOn: TODAY,
+      offlineKey: `r2-${randomUUID()}`,
+    })
+
+    expect(second.round).toBe(2)
+    expect(second.ppGateOpen).toBe(false)
   })
 })

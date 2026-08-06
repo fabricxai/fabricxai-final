@@ -526,6 +526,13 @@
       "when": 1785963371039,
       "tag": "0074_wandering_ezekiel_stane",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1785999959416,
+      "tag": "0075_wise_yellow_claw",
+      "breakpoints": true
     }
   ]
 }

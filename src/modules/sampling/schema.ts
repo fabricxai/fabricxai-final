@@ -189,6 +189,19 @@ export const sampleFeedbackRounds = pgTable(
     recordedOn: date('recorded_on').notNull(),
     documentId: uuid('document_id').references(() => documents.id, { onDelete: 'set null' }),
 
+    /**
+     * The client's idempotency key for this verdict (audit BE-M3).
+     *
+     * `sample_stage_events` has carried one since 5.1; this table did not, and the two are
+     * written by the same pair of paths — a sync handler and a server action. Advancing a
+     * stage twice is caught anyway by the (request, stage) index above it. Recording a
+     * verdict twice was not caught by anything: it produced a SECOND round with the same
+     * words, and the round in force is whichever is latest. So a retried submit turned one
+     * buyer email into a two-round history, and a merchandiser reading "round 2" concluded
+     * the buyer had come back.
+     */
+    offlineKey: text('offline_key'),
+
     createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -196,6 +209,11 @@ export const sampleFeedbackRounds = pgTable(
     // The uniqueness the gate's "latest round" depends on. Two round 2s would make the
     // verdict in force a question of row order.
     uniqueIndex('sample_feedback_rounds_request_round_key').on(t.sampleRequestId, t.round),
+    // Same shape every other offline-keyed table uses. The service checks first and returns
+    // the original round; this is the wall for two requests racing past that check.
+    uniqueIndex('sample_feedback_rounds_offline_key')
+      .on(t.companyId, t.offlineKey)
+      .where(sql`offline_key IS NOT NULL`),
     index('sample_feedback_rounds_company_request_idx').on(t.companyId, t.sampleRequestId),
     check('sample_feedback_rounds_round_positive', sql`${t.round} >= 1`),
   ],

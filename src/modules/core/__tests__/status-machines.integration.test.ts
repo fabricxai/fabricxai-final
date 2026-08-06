@@ -13,6 +13,7 @@ import { describe, expect, it } from 'vitest'
 
 import { udMachine } from '@/modules/commercial/service'
 import { payableMachine, receivableMachine } from '@/modules/finance/service'
+import { packingListMachine } from '@/modules/shipment/service'
 import { rollMachine } from '@/modules/store/service'
 import { gazetteMachine } from '@/modules/workforce/service'
 
@@ -88,5 +89,36 @@ describe('receivables and payables — settled means settled', () => {
     illegal(() => receivableMachine.assert('written_off', 'realized'))
     illegal(() => payableMachine.assert('paid', 'part_paid'))
     illegal(() => payableMachine.assert('cancelled', 'open'))
+  })
+})
+
+describe('packing_lists.status — what the bank is shown', () => {
+  it('approves a draft and lets a later version supersede it', () => {
+    expect(() => packingListMachine.assert('draft', 'approved')).not.toThrow()
+    expect(() => packingListMachine.assert('approved', 'superseded')).not.toThrow()
+    // A draft can be superseded before anybody signs it — repacking happens.
+    expect(() => packingListMachine.assert('draft', 'superseded')).not.toThrow()
+  })
+
+  it('refuses to approve the same list twice', () => {
+    // Approval LOCKS the list and supersedes the versions before it. Re-approving would
+    // re-run that supersede pass against a set that has already moved, and the count it
+    // reports — which is what the screen tells the user — would be a second, smaller lie.
+    illegal(() => packingListMachine.assert('approved', 'approved'))
+  })
+
+  it('refuses to unapprove, and refuses to revive a superseded list', () => {
+    /*
+     * The document the bank is shown. An approved packing list is the one presented against
+     * the credit, and moving it back to draft would let the grid change underneath a
+     * document that has already left the building — with the audit trail saying it was
+     * approved the whole time.
+     *
+     * Superseded is the same fact from the other end: that version was replaced, and a
+     * replaced list coming back means two documents claim to describe one container.
+     */
+    illegal(() => packingListMachine.assert('approved', 'draft'))
+    illegal(() => packingListMachine.assert('superseded', 'draft'))
+    illegal(() => packingListMachine.assert('superseded', 'approved'))
   })
 })

@@ -107,7 +107,11 @@ registerSyncHandler('sampling', 'advance_stage', { roles: ['merchandiser'] }, as
 })
 
 registerSyncHandler('sampling', 'record_feedback', { roles: ['merchandiser'] }, async (ctx, tx, row) => {
-  const payload = feedbackRoundPayload.parse(row.payload)
+  // The key goes onto the ROW, not just into the sync ledger (audit BE-M3). A storekeeper
+  // or merchandiser reconciling a tablet looks at the verdict, not at an internal table, so
+  // the key has to be visible where they are looking — and it is what makes a resend return
+  // the original round instead of numbering a second one.
+  const payload = feedbackRoundPayload.parse({ ...row.payload, offlineKey: row.offlineKey })
   const result = await offlineRecordFeedback(ctx, tx, payload)
   return { rowId: result.roundId }
 })

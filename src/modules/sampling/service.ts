@@ -514,6 +514,40 @@ async function recordFeedbackIn(
     throw conflict('sampling.errors.request_closed', { sampleRequestId: request.id })
   }
 
+  /*
+   * A resend is not a second round (audit BE-M3).
+   *
+   * Checked under the request's row lock taken above, so two requests carrying the same key
+   * cannot both pass it. The unique index is the wall behind this; this is what turns a
+   * duplicate into the ORIGINAL answer rather than an error — a device replaying its queue
+   * and a browser retrying a submit both need to be told what actually landed, not that
+   * something went wrong.
+   *
+   * Deliberately returns the existing round unchanged and emits nothing. Re-emitting
+   * `feedback.recorded` would re-open the PP gate notification for a verdict already acted
+   * on, which is the cutting floor being told twice that it may start.
+   */
+  if (payload.offlineKey) {
+    const [already] = await tx
+      .select()
+      .from(sampleFeedbackRounds)
+      .where(
+        and(
+          eq(sampleFeedbackRounds.companyId, ctx.companyId),
+          eq(sampleFeedbackRounds.offlineKey, payload.offlineKey),
+        ),
+      )
+
+    if (already) {
+      return {
+        roundId: already.id,
+        round: already.round,
+        ppGateOpen: request.type === 'pp' && already.verdict !== 'rejected',
+        requestStatus: request.status as SampleRequestStatus,
+      }
+    }
+  }
+
   const before = await loadRounds(tx, request.id)
   const wasOpen =
     request.type === 'pp' &&
@@ -544,6 +578,7 @@ async function recordFeedbackIn(
       comments: payload.comments,
       recordedOn: payload.recordedOn,
       documentId: payload.documentId ?? null,
+      offlineKey: payload.offlineKey ?? null,
       createdBy: ctx.userId,
     })
     .returning({ id: sampleFeedbackRounds.id })
