@@ -25,7 +25,11 @@ Next.js 16 (app router, server actions) + Drizzle + PostgreSQL 16 + Redis/BullMQ
 - `pnpm demo [orders|rfqs|leads]` — the screen-walkthrough scenario, through the
   real services; idempotent, so re-running it is safe. Set `DEMO_COMPANY_ID` when
   more than one company has an owner.
-- `pnpm k6 <scenario>` — load scenarios in `k6/`
+- `pnpm k6 <scenario>` — load scenarios in `k6/` (`production_burst`, `store_grn`,
+  `owner_dashboard`). The harness seeds identities, signs them in, runs k6 and asserts the
+  row invariants; baselines live in `k6/baselines/`. Measure against a **production build**
+  (`pnpm build && MARBIM_MOCK=false pnpm start`) — `next dev` is ~10× slower and the mode is
+  recorded in the baseline so a cross-mode comparison is refused.
 
 ## Architecture rules (violations = PR rejected)
 1. Layers: `app/actions|api` (thin: auth → zod → service) → `modules/<m>/service.ts`

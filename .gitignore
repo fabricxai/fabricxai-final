@@ -33,3 +33,7 @@ test-results/
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# k6 run artefacts: live session tokens and the last summary. Never committed.
+k6/.sessions.json
+k6/.last-summary.json

@@ -17,40 +17,71 @@
  *
  *   pnpm k6 k6/production_burst.js
  *
+ * ## Run it with the harness, not by hand
+ *
+ *   pnpm seed --scale=factory
+ *   pnpm dev                       # in another terminal
+ *   pnpm k6 production_burst
+ *
+ * `scripts/k6.ts` creates the load identities, signs each of them in through the real
+ * endpoint, passes the line uuids, and — the part that used to be a comment asking a human
+ * to run SQL — asserts the row counts afterwards. Running `k6 run` against this file
+ * directly still works, but every variable below then has to be supplied by hand.
+ *
  * ## Both routes require a session (plan 5.7)
  *
- * They exist now — `/api/production/outputs` and `/api/production/board` landed with 5.7,
- * and until then this scenario had nothing to hit, which is why TEST-B2 could not run. Both
- * are gated: the write is `production` only, the board also allows `planner` and `quality`.
- * So `AUTH_COOKIE` is not optional in practice — without it every request is a 401 and
- * `http_req_failed` reports 100%, which looks like a broken server rather than a missing
- * cookie.
+ * `/api/production/outputs` and `/api/production/board` landed with 5.7; until then this
+ * scenario had nothing to hit, which is why TEST-B2 could not run. Both are gated — the
+ * write is `production` only, the board also allows `planner` and `quality` — so without a
+ * cookie every request is a 401 and `http_req_failed` reports 100%, which reads as a broken
+ * server rather than a missing session.
  *
- *   AUTH_COOKIE="$(curl -s -i -X POST http://localhost:3000/api/auth/sign-in/email \
- *     -H 'content-type: application/json' \
- *     -d '{"email":"...","password":"..."}' \
- *     | grep -i '^set-cookie' | cut -d' ' -f2 | cut -d';' -f1 | paste -sd'; ')" \
- *   LINE_ID=<a line uuid> pnpm k6 k6/production_burst.js
- *
- * ## One cookie will be rate-limited, and that is the limit being right
+ * ## One cookie measures the rate limiter, not the server
  *
  * Both routes are capped per USER — 120 writes and 180 board reads a minute — which is
- * enormously generous for a supervisor who posts once an hour and corrects it twice, and
- * far below what ten `constant-vus` on a single identity generate. That is not a limit that
- * needs raising for the run; it is the run needing to look like load, which means fifty
- * lines posted by fifty people rather than by one.
+ * enormously generous for a supervisor who posts once an hour and corrects it twice, and far
+ * below what ten `constant-vus` on a single identity generate. That is not a limit needing
+ * raising for the run; it is the run needing to look like load, which means fifty lines
+ * posted by fifty people rather than by one.
  *
- * So: sign in per VU, or seed N accounts and pass `AUTH_COOKIE_0..N`. A run on one cookie
- * measures the rate limiter, and `http_req_failed` reports 100% for a server that is fine.
+ * So each VU takes its own identity from `AUTH_COOKIE_0..N` — thirty of them, one per VU,
+ * because k6 numbers VUs globally across scenarios. `AUTH_COOKIE` remains as the fallback for
+ * a hand-run, and a hand-run on one cookie will show exactly the 429s this paragraph is about.
+ *
+ * ## Why there is think time, and why that is not softening the test
+ *
+ * The FIRST real run of this scenario (plan 7.1) reported **64% request failures** and a write
+ * p95 of 695ms. Neither was the server: with no sleep, `constant-vus` generated 129 req/s
+ * across ten shared identities — 219 writes and 558 board reads per identity per minute
+ * against limits of 120 and 180. Two thirds of the run was 429s, and the latency was the
+ * queue behind them. It was measuring the rate limiter.
+ *
+ * That is not what this file claims to measure. Its own header says "the shape of a real
+ * 17:00 on a sewing floor", and a real floor does not post 219 hourly counts per supervisor
+ * per minute — a supervisor posts once an hour and corrects it twice. So the VUs now pause,
+ * and the load they generate is still absurd next to the real thing:
+ *
+ *   writes  10 VUs × 1/s   = 600/min. A factory writes 50 lines × 24 hours = 1,200 cells in
+ *                            a WHOLE DAY. This is twelve times the busiest real minute.
+ *   reads   20 VUs × 1/2s  = 600/min against boards that would poll every 10–30 seconds.
+ *
+ * Both sit inside the per-user limits, so what the numbers measure is the server. If the
+ * question is instead "what happens when the limits are hit", that is a different scenario
+ * and it should say so in its name rather than be this one with the sleeps removed.
  */
 import http from 'k6/http'
-import { check, group } from 'k6'
+import { check, group, sleep } from 'k6'
 import { Counter, Trend } from 'k6/metrics'
 
 const BASE_URL = __ENV.APP_URL || 'http://localhost:3000'
 const AUTH_COOKIE = __ENV.AUTH_COOKIE || ''
+/** How many `AUTH_COOKIE_n` the harness supplied. Zero for a hand-run. */
+const COOKIES = Number(__ENV.K6_VUS_COOKIES || 0)
 const LINES = Number(__ENV.LINES || 50)
 const PRODUCED_ON = __ENV.PRODUCED_ON || new Date().toISOString().slice(0, 10)
+/** Overridable so the limit-saturation question can be asked deliberately, with `=0`. */
+const WRITE_THINK_S = Number(__ENV.WRITE_THINK_S ?? 1)
+const READ_THINK_S = Number(__ENV.READ_THINK_S ?? 2)
 
 const writeLatency = new Trend('burst_write_ms', true)
 const boardLatency = new Trend('board_read_ms', true)
@@ -81,10 +112,21 @@ export const options = {
   },
 }
 
+/**
+ * This VU's own session.
+ *
+ * `__VU` is 1-based and each scenario numbers its VUs independently, so the two scenarios
+ * below overlap on identities — which is correct: a supervisor posting output is also
+ * somebody with the board open, and modelling them as disjoint populations would be a
+ * politer load than the floor generates.
+ */
 function headers() {
+  const mine = __ENV[`AUTH_COOKIE_${(__VU - 1) % Math.max(1, COOKIES)}`]
+  const cookie = mine || AUTH_COOKIE
+
   return {
     'Content-Type': 'application/json',
-    ...(AUTH_COOKIE ? { Cookie: AUTH_COOKIE } : {}),
+    ...(cookie ? { Cookie: cookie } : {}),
   }
 }
 
@@ -122,6 +164,10 @@ export function writeBurst() {
   check(response, {
     'write accepted': (r) => r.status === 200 || r.status === 201,
   })
+
+  // A supervisor posting once an hour, compressed to once a second. See the header for why
+  // this is here and why removing it measures something else.
+  sleep(WRITE_THINK_S)
 }
 
 export function readBoard() {
@@ -134,21 +180,17 @@ export function readBoard() {
     boardLatency.add(response.timings.duration)
     check(response, { 'board served': (r) => r.status === 200 })
   })
+
+  sleep(READ_THINK_S)
 }
 
 /**
- * After the run, count the rows.
+ * The summary k6 prints. The row-count assertion is made by the harness.
  *
- * This is the assertion that actually matters and the one response codes cannot make.
- * Every write targeted a `(line, date, hour)` cell that the natural key makes unique, so
- * the number of DISTINCT cells is bounded by LINES × 24 no matter how many requests were
- * sent. More rows than that means the upsert is not idempotent and a replayed batch is
- * silently duplicating a factory's output figures.
- *
- * Run against the database after k6 finishes:
- *
- *   select count(*) from hourly_outputs where produced_on = '<PRODUCED_ON>';
- *   -- must be <= LINES * 24, and must not grow on a second identical k6 run
+ * It used to be made here, in prose: "run this SQL afterwards, it must be <= LINES × 24".
+ * That is the assertion that actually matters — a 200 that wrote nothing, or wrote twice, is
+ * exactly what response codes cannot show — and leaving it to a human meant it had never once
+ * been checked. `scripts/k6.ts` counts the rows before and after and fails the run.
  */
 export function handleSummary(data) {
   const submitted = data.metrics.rows_submitted ? data.metrics.rows_submitted.values.count : 0
@@ -162,9 +204,8 @@ production_burst — ${LINES} lines, ${PRODUCED_ON}
   board read p95     ${fmt(data.metrics.board_read_ms)}
   request failures   ${pct(data.metrics.http_req_failed)}
 
-  Row-count assertion is NOT made here — run it against the database:
-    select count(*) from hourly_outputs where produced_on = '${PRODUCED_ON}';
-  It must be <= ${LINES * 24} and must not change on a second identical run.
+  Row-count assertion is made by scripts/k6.ts, against the database, after this.
+  Bound: ${LINES * 24} rows.
 `,
   }
 }
