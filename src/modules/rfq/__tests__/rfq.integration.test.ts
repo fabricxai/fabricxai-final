@@ -23,6 +23,7 @@ import { approveCostSheet, createCostSheet } from '@/modules/costing/service'
 import type { RequestCtx } from '@/modules/core/ctx'
 import { withTenantRead } from '@/modules/core/tenancy'
 import '@/modules/rfq/register'
+import { lossReasonList } from '@/modules/rfq/queries'
 import { lossReasons, quotes, rfqClarifications, rfqs } from '@/modules/rfq/schema'
 import {
   answerClarification,
@@ -329,6 +330,40 @@ describe('1.2 · winning and losing', () => {
     await markLost(ctx, { rfqId, lossReasonCode: 'price' })
     const [rfq] = await db.select().from(rfqs).where(eq(rfqs.id, rfqId))
     expect(rfq!.lossReasonCode).toBe('price')
+  })
+
+  it('the dropdown offers exactly the codes markLost will accept (plan 5.3)', async () => {
+    /*
+     * `lossReasonList` is new, and it exists because nothing read this table — so the one
+     * screen that has to offer the taxonomy had nothing to offer, which is how a required
+     * taxonomy quietly becomes a field somebody types "price" into.
+     *
+     * The two halves have to agree or every recording fails: an option the service refuses
+     * is a dead button, and a code the service accepts but the list omits is a reason
+     * nobody can choose. Asserted as a round trip rather than as two lists side by side.
+     */
+    await reset()
+    const options = await lossReasonList(ctx)
+
+    expect(options.length).toBeGreaterThan(0)
+    for (const option of options) {
+      expect(option.label.trim()).toBeTruthy()
+    }
+
+    for (const option of options) {
+      const { rfqId } = await newRfq()
+      await markLost(ctx, { rfqId, lossReasonCode: option.code })
+
+      const [rfq] = await db.select().from(rfqs).where(eq(rfqs.id, rfqId))
+      expect(rfq!.lossReasonCode).toBe(option.code)
+    }
+  })
+
+  it('offers another company none of ours', async () => {
+    // The dropdown is per tenant. A factory choosing from somebody else's taxonomy would
+    // record a loss against a code its own reports cannot count.
+    const outsider = { companyId: OTHER, userId: USER, roles: ['merchandiser'] as const }
+    expect(await lossReasonList(outsider)).toEqual([])
   })
 })
 

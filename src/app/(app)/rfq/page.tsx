@@ -6,8 +6,13 @@ import { Badge } from '@/components/fx/primitives'
 import { Eyebrow, SectionHeading, StatusLabel } from '@/components/fx/signature'
 import { Ident } from '@/components/fx/format'
 import { PageHeader } from '@/components/shell/page-shell'
+import { canWrite, NAV } from '@/components/shell/nav'
 import { getCtx } from '@/modules/core/session'
-import { board, type RfqRow } from '@/modules/rfq/queries'
+import { companyProfile } from '@/modules/settings/service'
+import { board, lossReasonList, type RfqRow } from '@/modules/rfq/queries'
+
+import { RfqOpener } from './rfq-opener'
+import type { DrawerRfq } from './rfq-drawer'
 import type { RfqPolicy } from '@/modules/rfq/service'
 import { getPolicy } from '@/modules/settings/service'
 
@@ -27,6 +32,31 @@ export default async function RfqPage() {
 
   const policy = await getPolicy<RfqPolicy>(ctx, 'rfq')
   const { groups, overdue } = await board(ctx, { now: new Date() })
+
+  const profile = await companyProfile(ctx)
+  const mayWrite = canWrite(
+    NAV.find((n) => n.id === 'rfq')!,
+    ctx.roles,
+    profile?.factoryType ?? 'woven',
+  )
+  // The taxonomy a loss is recorded against. Read only when it can be used — a read-only
+  // visitor has no dropdown to fill.
+  const lossReasons = mayWrite ? await lossReasonList(ctx) : []
+
+  /** What the drawer needs, from the row the board already holds. */
+  const drawerRfq = (r: RfqRow): DrawerRfq => ({
+    id: r.id,
+    title: r.title,
+    styleCode: r.styleCode,
+    buyerName: r.buyerName,
+    status: r.status,
+    quantity: r.quantity,
+    unit: r.unit,
+    currency: r.currency,
+    targetPrice: r.targetPrice,
+    quote: r.quote,
+    openClarifications: r.openClarifications,
+  })
 
   const live = groups
     .filter((g) => g.status === 'open' || g.status === 'clarifying' || g.status === 'quoted')
@@ -59,7 +89,14 @@ export default async function RfqPage() {
             </SectionHeading>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {[...overdue, ...soon].map((r) => (
-                <UrgentRow key={r.id} rfq={r} staleDays={policy.clarificationStaleDays} />
+                <RfqOpener
+                  key={r.id}
+                  rfq={drawerRfq(r)}
+                  lossReasons={lossReasons}
+                  canWrite={mayWrite}
+                >
+                  <UrgentRow rfq={r} staleDays={policy.clarificationStaleDays} />
+                </RfqOpener>
               ))}
             </div>
           </section>
@@ -107,7 +144,14 @@ export default async function RfqPage() {
                   </div>
 
                   {group.rfqs.map((r) => (
-                    <RfqCard key={r.id} rfq={r} />
+                    <RfqOpener
+                      key={r.id}
+                      rfq={drawerRfq(r)}
+                      lossReasons={lossReasons}
+                      canWrite={mayWrite}
+                    >
+                      <RfqCard rfq={r} />
+                    </RfqOpener>
                   ))}
                 </div>
               ))}

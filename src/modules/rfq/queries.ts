@@ -13,7 +13,7 @@ import { buyers } from '@/modules/buyers/schema'
 import type { AnyCtx } from '@/modules/core/ctx'
 import { withTenantRead } from '@/modules/core/tenancy'
 
-import { quotes, rfqClarifications, rfqs } from './schema'
+import { lossReasons, quotes, rfqClarifications, rfqs } from './schema'
 
 export type RfqStatus = 'open' | 'clarifying' | 'quoted' | 'won' | 'lost' | 'cancelled'
 
@@ -43,8 +43,14 @@ export interface RfqRow {
   status: RfqStatus
   source: string
   lossReasonCode: string | null
-  /** Latest non-superseded quote, if one has been drafted. */
-  quote: { version: number; fobPrice: string; currency: string; status: string } | null
+  /**
+   * Latest non-superseded quote, if one has been drafted.
+   *
+   * Carries its `id` because sending it is an operation ON the quote, not on the RFQ — the
+   * board is where somebody sends from, and without the id the screen would have to re-read
+   * the quote to find out which one it is already showing.
+   */
+  quote: { id: string; version: number; fobPrice: string; currency: string; status: string } | null
   /** Open questions, and which side owes the answer. */
   openClarifications: number
   /** True when the oldest open question is one WE asked and nobody has chased. */
@@ -93,6 +99,7 @@ export async function board(
     const [quoteRows, clarRows] = await Promise.all([
       tx
         .select({
+          id: quotes.id,
           rfqId: quotes.rfqId,
           version: quotes.version,
           fobPrice: quotes.fobPrice,
@@ -125,6 +132,7 @@ export async function board(
         daysToDeadline: r.deadline ? daysBetween(r.deadline, input.now) : null,
         quote: quote
           ? {
+              id: quote.id,
               version: quote.version,
               fobPrice: quote.fobPrice,
               currency: quote.currency,
@@ -152,4 +160,27 @@ export async function board(
     .sort((a, b) => (a.daysToDeadline ?? 0) - (b.daysToDeadline ?? 0))
 
   return { groups, overdue }
+}
+
+/**
+ * The taxonomy a loss is recorded against (plan 5.3).
+ *
+ * `markLost` refuses a code that is not in this table, and deliberately: a free-text reason
+ * cannot be counted, and counting is the entire point of asking. Nothing read the list, so
+ * the one screen that has to offer it had nothing to offer — which is how a required
+ * taxonomy becomes a field somebody types "price" into.
+ */
+export interface LossReasonOption {
+  code: string
+  label: string
+}
+
+export async function lossReasonList(ctx: AnyCtx): Promise<LossReasonOption[]> {
+  return withTenantRead(ctx, (tx) =>
+    tx
+      .select({ code: lossReasons.code, label: lossReasons.label })
+      .from(lossReasons)
+      .where(eq(lossReasons.companyId, ctx.companyId))
+      .orderBy(asc(lossReasons.label)),
+  )
 }

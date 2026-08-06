@@ -366,6 +366,43 @@ export const UI_MESSAGES: Catalogue = {
     'ui.buyers.buyer_code_hint':
       'Short and permanent — every document downstream keys off it.',
 
+    // ── rfq · the quotation write surface (plan 5.3) ──
+    'ui.rfq.action_failed': 'That did not go through.',
+    'ui.rfq.current_quote': 'Quote v{version} · {price} {currency} · {status}',
+    'ui.rfq.draft_quote': 'Quote it',
+    'ui.rfq.draft_quote_body':
+      'The price comes from the APPROVED cost sheet for this style and is frozen onto the quote. Without an approved sheet there is nothing to quote from — a price built on a draft is one nobody signed off.',
+    'ui.rfq.style_code': 'Style code',
+    'ui.rfq.valid_until': 'Valid until',
+    'ui.rfq.draft_it': 'Draft the quote',
+    'ui.rfq.quote_drafted': 'Quote v{version} drafted at {price} — {margin}% margin.',
+    'ui.rfq.quote_drafted_superseding':
+      'Quote v{version} drafted at {price}. {superseded} earlier version(s) superseded — the buyer is holding one of them.',
+    'ui.rfq.send_quote': 'Send it',
+    'ui.rfq.below_floor_reason': 'If it is below the margin floor, why',
+    'ui.rfq.below_floor_hint':
+      'Only an owner or an admin may send below the floor, and the reason travels with the quote. A floor that can be crossed silently is not a floor.',
+    'ui.rfq.send_it': 'Send to the buyer',
+    'ui.rfq.sent': 'Sent.',
+    'ui.rfq.sent_below_floor': 'Sent — below the margin floor, on the record.',
+    'ui.rfq.decide': 'Won or lost',
+    'ui.rfq.decide_body':
+      'Winning hands the latest live quote to the order desk, which turns it into an order, its styles and its schedule.',
+    'ui.rfq.choose_loss_reason': 'Why it was lost',
+    'ui.rfq.no_loss_reasons':
+      'No loss reasons are configured, so a loss cannot be recorded. They are seeded per company.',
+    'ui.rfq.loss_note': 'Anything else worth knowing',
+    'ui.rfq.mark_lost': 'Mark lost',
+    'ui.rfq.mark_won': 'Mark won',
+    'ui.rfq.marked_won': 'Won. The order desk picks it up from here.',
+    'ui.rfq.marked_lost': 'Recorded as lost, against a reason that can be counted.',
+    'ui.rfq.ask': 'Ask the buyer',
+    'ui.rfq.ask_placeholder': 'What needs clarifying',
+    'ui.rfq.ask_it': 'Ask',
+    'ui.rfq.asked': 'Asked. The clock on it starts today.',
+    'ui.rfq.settled':
+      'This enquiry is settled. Nothing more happens to it here.',
+
     // ── store · 3.1 ──
     'ui.store.receive_eyebrow': 'Store · receive goods',
     'ui.store.receive_title': 'Receive against a challan',
@@ -1333,6 +1370,44 @@ export const UI_MESSAGES: Catalogue = {
     'ui.buyers.same_website': 'একই ওয়েবসাইট',
     'ui.buyers.buyer_code': 'বায়ার কোড',
     'ui.buyers.buyer_code_hint': 'ছোট আর স্থায়ী — পরের সব ডকুমেন্ট এটি ধরেই চলে।',
+
+    // ── rfq ──
+    'ui.rfq.action_failed': 'এটি হয়নি।',
+    'ui.rfq.current_quote': 'কোট v{version} · {price} {currency} · {status}',
+    'ui.rfq.draft_quote': 'কোট করুন',
+    'ui.rfq.draft_quote_body':
+      'দাম আসে এই স্টাইলের অ্যাপ্রুভ হওয়া কস্ট শিট থেকে এবং কোটে জমে যায়। অ্যাপ্রুভ শিট না থাকলে কোট করার কিছু নেই — ড্রাফটের উপর করা দাম কেউ সই করেনি।',
+    'ui.rfq.style_code': 'স্টাইল কোড',
+    'ui.rfq.valid_until': 'যতদিন কার্যকর',
+    'ui.rfq.draft_it': 'কোট ড্রাফট করুন',
+    'ui.rfq.quote_drafted':
+      'কোট v{version} ড্রাফট হয়েছে {price}-এ — মার্জিন {margin}%।',
+    'ui.rfq.quote_drafted_superseding':
+      'কোট v{version} ড্রাফট হয়েছে {price}-এ। আগের {superseded}টি ভার্সন বাতিল — বায়ারের হাতে তার একটি আছে।',
+    'ui.rfq.send_quote': 'পাঠান',
+    'ui.rfq.below_floor_reason': 'মার্জিন ফ্লোরের নিচে হলে কেন',
+    'ui.rfq.below_floor_hint':
+      'শুধু ওনার বা অ্যাডমিন ফ্লোরের নিচে পাঠাতে পারেন, আর কারণটি কোটের সঙ্গে থাকে। চুপচাপ পার হওয়া যায় এমন ফ্লোর আসলে ফ্লোর নয়।',
+    'ui.rfq.send_it': 'বায়ারকে পাঠান',
+    'ui.rfq.sent': 'পাঠানো হয়েছে।',
+    'ui.rfq.sent_below_floor': 'পাঠানো হয়েছে — মার্জিন ফ্লোরের নিচে, রেকর্ডসহ।',
+    'ui.rfq.decide': 'পাওয়া না হারানো',
+    'ui.rfq.decide_body':
+      'জিতলে সর্বশেষ চালু কোটটি অর্ডার ডেস্কে যায়, আর সেখান থেকে অর্ডার, স্টাইল ও শিডিউল তৈরি হয়।',
+    'ui.rfq.choose_loss_reason': 'কেন হারানো গেল',
+    'ui.rfq.no_loss_reasons':
+      'কোনো লস রিজন সেট করা নেই, তাই হারানো রেকর্ড করা যাচ্ছে না। এগুলো প্রতি কোম্পানিতে সিড হয়।',
+    'ui.rfq.loss_note': 'আর কিছু জানার থাকলে',
+    'ui.rfq.mark_lost': 'হারানো হিসেবে দিন',
+    'ui.rfq.mark_won': 'পাওয়া হিসেবে দিন',
+    'ui.rfq.marked_won': 'পাওয়া গেছে। এখান থেকে অর্ডার ডেস্ক ধরবে।',
+    'ui.rfq.marked_lost': 'হারানো হিসেবে রেকর্ড হয়েছে, এমন কারণে যা গোনা যায়।',
+    'ui.rfq.ask': 'বায়ারকে জিজ্ঞাসা করুন',
+    'ui.rfq.ask_placeholder': 'কী পরিষ্কার করা দরকার',
+    'ui.rfq.ask_it': 'জিজ্ঞাসা করুন',
+    'ui.rfq.asked': 'জিজ্ঞাসা করা হয়েছে। এর হিসাব আজ থেকে শুরু।',
+    'ui.rfq.settled':
+      'এই এনকোয়ারির নিষ্পত্তি হয়ে গেছে। এখানে আর কিছু হবে না।',
 
     // ── store · 3.1 ──
     // Bangla nouns do not inflect after a numeral, so the _one and _other forms of a key
