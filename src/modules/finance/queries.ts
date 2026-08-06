@@ -16,6 +16,7 @@ import { z } from 'zod'
 
 import type { AnyCtx } from '@/modules/core/ctx'
 import { readJsonbArray, readJsonbObject } from '@/modules/core/jsonb'
+import { scoped } from '@/modules/core/scoped'
 import { withTenantRead } from '@/modules/core/tenancy'
 
 import { suppliers, supplierPos } from '@/modules/procurement/schema'
@@ -93,7 +94,7 @@ export async function receivableBook(
         ? await tx
             .select({ id: invoices.id, number: invoices.number })
             .from(invoices)
-            .where(inArray(invoices.id, invoiceIds))
+            .where(scoped(invoices, ctx, inArray(invoices.id, invoiceIds)))
         : []
 
     return rows.map((r) => ({
@@ -158,7 +159,7 @@ export async function payableBook(ctx: AnyCtx, input: { now: Date }): Promise<Pa
             })
             .from(supplierPos)
             .innerJoin(suppliers, eq(suppliers.id, supplierPos.supplierId))
-            .where(inArray(supplierPos.id, poIds))
+            .where(scoped(supplierPos, ctx, inArray(supplierPos.id, poIds)))
         : []
 
     return rows.map((r) => {
@@ -209,12 +210,12 @@ export async function positionByCurrency(ctx: AnyCtx): Promise<CurrencyPosition[
           count: sql<number>`count(*)`.mapWith(Number),
         })
         .from(receivables)
-        .where(
+        .where(scoped(receivables, ctx, 
           and(
             isNull(receivables.realizedAt),
             inArray(receivables.status, ['open', 'part_realized']),
           ),
-        )
+        ))
         .groupBy(receivables.currency),
       tx
         .select({
@@ -223,7 +224,7 @@ export async function positionByCurrency(ctx: AnyCtx): Promise<CurrencyPosition[
           count: sql<number>`count(*)`.mapWith(Number),
         })
         .from(payables)
-        .where(inArray(payables.status, ['open', 'part_paid']))
+        .where(scoped(payables, ctx, inArray(payables.status, ['open', 'part_paid'])))
         .groupBy(payables.currency),
     ])
 

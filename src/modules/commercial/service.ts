@@ -21,6 +21,7 @@ import { AppError, notFound } from '../core/errors'
 import { assertGate, GATES } from '../core/gates'
 import { emit } from '../core/outbox'
 import { defineStateMachine } from '../core/state-machine'
+import { scoped } from '../core/scoped'
 import { type TenantDb, withTenantRead, withTenantTx } from '../core/tenancy'
 
 import {
@@ -60,6 +61,11 @@ registerAuditedTables('uds', 'ud_consumptions', 'lcs', 'btb_lcs', 'lc_amendments
 
 /** Load a UD and its consumption ledger, optionally locking the UD row. */
 async function loadUd(
+  // `ctx` first, like every other function that reads a tenant's rows. Adding it to a
+  // private helper is what let both of its queries name the company (plan 1.3) — the
+  // alternative was two `.where` clauses standing on RLS alone in the middle of the UD
+  // ledger, which is the one place in this module a wrong row is a customs problem.
+  ctx: AnyCtx,
   tx: TenantDb,
   udId: string,
   lock: boolean,
@@ -67,7 +73,7 @@ async function loadUd(
   ud: { id: string; number: string; status: UdStatus; validUntil: string | null; authorizedItems: UdAuthorizedItem[] }
   consumptions: { itemRef: string; qty: string; unit: string }[]
 }> {
-  const query = tx.select().from(uds).where(eq(uds.id, udId))
+  const query = tx.select().from(uds).where(scoped(uds, ctx, eq(uds.id, udId)))
   const [row] = lock ? await query.for('update') : await query
 
   if (!row) throw notFound('commercial.errors.ud_not_found', { udId })
@@ -85,7 +91,7 @@ async function loadUd(
   const ledger = await tx
     .select({ itemRef: udConsumptions.itemRef, qty: udConsumptions.qty, unit: udConsumptions.unit })
     .from(udConsumptions)
-    .where(eq(udConsumptions.udId, udId))
+    .where(scoped(udConsumptions, ctx, eq(udConsumptions.udId, udId)))
 
   return {
     ud: {
@@ -113,7 +119,7 @@ export async function checkUdBalance(
   input: { udId: string; itemRef: string; qty: string; unit: string; today?: string },
 ): Promise<UdDrawDecision> {
   return withTenantRead(ctx, async (tx) => {
-    const { ud, consumptions } = await loadUd(tx, input.udId, false)
+    const { ud, consumptions } = await loadUd(ctx, tx, input.udId, false)
     return checkUdDraw({
       ud,
       consumptions,
@@ -131,7 +137,7 @@ export async function getUdBalance(
   udId: string,
 ): Promise<{ udNumber: string; status: UdStatus; validUntil: string | null; items: UdItemBalance[] }> {
   return withTenantRead(ctx, async (tx) => {
-    const { ud, consumptions } = await loadUd(tx, udId, false)
+    const { ud, consumptions } = await loadUd(ctx, tx, udId, false)
     const balance = computeUdBalance({ authorizedItems: ud.authorizedItems, consumptions })
     return {
       udNumber: ud.number,
@@ -174,7 +180,7 @@ export async function drawUd(
   tx: TenantDb,
   input: UdDrawInput,
 ): Promise<{ consumptionId: string; decision: UdDrawDecision }> {
-  const { ud, consumptions } = await loadUd(tx, input.udId, true)
+  const { ud, consumptions } = await loadUd(ctx, tx, input.udId, true)
 
   const decision = checkUdDraw({
     ud,
@@ -251,7 +257,7 @@ export async function drawUd(
 
   if (!anyFree && ud.status === 'active') {
     udMachine.assert(ud.status, 'exhausted')
-    await tx.update(uds).set({ status: 'exhausted', updatedAt: new Date() }).where(eq(uds.id, ud.id))
+    await tx.update(uds).set({ status: 'exhausted', updatedAt: new Date() }).where(scoped(uds, ctx, eq(uds.id, ud.id)))
     await emit(ctx, tx, {
       eventName: COMMERCIAL_EVENTS.udExhausted,
       payload: { udId: ud.id, udNumber: ud.number },
@@ -289,7 +295,7 @@ export async function snapshotReconciliation(
   }
 
   return withTenantTx(ctx, async (tx) => {
-    const { ud, consumptions } = await loadUd(tx, input.udId, true)
+    const { ud, consumptions } = await loadUd(ctx, tx, input.udId, true)
     const items = [...computeUdBalance({ authorizedItems: ud.authorizedItems, consumptions }).values()]
 
     const [row] = await tx
@@ -329,7 +335,7 @@ export async function expireLapsedUds(
     const lapsed = await tx
       .update(uds)
       .set({ status: 'expired', updatedAt: new Date() })
-      .where(and(eq(uds.status, 'active'), sql`${uds.validUntil} < ${today}`))
+      .where(scoped(uds, ctx, and(eq(uds.status, 'active'), sql`${uds.validUntil} < ${today}`)))
       .returning({ id: uds.id, number: uds.number })
 
     for (const ud of lapsed) {
@@ -392,7 +398,7 @@ export async function checkBtbHeadroomIn(
   tx: TenantDb,
   input: { btbLcId: string; limitPct: number; excludeBtbId?: string; lock?: boolean },
 ): Promise<BtbHeadroomResult> {
-    const [btb] = await tx.select().from(btbLcs).where(eq(btbLcs.id, input.btbLcId))
+    const [btb] = await tx.select().from(btbLcs).where(scoped(btbLcs, ctx, eq(btbLcs.id, input.btbLcId)))
     if (!btb) {
       return {
         passed: false,
@@ -401,7 +407,7 @@ export async function checkBtbHeadroomIn(
       }
     }
 
-    const masterQuery = tx.select().from(lcs).where(eq(lcs.id, btb.masterLcId))
+    const masterQuery = tx.select().from(lcs).where(scoped(lcs, ctx, eq(lcs.id, btb.masterLcId)))
     const [master] = input.lock ? await masterQuery.for('update') : await masterQuery
     if (!master) {
       return {
@@ -433,7 +439,7 @@ export async function checkBtbHeadroomIn(
     const siblings = await tx
       .select({ id: btbLcs.id, value: btbLcs.value })
       .from(btbLcs)
-      .where(and(eq(btbLcs.masterLcId, master.id), sql`${btbLcs.status} <> 'closed'`))
+      .where(scoped(btbLcs, ctx, and(eq(btbLcs.masterLcId, master.id), sql`${btbLcs.status} <> 'closed'`)))
 
     const headroom = btbHeadroom({
       masterValue: master.value,
@@ -557,7 +563,7 @@ export async function amendLc(
   },
 ): Promise<{ amendmentId: string; number: number; tightened: boolean; conflicts: unknown[] }> {
   return withTenantTx(ctx, async (tx) => {
-    const [lc] = await tx.select().from(lcs).where(eq(lcs.id, input.lcId)).for('update')
+    const [lc] = await tx.select().from(lcs).where(scoped(lcs, ctx, eq(lcs.id, input.lcId))).for('update')
     if (!lc) throw notFound('commercial.errors.lc_not_found', { lcId: input.lcId })
 
     if (lc.status === 'closed' || lc.status === 'expired') {
@@ -584,7 +590,7 @@ export async function amendLc(
     const [latest] = await tx
       .select({ number: lcAmendments.number })
       .from(lcAmendments)
-      .where(eq(lcAmendments.lcId, lc.id))
+      .where(scoped(lcAmendments, ctx, eq(lcAmendments.lcId, lc.id)))
       .orderBy(desc(lcAmendments.number))
       .limit(1)
 
@@ -601,7 +607,7 @@ export async function amendLc(
       })
       .from(orders)
       .innerJoin(orderLcs, eq(orderLcs.orderId, orders.id))
-      .where(eq(orderLcs.lcId, lc.id))
+      .where(scoped(orders, ctx, eq(orderLcs.lcId, lc.id)))
 
     const conflicts = detectLcConflicts({
       lc: {
@@ -629,7 +635,7 @@ export async function amendLc(
         expiryDate: result.terms.expiryDate,
         updatedAt: new Date(),
       })
-      .where(eq(lcs.id, lc.id))
+      .where(scoped(lcs, ctx, eq(lcs.id, lc.id)))
 
     const [row] = await tx
       .insert(lcAmendments)
@@ -723,7 +729,7 @@ export async function openBtb(
     const [master] = await tx
       .select()
       .from(lcs)
-      .where(eq(lcs.id, input.masterLcId))
+      .where(scoped(lcs, ctx, eq(lcs.id, input.masterLcId)))
       // Locked so two BTBs opened at the same instant cannot both see the same headroom.
       .for('update')
 
@@ -740,7 +746,7 @@ export async function openBtb(
     const siblings = await tx
       .select({ value: btbLcs.value })
       .from(btbLcs)
-      .where(and(eq(btbLcs.masterLcId, master.id), sql`${btbLcs.status} <> 'closed'`))
+      .where(scoped(btbLcs, ctx, and(eq(btbLcs.masterLcId, master.id), sql`${btbLcs.status} <> 'closed'`)))
 
     const headroom = btbHeadroom({
       masterValue: master.value,
@@ -829,7 +835,7 @@ export async function openSubmission(
   },
 ): Promise<{ submissionId: string }> {
   return withTenantTx(ctx, async (tx) => {
-    const [lc] = await tx.select({ id: lcs.id }).from(lcs).where(eq(lcs.id, input.lcId))
+    const [lc] = await tx.select({ id: lcs.id }).from(lcs).where(scoped(lcs, ctx, eq(lcs.id, input.lcId)))
     if (!lc) throw notFound('commercial.errors.lc_not_found', { lcId: input.lcId })
 
     /*
@@ -857,7 +863,7 @@ export async function openSubmission(
       const [shipment] = await tx
         .select({ id: shipments.id, expNumber: shipments.expNumber })
         .from(shipments)
-        .where(eq(shipments.id, input.shipmentId))
+        .where(scoped(shipments, ctx, eq(shipments.id, input.shipmentId)))
         .for('update')
 
       if (!shipment) {
@@ -925,7 +931,7 @@ export async function setSubmissionStatus(
     const [row] = await tx
       .select()
       .from(docSubmissions)
-      .where(eq(docSubmissions.id, input.submissionId))
+      .where(scoped(docSubmissions, ctx, eq(docSubmissions.id, input.submissionId)))
       .for('update')
 
     if (!row) {
@@ -959,7 +965,7 @@ export async function setSubmissionStatus(
             : row.discrepantSince,
         updatedAt: new Date(),
       })
-      .where(eq(docSubmissions.id, row.id))
+      .where(scoped(docSubmissions, ctx, eq(docSubmissions.id, row.id)))
 
     await recordChange(ctx, tx, {
       action: 'update',
@@ -1034,7 +1040,7 @@ export async function postRealization(
     const [row] = await tx
       .select()
       .from(docSubmissions)
-      .where(eq(docSubmissions.id, input.submissionId))
+      .where(scoped(docSubmissions, ctx, eq(docSubmissions.id, input.submissionId)))
       .for('update')
 
     if (!row) {
@@ -1077,7 +1083,7 @@ export async function postRealization(
         shortfallReason: input.shortfallReason ?? null,
         updatedAt: new Date(),
       })
-      .where(eq(docSubmissions.id, row.id))
+      .where(scoped(docSubmissions, ctx, eq(docSubmissions.id, row.id)))
 
     await recordChange(ctx, tx, {
       action: 'update',
@@ -1179,7 +1185,7 @@ export async function agingDiscrepancies(
     const rows = await tx
       .select()
       .from(docSubmissions)
-      .where(eq(docSubmissions.bankStatus, 'discrepant'))
+      .where(scoped(docSubmissions, ctx, eq(docSubmissions.bankStatus, 'discrepant')))
 
     const out: { submissionId: string; lcId: string; days: number; notes: string | null }[] = []
 
@@ -1219,7 +1225,7 @@ export async function buyerRealizationLag(
       .select({ submittedAt: docSubmissions.submittedAt, realizedAt: docSubmissions.realizedAt })
       .from(docSubmissions)
       .innerJoin(lcs, eq(docSubmissions.lcId, lcs.id))
-      .where(eq(lcs.buyerId, input.buyerId))
+      .where(scoped(docSubmissions, ctx, eq(lcs.buyerId, input.buyerId)))
 
     return wrapBankDocsError(() =>
       realizationLag(
@@ -1388,7 +1394,7 @@ async function createUdIn(
   const payload = createUdPayload.parse(input)
 
   return (async () => {
-    const [existing] = await tx.select({ id: uds.id }).from(uds).where(eq(uds.number, payload.number))
+    const [existing] = await tx.select({ id: uds.id }).from(uds).where(scoped(uds, ctx, eq(uds.number, payload.number)))
     if (existing) {
       throw new AppError('conflict', 'commercial.errors.ud_number_exists', {
         number: payload.number,
@@ -1443,7 +1449,7 @@ export async function createLc(
   const payload = createLcPayload.parse(input)
 
   return withTenantTx(ctx, async (tx) => {
-    const [existing] = await tx.select({ id: lcs.id }).from(lcs).where(eq(lcs.number, payload.number))
+    const [existing] = await tx.select({ id: lcs.id }).from(lcs).where(scoped(lcs, ctx, eq(lcs.number, payload.number)))
     if (existing) {
       throw new AppError('conflict', 'commercial.errors.lc_number_exists', {
         number: payload.number,

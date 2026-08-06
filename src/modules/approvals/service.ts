@@ -25,6 +25,7 @@ import type { AnyCtx, RequestCtx, Role } from '../core/ctx'
 import { AppError, notFound } from '../core/errors'
 import { emit } from '../core/outbox'
 import { getModule } from '../core/registry'
+import { scoped } from '../core/scoped'
 import { withTenantRead, withTenantTx, type TenantDb } from '../core/tenancy'
 
 import { APPROVALS_EVENTS } from './events'
@@ -82,12 +83,12 @@ export async function inbox(
     const drafts = await tx
       .select()
       .from(pendingChanges)
-      .where(
+      .where(scoped(pendingChanges, ctx, 
         and(
           eq(pendingChanges.status, 'pending'),
           input.moduleId ? eq(pendingChanges.moduleId, input.moduleId) : undefined,
         ),
-      )
+      ))
       .orderBy(asc(pendingChanges.createdAt))
       .limit(input.limit ?? 200)
 
@@ -99,12 +100,12 @@ export async function inbox(
         approverUserId: pendingChangeApprovals.approverUserId,
       })
       .from(pendingChangeApprovals)
-      .where(
+      .where(scoped(pendingChangeApprovals, ctx, 
         inArray(
           pendingChangeApprovals.pendingChangeId,
           drafts.map((d) => d.id),
         ),
-      )
+      ))
 
     const rules = await loadRules(tx, ctx)
     const out: InboxItem[] = []
@@ -150,7 +151,7 @@ export async function inboxCounts(
     tx
       .select({ moduleId: pendingChanges.moduleId, pending: count() })
       .from(pendingChanges)
-      .where(eq(pendingChanges.status, 'pending'))
+      .where(scoped(pendingChanges, ctx, eq(pendingChanges.status, 'pending')))
       .groupBy(pendingChanges.moduleId)
       .orderBy(desc(count())),
   )
@@ -220,7 +221,7 @@ export async function approversFor(
     const [draft] = await tx
       .select()
       .from(pendingChanges)
-      .where(eq(pendingChanges.id, input.pendingChangeId))
+      .where(scoped(pendingChanges, ctx, eq(pendingChanges.id, input.pendingChangeId)))
 
     if (!draft) {
       throw notFound('approvals.errors.draft_not_found', {
@@ -232,7 +233,7 @@ export async function approversFor(
     const [tally] = await tx
       .select({ n: count() })
       .from(pendingChangeApprovals)
-      .where(eq(pendingChangeApprovals.pendingChangeId, draft.id))
+      .where(scoped(pendingChangeApprovals, ctx, eq(pendingChangeApprovals.pendingChangeId, draft.id)))
 
     return { ...rule, approvals: tally?.n ?? 0 }
   })
@@ -270,7 +271,7 @@ export async function agingDrafts(
     const drafts = await tx
       .select()
       .from(pendingChanges)
-      .where(and(eq(pendingChanges.status, 'pending'), lte(pendingChanges.createdAt, cutoff)))
+      .where(scoped(pendingChanges, ctx, and(eq(pendingChanges.status, 'pending'), lte(pendingChanges.createdAt, cutoff))))
       .orderBy(asc(pendingChanges.createdAt))
 
     if (drafts.length === 0) return []
@@ -281,12 +282,12 @@ export async function agingDrafts(
         n: count(),
       })
       .from(pendingChangeApprovals)
-      .where(
+      .where(scoped(pendingChangeApprovals, ctx, 
         inArray(
           pendingChangeApprovals.pendingChangeId,
           drafts.map((d) => d.id),
         ),
-      )
+      ))
       .groupBy(pendingChangeApprovals.pendingChangeId)
 
     const rules = await loadRules(tx, ctx)
@@ -375,7 +376,7 @@ export async function auditChain(
     const [draft] = await tx
       .select()
       .from(pendingChanges)
-      .where(eq(pendingChanges.id, input.pendingChangeId))
+      .where(scoped(pendingChanges, ctx, eq(pendingChanges.id, input.pendingChangeId)))
 
     if (!draft) {
       throw notFound('approvals.errors.draft_not_found', {
@@ -393,19 +394,19 @@ export async function auditChain(
       })
       .from(pendingChangeApprovals)
       .leftJoin(users, eq(pendingChangeApprovals.approverUserId, users.id))
-      .where(eq(pendingChangeApprovals.pendingChangeId, draft.id))
+      .where(scoped(pendingChangeApprovals, ctx, eq(pendingChangeApprovals.pendingChangeId, draft.id)))
       .orderBy(asc(pendingChangeApprovals.createdAt))
 
     const committedAudit = draft.committedRowId
       ? await tx
           .select()
           .from(auditLog)
-          .where(
+          .where(scoped(auditLog, ctx, 
             and(
               eq(auditLog.targetTable, draft.targetTable),
               eq(auditLog.targetId, draft.committedRowId),
             ),
-          )
+          ))
           .orderBy(asc(auditLog.occurredAt))
       : []
 
@@ -431,7 +432,7 @@ export async function correctionRates(
         corrected: sql<string>`sum(case when ${pendingChanges.corrections}::text <> '{}' then 1 else 0 end)::text`,
       })
       .from(pendingChanges)
-      .where(
+      .where(scoped(pendingChanges, ctx, 
         and(
           ne(pendingChanges.status, 'pending'),
           // Auto-approved drafts never met a reviewer, so they say nothing about whether a
@@ -439,7 +440,7 @@ export async function correctionRates(
           // review sets it.
           isNotNull(pendingChanges.reviewedBy),
         ),
-      )
+      ))
       .groupBy(pendingChanges.moduleId)
 
     return rows.map((row) => {
@@ -542,7 +543,7 @@ export async function upsertApprovalRule(
     const superseded = await tx
       .update(approvalRules)
       .set({ isActive: false, updatedAt: new Date() })
-      .where(sameScope)
+      .where(scoped(approvalRules, ctx, sameScope))
       .returning({
         id: approvalRules.id,
         requiredRoles: approvalRules.requiredRoles,

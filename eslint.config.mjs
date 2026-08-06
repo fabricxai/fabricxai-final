@@ -164,7 +164,16 @@ export default tseslint.config(
   // 10.1 workforce is first because it is the 🔒 module: a leak here is another factory's
   // wage bill.
   {
-    files: ['src/modules/workforce/service.ts', 'src/modules/workforce/queries.ts'],
+    files: [
+      'src/modules/workforce/service.ts',
+      'src/modules/workforce/queries.ts',
+      'src/modules/commercial/service.ts',
+      'src/modules/commercial/queries.ts',
+      'src/modules/finance/service.ts',
+      'src/modules/finance/queries.ts',
+      'src/modules/approvals/service.ts',
+      'src/modules/approvals/queries.ts',
+    ],
     rules: { 'fabricxai/require-tenant-predicate': 'error' },
   },
 

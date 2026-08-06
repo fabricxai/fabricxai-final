@@ -18,6 +18,7 @@ import { AppError, conflict, notFound } from '../core/errors'
 import { notify } from '../core/notifications'
 import { emit } from '../core/outbox'
 import { defineStateMachine } from '../core/state-machine'
+import { scoped } from '../core/scoped'
 import { withTenantRead, withTenantTx, type TenantDb } from '../core/tenancy'
 
 import { FINANCE_EVENTS } from './events'
@@ -111,11 +112,17 @@ function wrapFinanceError<T>(run: () => T): T {
   }
 }
 
-async function assertOwnOrder(tx: TenantDb, orderId: string): Promise<void> {
-  // Postgres runs foreign-key checks with RLS bypassed, so the FK alone does not enforce
-  // tenancy (rule 2 — the app layer is the first wall).
+async function assertOwnOrder(ctx: AnyCtx, tx: TenantDb, orderId: string): Promise<void> {
+  /*
+   * Postgres runs foreign-key checks with RLS bypassed, so the FK alone does not enforce
+   * tenancy (rule 2 — the app layer is the first wall).
+   *
+   * Which makes this the single best illustration of why wall 1 exists: the whole point of
+   * the function is that the database's own integrity check cannot be trusted to be
+   * tenant-aware, and until plan 1.3 the query PROVING ownership was itself relying on RLS.
+   */
   const { orders } = await import('@/modules/orders/schema')
-  const [order] = await tx.select({ id: orders.id }).from(orders).where(eq(orders.id, orderId))
+  const [order] = await tx.select({ id: orders.id }).from(orders).where(scoped(orders, ctx, eq(orders.id, orderId)))
   if (!order) throw notFound('finance.errors.order_not_found', { orderId })
 }
 
@@ -148,7 +155,7 @@ export async function draftInvoiceIn(
   policy: FinancePolicy,
 ): Promise<{ invoiceId: string; receivableId: string; expectedAt: string }> {
   {
-    await assertOwnOrder(tx, payload.orderId)
+    await assertOwnOrder(ctx, tx, payload.orderId)
 
     const [invoice] = await tx
       .insert(invoices)
@@ -238,7 +245,7 @@ async function resolveBuyerLag(
   const [order] = await tx
     .select({ buyerId: orders.buyerId })
     .from(orders)
-    .where(eq(orders.id, orderId))
+    .where(scoped(orders, ctx, eq(orders.id, orderId)))
 
   if (!order?.buyerId) return { medianDays: null, observations: 0 }
 
@@ -267,7 +274,7 @@ export async function postRealizationToReceivable(
     const [row] = await tx
       .select()
       .from(receivables)
-      .where(eq(receivables.invoiceId, input.invoiceId))
+      .where(scoped(receivables, ctx, eq(receivables.invoiceId, input.invoiceId)))
       .for('update')
 
     if (!row) {
@@ -298,7 +305,7 @@ export async function postRealizationToReceivable(
         status,
         updatedAt: new Date(),
       })
-      .where(eq(receivables.id, row.id))
+      .where(scoped(receivables, ctx, eq(receivables.id, row.id)))
 
     await recordChange(ctx, tx, {
       action: 'update',
@@ -406,7 +413,7 @@ export async function payPayableIn(
     const [row] = await tx
       .select()
       .from(payables)
-      .where(eq(payables.id, input.payableId))
+      .where(scoped(payables, ctx, eq(payables.id, input.payableId)))
       .for('update')
 
     if (!row) throw notFound('finance.errors.payable_not_found', { payableId: input.payableId })
@@ -429,7 +436,7 @@ export async function payPayableIn(
         status,
         updatedAt: new Date(),
       })
-      .where(eq(payables.id, row.id))
+      .where(scoped(payables, ctx, eq(payables.id, row.id)))
 
     await recordChange(ctx, tx, {
       action: 'update',
@@ -476,7 +483,7 @@ export async function cashTimelineFor(
           currency: receivables.currency,
         })
         .from(receivables)
-        .where(inArray(receivables.status, ['open', 'part_realized'])),
+        .where(scoped(receivables, ctx, inArray(receivables.status, ['open', 'part_realized']))),
       tx
         .select({
           dueAt: payables.dueAt,
@@ -485,7 +492,7 @@ export async function cashTimelineFor(
           currency: payables.currency,
         })
         .from(payables)
-        .where(inArray(payables.status, ['open', 'part_paid'])),
+        .where(scoped(payables, ctx, inArray(payables.status, ['open', 'part_paid']))),
     ])
 
     return wrapFinanceError(() =>
@@ -589,7 +596,7 @@ export async function accrueOrderCosts(
   }
 
   return withTenantTx(ctx, async (tx) => {
-    await assertOwnOrder(tx, input.orderId)
+    await assertOwnOrder(ctx, tx, input.orderId)
 
     const components: CostComponents = {}
     const basis: Record<string, unknown> = {}
@@ -600,7 +607,7 @@ export async function accrueOrderCosts(
       .select({ qty: issueLines.qty, itemId: issueLines.itemId })
       .from(issueLines)
       .innerJoin(issues, eq(issueLines.issueId, issues.id))
-      .where(eq(issues.orderId, input.orderId))
+      .where(scoped(issueLines, ctx, eq(issues.orderId, input.orderId)))
 
     // The issue records a quantity; the price it was received at lives on the GRN line. The
     // join is deliberately per-item rather than per-roll — a roll's price is its GRN line's.
@@ -610,7 +617,7 @@ export async function accrueOrderCosts(
       const [priced] = await tx
         .select({ unitPrice: grnLines.unitPrice })
         .from(grnLines)
-        .where(eq(grnLines.itemId, row.itemId))
+        .where(scoped(grnLines, ctx, eq(grnLines.itemId, row.itemId)))
         .orderBy(desc(grnLines.createdAt))
         .limit(1)
 
@@ -633,9 +640,9 @@ export async function accrueOrderCosts(
       .select({ amount: bankCharges.amount })
       .from(bankCharges)
       .leftJoin(docSubmissions, eq(bankCharges.submissionId, docSubmissions.id))
-      .where(
+      .where(scoped(bankCharges, ctx, 
         sql`${docSubmissions.shipmentId} IS NOT NULL OR ${bankCharges.lcId} IS NOT NULL`,
-      )
+      ))
 
     let commercialMinor = 0n
     for (const row of chargeRows) commercialMinor = sumMinor(commercialMinor, toMinor(row.amount))
@@ -656,7 +663,7 @@ export async function accrueOrderCosts(
       const allocated = await tx
         .select({ plannedDaily: allocations.plannedDaily })
         .from(allocations)
-        .where(eq(allocations.orderId, input.orderId))
+        .where(scoped(allocations, ctx, eq(allocations.orderId, input.orderId)))
 
       const lineDays = allocated.reduce(
         (days, row) => days + Object.keys(row.plannedDaily).length,
@@ -745,7 +752,7 @@ export async function orderPnl(
     const [actual] = await tx
       .select()
       .from(orderCostsActual)
-      .where(eq(orderCostsActual.orderId, input.orderId))
+      .where(scoped(orderCostsActual, ctx, eq(orderCostsActual.orderId, input.orderId)))
 
     if (!actual) {
       throw notFound('finance.errors.no_accrual', { orderId: input.orderId })
@@ -890,13 +897,13 @@ export async function overdueReceivables(
     tx
       .select()
       .from(receivables)
-      .where(
+      .where(scoped(receivables, ctx, 
         and(
           isNull(receivables.realizedAt),
           inArray(receivables.status, ['open', 'part_realized']),
           sql`${receivables.expectedAt} < ${input.asOf}`,
         ),
-      )
+      ))
       .orderBy(receivables.expectedAt),
   )
 }

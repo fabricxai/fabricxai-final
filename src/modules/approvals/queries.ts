@@ -14,6 +14,7 @@ import { z } from 'zod'
 import { pendingChanges } from '@/db/schema/core'
 import type { AnyCtx } from '@/modules/core/ctx'
 import { readJsonbObject } from '@/modules/core/jsonb'
+import { scoped } from '@/modules/core/scoped'
 import { withTenantRead } from '@/modules/core/tenancy'
 
 /**
@@ -89,12 +90,12 @@ export async function inboxRows(
         targetTable: pendingChanges.targetTable,
       })
       .from(pendingChanges)
-      .where(
+      .where(scoped(pendingChanges, ctx, 
         inArray(
           pendingChanges.id,
           items.map((i) => i.id),
         ),
-      ),
+      )),
   )
 
   const byId = new Map(drafts.map((d) => [d.id, d]))
@@ -157,7 +158,7 @@ export async function draftDetail(
     const [d] = await tx
       .select()
       .from(pendingChanges)
-      .where(and(eq(pendingChanges.id, pendingChangeId), eq(pendingChanges.status, 'pending')))
+      .where(scoped(pendingChanges, ctx, and(eq(pendingChanges.id, pendingChangeId), eq(pendingChanges.status, 'pending'))))
     return d ?? null
   })
 
@@ -303,7 +304,7 @@ export async function draftTarget(
         targetId: pendingChanges.targetId,
       })
       .from(pendingChanges)
-      .where(and(eq(pendingChanges.id, pendingChangeId), eq(pendingChanges.status, 'pending')))
+      .where(scoped(pendingChanges, ctx, and(eq(pendingChanges.id, pendingChangeId), eq(pendingChanges.status, 'pending'))))
 
     return row ?? null
   })

@@ -115,7 +115,7 @@ export async function register(
       tx
         .select({ masterLcId: btbLcs.masterLcId, value: btbLcs.value, status: btbLcs.status })
         .from(btbLcs)
-        .where(inArray(btbLcs.masterLcId, ids)),
+        .where(scoped(btbLcs, ctx, inArray(btbLcs.masterLcId, ids))),
       tx
         .select({
           lcId: docSubmissions.lcId,
@@ -124,7 +124,7 @@ export async function register(
           discrepantSince: docSubmissions.discrepantSince,
         })
         .from(docSubmissions)
-        .where(inArray(docSubmissions.lcId, ids)),
+        .where(scoped(docSubmissions, ctx, inArray(docSubmissions.lcId, ids))),
     ])
 
     return rows.map((r): LcRow => {
@@ -204,7 +204,7 @@ export async function exposureByCurrency(
         count: sql<number>`count(*)`.mapWith(Number),
       })
       .from(lcs)
-      .where(eq(lcs.status, 'active'))
+      .where(scoped(lcs, ctx, eq(lcs.status, 'active')))
       .groupBy(lcs.currency),
   )
 }
@@ -296,7 +296,7 @@ export async function lcDetail(
       })
       .from(lcs)
       .leftJoin(buyers, eq(buyers.id, lcs.buyerId))
-      .where(eq(lcs.id, lcId))
+      .where(scoped(lcs, ctx, eq(lcs.id, lcId)))
 
     if (!lc) return null
 
@@ -304,13 +304,13 @@ export async function lcDetail(
       tx
         .select()
         .from(lcAmendments)
-        .where(eq(lcAmendments.lcId, lcId))
+        .where(scoped(lcAmendments, ctx, eq(lcAmendments.lcId, lcId)))
         .orderBy(desc(lcAmendments.number)),
-      tx.select().from(btbLcs).where(eq(btbLcs.masterLcId, lcId)).orderBy(desc(btbLcs.createdAt)),
+      tx.select().from(btbLcs).where(scoped(btbLcs, ctx, eq(btbLcs.masterLcId, lcId))).orderBy(desc(btbLcs.createdAt)),
       tx
         .select()
         .from(docSubmissions)
-        .where(eq(docSubmissions.lcId, lcId))
+        .where(scoped(docSubmissions, ctx, eq(docSubmissions.lcId, lcId)))
         .orderBy(desc(docSubmissions.createdAt)),
     ])
 
