@@ -19,8 +19,19 @@ pnpm dev                      # http://localhost:3000
 pnpm worker:dev               # separate terminal
 ```
 
-Check `http://localhost:3000/api/health` — it exercises Postgres through PgBouncer and
+Check `http://localhost:3000/api/ready` — it exercises Postgres through PgBouncer and
 Redis, so a green result means the real paths work, not just the process.
+
+Three endpoints, three questions (plan 7.5):
+
+| route | question | who asks |
+|---|---|---|
+| `/api/health` | is this process alive | container runtime, load balancer |
+| `/api/ready` | can it serve a request | load balancer, `docker compose` gating |
+| `/api/health/jobs` | is the schedule still firing | an operator, with `HEALTH_TOKEN` |
+
+They were one endpoint that returned 503 if any of the three was unhappy — so a quiet
+nightly job in the *worker* made Docker restart the *app*.
 
 ## Local services
 

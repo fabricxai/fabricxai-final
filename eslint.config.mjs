@@ -217,10 +217,14 @@ export default tseslint.config(
       'src/components/**/*.{ts,tsx}',
     ],
     ignores: [
-      // Better Auth owns its own boundary; the health check deliberately exercises the
-      // real pooled path, which is the point of it.
+      // Better Auth owns its own boundary.
+      //
+      // `src/app/api/health/**` used to be here too, and the audit noted that the exemption
+      // compounded the problem beside it: the route allowed to query the database directly
+      // was also the one printing raw exception strings to the internet. Plan 7.5 moved those
+      // queries into `modules/core/probes.ts`, where every other module's live, and the
+      // exemption went with them — three health routes would have meant widening it to three.
       'src/app/api/auth/**',
-      'src/app/api/health/**',
     ],
     rules: {
       'no-restricted-imports': [

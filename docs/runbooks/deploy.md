@@ -137,7 +137,9 @@ cause.
 # Watch it settle. The app validates its whole environment, warms the module registry
 # and asserts its database role before serving anything, so give it up to a minute.
 docker compose -f docker-compose.prod.yml --env-file .env.production ps
-curl -fsS https://<domain>/api/health | jq
+# /api/ready is the dependency check — Postgres and Redis through the pooler.
+# /api/health is liveness only and answers 200 from a process that cannot reach either.
+curl -fsS https://<domain>/api/ready | jq
 ```
 
 Expected failures and what they mean:
@@ -148,7 +150,9 @@ Expected failures and what they mean:
 | `Invalid environment (N problems)` | A `.env.production` value is missing or malformed. The message lists every one. |
 | Caddy cannot get a certificate | DNS does not resolve to this host yet, or 80/tcp is blocked. |
 | App healthy, worker restarting | Check `PGBOUNCER_AUTH_PASSWORD` reached the userlist — the worker connects through the pooler too. |
-| `/api/health` 503, `scheduler` silent | Expected for one cycle after a first boot; the baseline is set from first observed run. |
+| `/api/ready` 503 | Postgres or Redis unreachable from the app. The body says which; the reason is in the container logs, deliberately not in the response. |
+| `/api/health/jobs` 503, `health_token_not_configured` | `HEALTH_TOKEN` is unset. The route refuses rather than publishing the schedule — set one (`openssl rand -hex 24`). |
+| `/api/health/jobs` 503, tasks `silent` | Expected for one cycle after a first boot; the baseline is set from first observed run. |
 
 ### Create the first factory
 

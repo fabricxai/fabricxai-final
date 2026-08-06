@@ -97,6 +97,18 @@ const baseSchema = z.object({
   SMTP_PORT: z.coerce.number().int().positive().optional(),
   EMAIL_FROM: z.email().default('no-reply@fabricxai.local'),
 
+  /**
+   * Bearer token for `/api/health/jobs` (plan 7.5, audit INFRA-M1).
+   *
+   * That route names every scheduled task and reports raw failure text — a map of what this
+   * deployment runs and what is currently broken in it, which is reconnaissance rather than
+   * a status page. Unauthenticated it was reachable by anyone who could reach the app.
+   *
+   * Optional, and the route REFUSES when it is unset rather than falling open. An operator
+   * who has not set a token has not decided to publish their schedule.
+   */
+  HEALTH_TOKEN: z.string().min(16, 'HEALTH_TOKEN must be at least 16 chars').optional(),
+
   SENTRY_DSN: z.string().optional(),
 
   /** BullMQ default per-queue concurrency in the worker process. */

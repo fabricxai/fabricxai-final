@@ -60,25 +60,26 @@ export async function setup() {
   const deadline = Date.now() + READY_TIMEOUT_MS
   while (Date.now() < deadline) {
     /*
-     * Readiness is `/api/me` answering 401, not `/api/health` answering 200.
+     * The gate is `/api/me` answering 401, and it stays that way.
      *
-     * Health is a DEPLOYMENT check: it reports degraded when the BullMQ scheduler has gone
-     * quiet, which is exactly right for uptime monitoring and exactly wrong as a gate here.
-     * No worker runs during the suite, and none runs in CI, so within a few hours of the
-     * last worker the endpoint returns 503 forever and the whole suite refuses to start
-     * with "app did not become ready" — a message pointing at the app when the app is fine.
+     * It proves both things this needs: the server is serving, and it is THIS build — a
+     * stale one would 404 the route. `/api/health` is now liveness only (plan 7.5) and
+     * answers 200 from a process that cannot reach its database, which is correct for a
+     * container runtime and useless as a gate for a suite about to query one.
      *
-     * 401 from `/api/me` proves both things this gate actually needs: the server is
-     * serving, and it is THIS build (a stale one would 404 the route). Postgres and Redis
-     * failures still surface — as failing tests, which is where they belong.
+     * Before the split this comment explained a workaround: health returned 503 when the
+     * scheduler had gone quiet, no worker runs during the suite, so within a few hours of
+     * the last worker the endpoint 503'd forever and the suite refused to start with "app
+     * did not become ready" — pointing at the app when the app was fine. That is the
+     * conflation 7.5 removed, and `/api/ready` is now the honest thing to report.
      */
     const me = await probe('/api/me')
     if (me === 401) {
-      const health = await probe('/api/health', 5_000)
-      if (health !== 200) {
-        // Worth saying, not worth blocking on. A degraded scheduler in a suite that runs
-        // no worker is expected; a failing database is about to fail every test anyway.
-        console.log(`[integration] app ready · /api/health is ${health ?? 'unreachable'}`)
+      const ready = await probe('/api/ready', 5_000)
+      if (ready !== 200) {
+        // Worth saying, not worth blocking on: a failing dependency is about to fail every
+        // test anyway, and it will say so with a better message than this one could.
+        console.log(`[integration] app ready · /api/ready is ${ready ?? 'unreachable'}`)
       } else {
         console.log('[integration] app ready')
       }

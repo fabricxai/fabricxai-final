@@ -175,7 +175,7 @@ docker compose -f docker-compose.prod.yml --env-file .env.production \
 
 # 4 · Bring the app up and check the real dependency paths.
 docker compose -f docker-compose.prod.yml --env-file .env.production up -d
-curl -fsS https://<domain>/api/health | jq
+curl -fsS https://<domain>/api/ready | jq   # deps; /api/health is liveness only
 ```
 
 Then check the things a factory will notice, in this order:
@@ -187,7 +187,7 @@ Then check the things a factory will notice, in this order:
       `/store/receive` and receive a test challan. Then delete it.
 - [ ] **A document downloads.** Open any order's attached file. This proves §6's object
       restore and the `S3_PUBLIC_ENDPOINT` signing path together.
-- [ ] **The worker is alive.** `/api/health/jobs` — a schedule that has stopped firing is
+- [ ] **The worker is alive.** `/api/health/jobs` (needs `Authorization: Bearer $HEALTH_TOKEN`) — a schedule that has stopped firing is
       reported there, and after a restore the scheduler's baseline is new, so give it one
       cycle before believing a complaint.
 - [ ] **The outbox drained.** `select count(*) from outbox where published_at is null` —
