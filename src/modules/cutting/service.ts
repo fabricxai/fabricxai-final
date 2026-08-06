@@ -14,6 +14,7 @@
  * revise the size grid the week after cutting starts; a report checked against "the
  * active revision" with no record of which one that was cannot be defended later.
  */
+import { fromMinor, toMinor } from '@/lib/quantity'
 import { and, eq, inArray } from 'drizzle-orm'
 
 import { recordChange, registerAuditedTables } from '../core/audit'
@@ -891,17 +892,5 @@ export const offlineCreateLay = createLayIn
 export const offlineRecordCutReport = recordCutReportIn
 
 // Exact decimal helpers — fabric is numeric(12,2) and never a float.
-function toMinor(value: string): bigint {
-  const negative = value.startsWith('-')
-  const [whole = '0', fraction = ''] = value.replace('-', '').split('.')
-  const minor = BigInt(whole + fraction.padEnd(2, '0').slice(0, 2))
-  return negative ? -minor : minor
-}
-
-function fromMinor(minor: bigint): string {
-  const negative = minor < 0n
-  const digits = (negative ? -minor : minor).toString().padStart(3, '0')
-  return `${negative ? '-' : ''}${digits.slice(0, -2)}.${digits.slice(-2)}`
-}
 
 export { conflict }

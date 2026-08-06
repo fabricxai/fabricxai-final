@@ -541,7 +541,7 @@ export async function issuePo(
     }
 
     const totalValue = payload.lines.reduce(
-      (sum, line) => sum + mulMinor(toMinor(line.qty), toMinor(line.unitPrice)),
+      (sum, line) => sum + mulScaled4Truncating(toMinor(line.qty), toMinor(line.unitPrice)),
       0n,
     )
 
@@ -1034,7 +1034,14 @@ function toMinor(value: string): bigint {
 }
 
 /** Two 4-minor-digit values → one 2-minor-digit money amount, rounded once. */
-function mulMinor(a: bigint, b: bigint): bigint {
+/**
+ * Two scale-2 minors multiplied at scale 4, truncating.
+ *
+ * Renamed from `mulMinor` (plan 2.9). Scale 4 because a unit price times a quantity carries
+ * four minor digits before it is rounded to a currency — see `finance/service.ts` for why
+ * three functions sharing this name was the actual finding.
+ */
+function mulScaled4Truncating(a: bigint, b: bigint): bigint {
   return (a * b) / 10_000n
 }
 

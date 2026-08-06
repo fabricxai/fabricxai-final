@@ -14,6 +14,8 @@
  *     comparing an actual computed one way against a quote computed the other produces a
  *     variance made entirely of arithmetic.
  */
+
+import { fromMinor, toMinor } from '@/lib/quantity'
 export class FinanceError extends Error {
   override readonly name = 'FinanceError'
 }
@@ -352,19 +354,6 @@ export function orderProfitability(input: {
  */
 function sumMinor(...values: readonly bigint[]): bigint {
   return values.reduce((carried, next) => carried + next, 0n)
-}
-
-function toMinor(value: string): bigint {
-  const negative = value.startsWith('-')
-  const [whole = '0', fraction = ''] = value.replace('-', '').split('.')
-  const minor = BigInt(whole + fraction.padEnd(2, '0').slice(0, 2))
-  return negative ? -minor : minor
-}
-
-function fromMinor(minor: bigint): string {
-  const negative = minor < 0n
-  const digits = (negative ? -minor : minor).toString().padStart(3, '0')
-  return `${negative ? '-' : ''}${digits.slice(0, -2)}.${digits.slice(-2)}`
 }
 
 /** `part / whole` as a signed percentage at two decimals, rounded half-up once. */

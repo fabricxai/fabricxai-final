@@ -16,6 +16,7 @@
  *  4. **Measurement tolerances are asymmetric.** +1/2" and −1/4" is normal; treating
  *     tolerance as one number rejects half the garments that should pass.
  */
+import { fromMinor, toMinor } from '@/lib/quantity'
 import { compositeKey, splitKey } from '@/lib/keys'
 
 export class QualityError extends Error {
@@ -510,19 +511,6 @@ function dayGap(from: string, to: string): number {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SCALE = 100n
-
-function toMinor(value: string): bigint {
-  const negative = value.startsWith('-')
-  const [whole = '0', fraction = ''] = value.replace('-', '').split('.')
-  const minor = BigInt(whole + fraction.padEnd(2, '0').slice(0, 2))
-  return negative ? -minor : minor
-}
-
-function fromMinor(minor: bigint): string {
-  const negative = minor < 0n
-  const digits = (negative ? -minor : minor).toString().padStart(3, '0')
-  return `${negative ? '-' : ''}${digits.slice(0, -2)}.${digits.slice(-2)}`
-}
 
 /** `a / b` at two decimals, rounded half-up once. */
 function ratio(a: bigint, b: bigint): string {

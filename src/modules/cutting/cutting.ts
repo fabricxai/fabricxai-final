@@ -12,7 +12,7 @@
  *     happen, which is exactly when somebody needs to know.
  */
 import { compositeKey, splitKey } from '@/lib/keys'
-import { multiplyDecimalStrings, roundToScale } from '@/lib/quantity'
+import { fromMinor, multiplyDecimalStrings, roundToScale, toMinor } from '@/lib/quantity'
 
 export class CuttingError extends Error {
   override readonly name = 'CuttingError'
@@ -334,19 +334,6 @@ export function bundlesForCell(cell: CutCell, bundleSize: number): Bundle[] {
 // ─────────────────────────────────────────────────────────────────────────────
 // Exact decimal helpers — fabric is numeric(12,2) and never a float
 // ─────────────────────────────────────────────────────────────────────────────
-
-function toMinor(value: string): bigint {
-  const negative = value.startsWith('-')
-  const [whole = '0', fraction = ''] = value.replace('-', '').split('.')
-  const minor = BigInt(whole + fraction.padEnd(2, '0').slice(0, 2))
-  return negative ? -minor : minor
-}
-
-function fromMinor(minor: bigint): string {
-  const negative = minor < 0n
-  const digits = (negative ? -minor : minor).toString().padStart(3, '0')
-  return `${negative ? '-' : ''}${digits.slice(0, -2)}.${digits.slice(-2)}`
-}
 
 /** `2` → `0.02`, exactly. */
 function divideBy100(pct: string): string {

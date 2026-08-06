@@ -14,6 +14,8 @@
  *  3. **Realization lag is a median.** One 90-day dispute would drag a mean forecast weeks
  *     out for every future shipment.
  */
+
+import { fromMinor, toMinor } from '@/lib/quantity'
 export class BankDocsError extends Error {
   override readonly name = 'BankDocsError'
 }
@@ -265,15 +267,3 @@ function dayGap(from: string, to: string): number {
   )
 }
 
-function toMinor(value: string): bigint {
-  const negative = value.startsWith('-')
-  const [whole = '0', fraction = ''] = value.replace('-', '').split('.')
-  const minor = BigInt(whole + fraction.padEnd(2, '0').slice(0, 2))
-  return negative ? -minor : minor
-}
-
-function fromMinor(minor: bigint): string {
-  const negative = minor < 0n
-  const digits = (negative ? -minor : minor).toString().padStart(3, '0')
-  return `${negative ? '-' : ''}${digits.slice(0, -2)}.${digits.slice(-2)}`
-}

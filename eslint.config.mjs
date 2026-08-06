@@ -100,18 +100,19 @@ export default tseslint.config(
     ignores: [
       'src/lib/money.ts',
       'src/lib/quantity.ts',
-      'src/modules/commercial/bank-docs.ts',
       'src/modules/commercial/ud.ts',
-      'src/modules/cutting/cutting.ts',
-      'src/modules/cutting/service.ts',
-      'src/modules/finance/finance.ts',
+      // These two stay on the list ON PURPOSE, and for the same reason — see docs/STUBS.md.
+      // Both read cost-sheet consumption, and both truncate it silently: a trims line of
+      // 0.0083/piece becomes 0.00, so it contributes nothing to the quote and nothing to the
+      // P&L. Converting them to the shared function turns that into a thrown error, which is
+      // right — but changing what a factory quotes, or what its margin reads, as the side
+      // effect of a refactor is not. The bug is recorded; the fix is somebody's decision.
       'src/modules/finance/service.ts',
-      'src/modules/procurement/procurement.ts',
-      'src/modules/procurement/service.ts',
-      'src/modules/quality/quality.ts',
-      'src/modules/quality/service.ts',
       'src/modules/rfq/rfq.ts',
       'src/modules/rfq/service.ts',
+      'src/modules/procurement/procurement.ts',
+      'src/modules/procurement/service.ts',
+      'src/modules/quality/service.ts',
       'src/modules/shipment/service.ts',
       'src/modules/shipment/shipment.ts',
       // Caught only once this became a real rule: these are arrow-function copies, which
