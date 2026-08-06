@@ -63,6 +63,27 @@ export interface NavItem {
 export type NavSection = 'work' | 'commercial' | 'floor' | 'oversight' | 'system'
 
 /**
+ * Where the chrome's words live (plan 4.2).
+ *
+ * The labels below stayed English literals long after twelve floor routes read Bangla, so a
+ * Bangla-only worker could read their screen and not the link to it. The copy now comes from
+ * `ui.nav.*` / `ui.role.*` in `lib/i18n-ui`, keyed on the NAV entry's own id.
+ *
+ * The English is still HERE as well, and deliberately: it is what `access.test.ts` asserts
+ * against, what a non-localised caller falls back to, and — through `nav-copy.test.ts` —
+ * what the catalogue's English is checked to agree with. Two copies that must match, with a
+ * test that fails when they stop, beats one copy that a screen renders as `ui.nav.orders`
+ * the day somebody mistypes an id.
+ */
+export const navLabelKey = (id: string): string => `ui.nav.${id}`
+export const navLockedKey = (id: string): string => `ui.nav.locked_${id}`
+export const navSectionKey = (id: NavSection): string => `ui.nav.section_${id}`
+export const roleLabelKey = (role: Role): string => `ui.role.${role}`
+
+/** Just enough of a translator for this file to stay free of React and of `next/headers`. */
+export type Words = (key: string, params?: Readonly<Record<string, unknown>>) => string
+
+/**
  * What each role is called, in the words the factory uses.
  *
  * The app knew everybody's role and never said it. A storekeeper could tell they were a
@@ -90,13 +111,44 @@ export const ROLE_LABEL: Readonly<Record<Role, string>> = {
   viewer: 'Viewer',
 }
 
-/** The roles a person holds, as one readable phrase. */
-export function describeRoles(roles: readonly Role[]): string {
-  const named = roles.map((role) => ROLE_LABEL[role]).filter(Boolean)
-  if (named.length === 0) return 'No role'
+/**
+ * The roles a person holds, as one readable phrase, in the reader's language.
+ *
+ * The conjunction is copy, not punctuation — Bangla joins with ও, not with "and" — so the
+ * last join comes from the catalogue rather than from a template literal here.
+ */
+export function describeRoles(roles: readonly Role[], words?: Words): string {
+  const say: Words = words ?? englishFallback
+  const named = roles.map((role) => say(roleLabelKey(role))).filter(Boolean)
+
+  if (named.length === 0) return say('ui.nav.no_role')
   if (named.length === 1) return named[0]!
-  return `${named.slice(0, -1).join(', ')} and ${named[named.length - 1]}`
+  return say('ui.nav.roles_and', {
+    list: named.slice(0, -1).join(', '),
+    last: named[named.length - 1]!,
+  })
 }
+
+/**
+ * What `describeRoles` says with no translator.
+ *
+ * Only reached by callers outside a request — a job, a test, a script. Kept minimal on
+ * purpose: this is a fallback, not a second catalogue, and anything rendered to a person
+ * goes through the real one.
+ */
+const ENGLISH_FALLBACK: Readonly<Record<string, string>> = {
+  'ui.nav.no_role': 'No role',
+  'ui.nav.roles_and': '{list} and {last}',
+  ...Object.fromEntries(
+    Object.entries(ROLE_LABEL).map(([role, label]) => [roleLabelKey(role as Role), label]),
+  ),
+}
+
+const englishFallback: Words = (key, params = {}) =>
+  Object.entries(params).reduce<string>(
+    (text, [name, value]) => text.replaceAll(`{${name}}`, String(value)),
+    ENGLISH_FALLBACK[key] ?? key,
+  )
 
 export const NAV_SECTIONS: readonly { id: NavSection; label: string }[] = [
   { id: 'work', label: 'Work' },
@@ -326,8 +378,21 @@ export const NAV: readonly NavItem[] = [
  * Owner and admin always may. A screen with no `writeRoles` is one where seeing it and
  * using it are the same permission.
  */
-/** The phrase the locked card uses for a module. */
-export function lockedSubject(item: NavItem): string {
+/**
+ * The phrase the locked card uses for a module.
+ *
+ * With no translator this is the English data on the entry, which is what `access.test.ts`
+ * and `role-gates.integration.test.ts` assert — a refusal that names the specific module
+ * rather than saying only "no access", so somebody who tried three things knows which one
+ * was refused.
+ *
+ * With one it comes from `ui.nav.locked_<id>`, whose English side says exactly the same
+ * words. The two exist because a heading and a sentence want different ones: "Owner
+ * dashboard" reads as a heading and "the owner dashboard" reads as English — and Bangla
+ * takes no article at all, so its side is the plain name.
+ */
+export function lockedSubject(item: NavItem, words?: Words): string {
+  if (words) return words(navLockedKey(item.id))
   return item.lockedAs ?? item.label.toLowerCase()
 }
 
@@ -381,9 +446,17 @@ export function resolveAccess(
   pathname: string,
   roles: readonly Role[],
   factoryType: FactoryType,
+  words?: Words,
 ): RouteAccess {
   const item = navItemFor(pathname)
-  if (!item) return { item: undefined, allowed: false, readOnly: false, subject: 'this screen' }
+  if (!item) {
+    return {
+      item: undefined,
+      allowed: false,
+      readOnly: false,
+      subject: words ? words('ui.nav.this_screen') : 'this screen',
+    }
+  }
 
   const allowed = canSee(item, roles, factoryType)
   return {
@@ -392,7 +465,7 @@ export function resolveAccess(
     // Never both: a "read only" banner on a screen the caller cannot open would be two
     // contradictory statements about the same permission.
     readOnly: allowed && !canWrite(item, roles, factoryType),
-    subject: lockedSubject(item),
+    subject: lockedSubject(item, words),
   }
 }
 

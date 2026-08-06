@@ -6,6 +6,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { MarbimSurface } from '@/app/(app)/marbim/surface-client'
 import { MarbimMark } from '@/components/fx/mark'
 
+import { useT } from '@/components/fx/locale'
+
 import { moduleForPath, screenLabelForPath, type MarbimEntry } from './marbim-context'
 import { MARBIM_OPEN_EVENT } from './marbim-open'
 
@@ -56,9 +58,10 @@ export function MarbimPanel({ entry, trust }: { entry: MarbimEntry; trust: Marbi
   // the panel cannot infer from where you are standing.
   const [wideScope, setWideScope] = useState(false)
 
+  const words = useT()
   const pathname = usePathname()
   const screenModule = moduleForPath(pathname)
-  const screenLabel = screenLabelForPath(pathname)
+  const screenLabel = screenLabelForPath(pathname, words)
 
   const close = useCallback(() => setOpen(false), [])
 

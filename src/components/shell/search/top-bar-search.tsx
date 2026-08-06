@@ -3,6 +3,8 @@
 import { useRouter } from 'next/navigation'
 import { useEffect, useId, useRef, useState, useTransition } from 'react'
 
+import { useT } from '@/components/fx/locale'
+
 import { MIN_SEARCH_LENGTH } from '@/lib/search-text'
 
 import { runGlobalSearch } from './actions'
@@ -33,6 +35,7 @@ export function TopBarSearch() {
   const [hits, setHits] = useState<SearchHit[]>([])
   const [active, setActive] = useState(0)
   const [pending, startTransition] = useTransition()
+  const words = useT()
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -89,8 +92,8 @@ export function TopBarSearch() {
         type="search"
         name="q"
         value={query}
-        placeholder="Search modules, orders, buyers…"
-        aria-label="Search"
+        placeholder={words('ui.nav.search_placeholder')}
+        aria-label={words('ui.common.search')}
         role="combobox"
         aria-autocomplete="list"
         aria-controls={listId}

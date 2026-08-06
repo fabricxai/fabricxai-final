@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useState } from 'react'
 
 import { Card } from '@/components/fx/data'
+import { useT } from '@/components/fx/locale'
 import { EmptyState, InlineAlert } from '@/components/fx/feedback'
 import { TextInput } from '@/components/fx/forms'
 import { Button } from '@/components/fx/primitives'
@@ -16,6 +17,7 @@ import { signUp } from '@/lib/auth-client'
  * user with no company has nothing to look at.
  */
 export default function SignupPage() {
+  const t = useT()
   const [name, setName] = useState('')
   const [company, setCompany] = useState('')
   const [email, setEmail] = useState('')
@@ -39,7 +41,7 @@ export default function SignupPage() {
 
     setBusy(false)
     if (err) {
-      setError(err.message ?? 'That did not go through.')
+      setError(err.message ?? t('ui.auth.signup_failed'))
       return
     }
     setSent(true)
@@ -48,11 +50,11 @@ export default function SignupPage() {
   if (sent) {
     return (
       <EmptyState
-        title="Confirm your email"
-        body={`We sent a link to ${email}. It expires in 24 hours, and you cannot sign in until it is used.`}
+        title={t('ui.auth.confirm_email')}
+        body={t('ui.auth.confirm_email_body', { email })}
         action={
           <Button variant="secondary" onClick={() => setSent(false)}>
-            Use a different address
+            {t('ui.auth.different_address')}
           </Button>
         }
       />
@@ -63,27 +65,27 @@ export default function SignupPage() {
     <Card padding={32}>
       <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <h1 style={{ font: "600 26px/1.15 var(--fx-font-sans)", margin: 0 }}>Create an account</h1>
+          <h1 style={{ font: "600 26px/1.15 var(--fx-font-sans)", margin: 0 }}>{t('ui.auth.create_account')}</h1>
           <p style={{ font: "400 15px/1.55 var(--fx-font-sans)", color: 'var(--fx-text-secondary)', margin: 0 }}>
-            This also creates your factory. You will be its owner.
+            {t('ui.auth.create_account_tagline')}
           </p>
         </div>
 
         <TextInput
-          label="Your name"
+          label={t('ui.auth.your_name')}
           required
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
         <TextInput
-          label="Factory name"
-          hint="The legal name can be set later in Settings."
+          label={t('ui.auth.factory_name')}
+          hint={t('ui.auth.factory_name_hint')}
           required
           value={company}
           onChange={(e) => setCompany(e.target.value)}
         />
         <TextInput
-          label="Email"
+          label={t('ui.auth.email')}
           type="email"
           autoComplete="email"
           required
@@ -91,10 +93,10 @@ export default function SignupPage() {
           onChange={(e) => setEmail(e.target.value)}
         />
         <TextInput
-          label="Password"
+          label={t('ui.auth.password')}
           type="password"
           autoComplete="new-password"
-          hint="At least 10 characters."
+          hint={t('ui.auth.password_hint', { count: 10 })}
           minLength={10}
           required
           value={password}
@@ -104,11 +106,15 @@ export default function SignupPage() {
         {error ? <InlineAlert tone="danger">{error}</InlineAlert> : null}
 
         <Button type="submit" variant="primary" size="lg" full disabled={busy}>
-          {busy ? <MarbimMark state="thinking" size={20} label="Creating" /> : 'Create account'}
+          {busy ? (
+            <MarbimMark state="thinking" size={20} label={t('ui.auth.creating')} />
+          ) : (
+            t('ui.auth.create_button')
+          )}
         </Button>
 
         <div style={{ font: "400 14px/1.5 var(--fx-font-sans)", color: 'var(--fx-text-secondary)' }}>
-          Already have one? <Link href="/login">Sign in</Link>
+          {t('ui.auth.already_have')} <Link href="/login">{t('ui.auth.sign_in')}</Link>
         </div>
       </form>
     </Card>

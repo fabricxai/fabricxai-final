@@ -6,6 +6,7 @@ import { z } from 'zod'
 import type { FactoryType } from '@/components/shell/nav'
 import { consume, LIMITS } from '@/lib/rate-limit'
 import { MIN_SEARCH_LENGTH } from '@/lib/search-text'
+import { requestLocale } from '@/lib/ui-locale'
 import { requireRole } from '@/modules/core/session'
 import { companyProfile } from '@/modules/settings/service'
 
@@ -64,6 +65,11 @@ export async function runGlobalSearch(input: {
   const profile = await companyProfile(ctx)
   const factoryType: FactoryType = profile?.factoryType ?? 'woven'
 
-  const hits = await searchFactory(ctx, { query: parsed.data.query, factoryType })
+  const hits = await searchFactory(ctx, {
+    query: parsed.data.query,
+    factoryType,
+    // So a Bangla-only worker can type the name they see in the sidebar and find it.
+    locale: await requestLocale(),
+  })
   return { hits }
 }

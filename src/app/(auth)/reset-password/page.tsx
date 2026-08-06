@@ -17,6 +17,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 
 import { Card } from '@/components/fx/data'
+import { useT } from '@/components/fx/locale'
 import { InlineAlert } from '@/components/fx/feedback'
 import { TextInput } from '@/components/fx/forms'
 import { MarbimMark } from '@/components/fx/mark'
@@ -27,6 +28,7 @@ import { resetPassword } from '@/lib/auth-client'
 const MIN_LENGTH = 10
 
 export default function ResetPasswordPage() {
+  const t = useT()
   const router = useRouter()
   const params = useSearchParams()
   const token = params.get('token')
@@ -46,7 +48,7 @@ export default function ResetPasswordPage() {
       <Card>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <h1 style={{ margin: 0, font: '600 22px/1.25 var(--fx-font-sans)' }}>
-            That link no longer works
+            {t('ui.auth.link_dead')}
           </h1>
           <p
             style={{
@@ -55,13 +57,11 @@ export default function ResetPasswordPage() {
               color: 'var(--fx-text-secondary)',
             }}
           >
-            {token
-              ? 'It has already been used, or it expired — a reset link lasts one hour and works once.'
-              : 'This page is opened from the link in a password-reset email.'}{' '}
-            Ask for a new one and use it straight away.
+            {t(token ? 'ui.auth.link_used' : 'ui.auth.link_absent')}{' '}
+            {t('ui.auth.ask_again')}
           </p>
           <Link href="/forgot-password" style={{ font: '500 14px/1.4 var(--fx-font-sans)' }}>
-            Send a new link
+            {t('ui.auth.send_new_link')}
           </Link>
         </div>
       </Card>
@@ -73,7 +73,7 @@ export default function ResetPasswordPage() {
       <Card>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <h1 style={{ margin: 0, font: '600 22px/1.25 var(--fx-font-sans)' }}>
-            Your password is set
+            {t('ui.auth.password_set')}
           </h1>
           <p
             style={{
@@ -82,11 +82,10 @@ export default function ResetPasswordPage() {
               color: 'var(--fx-text-secondary)',
             }}
           >
-            Sign in with the new one. If you are on a shared floor tablet, sign out when you
-            hand it over — what you do is recorded against your name.
+            {t('ui.auth.password_set_body')}
           </p>
           <Button variant="primary" size="lg" full onClick={() => router.push('/login')}>
-            Sign in
+            {t('ui.auth.sign_in')}
           </Button>
         </div>
       </Card>
@@ -98,11 +97,11 @@ export default function ResetPasswordPage() {
     setError(null)
 
     if (password.length < MIN_LENGTH) {
-      setError(`Use at least ${MIN_LENGTH} characters.`)
+      setError(t('ui.auth.password_hint', { count: MIN_LENGTH }))
       return
     }
     if (password !== confirm) {
-      setError('The two passwords do not match.')
+      setError(t('ui.auth.passwords_differ'))
       return
     }
 
@@ -113,11 +112,7 @@ export default function ResetPasswordPage() {
     if (err) {
       // A rejection at this point is almost always the token, since the password was
       // checked above — say that rather than repeating the rules.
-      setError(
-        err.status === 429
-          ? 'Too many attempts. Wait a few minutes and try again.'
-          : 'That did not work. The link may have expired — ask for a new one.',
-      )
+      setError(t(err.status === 429 ? 'ui.auth.too_many' : 'ui.auth.reset_failed'))
       return
     }
 
@@ -129,7 +124,7 @@ export default function ResetPasswordPage() {
       <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <h1 style={{ margin: 0, font: '600 22px/1.25 var(--fx-font-sans)' }}>
-            Set a new password
+            {t('ui.auth.set_new_password')}
           </h1>
           <p
             style={{
@@ -138,13 +133,12 @@ export default function ResetPasswordPage() {
               color: 'var(--fx-text-secondary)',
             }}
           >
-            At least {MIN_LENGTH} characters. Every other session stays signed in — sign out
-            of shared devices yourself.
+            {t('ui.auth.set_new_password_body', { count: MIN_LENGTH })}
           </p>
         </div>
 
         <TextInput
-          label="New password"
+          label={t('ui.auth.new_password')}
           type="password"
           name="password"
           autoComplete="new-password"
@@ -154,7 +148,7 @@ export default function ResetPasswordPage() {
         />
 
         <TextInput
-          label="New password again"
+          label={t('ui.auth.new_password_again')}
           type="password"
           name="confirm"
           autoComplete="new-password"
@@ -166,7 +160,11 @@ export default function ResetPasswordPage() {
         {error ? <InlineAlert tone="danger">{error}</InlineAlert> : null}
 
         <Button type="submit" variant="primary" size="lg" full disabled={busy}>
-          {busy ? <MarbimMark state="thinking" size={20} label="Saving" /> : 'Save the password'}
+          {busy ? (
+            <MarbimMark state="thinking" size={20} label={t('ui.auth.saving')} />
+          ) : (
+            t('ui.auth.save_password')
+          )}
         </Button>
       </form>
     </Card>

@@ -10,7 +10,7 @@
  * No React and no server imports: a server component picks the prompts, a client component
  * renders them.
  */
-import { navItemFor } from './nav'
+import { navItemFor, navLabelKey, type Words } from './nav'
 
 /** Starting points per role. Each one is answerable from what that role can already read. */
 const SUGGESTIONS: Record<string, readonly string[]> = {
@@ -130,8 +130,12 @@ export function moduleForPath(pathname: string): string | undefined {
  * both — the chip claiming you are on a screen that no longer goes by that name is the kind
  * of small lie that makes somebody stop trusting the rest of the panel.
  */
-export function screenLabelForPath(pathname: string): string {
+export function screenLabelForPath(pathname: string, words?: Words): string {
+  const say = words ?? ((key: string) => (key === 'ui.nav.this_factory' ? 'this factory' : key))
   const segment = pathname.split('/').filter(Boolean)[0]
-  if (!segment) return 'this factory'
-  return navItemFor(`/${segment}`)?.label ?? 'this factory'
+  if (!segment) return say('ui.nav.this_factory')
+
+  const item = navItemFor(`/${segment}`)
+  if (!item) return say('ui.nav.this_factory')
+  return words ? words(navLabelKey(item.id)) : item.label
 }

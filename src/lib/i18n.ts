@@ -831,6 +831,47 @@ export const MESSAGES: Catalogue = {
     'sampling.errors.request_not_found': 'এই স্যাম্পল রিকোয়েস্টটি আর নেই।',
     'sampling.errors.stage_not_forward':
       'স্যাম্পলের ধাপ শুধু সামনে এগোয়। প্যাটার্নে ফিরে যাওয়া মানে আবার নতুন করে বানানো, সেটা নতুন রিকোয়েস্ট।',
+    // ── shipment · 8.1 · the packing floor reads these ──
+    'shipment.errors.carton_already_loaded': 'এই কার্টন আগেই একটি শিপমেন্টে লোড হয়েছে।',
+    'shipment.errors.carton_draft_insert_only':
+      'কার্টন ফ্লোরে খোলা ও রি-প্যাক হয় — কিউতে এডিট হয় না। প্যাকিং লিস্ট আর শিপড কোয়ান্টিটি দুটোই এই রো থেকে আসে।',
+    'shipment.errors.carton_not_found': 'এই কার্টন আর নেই।',
+    'shipment.errors.carton_wrong_order': 'এই কার্টন অন্য অর্ডারের বিপরীতে প্যাক করা হয়েছিল।',
+    'shipment.errors.doc_needs_file':
+      'ফাইল ছাড়া কোনো ডকুমেন্ট রেডি করা যায় না — বিল অব লেডিং ছাড়া “বিল অব লেডিং রেডি” মানে ব্যাংক কাউন্টারে অসম্পূর্ণ প্রেজেন্টেশন।',
+    'shipment.errors.doc_not_on_checklist': 'এই ডকুমেন্ট এই শিপমেন্টের চেকলিস্টে নেই।',
+    'shipment.errors.docs_not_ready':
+      'চেকলিস্টের কিছু ডকুমেন্ট এখনো বাকি। ব্যাংকে পুরো সেট যায়, নয়তো কিছুই না।',
+    'shipment.errors.exp_already_set':
+      'এই শিপমেন্টের EXP নম্বর আগেই আছে। ব্যাংক প্রতি শিপমেন্টে একটি দেয়, তাই ভিন্ন নম্বর হয় টাইপো — যার ট্রেইল দরকার — নয়তো অন্য শিপমেন্টের নম্বর।',
+    'shipment.errors.invalid': 'এই শিপমেন্ট রেকর্ড যা নেয়, এটি তার সঙ্গে মেলে না।',
+    'shipment.errors.lc_not_found': 'এই LC আর নেই।',
+    'shipment.errors.no_cartons': 'এই অর্ডারের বিপরীতে এখনো কিছু প্যাক হয়নি।',
+    'shipment.errors.no_cartons_loaded': 'এই শিপমেন্টে কোনো কার্টন লোড করা নেই।',
+    'shipment.errors.no_checklist':
+      'এই শিপমেন্টের ডকুমেন্ট চেকলিস্ট এখনো নেই। আগে LC থেকে সেটি বানান।',
+    'shipment.errors.no_doc_kinds':
+      'LC-তে কোনো ডকুমেন্ট চাওয়া হয়নি এবং কিছু দেওয়াও হয়নি। খালি চেকলিস্ট মানে এই শিপমেন্ট আর ব্যাংকের মাঝে শুধু EXP নম্বরটাই থাকবে।',
+    'shipment.errors.no_lc_on_shipment':
+      'এই শিপমেন্টের সঙ্গে কোনো LC যুক্ত নেই, তাই মেলানোর মতো টলারেন্স ব্যান্ডও নেই।',
+    'shipment.errors.no_order_styles':
+      'এই অর্ডারে কোনো স্টাইল নেই, তাই এর বিপরীতে কিছু প্যাক করা যাবে না।',
+    'shipment.errors.nothing_to_waive': 'মওকুফ করার মতো কোনো ফেল করা ফাইনাল ইন্সপেকশন নেই।',
+    'shipment.errors.order_not_found': 'এই অর্ডার আর নেই।',
+    'shipment.errors.packing_list_has_mismatches':
+      'এই লিস্ট বায়ারের গ্রিডের সঙ্গে মেলে না। জেনেশুনে অ্যাপ্রুভ করা যায়, না জেনে নয়।',
+    'shipment.errors.packing_list_not_found': 'এই প্যাকিং লিস্ট আর নেই।',
+    'shipment.errors.packing_list_stale':
+      'এই লিস্ট তৈরির পর কার্টন বদলেছে। লক করার আগে আবার তৈরি করুন — নইলে বাক্সের সঙ্গে না মেলা একটি লিস্ট লক করবেন।',
+    'shipment.errors.shipment_already_departed':
+      'এই মাল ইতিমধ্যে ex-factory হয়ে গেছে। যা গেছে সেটাই ম্যানিফেস্ট, এখন যোগ করলে জমা দেওয়া ডকুমেন্ট বদলে যাবে।',
+    'shipment.errors.shipment_not_found': 'এই শিপমেন্ট আর নেই।',
+    'shipment.errors.tolerance_not_breached':
+      'শিপড কোয়ান্টিটি LC-র টলারেন্সের ভেতরেই আছে, তাই ওভাররাইড করার কিছু নেই।',
+    'shipment.errors.waiver_needs_commercial':
+      'শুধু কমার্শিয়াল বা ওনার এটি মওকুফ করতে পারেন — ফেল করা ফাইনাল ইন্সপেকশন, বা শিপমেন্টের তারিখ নিতে না পারা LC।',
+    'shipment.errors.waiver_needs_reason':
+      'মওকুফের জন্য কারণ লেখা দরকার — পরে অডিটরের কাছে এটাই একমাত্র যুক্তি।',
     'store.errors.adjustment_below_zero': 'এই সমন্বয়ে স্টক শূন্যের নিচে চলে যাবে।',
     'store.errors.bom_item_unknown': 'এই আইটেমটি স্টাইলের BOM-এ নেই।',
     'store.errors.bonded_requires_ud':

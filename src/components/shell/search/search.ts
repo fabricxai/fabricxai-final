@@ -1,6 +1,8 @@
 import 'server-only'
 
-import { canSee, NAV, type FactoryType } from '@/components/shell/nav'
+import { canSee, navLabelKey, NAV, type FactoryType } from '@/components/shell/nav'
+import { tui } from '@/lib/i18n-ui'
+import type { Locale } from '@/lib/i18n'
 import { MIN_SEARCH_LENGTH } from '@/lib/search-text'
 import { searchBuyers, searchLeads } from '@/modules/buyers/queries'
 import { searchLcs } from '@/modules/commercial/queries'
@@ -42,7 +44,7 @@ function maySee(ctx: AnyCtx, factoryType: FactoryType, id: string): boolean {
 
 export async function searchFactory(
   ctx: AnyCtx,
-  input: { query: string; factoryType: FactoryType },
+  input: { query: string; factoryType: FactoryType; locale?: Locale },
 ): Promise<SearchHit[]> {
   const term = input.query.trim()
   if (term.length < MIN_SEARCH_LENGTH) return []
@@ -51,19 +53,34 @@ export async function searchFactory(
   const needle = term.toLowerCase()
   const limit = PER_KIND
 
-  const modules: SearchHit[] = NAV.filter((item) => canSee(item, ctx.roles, ft))
+  /*
+   * Modules are matched on the reader's own words AND on the English (plan 4.2).
+   *
+   * Both, deliberately. A Bangla-only worker types স্টোর and finds the store; a bilingual
+   * merchandiser types "store" and finds it too, on the same tablet with the language set to
+   * Bangla. Dropping the English match would make the search worse for the second person to
+   * make it work for the first, and the id and href are already matched for the same reason.
+   */
+  const locale = input.locale ?? 'en'
+  const named = NAV.filter((item) => canSee(item, ctx.roles, ft)).map((item) => ({
+    item,
+    title: tui(locale, navLabelKey(item.id)),
+  }))
+
+  const modules: SearchHit[] = named
     .filter(
-      (item) =>
+      ({ item, title }) =>
+        title.toLowerCase().includes(needle) ||
         item.label.toLowerCase().includes(needle) ||
         item.id.toLowerCase().includes(needle) ||
         item.href.replace(/^\//, '').toLowerCase().includes(needle),
     )
     .slice(0, PER_KIND)
-    .map((item) => ({
+    .map(({ item, title }) => ({
       kind: 'module' as const,
       id: item.id,
-      title: item.label,
-      subtitle: 'Module',
+      title,
+      subtitle: tui(locale, 'ui.nav.module_hit'),
       href: item.href,
     }))
 

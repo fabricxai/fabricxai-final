@@ -93,6 +93,19 @@ describe('screen copy is bilingual', () => {
     )
   })
 
+  /**
+   * Keys whose Bangla IS the Latin string, with the reason.
+   *
+   * A list rather than a loosened rule, so each exception is argued once and the next one
+   * has to be argued too. Both of these are names, not sentences: transliterating them
+   * would put a word on the screen that nobody in the factory says out loud.
+   */
+  const LATIN_IS_THE_TRANSLATION: Record<string, string> = {
+    'ui.nav.marbim': 'the assistant’s name — a proper noun in both languages',
+    'ui.nav.locked_marbim': 'the same name, in the sentence the locked card uses',
+    'ui.role.hr': 'what the department is called on a Bangladeshi factory floor, in English',
+  }
+
   it('the Bangla is actually Bangla', () => {
     // Guards the copy-paste that leaves an English sentence in the bn block. Checked by
     // script range rather than by hand: the terms a factory keeps in English (LC, UD, GRN,
@@ -100,7 +113,7 @@ describe('screen copy is bilingual', () => {
     // at least some Bengali.
     const bengali = /[ঀ-৿]/
     const notTranslated = Object.entries(UI_MESSAGES.bn)
-      .filter(([, value]) => !bengali.test(value))
+      .filter(([key, value]) => !bengali.test(value) && !(key in LATIN_IS_THE_TRANSLATION))
       .map(([key]) => key)
       .sort()
 
@@ -108,6 +121,18 @@ describe('screen copy is bilingual', () => {
       notTranslated,
       `bn entries with no Bengali script — English left in the Bangla block:\n${notTranslated.join('\n')}`,
     ).toEqual([])
+  })
+
+  it('carries no stale exemption from the Bangla check', () => {
+    // The list rots the moment somebody translates one of them. A note that is no longer
+    // true is worse than no note, because the next reader trusts it.
+    const bengali = /[ঀ-৿]/
+    const stale = Object.keys(LATIN_IS_THE_TRANSLATION).filter((key) => {
+      const value = UI_MESSAGES.bn[key]
+      return value === undefined || bengali.test(value)
+    })
+
+    expect(stale, `no longer Latin-only: ${stale.join(', ')}`).toEqual([])
   })
 })
 

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
 import { Card } from '@/components/fx/data'
+import { useT } from '@/components/fx/locale'
 import { InlineAlert } from '@/components/fx/feedback'
 import { TextInput } from '@/components/fx/forms'
 import { Button } from '@/components/fx/primitives'
@@ -12,6 +13,7 @@ import { MarbimMark } from '@/components/fx/mark'
 import { signIn } from '@/lib/auth-client'
 
 export default function LoginPage() {
+  const t = useT()
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -29,11 +31,7 @@ export default function LoginPage() {
       setBusy(false)
       // Better Auth returns the unverified case explicitly; everything else
       // stays deliberately vague so this form cannot be used to enumerate users.
-      setError(
-        err.status === 403
-          ? 'That account still needs its email confirmed. Check your inbox.'
-          : 'That email and password did not match.',
-      )
+      setError(t(err.status === 403 ? 'ui.auth.unconfirmed' : 'ui.auth.bad_credentials'))
       return
     }
 
@@ -49,14 +47,14 @@ export default function LoginPage() {
     <Card padding={32}>
       <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <h1 style={{ font: "600 26px/1.15 var(--fx-font-sans)", margin: 0 }}>Sign in</h1>
+          <h1 style={{ font: "600 26px/1.15 var(--fx-font-sans)", margin: 0 }}>{t('ui.auth.sign_in')}</h1>
           <p style={{ font: "400 15px/1.55 var(--fx-font-sans)", color: 'var(--fx-text-secondary)', margin: 0 }}>
-            Your factory, your orders, your floor.
+            {t('ui.auth.sign_in_tagline')}
           </p>
         </div>
 
         <TextInput
-          label="Email"
+          label={t('ui.auth.email')}
           type="email"
           autoComplete="email"
           required
@@ -64,7 +62,7 @@ export default function LoginPage() {
           onChange={(e) => setEmail(e.target.value)}
         />
         <TextInput
-          label="Password"
+          label={t('ui.auth.password')}
           type="password"
           autoComplete="current-password"
           required
@@ -75,7 +73,11 @@ export default function LoginPage() {
         {error ? <InlineAlert tone="danger">{error}</InlineAlert> : null}
 
         <Button type="submit" variant="primary" size="lg" full disabled={busy}>
-          {busy ? <MarbimMark state="thinking" size={20} label="Signing in" /> : 'Sign in'}
+          {busy ? (
+            <MarbimMark state="thinking" size={20} label={t('ui.auth.signing_in')} />
+          ) : (
+            t('ui.auth.sign_in')
+          )}
         </Button>
 
         <div
@@ -89,9 +91,10 @@ export default function LoginPage() {
         >
           {/* First, not last: somebody reading this form twice is here because they cannot
               get in, not because they want to create a second factory. */}
-          <Link href="/forgot-password">Forgotten your password?</Link>
+          <Link href="/forgot-password">{t('ui.auth.forgot_link')}</Link>
           <span>
-            New factory? <Link href="/signup">Create an account</Link>
+            {t('ui.auth.new_factory')}{' '}
+            <Link href="/signup">{t('ui.auth.create_account_link')}</Link>
           </span>
         </div>
       </form>

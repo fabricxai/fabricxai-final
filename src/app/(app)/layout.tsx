@@ -9,12 +9,14 @@ import { Sidebar } from '@/components/shell/sidebar'
 import { AccountMenu } from '@/components/shell/account-menu'
 import {
   describeRoles,
+  navLabelKey,
   resolveAccess,
   visibleNav,
   type FactoryType,
 } from '@/components/shell/nav'
 import { LockedState, ReadOnlyNote } from '@/components/fx/feedback'
 import { LocaleProvider } from '@/components/fx/locale'
+import { tui } from '@/lib/i18n-ui'
 import { requestLocale } from '@/lib/ui-locale'
 import { marbimTrust, routedPendingCount } from '@/modules/approvals/queries'
 import type { ApprovalsPolicy } from '@/modules/approvals/service'
@@ -73,7 +75,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
    * path with no registry entry is refused there, not waved through.
    */
   const pathname = requestHeaders.get('x-pathname') ?? ''
-  const { item, allowed, readOnly, subject } = resolveAccess(pathname, ctx.roles, factoryType)
+  const { item, allowed, readOnly, subject } = resolveAccess(
+    pathname,
+    ctx.roles,
+    factoryType,
+    (key, params) => tui(locale, key, params),
+  )
 
   return (
     <LocaleProvider locale={locale}>
@@ -84,7 +91,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <AccountMenu
               name={me?.name ?? null}
               email={me?.email ?? ''}
-              roleLabel={describeRoles(ctx.roles)}
+              roleLabel={describeRoles(ctx.roles, (key, params) => tui(locale, key, params))}
               companyName={displayName ?? 'FabricXAI'}
             />
           }
@@ -97,7 +104,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <>
                 {/* Said before anything is typed, not after a button is pressed. The write
                     itself is still refused by the action — this is the label, not the lock. */}
-                {readOnly && item ? <ReadOnlyNote what={item.label} /> : null}
+                {readOnly && item ? <ReadOnlyNote what={tui(locale, navLabelKey(item.id))} /> : null}
                 {children}
               </>
             ) : (

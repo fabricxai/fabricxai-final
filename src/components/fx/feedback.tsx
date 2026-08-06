@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react'
 import { useEffect } from 'react'
 
+import { useT } from './locale'
 import { Button } from './primitives'
 import { MarbimMark, MarbimSpinner } from './mark'
 
@@ -451,6 +452,8 @@ export function ErrorState({
  * cannot see.
  */
 export function LockedState({ what }: { what: string }) {
+  const t = useT()
+
   return (
     <div
       style={{
@@ -466,7 +469,7 @@ export function LockedState({ what }: { what: string }) {
       <MarbimMark state="blocked" size={32} label={null} />
       <div>
         <div style={{ font: "600 16px/1.3 var(--fx-font-sans)" }}>
-          You don&rsquo;t have access to {what}
+          {t('ui.common.no_access', { what })}
         </div>
         <div
           style={{
@@ -475,7 +478,7 @@ export function LockedState({ what }: { what: string }) {
             marginTop: 4,
           }}
         >
-          Ask an owner or admin if you need it.
+          {t('ui.common.ask_owner')}
         </div>
       </div>
     </div>
@@ -573,6 +576,8 @@ export function Skeleton({ width = '100%', height = 11 }: { width?: string | num
  * there is nothing here to fix and nobody has done anything wrong.
  */
 export function ReadOnlyNote({ what }: { what: string }) {
+  const t = useT()
+
   return (
     <div
       role="note"
@@ -596,7 +601,7 @@ export function ReadOnlyNote({ what }: { what: string }) {
           flexShrink: 0,
         }}
       >
-        Read only
+        {t('ui.common.read_only')}
       </span>
       <span
         style={{
@@ -604,7 +609,7 @@ export function ReadOnlyNote({ what }: { what: string }) {
           color: 'var(--fx-text-secondary)',
         }}
       >
-        Your role can read {what} but not change it. Ask an owner or admin if you need to.
+        {t('ui.common.read_only_body', { what })}
       </span>
     </div>
   )

@@ -17,6 +17,7 @@ import Link from 'next/link'
 import { useState } from 'react'
 
 import { Card } from '@/components/fx/data'
+import { useT } from '@/components/fx/locale'
 import { InlineAlert } from '@/components/fx/feedback'
 import { TextInput } from '@/components/fx/forms'
 import { MarbimMark } from '@/components/fx/mark'
@@ -24,6 +25,7 @@ import { Button } from '@/components/fx/primitives'
 import { requestPasswordReset } from '@/lib/auth-client'
 
 export default function ForgotPasswordPage() {
+  const t = useT()
   const [email, setEmail] = useState('')
   const [sent, setSent] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -47,7 +49,7 @@ export default function ForgotPasswordPage() {
     // account, so saying so tells an attacker nothing and tells a real user to wait
     // rather than to keep pressing a button that will not work.
     if (err?.status === 429) {
-      setError('Too many attempts. Wait a few minutes and try again.')
+      setError(t('ui.auth.too_many'))
       return
     }
 
@@ -59,7 +61,7 @@ export default function ForgotPasswordPage() {
     return (
       <Card>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <h1 style={{ margin: 0, font: '600 22px/1.25 var(--fx-font-sans)' }}>Check your inbox</h1>
+          <h1 style={{ margin: 0, font: '600 22px/1.25 var(--fx-font-sans)' }}>{t('ui.auth.check_inbox')}</h1>
           <p
             style={{
               margin: 0,
@@ -67,8 +69,7 @@ export default function ForgotPasswordPage() {
               color: 'var(--fx-text-secondary)',
             }}
           >
-            If an account exists for <strong>{email}</strong>, a link to set a new password is
-            on its way. It expires in one hour and can be used once.
+            {t('ui.auth.check_inbox_body', { email })}
           </p>
           <p
             style={{
@@ -77,11 +78,10 @@ export default function ForgotPasswordPage() {
               color: 'var(--fx-text-tertiary)',
             }}
           >
-            Nothing arrived? Check the spam folder, and confirm the address is the one the
-            account was created with.
+            {t('ui.auth.nothing_arrived')}
           </p>
           <Link href="/login" style={{ font: '500 14px/1.4 var(--fx-font-sans)' }}>
-            Back to sign in
+            {t('ui.auth.back_to_sign_in')}
           </Link>
         </div>
       </Card>
@@ -93,7 +93,7 @@ export default function ForgotPasswordPage() {
       <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <h1 style={{ margin: 0, font: '600 22px/1.25 var(--fx-font-sans)' }}>
-            Reset your password
+            {t('ui.auth.reset_title')}
           </h1>
           <p
             style={{
@@ -102,13 +102,12 @@ export default function ForgotPasswordPage() {
               color: 'var(--fx-text-secondary)',
             }}
           >
-            Enter the address your account was created with and we will send a link to set a
-            new password.
+            {t('ui.auth.reset_body')}
           </p>
         </div>
 
         <TextInput
-          label="Email"
+          label={t('ui.auth.email')}
           type="email"
           name="email"
           autoComplete="email"
@@ -120,13 +119,17 @@ export default function ForgotPasswordPage() {
         {error ? <InlineAlert tone="danger">{error}</InlineAlert> : null}
 
         <Button type="submit" variant="primary" size="lg" full disabled={busy}>
-          {busy ? <MarbimMark state="thinking" size={20} label="Sending" /> : 'Send the link'}
+          {busy ? (
+            <MarbimMark state="thinking" size={20} label={t('ui.auth.sending')} />
+          ) : (
+            t('ui.auth.send_link')
+          )}
         </Button>
 
         <div
           style={{ font: '400 14px/1.5 var(--fx-font-sans)', color: 'var(--fx-text-secondary)' }}
         >
-          Remembered it? <Link href="/login">Sign in</Link>
+          {t('ui.auth.remembered')} <Link href="/login">{t('ui.auth.sign_in')}</Link>
         </div>
       </form>
     </Card>

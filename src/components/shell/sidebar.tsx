@@ -3,7 +3,9 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
-import { NAV_SECTIONS, type NavItem, type NavSection } from './nav'
+import { useT } from '@/components/fx/locale'
+
+import { navLabelKey, navSectionKey, NAV_SECTIONS, type NavItem, type NavSection } from './nav'
 import { NavIcon } from './nav-icons'
 
 /**
@@ -13,6 +15,7 @@ import { NavIcon } from './nav-icons'
  */
 export function Sidebar({ items }: { items: readonly NavItem[] }) {
   const pathname = usePathname()
+  const t = useT()
 
   const bySection = NAV_SECTIONS.map((section) => ({
     ...section,
@@ -21,7 +24,7 @@ export function Sidebar({ items }: { items: readonly NavItem[] }) {
 
   return (
     <nav
-      aria-label="Modules"
+      aria-label={t('ui.nav.modules_aria')}
       className="fx-sidebar"
       style={{
         width: 232,
@@ -46,12 +49,13 @@ export function Sidebar({ items }: { items: readonly NavItem[] }) {
               padding: '0 12px 8px',
             }}
           >
-            {section.label}
+            {t(navSectionKey(section.id))}
           </div>
           {section.items.map((item) => (
             <SidebarLink
               key={item.id}
               item={item}
+              label={t(navLabelKey(item.id))}
               active={pathname === item.href || pathname.startsWith(`${item.href}/`)}
             />
           ))}
@@ -61,7 +65,15 @@ export function Sidebar({ items }: { items: readonly NavItem[] }) {
   )
 }
 
-function SidebarLink({ item, active }: { item: NavItem; active: boolean }) {
+function SidebarLink({
+  item,
+  label,
+  active,
+}: {
+  item: NavItem
+  label: string
+  active: boolean
+}) {
   return (
     <Link
       href={item.href}
@@ -90,12 +102,12 @@ function SidebarLink({ item, active }: { item: NavItem; active: boolean }) {
         }}
       />
       <NavIcon id={item.id} />
-      {item.label}
+      {label}
     </Link>
   )
 }
 
-/** Section id → label, used by the top bar breadcrumb. */
+/** Section id → label, used by the top bar breadcrumb. English; see `navSectionKey`. */
 export function sectionLabel(id: NavSection): string {
   return NAV_SECTIONS.find((s) => s.id === id)?.label ?? ''
 }
