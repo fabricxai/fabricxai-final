@@ -12,6 +12,7 @@ import { desc, eq, and, sql } from 'drizzle-orm'
 
 import type { AnyCtx } from '../core/ctx'
 import { notFound } from '../core/errors'
+import { scoped } from '../core/scoped'
 import { withTenantRead } from '../core/tenancy'
 
 import { bomLines, boms, costSheets } from './schema'
@@ -36,7 +37,7 @@ export async function getRequisitionConsumption(
   bomId: string,
 ): Promise<RequisitionConsumptionLine[]> {
   return withTenantRead(ctx, async (tx) => {
-    const lines = await tx.select().from(bomLines).where(eq(bomLines.bomId, bomId))
+    const lines = await tx.select().from(bomLines).where(scoped(bomLines, ctx, eq(bomLines.bomId, bomId)))
     if (lines.length === 0) throw notFound('costing.errors.bom_not_found', { bomId })
 
     return lines.map((line) => ({
@@ -57,7 +58,7 @@ export async function getBomForStyle(
     const [sheet] = await tx
       .select()
       .from(costSheets)
-      .where(and(eq(costSheets.styleCode, styleCode), eq(costSheets.status, 'approved')))
+      .where(scoped(costSheets, ctx, and(eq(costSheets.styleCode, styleCode), eq(costSheets.status, 'approved'))))
       .orderBy(desc(costSheets.version))
       .limit(1)
 
@@ -67,7 +68,7 @@ export async function getBomForStyle(
       throw notFound('costing.errors.no_bom_for_style', { styleCode })
     }
 
-    const [bom] = await tx.select().from(boms).where(eq(boms.id, sheet.bomId))
+    const [bom] = await tx.select().from(boms).where(scoped(boms, ctx, eq(boms.id, sheet.bomId)))
     if (!bom) throw notFound('costing.errors.bom_not_found', { bomId: sheet.bomId })
 
     return { bomId: bom.id, sheetVersion: sheet.version }
@@ -151,13 +152,13 @@ export async function bomDetail(
   bomId: string,
 ): Promise<{ bom: BomSummary; lines: BomDetailLine[] } | null> {
   return withTenantRead(ctx, async (tx) => {
-    const [bom] = await tx.select().from(boms).where(eq(boms.id, bomId))
+    const [bom] = await tx.select().from(boms).where(scoped(boms, ctx, eq(boms.id, bomId)))
     if (!bom) return null
 
     const lines = await tx
       .select()
       .from(bomLines)
-      .where(eq(bomLines.bomId, bomId))
+      .where(scoped(bomLines, ctx, eq(bomLines.bomId, bomId)))
       // Fabric first: it is most of the cost and the first thing anybody checks.
       .orderBy(
         sql`case ${bomLines.lineGroup}
@@ -169,7 +170,7 @@ export async function bomDetail(
     const [usage] = await tx
       .select({ id: costSheets.id })
       .from(costSheets)
-      .where(and(eq(costSheets.bomId, bomId), eq(costSheets.status, 'approved')))
+      .where(scoped(costSheets, ctx, and(eq(costSheets.bomId, bomId), eq(costSheets.status, 'approved'))))
       .limit(1)
 
     return {

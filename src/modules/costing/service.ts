@@ -17,6 +17,7 @@ import type { AnyCtx, RequestCtx } from '../core/ctx'
 import { AppError, conflict, notFound } from '../core/errors'
 import { emit } from '../core/outbox'
 import { defineStateMachine } from '../core/state-machine'
+import { scoped } from '../core/scoped'
 import { withTenantRead, withTenantTx, type TenantDb } from '../core/tenancy'
 
 import {
@@ -93,10 +94,10 @@ export async function buildFromBom(
   input: { bomId: string; rates: Record<string, string>; sections: unknown },
 ): Promise<{ sections: CostSheetInput }> {
   return withTenantRead(ctx, async (tx) => {
-    const [bom] = await tx.select().from(boms).where(eq(boms.id, input.bomId))
+    const [bom] = await tx.select().from(boms).where(scoped(boms, ctx, eq(boms.id, input.bomId)))
     if (!bom) throw notFound('costing.errors.bom_not_found', { bomId: input.bomId })
 
-    const lines = await tx.select().from(bomLines).where(eq(bomLines.bomId, input.bomId))
+    const lines = await tx.select().from(bomLines).where(scoped(bomLines, ctx, eq(bomLines.bomId, input.bomId)))
     const base = costSheetSections.parse(input.sections)
 
     const material = (group: 'fabric' | 'trims') =>
@@ -161,7 +162,7 @@ export async function createCostSheet(
     const [latest] = await tx
       .select({ version: costSheets.version })
       .from(costSheets)
-      .where(eq(costSheets.styleCode, payload.styleCode))
+      .where(scoped(costSheets, ctx, eq(costSheets.styleCode, payload.styleCode)))
       .orderBy(desc(costSheets.version))
       .limit(1)
 
@@ -225,7 +226,7 @@ export async function approveCostSheet(
     const [sheet] = await tx
       .select()
       .from(costSheets)
-      .where(eq(costSheets.id, input.sheetId))
+      .where(scoped(costSheets, ctx, eq(costSheets.id, input.sheetId)))
       .for('update')
 
     if (!sheet) throw notFound('costing.errors.sheet_not_found', { sheetId: input.sheetId })
@@ -257,9 +258,9 @@ export async function approveCostSheet(
     const superseded = await tx
       .update(costSheets)
       .set({ status: 'superseded', updatedAt: new Date() })
-      .where(
+      .where(scoped(costSheets, ctx, 
         and(eq(costSheets.styleCode, sheet.styleCode), eq(costSheets.status, 'approved')),
-      )
+      ))
       .returning({ id: costSheets.id })
 
     await tx
@@ -270,7 +271,7 @@ export async function approveCostSheet(
         approvedAt: new Date(),
         updatedAt: new Date(),
       })
-      .where(eq(costSheets.id, sheet.id))
+      .where(scoped(costSheets, ctx, eq(costSheets.id, sheet.id)))
 
     await recordChange(ctx, tx, {
       action: 'approve',
@@ -328,7 +329,7 @@ export async function getApprovedSheet(
     const [row] = await tx
       .select()
       .from(costSheets)
-      .where(and(eq(costSheets.styleCode, styleCode), eq(costSheets.status, 'approved')))
+      .where(scoped(costSheets, ctx, and(eq(costSheets.styleCode, styleCode), eq(costSheets.status, 'approved'))))
       .orderBy(desc(costSheets.version))
       .limit(1)
     return row
@@ -344,14 +345,14 @@ export async function touchTemplate(ctx: RequestCtx, productType: string): Promi
     const [row] = await tx
       .select()
       .from(consumptionTemplates)
-      .where(eq(consumptionTemplates.productType, productType))
+      .where(scoped(consumptionTemplates, ctx, eq(consumptionTemplates.productType, productType)))
 
     if (!row) throw notFound('costing.errors.template_not_found', { productType })
 
     await tx
       .update(consumptionTemplates)
       .set({ usageCount: row.usageCount + 1, updatedAt: new Date() })
-      .where(eq(consumptionTemplates.id, row.id))
+      .where(scoped(consumptionTemplates, ctx, eq(consumptionTemplates.id, row.id)))
   })
 }
 
