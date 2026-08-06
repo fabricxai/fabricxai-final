@@ -30,6 +30,9 @@ Next.js 16 (app router, server actions) + Drizzle + PostgreSQL 16 + Redis/BullMQ
 - `pnpm demo [orders|rfqs|leads]` — the screen-walkthrough scenario, through the
   real services; idempotent, so re-running it is safe. Set `DEMO_COMPANY_ID` when
   more than one company has an owner.
+- `pnpm payroll:parallel-run --period=YYYY-MM --sheet=<csv>` — the payroll go-live gate:
+  one month against the factory's own sheet, every net to zero or explained. Writes a
+  committed report under `docs/parallel-runs/`. Non-negotiable before a factory goes live.
 - `pnpm k6 <scenario>` — load scenarios in `k6/` (`production_burst`, `store_grn`,
   `owner_dashboard`). The harness seeds identities, signs them in, runs k6 and asserts the
   row invariants; baselines live in `k6/baselines/`. Measure against a **production build**
