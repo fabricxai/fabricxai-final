@@ -15,6 +15,7 @@ import { createDirectClient, createDirectDb } from '@/db/direct'
 import { companies } from '@/db/schema/core'
 import { getQueue, QUEUE, closeQueues } from '@/worker/queues'
 import {
+  activeScheduledTasks,
   fanOutScheduledTask,
   registerSchedules,
   runDeriveTask,
@@ -141,10 +142,41 @@ describe('scheduler', () => {
     const schedulers = await getQueue(QUEUE.schedule).getJobSchedulers()
     const ids = schedulers.map((s) => s.key ?? s.id)
 
-    for (const task of SCHEDULED_TASKS) {
+    for (const task of activeScheduledTasks()) {
       // Registering twice must not produce two schedules — that is how a nightly
       // digest becomes four identical emails.
       expect(ids.filter((id) => id === task.id)).toHaveLength(1)
+    }
+  })
+
+  it('does not schedule the copilot tasks when MARBIM is off (plan 6.1)', async () => {
+    /*
+     * This case used to iterate the FULL list and demand every entry be registered, which
+     * is what the old behaviour was: `MARBIM_ENABLED` had no runtime consumers, so the
+     * extraction runner was scheduled regardless — and `runQueuedExtractions` returns a
+     * skip rather than throwing, which `recordRun` closed as succeeded. Job health reported
+     * green for a task that had extracted nothing and never would.
+     *
+     * The integration environment runs with the flag off, which is the default and the
+     * honest setting today, so this asserts the off case directly.
+     */
+    const marbimTasks = SCHEDULED_TASKS.filter(
+      (task) => !activeScheduledTasks().some((active) => active.id === task.id),
+    )
+
+    // Named, so a typo in `MARBIM_TASKS` is a failure rather than a filter that quietly
+    // matches nothing. The first version of that list said `memory.style_embed_sweep`, which
+    // is not a task — and the embed sweep went on being scheduled with the copilot off.
+    expect(marbimTasks.map((task) => task.task).sort()).toEqual([
+      'marbim.run_extractions',
+      'memory.embed_styles',
+    ])
+
+    await registerSchedules()
+    const ids = (await getQueue(QUEUE.schedule).getJobSchedulers()).map((s) => s.key ?? s.id)
+
+    for (const task of marbimTasks) {
+      expect(ids, `${task.task} scheduled with MARBIM off`).not.toContain(task.id)
     }
   })
 

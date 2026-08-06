@@ -23,9 +23,12 @@ import { jobRuns } from '@/db/schema/core'
 import type { AnyCtx } from './ctx'
 import { withTenantRead, withTenantTx } from './tenancy'
 
+/** What a run ended as. `skipped` is neither — see `declinedToRun`. */
+export type RunStatus = 'succeeded' | 'failed' | 'skipped'
+
 export interface RunRecord {
   runId: string | null
-  status: 'succeeded' | 'failed'
+  status: RunStatus
   durationMs: number
 }
 
@@ -62,7 +65,13 @@ export async function recordRun<T>(
   try {
     const result = await run()
     await closeRun(ctx, runId, {
-      status: 'succeeded',
+      // A task that declined to do anything is not a success (plan 6.1). The extraction
+      // runner returns `{ skipped: '…' }` when no provider is registered — it does not
+      // throw, because the backlog is intact and will run when one is configured — and
+      // recording that as `succeeded` is what made job health report green while documents
+      // piled up unread. `lastSuccessByTask` counts only `succeeded`, so a run of skips now
+      // ages exactly like silence, which is what it is.
+      status: declinedToRun(result) ? 'skipped' : 'succeeded',
       durationMs: Date.now() - startedAt,
       result: summarise(result),
       error: null,
@@ -77,6 +86,23 @@ export async function recordRun<T>(
     })
     throw error
   }
+}
+
+/**
+ * Did the task decline to do anything?
+ *
+ * A `skipped` field carrying a REASON, which is the shape `runQueuedExtractions` already
+ * used before anything read it. Deliberately not "returned nothing" or "did zero work": a
+ * nightly scan that legitimately finds no late milestones has succeeded, and conflating the
+ * two would turn every quiet night into an alarm.
+ */
+function declinedToRun(result: unknown): boolean {
+  return (
+    typeof result === 'object' &&
+    result !== null &&
+    'skipped' in result &&
+    Boolean((result as { skipped?: unknown }).skipped)
+  )
 }
 
 async function openRun(ctx: AnyCtx, input: { task: string; jobId?: string }): Promise<string | null> {
@@ -106,7 +132,7 @@ async function closeRun(
   ctx: AnyCtx,
   runId: string | null,
   outcome: {
-    status: 'succeeded' | 'failed'
+    status: RunStatus
     durationMs: number
     result: Record<string, unknown> | null
     error: string | null

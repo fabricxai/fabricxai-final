@@ -17,6 +17,7 @@ import {
 import { LockedState, ReadOnlyNote } from '@/components/fx/feedback'
 import { LocaleProvider } from '@/components/fx/locale'
 import { tui } from '@/lib/i18n-ui'
+import { env } from '@/lib/env'
 import { requestLocale } from '@/lib/ui-locale'
 import { marbimTrust, routedPendingCount } from '@/modules/approvals/queries'
 import type { ApprovalsPolicy } from '@/modules/approvals/service'
@@ -69,7 +70,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // one. Every client component reads this through `LocaleProvider` below.
   const locale = await requestLocale(profile?.locale)
   const factoryType: FactoryType = profile?.factoryType ?? 'woven'
-  const nav = visibleNav(ctx.roles, factoryType)
+  /*
+   * Whether the copilot is offered at all (plan 6.1, audit AI-B1).
+   *
+   * `MARBIM_ENABLED` was declared, validated at boot and read by NOTHING — so with it off
+   * the button, the panel and the nav entry all still mounted, `/marbim` still opened, and
+   * chat hard-failed once per turn against a provider that was never registered. "Pilot
+   * with MARBIM off" was not a configuration this product supported.
+   */
+  const marbimEnabled = env.MARBIM_ENABLED
+  const nav = visibleNav(ctx.roles, factoryType, marbimEnabled)
 
   /*
    * Which screen is being rendered, and whether this role may. The decision itself lives in
@@ -97,7 +107,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               companyName={displayName ?? 'FabricXAI'}
             />
           }
-          actions={<MarbimButton />}
+          actions={marbimEnabled ? <MarbimButton /> : undefined}
         />
         <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
           <Sidebar items={nav} />
@@ -117,10 +127,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         {/* X.2: MARBIM is a surface over whatever screen you are on, not a place you go. The
             FAB sits bottom-right of every screen and the panel opens over it; mounted here in
             the shell so the thread survives navigation. */}
-        <MarbimPanel
-          entry={{ ...marbimEntryFor(ctx.roles), model: providerId() }}
-          trust={{ ...trust, pending: routed }}
-        />
+        {marbimEnabled ? (
+          <MarbimPanel
+            entry={{ ...marbimEntryFor(ctx.roles), model: providerId() }}
+            trust={{ ...trust, pending: routed }}
+          />
+        ) : null}
       </div>
     </LocaleProvider>
   )

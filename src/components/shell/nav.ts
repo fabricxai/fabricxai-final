@@ -55,6 +55,15 @@ export interface NavItem {
   /** Restrict to particular factory types. Absent means shared. */
   factoryTypes?: readonly FactoryType[]
   /**
+   * This screen only exists when the copilot does (plan 6.1).
+   *
+   * `MARBIM_ENABLED` is a server flag and this file is imported by client components, so
+   * the answer is passed IN — the same shape `factoryType` already uses. Marked as data
+   * here so the set is one list rather than a condition repeated in a layout, three pages
+   * and a scheduler.
+   */
+  requiresMarbim?: boolean
+  /**
    * Governed here, but not listed in the sidebar.
    *
    * For screens reached from dedicated chrome rather than the nav — `/factory` opens from
@@ -186,6 +195,7 @@ export const NAV: readonly NavItem[] = [
     label: 'MARBIM',
     href: '/marbim',
     section: 'work',
+    requiresMarbim: true,
     roles: ['merchandiser', 'commercial', 'planner', 'store', 'procurement', 'cutting', 'production', 'quality', 'shipment', 'maintenance', 'hr', 'compliance', 'finance', 'member', 'viewer'],
     // MARBIM writes nothing itself — everything it produces is a draft in somebody's
     // approve inbox, so asking it a question is a read however it is phrased.
@@ -206,6 +216,10 @@ export const NAV: readonly NavItem[] = [
     label: 'Order memory',
     href: '/memory',
     section: 'work',
+    // 1.6 is built ON the copilot: its similarity search, its embeddings and its
+    // close-out extraction all need a provider. With MARBIM off the screen would render
+    // the parts that are plain SQL and silently lack the rest.
+    requiresMarbim: true,
     roles: ['merchandiser', 'commercial', 'planner'],
     // `saveCloseOutNote` — the one write. `findSimilarStyles` is a read with no entry
     // point yet (plan 5.5).
@@ -481,9 +495,23 @@ export function canSee(item: NavItem, roles: readonly Role[], factoryType: Facto
   return roles.some((r) => item.roles.includes(r))
 }
 
-export function visibleNav(roles: readonly Role[], factoryType: FactoryType): NavItem[] {
-  return NAV.filter((item) => !item.hiddenFromSidebar && canSee(item, roles, factoryType))
+export function visibleNav(
+  roles: readonly Role[],
+  factoryType: FactoryType,
+  /** Whether the copilot is configured. Server-side truth, passed in — see `requiresMarbim`. */
+  marbimEnabled = true,
+): NavItem[] {
+  return NAV.filter(
+    (item) =>
+      !item.hiddenFromSidebar &&
+      canSee(item, roles, factoryType) &&
+      (marbimEnabled || !item.requiresMarbim),
+  )
 }
+
+/** Screens that disappear when the copilot is off. Read by the pages that must refuse. */
+export const marbimScreens = (): readonly string[] =>
+  NAV.filter((item) => item.requiresMarbim).map((item) => item.id)
 
 /**
  * The shell's whole access decision for one path, in one place.

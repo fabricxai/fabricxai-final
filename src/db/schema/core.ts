@@ -690,7 +690,21 @@ export const notifications = pgTable(
  * tasks alone are 288 rows a day per company, and unbounded history would make the very
  * query that watches them slow.
  */
-export const jobRunStatusEnum = pgEnum('job_run_status', ['running', 'succeeded', 'failed'])
+/**
+ * `skipped` is not a success and not a failure (plan 6.1).
+ *
+ * A task that declines to do anything — the extraction runner with no provider registered —
+ * used to close as `succeeded`, because `recordRun` recorded whatever the function returned.
+ * So job health reported green while documents piled up unread. It is also not a failure:
+ * nothing broke, the work is still queued, and paging somebody would be a false alarm.
+ * `lastSuccessByTask` counts only `succeeded`, so a run of skips ages exactly like silence.
+ */
+export const jobRunStatusEnum = pgEnum('job_run_status', [
+  'running',
+  'succeeded',
+  'failed',
+  'skipped',
+])
 
 export const jobRuns = pgTable(
   'job_runs',

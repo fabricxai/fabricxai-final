@@ -3,7 +3,9 @@ import { redirect } from 'next/navigation'
 import { randomUUID } from 'node:crypto'
 
 import { marbimEntryFor } from '@/components/shell/marbim-context'
+import { LockedState } from '@/components/fx/feedback'
 import { PageHeader } from '@/components/shell/page-shell'
+import { env } from '@/lib/env'
 import { getCtx } from '@/modules/core/session'
 
 import { MarbimSurface } from './surface-client'
@@ -20,6 +22,15 @@ export const dynamic = 'force-dynamic'
 export default async function MarbimPage() {
   const ctx = await getCtx(await headers())
   if (!ctx) redirect('/login')
+
+  /*
+   * The copilot's off-switch, honoured (plan 6.1).
+   *
+   * `MARBIM_ENABLED` had zero runtime consumers, so with it off this screen opened and
+   * every question hard-failed against a provider that was never registered. A factory
+   * should be told the copilot is not available rather than shown one that does not work.
+   */
+  if (!env.MARBIM_ENABLED) return <LockedState what="MARBIM" />
 
   // Shared with the shell's slide-over, so the two surfaces cannot disagree about what a
   // given role may ask for. See `components/shell/marbim-context`.

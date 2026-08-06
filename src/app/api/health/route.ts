@@ -5,7 +5,7 @@ import { db } from '@/db/client'
 import { env } from '@/lib/env'
 import { getRedis } from '@/lib/redis'
 import { staleTasks } from '@/modules/core/job-health'
-import { SCHEDULED_TASKS } from '@/worker/processors/scheduler'
+import { activeScheduledTasks } from '@/worker/processors/scheduler'
 
 /**
  * Liveness + dependency check. Uptime Kuma polls this (dev-plan §8).
@@ -96,7 +96,9 @@ async function schedulerCheck(): Promise<SchedulerCheck> {
     const observedSince = (await schedulerObservedSince()) ?? now
 
     const stale = staleTasks({
-      expectations: SCHEDULED_TASKS,
+      // The schedule this deployment actually runs — with MARBIM off the extraction tasks
+      // are not registered, so expecting them would report a healthy worker as silent.
+      expectations: activeScheduledTasks(),
       lastSuccessAt: Object.fromEntries(lastSuccess),
       now,
       watchingSince: observedSince,
@@ -112,7 +114,7 @@ async function schedulerCheck(): Promise<SchedulerCheck> {
       return { ok: false, error: `${silent.length} scheduled task(s) have gone quiet`, silent }
     }
 
-    return { ok: true, tasks: SCHEDULED_TASKS.length }
+    return { ok: true, tasks: activeScheduledTasks().length }
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : String(error) }
   }

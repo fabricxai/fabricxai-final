@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
 import { z } from 'zod'
 
+import { env } from '@/lib/env'
 import { requireRole } from '@/modules/core/session'
 import { getPolicy } from '@/modules/settings/service'
 import { listModules } from '@/modules/core/registry'
@@ -13,6 +14,7 @@ import { buyerAccounts } from '@/modules/buyers/queries'
 import { recentAudits } from '@/modules/compliance/queries'
 
 import { intakeKind } from './intake'
+import { hasProvider } from './provider'
 import { chat, queueExtraction, type ChatResult, type MarbimPolicy } from './service'
 import type { ToolPack } from './tools'
 
@@ -194,6 +196,28 @@ export async function readDocument(input: {
   contextValues?: Record<string, string>
 }): Promise<{ jobId: string; label: string }> {
   const ctx = await requireRole(await headers(), ...INTAKE_ROLES)
+
+  /*
+   * Nothing queues into a void (plan 6.1, audit AI-B1).
+   *
+   * `runQueuedExtractions` skips the whole batch when no provider is registered — correctly,
+   * because the backlog is intact and will run when one is configured. What was wrong is
+   * what happened before it: this action accepted the document, told the operator it was
+   * queued, and left it in a pile nothing would ever read. A person who has typed out a
+   * buyer's PO deserves to be told the copilot is not available, at the moment they press
+   * the button, rather than to discover it by the draft never arriving.
+   *
+   * Checked at the door rather than in `queueExtraction`, because the job row is the thing
+   * that should not exist — a refusal after the insert would leave exactly the pile this
+   * prevents.
+   */
+  if (!env.MARBIM_ENABLED || !hasProvider()) {
+    throw new AppError('validation_failed', 'marbim.errors.unavailable', {
+      enabled: env.MARBIM_ENABLED,
+      provider: hasProvider(),
+    })
+  }
+
   const policy = await getPolicy<MarbimPolicy>(ctx, 'marbim')
 
   const kind = intakeKind(input.kindId)

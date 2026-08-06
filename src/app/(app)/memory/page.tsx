@@ -4,11 +4,12 @@ import { redirect } from 'next/navigation'
 import { compareDecimalStrings } from '@/lib/quantity'
 import { CloseOutNote } from '@/components/fx/close-out-note'
 import { Card } from '@/components/fx/data'
-import { EmptyState } from '@/components/fx/feedback'
+import { EmptyState, LockedState } from '@/components/fx/feedback'
 import { Badge } from '@/components/fx/primitives'
 import { Eyebrow, SectionHeading } from '@/components/fx/signature'
 import { Ident } from '@/components/fx/format'
 import { PageHeader } from '@/components/shell/page-shell'
+import { env } from '@/lib/env'
 import { getCtx } from '@/modules/core/session'
 import { NOTE_EDIT_WINDOW_DAYS, noteWindowOpen } from '@/modules/memory/memory'
 import { outcomes, type Pair } from '@/modules/memory/queries'
@@ -25,6 +26,15 @@ export const dynamic = 'force-dynamic'
 export default async function MemoryPage() {
   const ctx = await getCtx(await headers())
   if (!ctx) redirect('/login')
+
+  /*
+   * The copilot's off-switch, honoured (plan 6.1).
+   *
+   * `MARBIM_ENABLED` had zero runtime consumers, so with it off this screen opened and
+   * every question hard-failed against a provider that was never registered. A factory
+   * should be told the copilot is not available rather than shown one that does not work.
+   */
+  if (!env.MARBIM_ENABLED) return <LockedState what="order memory" />
 
   const now = new Date()
   const cards = await outcomes(ctx)

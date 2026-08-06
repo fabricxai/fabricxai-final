@@ -61,6 +61,7 @@ import { refreshExceptionsFeed } from './exceptions-feed'
 
 import { getQueue, QUEUE } from '../queues'
 import { factoryToday } from '@/lib/dates'
+import { env } from '@/lib/env'
 
 const FACTORY_TZ = 'Asia/Dhaka'
 
@@ -305,6 +306,35 @@ export const SCHEDULED_TASKS = [
 
 export type ScheduledTask = (typeof SCHEDULED_TASKS)[number]['task']
 
+/**
+ * Tasks that only make sense when the copilot is on.
+ *
+ * Typed as `ScheduledTask` rather than `string[]`, and that is not decoration: the first
+ * version of this list said `memory.style_embed_sweep`, a task that does not exist, so the
+ * embed sweep went on being scheduled with MARBIM off and nothing said so. A name that does
+ * not match is a filter that quietly does nothing, which is the same failure shape as the
+ * flag having no consumers in the first place.
+ */
+const MARBIM_TASKS: readonly ScheduledTask[] = ['marbim.run_extractions', 'memory.embed_styles']
+
+/**
+ * The schedule this deployment actually runs (plan 6.1, audit AI-B1 fallout).
+ *
+ * `MARBIM_ENABLED` had zero runtime consumers, so with the copilot off the extraction
+ * runner was still scheduled — and `runQueuedExtractions` returns a `skipped` marker rather
+ * than throwing, which `recordRun` closed as **succeeded**. Job health therefore reported
+ * green for a task that had not extracted anything and never would.
+ *
+ * One list, read by the registration AND by both health checks, because the two drifting is
+ * how a task gets scheduled without being watched or watched without being scheduled. With
+ * the flag off these are simply not part of the schedule, so there is nothing to be green or
+ * red about — which is the honest state, not a suppressed alarm.
+ */
+export function activeScheduledTasks(): typeof SCHEDULED_TASKS[number][] {
+  if (env.MARBIM_ENABLED) return [...SCHEDULED_TASKS]
+  return SCHEDULED_TASKS.filter((scheduled) => !MARBIM_TASKS.includes(scheduled.task))
+}
+
 export interface DeriveJobData {
   companyId: string
   task: ScheduledTask
@@ -318,7 +348,7 @@ export interface DeriveJobData {
 export async function registerSchedules(): Promise<void> {
   const queue = getQueue(QUEUE.schedule)
 
-  for (const scheduled of SCHEDULED_TASKS) {
+  for (const scheduled of activeScheduledTasks()) {
     await queue.upsertJobScheduler(
       scheduled.id,
       { pattern: scheduled.pattern, tz: FACTORY_TZ },
@@ -326,7 +356,11 @@ export async function registerSchedules(): Promise<void> {
     )
   }
 
-  console.log(`[scheduler] ${SCHEDULED_TASKS.length} schedule(s) registered (${FACTORY_TZ})`)
+  const active = activeScheduledTasks()
+  console.log(
+    `[scheduler] ${active.length} schedule(s) registered (${FACTORY_TZ})` +
+      (env.MARBIM_ENABLED ? '' : ' — MARBIM off, extraction tasks not scheduled'),
+  )
 }
 
 
@@ -518,7 +552,7 @@ async function dispatchTask(ctx: SystemCtx, task: ScheduledTask): Promise<unknow
         {
           // The LIVE schedule, not a copy of it. A task is monitored by the act of being
           // scheduled, and stops being reported by the act of being removed.
-          expectations: SCHEDULED_TASKS.map((scheduled) => ({
+          expectations: activeScheduledTasks().map((scheduled) => ({
             task: scheduled.task,
             pattern: scheduled.pattern,
           })),

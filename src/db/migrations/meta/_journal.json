@@ -547,6 +547,13 @@
       "when": 1786005846629,
       "tag": "0077_chunky_tomorrow_man",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1786022575797,
+      "tag": "0078_fine_true_believers",
+      "breakpoints": true
     }
   ]
 }

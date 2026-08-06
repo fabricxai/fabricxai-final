@@ -395,6 +395,8 @@ export const MESSAGES: Catalogue = {
     'marbim.errors.job_not_found': 'That extraction no longer exists.',
     'marbim.errors.job_rejected':
       'That extraction was rejected and will not be retried — what it read did not fit the target.',
+    'marbim.errors.unavailable':
+      'MARBIM is not available on this factory, so there is nothing to read your document. Nothing has been queued — what you typed is still here.',
     'marbim.errors.rate_limited':
       'Too many documents have been sent for reading in the last hour. Try again shortly.',
     'marbim.errors.target_not_registered':
@@ -863,6 +865,9 @@ export const MESSAGES: Catalogue = {
     'sampling.errors.request_not_found': 'এই স্যাম্পল রিকোয়েস্টটি আর নেই।',
     'sampling.errors.stage_not_forward':
       'স্যাম্পলের ধাপ শুধু সামনে এগোয়। প্যাটার্নে ফিরে যাওয়া মানে আবার নতুন করে বানানো, সেটা নতুন রিকোয়েস্ট।',
+    'marbim.errors.unavailable':
+      'এই ফ্যাক্টরিতে MARBIM নেই, তাই আপনার ডকুমেন্ট পড়ার কেউ নেই। কিছু জমা হয়নি — আপনি যা লিখেছেন তা এখানেই আছে।',
+
     // ── shipment · 8.1 · the packing floor reads these ──
     'shipment.errors.carton_already_loaded': 'এই কার্টন আগেই একটি শিপমেন্টে লোড হয়েছে।',
     'shipment.errors.carton_draft_insert_only':
