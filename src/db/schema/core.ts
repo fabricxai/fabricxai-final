@@ -760,6 +760,20 @@ export const offlineKeys = pgTable(
     resultRowId: text('result_row_id'),
     error: jsonb('error').$type<Record<string, unknown>>(),
 
+    /**
+     * What the device was trying to write — kept ONLY when the row was refused.
+     *
+     * A refusal is somebody's work disappearing: a challan counted at the delivery bay, a
+     * cut report taken off the table. The reason alone tells a supervisor that a GRN was
+     * lost and nothing about what was on it, so nobody can re-enter it. The payload is what
+     * makes the reconciliation report actionable rather than a list of regrets.
+     *
+     * Not stored on the applied path. That row already exists in its own table, and copying
+     * every floor write into a second place would double the write cost of the busiest
+     * endpoint in the product to record something already recorded.
+     */
+    payload: jsonb('payload').$type<Record<string, unknown>>(),
+
     /** Device clock at capture. The server keeps its own timestamps; this aids conflicts. */
     clientRecordedAt: timestamp('client_recorded_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

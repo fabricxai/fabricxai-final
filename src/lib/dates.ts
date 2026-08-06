@@ -76,6 +76,19 @@ export function nextFactoryDate(date: string): string {
   return next.toISOString().slice(0, 10)
 }
 
+/**
+ * `days` calendar days before or after this one. Pure string arithmetic — no zone involved.
+ *
+ * The generalisation of `nextFactoryDate`, and what a report window is built from: "the last
+ * fourteen days" has to mean fourteen whole FACTORY days, or a query run at 09:00 in Dhaka
+ * starts its window mid-afternoon on the first day and quietly drops half of it.
+ */
+export function shiftFactoryDate(date: string, days: number): string {
+  const shifted = new Date(`${date}T00:00:00Z`)
+  shifted.setUTCDate(shifted.getUTCDate() + days)
+  return shifted.toISOString().slice(0, 10)
+}
+
 /** Whole days from `from` to `to`. Negative when `to` is the earlier one. */
 export function daysBetween(from: string, to: string): number {
   const a = Date.parse(`${from}T00:00:00Z`)

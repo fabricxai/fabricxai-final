@@ -17,13 +17,14 @@
  *    rejection rather than trying again, so a permanently-invalid row cannot loop
  *    forever, and the device can show the operator exactly what was refused.
  */
-import { and, eq } from 'drizzle-orm'
+import { and, desc, eq, gte, sql } from 'drizzle-orm'
 
+import { FACTORY_TIMEZONE } from '@/lib/dates'
 import { offlineKeys } from '@/db/schema/core'
 
 import { isSystemCtx, type AnyCtx, type Role } from './ctx'
 import { AppError, isAppError } from './errors'
-import { withTenantTx } from './tenancy'
+import { withTenantRead, withTenantTx } from './tenancy'
 
 export interface SyncRow {
   /** Device-generated idempotency key. Stable across replays of the same logical write. */
@@ -218,6 +219,11 @@ async function applyRow(ctx: AnyCtx, row: SyncRow): Promise<SyncRowResult> {
           operation: row.operation,
           status: 'rejected',
           error: appError.toJSON(),
+          // Kept only here. A refusal is somebody's work disappearing — a challan counted
+          // at the delivery bay, a cut report taken off the table — and the reason alone
+          // says a GRN was lost without saying what was on it. `refusedRows` is what turns
+          // that into something a supervisor can act on.
+          payload: row.payload,
           clientRecordedAt: row.clientRecordedAt ? new Date(row.clientRecordedAt) : null,
         })
         .onConflictDoNothing(),
@@ -230,4 +236,141 @@ async function applyRow(ctx: AnyCtx, row: SyncRow): Promise<SyncRowResult> {
       details: appError.details,
     }
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// The reconciliation report (plan 4.5, audit FE-M6)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * What the server refused, and what it was.
+ *
+ * A refused row is the one outcome of this endpoint that loses work. Applied and duplicate
+ * both end with the write in the database; refused ends with it on a tablet, behind a
+ * "Dismiss" link — and dismissing DELETES it. So the only record that a challan was counted
+ * and never received was a badge on one device, until somebody tapped it away.
+ *
+ * This reads the record the server already kept. `offline_keys` has held every refusal since
+ * the endpoint was written, with its reason, its module, its operation and the device's own
+ * timestamp; nothing read it. The payload is the part that was missing, and it is the part
+ * that decides whether a supervisor can re-enter the work or only mourn it.
+ */
+export interface RefusedRow {
+  offlineKey: string
+  moduleId: string
+  operation: string
+  /** The refusal, as the module threw it: `{ messageKey, details, … }`. */
+  error: Record<string, unknown> | null
+  /** What the device was trying to write. Null for refusals recorded before plan 4.5. */
+  payload: Record<string, unknown> | null
+  /**
+   * The device's clock at capture, and the server's at refusal.
+   *
+   * Both, because they can be days apart: a tablet that spent a weekend offline captured on
+   * Friday and was refused on Monday. A report that showed only one of them would file the
+   * lost work against the wrong day, and the day is how somebody finds what is missing.
+   */
+  capturedAt: Date | null
+  refusedAt: Date
+}
+
+export async function refusedRows(
+  ctx: AnyCtx,
+  input: { since: Date; limit?: number } ,
+): Promise<RefusedRow[]> {
+  return withTenantRead(ctx, async (tx) => {
+    const rows = await tx
+      .select({
+        offlineKey: offlineKeys.offlineKey,
+        moduleId: offlineKeys.moduleId,
+        operation: offlineKeys.operation,
+        error: offlineKeys.error,
+        payload: offlineKeys.payload,
+        capturedAt: offlineKeys.clientRecordedAt,
+        refusedAt: offlineKeys.createdAt,
+      })
+      .from(offlineKeys)
+      .where(
+        and(
+          // Wall 1. RLS is the second (CLAUDE.md rule 2).
+          eq(offlineKeys.companyId, ctx.companyId),
+          eq(offlineKeys.status, 'rejected'),
+          gte(offlineKeys.createdAt, input.since),
+        ),
+      )
+      .orderBy(desc(offlineKeys.createdAt))
+      .limit(input.limit ?? 200)
+
+    return rows
+  })
+}
+
+/** One day's refusals for one handler — the shape the report groups by. */
+export interface RefusedBucket {
+  day: string
+  moduleId: string
+  operation: string
+  refused: number
+  /** The distinct reasons behind that count, so a spike is readable without expanding it. */
+  reasons: string[]
+}
+
+/**
+ * Refusals per day per handler.
+ *
+ * Grouped on the SERVER's day rather than the device's, because that is the day the work
+ * was actually lost — and because a tablet with a wrong clock would otherwise scatter its
+ * refusals across a month. The device's own timestamp is on each row underneath.
+ *
+ * Counted per handler rather than per module: "store refused 14" is a number, and "store /
+ * receive_grn refused 14, all of them ud_balance.insufficient" is a morning's work with a
+ * cause attached.
+ */
+export async function refusedSummary(
+  ctx: AnyCtx,
+  input: { since: Date },
+): Promise<RefusedBucket[]> {
+  /*
+   * Written as one SQL statement rather than through the query builder.
+   *
+   * The grouping key is `to_char(created_at at time zone …)`, and Postgres requires the
+   * GROUP BY expression to be textually the same as the one in the SELECT. The builder
+   * renders the column qualified in one place and bare in the other, which is close enough
+   * to read and not close enough for Postgres — it answers "created_at must appear in the
+   * GROUP BY clause" about a query that groups by it.
+   */
+  return withTenantRead(ctx, async (tx) => {
+    const result = await tx.execute<{
+      day: string
+      module_id: string
+      operation: string
+      refused: string
+      reasons: string[]
+    }>(sql`
+      select
+        to_char(created_at at time zone ${FACTORY_TIMEZONE}::text, 'YYYY-MM-DD') as day,
+        module_id,
+        operation,
+        count(*)::text as refused,
+        array_agg(distinct coalesce(error ->> 'messageKey', 'errors.unknown')) as reasons
+      from offline_keys
+      where company_id = ${ctx.companyId}
+        and status = 'rejected'
+        and created_at >= ${input.since.toISOString()}::timestamptz
+      group by 1, module_id, operation
+      order by 1 desc, module_id, operation
+    `)
+
+    const rows = Array.isArray(result) ? result : ((result as { rows?: unknown[] }).rows ?? [])
+
+    return (rows as { day: string; module_id: string; operation: string; refused: string; reasons: string[] }[]).map(
+      (row) => ({
+        day: row.day,
+        moduleId: row.module_id,
+        operation: row.operation,
+        refused: Number(row.refused),
+        reasons: row.reasons,
+      }),
+    )
+  })
 }

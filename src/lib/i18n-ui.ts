@@ -183,6 +183,7 @@ export const UI_MESSAGES: Catalogue = {
     'ui.nav.workforce': 'Workforce & payroll',
     'ui.nav.compliance': 'Compliance',
     'ui.nav.factory': 'Factory',
+    'ui.nav.refused': 'Refused writes',
     'ui.nav.settings': 'Settings',
     'ui.nav.section_work': 'Work',
     'ui.nav.section_commercial': 'Commercial',
@@ -233,6 +234,7 @@ export const UI_MESSAGES: Catalogue = {
     'ui.nav.locked_workforce': 'workforce',
     'ui.nav.locked_compliance': 'compliance',
     'ui.nav.locked_factory': 'the factory profile',
+    'ui.nav.locked_refused': 'the refused-writes report',
     'ui.nav.locked_settings': 'settings',
     'ui.nav.this_screen': 'this screen',
     'ui.nav.this_factory': 'this factory',
@@ -241,6 +243,31 @@ export const UI_MESSAGES: Catalogue = {
     'ui.nav.no_role': 'No role',
     'ui.nav.roles_and': '{list} and {last}',
     'ui.nav.search_placeholder': 'Search modules, orders, buyers…',
+
+    // ── refused writes · the reconciliation report (plan 4.5) ──
+    'ui.refused.eyebrow': 'Floor · refused writes',
+    'ui.refused.title': 'What the server would not take',
+    'ui.refused.meta':
+      'last {days} days · the device kept it, the server did not',
+    'ui.refused.empty_title': 'Nothing was refused',
+    'ui.refused.empty_body':
+      'Every write the floor sent in this window was accepted. When one is not, it appears here with what was on it, so it can be entered again rather than lost.',
+    'ui.refused.why':
+      'A refused write never reached a table. The tablet shows a badge and a Dismiss link, and dismissing deletes it — this is the record that survives that.',
+    'ui.refused.col_day': 'Day',
+    'ui.refused.col_handler': 'What was being written',
+    'ui.refused.col_count': 'Refused',
+    'ui.refused.col_reasons': 'Why',
+    'ui.refused.detail_heading': 'Every refused row',
+    'ui.refused.captured': 'captured {when}',
+    'ui.refused.captured_unknown': 'no device time',
+    'ui.refused.refused_at': 'refused {when}',
+    'ui.refused.payload_heading': 'What it was',
+    'ui.refused.payload_missing':
+      'This refusal predates the report, so what was on it was not kept.',
+    'ui.refused.reason_unknown': 'No reason was recorded.',
+    'ui.refused.count_one': '{count} refused',
+    'ui.refused.count_other': '{count} refused',
 
     // ── store · 3.1 ──
     'ui.store.receive_eyebrow': 'Store · receive goods',
@@ -1035,6 +1062,7 @@ export const UI_MESSAGES: Catalogue = {
     'ui.nav.workforce': 'কর্মী ও পে-রোল',
     'ui.nav.compliance': 'কমপ্লায়েন্স',
     'ui.nav.factory': 'ফ্যাক্টরি',
+    'ui.nav.refused': 'রিফিউজড রাইটস',
     'ui.nav.settings': 'সেটিংস',
     'ui.nav.section_work': 'কাজ',
     'ui.nav.section_commercial': 'কমার্শিয়াল',
@@ -1081,6 +1109,7 @@ export const UI_MESSAGES: Catalogue = {
     'ui.nav.locked_workforce': 'কর্মী ও পে-রোল',
     'ui.nav.locked_compliance': 'কমপ্লায়েন্স',
     'ui.nav.locked_factory': 'ফ্যাক্টরি প্রোফাইল',
+    'ui.nav.locked_refused': 'রিফিউজড রাইটস রিপোর্ট',
     'ui.nav.locked_settings': 'সেটিংস',
     'ui.nav.this_screen': 'এই স্ক্রিন',
     'ui.nav.this_factory': 'এই ফ্যাক্টরি',
@@ -1089,6 +1118,30 @@ export const UI_MESSAGES: Catalogue = {
     'ui.nav.no_role': 'কোনো রোল নেই',
     'ui.nav.roles_and': '{list} ও {last}',
     'ui.nav.search_placeholder': 'মডিউল, অর্ডার, বায়ার খুঁজুন…',
+
+    // ── refused writes ──
+    'ui.refused.eyebrow': 'ফ্লোর · রিফিউজড রাইটস',
+    'ui.refused.title': 'সার্ভার যা নেয়নি',
+    'ui.refused.meta': 'শেষ {days} দিন · ডিভাইস রেখেছিল, সার্ভার নেয়নি',
+    'ui.refused.empty_title': 'কিছু রিফিউজ হয়নি',
+    'ui.refused.empty_body':
+      'এই সময়ে ফ্লোর থেকে পাঠানো সব লেখা গ্রহণ করা হয়েছে। কোনোটি না নিলে সেটি এখানে আসবে, তাতে কী ছিল সহ — যাতে হারিয়ে না গিয়ে আবার লেখা যায়।',
+    'ui.refused.why':
+      'রিফিউজ হওয়া লেখা কোনো টেবিলে পৌঁছায়নি। ট্যাবলেটে একটি ব্যাজ আর Dismiss লিংক দেখায়, আর Dismiss করলে সেটি মুছে যায় — এটি সেই রেকর্ড যা তারপরও থাকে।',
+    'ui.refused.col_day': 'দিন',
+    'ui.refused.col_handler': 'কী লেখা হচ্ছিল',
+    'ui.refused.col_count': 'রিফিউজড',
+    'ui.refused.col_reasons': 'কেন',
+    'ui.refused.detail_heading': 'প্রতিটি রিফিউজড রো',
+    'ui.refused.captured': 'লেখা হয়েছিল {when}',
+    'ui.refused.captured_unknown': 'ডিভাইসের সময় নেই',
+    'ui.refused.refused_at': 'রিফিউজ হয়েছে {when}',
+    'ui.refused.payload_heading': 'এতে কী ছিল',
+    'ui.refused.payload_missing':
+      'এই রিফিউজালটি রিপোর্টের আগের, তাই এতে কী ছিল রাখা হয়নি।',
+    'ui.refused.reason_unknown': 'কোনো কারণ রেকর্ড হয়নি।',
+    'ui.refused.count_one': '{count}টি রিফিউজড',
+    'ui.refused.count_other': '{count}টি রিফিউজড',
 
     // ── store · 3.1 ──
     // Bangla nouns do not inflect after a numeral, so the _one and _other forms of a key

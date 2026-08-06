@@ -1,0 +1,1 @@
+ALTER TABLE "offline_keys" ADD COLUMN "payload" jsonb;

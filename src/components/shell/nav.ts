@@ -338,6 +338,22 @@ export const NAV: readonly NavItem[] = [
     section: 'oversight',
     roles: ['compliance'],
   },
+  {
+    id: 'refused',
+    lockedAs: 'the refused-writes report',
+    label: 'Refused writes',
+    href: '/refused',
+    section: 'oversight',
+    /*
+     * Every floor role, and the people who run the floor.
+     *
+     * Wider than most entries on purpose. This screen exists because a refused write is
+     * somebody's work disappearing, and the person best placed to re-enter a challan is
+     * the storekeeper who counted it — not only their manager. Read-only for everyone:
+     * there is nothing here to change, which is the honest shape of a record.
+     */
+    roles: ['store', 'cutting', 'production', 'quality', 'shipment', 'maintenance', 'merchandiser'],
+  },
 
   // ── System ──────────────────────────────────────────────
   {

@@ -14,11 +14,14 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createDirectClient, createDirectDb } from '@/db/direct'
 import { companies, notifications, offlineKeys, outbox, users } from '@/db/schema/core'
 import type { RequestCtx } from '@/modules/core/ctx'
+import { AppError } from '@/modules/core/errors'
 import { createDownloadUrl, createUploadUrl, confirmUpload } from '@/modules/core/documents'
 import { notify, listUnread, markRead } from '@/modules/core/notifications'
 import {
   __resetSyncHandlers,
   registerSyncHandler,
+  refusedRows,
+  refusedSummary,
   syncBatch,
 } from '@/modules/core/offline-sync'
 import { emit } from '@/modules/core/outbox'
@@ -29,13 +32,18 @@ const client = createDirectClient()
 const db = createDirectDb(client)
 
 const COMPANY = randomUUID()
+/** A second tenant, so the report's tenancy can be asked rather than assumed. */
+const OTHER = randomUUID()
 const USER = `svc-user-${randomUUID().slice(0, 8)}`
 const ctx: RequestCtx = { companyId: COMPANY, userId: USER, roles: ['owner'] }
 
 beforeAll(async () => {
   await db
     .insert(companies)
-    .values({ id: COMPANY, name: 'Services Co', slug: `svc-${COMPANY.slice(0, 8)}` })
+    .values([
+      { id: COMPANY, name: 'Services Co', slug: `svc-${COMPANY.slice(0, 8)}` },
+      { id: OTHER, name: 'Other Co', slug: `oth-${OTHER.slice(0, 8)}` },
+    ])
     .onConflictDoNothing()
   await db
     .insert(users)
@@ -61,6 +69,7 @@ beforeAll(async () => {
 afterAll(async () => {
   await db.execute(sql`delete from audit_log where company_id = ${COMPANY}`)
   await db.delete(companies).where(eq(companies.id, COMPANY))
+  await db.delete(companies).where(eq(companies.id, OTHER))
   await db.delete(users).where(eq(users.id, USER))
   await db.execute(sql`drop table if exists demo_sync_rows`)
   __resetSyncHandlers()
@@ -297,6 +306,149 @@ describe('offline sync · replay is a no-op', () => {
     const storekeeper: RequestCtx = { companyId: COMPANY, userId: USER, roles: ['store'] }
     const applied = await syncBatch(storekeeper, [row])
     expect(applied[0]?.status).toBe('applied')
+  })
+})
+
+describe('offline sync · the refused rows are a record, not a badge (plan 4.5)', () => {
+  /*
+   * A floor write has three outcomes and only one of them loses work. Applied and duplicate
+   * both end with the row in a table; refused ends with it on a tablet behind a Dismiss
+   * link, and Dismiss deletes it. So a challan counted at the delivery bay and refused for a
+   * UD balance existed nowhere the moment somebody tapped that link.
+   *
+   * The ledger always held the refusal. What it did not hold was WHAT was refused, which is
+   * the difference between telling a storekeeper a GRN was lost and letting them enter it
+   * again.
+   */
+  const since = new Date(Date.now() - 86_400_000)
+
+  it('keeps the payload of a refused row, and only of a refused row', async () => {
+    __resetSyncHandlers()
+    registerSyncHandler('__demo__', 'always_fails', { roles: ['store'] }, async () => {
+      throw new AppError('validation_failed', 'demo.errors.no', { challan: 'CH-8841' })
+    })
+    registerSyncHandler('__demo__', 'record_note', { roles: ['store'] }, async (c, tx, row) => {
+      const result = await tx.execute<{ id: string }>(
+        sql`insert into demo_sync_rows (company_id, note) values (${c.companyId}, ${String(row.payload.note)}) returning id`,
+      )
+      const rows = Array.isArray(result) ? result : ((result as { rows?: unknown[] }).rows ?? [])
+      return { rowId: (rows[0] as { id: string }).id }
+    })
+
+    const refusedKey = `pl-bad-${randomUUID()}`
+    const appliedKey = `pl-ok-${randomUUID()}`
+
+    await syncBatch(ctx, [
+      {
+        offlineKey: refusedKey,
+        moduleId: '__demo__',
+        operation: 'always_fails',
+        payload: { challanNo: 'CH-8841', lines: [{ item: 'FAB-1', qty: '500.00' }] },
+      },
+      {
+        offlineKey: appliedKey,
+        moduleId: '__demo__',
+        operation: 'record_note',
+        payload: { note: 'this one landed' },
+      },
+    ])
+
+    const [refusedLedger] = await db
+      .select()
+      .from(offlineKeys)
+      .where(eq(offlineKeys.offlineKey, refusedKey))
+    expect(refusedLedger?.payload).toMatchObject({ challanNo: 'CH-8841' })
+
+    // Not on the applied path. That row is already in its own table, and copying every
+    // floor write into a second place would double the write cost of the busiest endpoint
+    // in the product to record something already recorded.
+    const [appliedLedger] = await db
+      .select()
+      .from(offlineKeys)
+      .where(eq(offlineKeys.offlineKey, appliedKey))
+    expect(appliedLedger?.status).toBe('applied')
+    expect(appliedLedger?.payload).toBeNull()
+  })
+
+  it('reports each refusal with its reason and both clocks', async () => {
+    __resetSyncHandlers()
+    registerSyncHandler('__demo__', 'always_fails', { roles: ['store'] }, async () => {
+      throw new AppError('validation_failed', 'demo.errors.no', {})
+    })
+
+    const capturedAt = '2026-08-01T04:30:00.000Z'
+    await syncBatch(ctx, [
+      {
+        offlineKey: `rep-${randomUUID()}`,
+        moduleId: '__demo__',
+        operation: 'always_fails',
+        payload: { note: 'counted at the bay' },
+        clientRecordedAt: capturedAt,
+      },
+    ])
+
+    const rows = await refusedRows(ctx, { since })
+    const mine = rows.find((r) => r.operation === 'always_fails')
+
+    expect(mine?.error).toMatchObject({ messageKey: 'demo.errors.no' })
+    expect(mine?.payload).toMatchObject({ note: 'counted at the bay' })
+    // Both, because they can be days apart — a tablet that spent a weekend offline captured
+    // on Friday and was refused on Monday, and one clock alone files it against the wrong day.
+    expect(mine?.capturedAt?.toISOString()).toBe(capturedAt)
+    expect(mine?.refusedAt).toBeInstanceOf(Date)
+  })
+
+  it('groups per day per handler, with the distinct reasons behind the count', async () => {
+    __resetSyncHandlers()
+    registerSyncHandler('__demo__', 'grouped', { roles: ['store'] }, async (_c, _tx, row) => {
+      throw new AppError('validation_failed', String(row.payload.why), {})
+    })
+
+    await syncBatch(
+      ctx,
+      ['demo.errors.a', 'demo.errors.a', 'demo.errors.b'].map((why) => ({
+        offlineKey: `grp-${randomUUID()}`,
+        moduleId: '__demo__',
+        operation: 'grouped',
+        payload: { why },
+      })),
+    )
+
+    const bucket = (await refusedSummary(ctx, { since })).find((b) => b.operation === 'grouped')
+
+    // "store refused 14" is a number. "store / receive_grn refused 14, all of them
+    // ud_balance.insufficient" is a morning's work with a cause attached.
+    expect(bucket?.refused).toBe(3)
+    expect([...(bucket?.reasons ?? [])].sort()).toEqual(['demo.errors.a', 'demo.errors.b'])
+    expect(bucket?.day).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+  })
+
+  it('shows another company nothing', async () => {
+    __resetSyncHandlers()
+    registerSyncHandler('__demo__', 'always_fails', { roles: ['store'] }, async () => {
+      throw new AppError('validation_failed', 'demo.errors.no', {})
+    })
+    await syncBatch(ctx, [
+      {
+        offlineKey: `ten-${randomUUID()}`,
+        moduleId: '__demo__',
+        operation: 'always_fails',
+        payload: { note: 'ours' },
+      },
+    ])
+
+    const outsider: RequestCtx = { companyId: OTHER, userId: USER, roles: ['store'] }
+    expect(await refusedRows(outsider, { since })).toEqual([])
+    expect(await refusedSummary(outsider, { since })).toEqual([])
+  })
+
+  it('does not reach back past the window it was asked for', async () => {
+    // The report says "last 14 days" on the screen. A query that ignored `since` would show
+    // a refusal from March under this month's heading.
+    const future = new Date(Date.now() + 86_400_000)
+
+    expect(await refusedRows(ctx, { since: future })).toEqual([])
+    expect(await refusedSummary(ctx, { since: future })).toEqual([])
   })
 })
 
