@@ -97,7 +97,7 @@ export async function sampleBoard(ctx: AnyCtx, input: { now: Date }): Promise<Sa
           stage: sampleStageEvents.stage,
         })
         .from(sampleStageEvents)
-        .where(inArray(sampleStageEvents.sampleRequestId, ids)),
+        .where(scoped(sampleStageEvents, ctx, inArray(sampleStageEvents.sampleRequestId, ids))),
       tx
         .select({
           sampleRequestId: sampleFeedbackRounds.sampleRequestId,
@@ -106,13 +106,13 @@ export async function sampleBoard(ctx: AnyCtx, input: { now: Date }): Promise<Sa
           comments: sampleFeedbackRounds.comments,
         })
         .from(sampleFeedbackRounds)
-        .where(inArray(sampleFeedbackRounds.sampleRequestId, ids))
+        .where(scoped(sampleFeedbackRounds, ctx, inArray(sampleFeedbackRounds.sampleRequestId, ids)))
         .orderBy(desc(sampleFeedbackRounds.round)),
       orderIds.length > 0
         ? tx
             .select({ id: orders.id, poNumbers: orders.poNumbers })
             .from(orders)
-            .where(inArray(orders.id, orderIds))
+            .where(scoped(orders, ctx, inArray(orders.id, orderIds)))
         : Promise.resolve([] as { id: string; poNumbers: string[] | null }[]),
     ])
 
@@ -169,7 +169,7 @@ export async function ppApprovedStyles(ctx: AnyCtx): Promise<string[]> {
     const rows = await tx
       .select({ styleCode: sampleRequests.styleCode })
       .from(sampleRequests)
-      .where(and(eq(sampleRequests.type, 'pp'), eq(sampleRequests.status, 'approved')))
+      .where(scoped(sampleRequests, ctx, and(eq(sampleRequests.type, 'pp'), eq(sampleRequests.status, 'approved'))))
       .orderBy(asc(sampleRequests.styleCode))
 
     return [...new Set(rows.map((r) => r.styleCode))]
@@ -258,7 +258,7 @@ export async function sampleLibrary(
       .from(sampleRequests)
       .leftJoin(orders, eq(orders.id, sampleRequests.orderId))
       .leftJoin(buyers, eq(buyers.id, orders.buyerId))
-      .where(filter.type ? eq(sampleRequests.type, filter.type) : undefined)
+      .where(scoped(sampleRequests, ctx, filter.type ? eq(sampleRequests.type, filter.type) : undefined))
       .orderBy(desc(sampleRequests.createdAt))
 
     if (rows.length === 0) return []
@@ -266,23 +266,23 @@ export async function sampleLibrary(
     const roundRows = await tx
       .select()
       .from(sampleFeedbackRounds)
-      .where(
+      .where(scoped(sampleFeedbackRounds, ctx, 
         inArray(
           sampleFeedbackRounds.sampleRequestId,
           rows.map((r) => r.id),
         ),
-      )
+      ))
       .orderBy(desc(sampleFeedbackRounds.round))
 
     const photoRows = await tx
       .select({ sampleRequestId: samplePhotos.sampleRequestId })
       .from(samplePhotos)
-      .where(
+      .where(scoped(samplePhotos, ctx, 
         inArray(
           samplePhotos.sampleRequestId,
           rows.map((r) => r.id),
         ),
-      )
+      ))
 
     const photoCount = new Map<string, number>()
     for (const photo of photoRows) {

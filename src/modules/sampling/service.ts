@@ -17,6 +17,7 @@ import { AppError, conflict, notFound } from '../core/errors'
 import type { GateResult } from '../core/gates'
 import { emit } from '../core/outbox'
 import { defineStateMachine } from '../core/state-machine'
+import { scoped } from '../core/scoped'
 import { withTenantRead, withTenantTx, type TenantDb } from '../core/tenancy'
 
 import { SAMPLING_EVENTS } from './events'
@@ -106,7 +107,7 @@ export async function resolvePpApproval(
   const [style] = await tx
     .select({ styleCode: orderStyles.styleCode })
     .from(orderStyles)
-    .where(eq(orderStyles.id, input.orderStyleId))
+    .where(scoped(orderStyles, ctx, eq(orderStyles.id, input.orderStyleId)))
 
   if (!style) {
     // The gate cannot pass on a style it cannot find. Blocking is the safe direction.
@@ -120,17 +121,17 @@ export async function resolvePpApproval(
   const [request] = await tx
     .select()
     .from(sampleRequests)
-    .where(
+    .where(scoped(sampleRequests, ctx, 
       and(
         eq(sampleRequests.orderId, input.orderId),
         eq(sampleRequests.styleCode, style.styleCode),
         eq(sampleRequests.type, 'pp'),
       ),
-    )
+    ))
     .orderBy(desc(sampleRequests.createdAt))
     .limit(1)
 
-  const rounds = request ? await loadRounds(tx, request.id) : []
+  const rounds = request ? await loadRounds(ctx, tx, request.id) : []
 
   return wrapSamplingError(() =>
     ppGateDecision({
@@ -148,7 +149,12 @@ export async function resolvePpApproval(
   )
 }
 
-async function loadRounds(tx: TenantDb, sampleRequestId: string): Promise<FeedbackRound[]> {
+async function loadRounds(
+  // `ctx`, because these rounds carry the buyer's VERDICT — the fact that opens cutting.
+  ctx: AnyCtx,
+  tx: TenantDb,
+  sampleRequestId: string,
+): Promise<FeedbackRound[]> {
   const rows = await tx
     .select({
       round: sampleFeedbackRounds.round,
@@ -157,7 +163,7 @@ async function loadRounds(tx: TenantDb, sampleRequestId: string): Promise<Feedba
       recordedOn: sampleFeedbackRounds.recordedOn,
     })
     .from(sampleFeedbackRounds)
-    .where(eq(sampleFeedbackRounds.sampleRequestId, sampleRequestId))
+    .where(scoped(sampleFeedbackRounds, ctx, eq(sampleFeedbackRounds.sampleRequestId, sampleRequestId)))
     .orderBy(sampleFeedbackRounds.round)
 
   return rows.map((row) => ({
@@ -170,6 +176,7 @@ async function loadRounds(tx: TenantDb, sampleRequestId: string): Promise<Feedba
 
 /** The same rounds, keeping the buyer's itemised notes — see `sampleTimeline`. */
 async function loadRoundsWithComments(
+  ctx: AnyCtx,
   tx: TenantDb,
   sampleRequestId: string,
 ): Promise<(FeedbackRound & { comments: { area: string; comment: string; page?: number }[] })[]> {
@@ -181,7 +188,7 @@ async function loadRoundsWithComments(
       recordedOn: sampleFeedbackRounds.recordedOn,
     })
     .from(sampleFeedbackRounds)
-    .where(eq(sampleFeedbackRounds.sampleRequestId, sampleRequestId))
+    .where(scoped(sampleFeedbackRounds, ctx, eq(sampleFeedbackRounds.sampleRequestId, sampleRequestId)))
     .orderBy(sampleFeedbackRounds.round)
 
   return rows.map((row) => ({
@@ -259,7 +266,7 @@ async function createSampleRequestIn(
       const [order] = await tx
         .select({ id: orders.id })
         .from(orders)
-        .where(eq(orders.id, payload.orderId))
+        .where(scoped(orders, ctx, eq(orders.id, payload.orderId)))
 
       if (!order) {
         throw notFound('sampling.errors.order_not_found', { orderId: payload.orderId })
@@ -322,7 +329,7 @@ async function advanceStageIn(
   const [request] = await tx
     .select()
     .from(sampleRequests)
-    .where(eq(sampleRequests.id, payload.sampleRequestId))
+    .where(scoped(sampleRequests, ctx, eq(sampleRequests.id, payload.sampleRequestId)))
     .for('update')
 
   if (!request) {
@@ -337,7 +344,7 @@ async function advanceStageIn(
   const existing = await tx
     .select({ stage: sampleStageEvents.stage })
     .from(sampleStageEvents)
-    .where(eq(sampleStageEvents.sampleRequestId, request.id))
+    .where(scoped(sampleStageEvents, ctx, eq(sampleStageEvents.sampleRequestId, request.id)))
 
   const furthest = existing.reduce(
     (max, row) => Math.max(max, wrapSamplingError(() => stagePosition(row.stage))),
@@ -367,7 +374,7 @@ async function advanceStageIn(
     await tx
       .update(sampleRequests)
       .set({ status: 'in_work', updatedAt: new Date() })
-      .where(eq(sampleRequests.id, request.id))
+      .where(scoped(sampleRequests, ctx, eq(sampleRequests.id, request.id)))
   }
 
   await emit(ctx, tx, {
@@ -390,7 +397,7 @@ export async function dispatchSample(
     const [request] = await tx
       .select()
       .from(sampleRequests)
-      .where(eq(sampleRequests.id, payload.sampleRequestId))
+      .where(scoped(sampleRequests, ctx, eq(sampleRequests.id, payload.sampleRequestId)))
       .for('update')
 
     if (!request) {
@@ -418,7 +425,7 @@ export async function dispatchSample(
     await tx
       .update(sampleRequests)
       .set({ status: 'dispatched', updatedAt: new Date() })
-      .where(eq(sampleRequests.id, request.id))
+      .where(scoped(sampleRequests, ctx, eq(sampleRequests.id, request.id)))
 
     await emit(ctx, tx, {
       eventName: SAMPLING_EVENTS.dispatched,
@@ -502,7 +509,7 @@ async function recordFeedbackIn(
   const [request] = await tx
     .select()
     .from(sampleRequests)
-    .where(eq(sampleRequests.id, payload.sampleRequestId))
+    .where(scoped(sampleRequests, ctx, eq(sampleRequests.id, payload.sampleRequestId)))
     .for('update')
 
   if (!request) {
@@ -548,7 +555,7 @@ async function recordFeedbackIn(
     }
   }
 
-  const before = await loadRounds(tx, request.id)
+  const before = await loadRounds(ctx, tx, request.id)
   const wasOpen =
     request.type === 'pp' &&
     wrapSamplingError(() =>
@@ -593,13 +600,13 @@ async function recordFeedbackIn(
     await tx
       .update(sampleRequests)
       .set({ status: 'feedback', updatedAt: new Date() })
-      .where(eq(sampleRequests.id, request.id))
+      .where(scoped(sampleRequests, ctx, eq(sampleRequests.id, request.id)))
   }
 
   await tx
     .update(sampleRequests)
     .set({ status: nextStatus, updatedAt: new Date() })
-    .where(eq(sampleRequests.id, request.id))
+    .where(scoped(sampleRequests, ctx, eq(sampleRequests.id, request.id)))
 
   const after = [
     ...before,
@@ -688,7 +695,7 @@ export async function closeSampleRequest(
     const [request] = await tx
       .select()
       .from(sampleRequests)
-      .where(eq(sampleRequests.id, input.sampleRequestId))
+      .where(scoped(sampleRequests, ctx, eq(sampleRequests.id, input.sampleRequestId)))
       .for('update')
 
     if (!request) {
@@ -702,7 +709,7 @@ export async function closeSampleRequest(
     await tx
       .update(sampleRequests)
       .set({ status: 'closed', updatedAt: new Date() })
-      .where(eq(sampleRequests.id, request.id))
+      .where(scoped(sampleRequests, ctx, eq(sampleRequests.id, request.id)))
   })
 }
 
@@ -730,7 +737,7 @@ export async function addSampleCost(
     const all = await tx
       .select({ amount: sampleCosts.amount, currency: sampleCosts.currency })
       .from(sampleCosts)
-      .where(eq(sampleCosts.sampleRequestId, payload.sampleRequestId))
+      .where(scoped(sampleCosts, ctx, eq(sampleCosts.sampleRequestId, payload.sampleRequestId)))
 
     const currencies = new Set(all.map((c) => c.currency))
     if (currencies.size > 1) {
@@ -785,26 +792,26 @@ export async function ppBlockingAlerts(
         plannedDate: tnaMilestones.plannedDate,
       })
       .from(tnaMilestones)
-      .where(
+      .where(scoped(tnaMilestones, ctx, 
         and(
           eq(tnaMilestones.name, 'cutting'),
           lte(tnaMilestones.plannedDate, horizon),
           // A milestone already actualised is not blocking anything.
           eq(tnaMilestones.status, 'pending'),
         ),
-      )
+      ))
 
     if (milestones.length === 0) return []
 
     const styles = await tx
       .select({ orderId: orderStyles.orderId, styleCode: orderStyles.styleCode })
       .from(orderStyles)
-      .where(
+      .where(scoped(orderStyles, ctx, 
         inArray(
           orderStyles.orderId,
           milestones.map((m) => m.orderId),
         ),
-      )
+      ))
 
     const alerts: PpBlockingAlert[] = []
 
@@ -813,17 +820,17 @@ export async function ppBlockingAlerts(
         const [request] = await tx
           .select()
           .from(sampleRequests)
-          .where(
+          .where(scoped(sampleRequests, ctx, 
             and(
               eq(sampleRequests.orderId, milestone.orderId),
               eq(sampleRequests.styleCode, style.styleCode),
               eq(sampleRequests.type, 'pp'),
             ),
-          )
+          ))
           .orderBy(desc(sampleRequests.createdAt))
           .limit(1)
 
-        const rounds = request ? await loadRounds(tx, request.id) : []
+        const rounds = request ? await loadRounds(ctx, tx, request.id) : []
         const decision = wrapSamplingError(() =>
           ppGateDecision({
             request: request
@@ -916,7 +923,7 @@ export async function sampleTimeline(
     const [request] = await tx
       .select()
       .from(sampleRequests)
-      .where(eq(sampleRequests.id, sampleRequestId))
+      .where(scoped(sampleRequests, ctx, eq(sampleRequests.id, sampleRequestId)))
 
     if (!request) {
       throw notFound('sampling.errors.request_not_found', { sampleRequestId })
@@ -926,18 +933,18 @@ export async function sampleTimeline(
       tx
         .select()
         .from(sampleStageEvents)
-        .where(eq(sampleStageEvents.sampleRequestId, request.id))
+        .where(scoped(sampleStageEvents, ctx, eq(sampleStageEvents.sampleRequestId, request.id)))
         .orderBy(sampleStageEvents.occurredAt),
-      loadRoundsWithComments(tx, request.id),
+      loadRoundsWithComments(ctx, tx, request.id),
       tx
         .select()
         .from(sampleDispatches)
-        .where(eq(sampleDispatches.sampleRequestId, request.id))
+        .where(scoped(sampleDispatches, ctx, eq(sampleDispatches.sampleRequestId, request.id)))
         .orderBy(desc(sampleDispatches.dispatchedAt)),
       tx
         .select({ amount: sampleCosts.amount })
         .from(sampleCosts)
-        .where(eq(sampleCosts.sampleRequestId, request.id)),
+        .where(scoped(sampleCosts, ctx, eq(sampleCosts.sampleRequestId, request.id))),
     ])
 
     return {
@@ -959,13 +966,13 @@ export async function overdueSamples(
     tx
       .select()
       .from(sampleRequests)
-      .where(
+      .where(scoped(sampleRequests, ctx, 
         and(
           isNotNull(sampleRequests.dueDate),
           lte(sampleRequests.dueDate, input.today),
           inArray(sampleRequests.status, ['requested', 'in_work', 'dispatched', 'feedback']),
         ),
-      )
+      ))
       .orderBy(sampleRequests.dueDate),
   )
 }
