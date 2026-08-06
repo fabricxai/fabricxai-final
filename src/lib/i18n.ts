@@ -653,6 +653,38 @@ export const MESSAGES: Catalogue = {
       '{period} মাসের UD মিলকরণ বাকি আছে',
 
     // ── Gates ──
+    // ── gates · a blocked gate is what stops somebody's work; all thirty are Bangla ──
+    'gates.pp_approval.wrong_sample_type':
+      'এটি PP স্যাম্পল নয়। শুধু প্রি-প্রোডাকশন অ্যাপ্রুভালেই কাটিং খোলে।',
+    'gates.pp_approval.style_not_found': 'এই স্টাইল এই অর্ডারে নেই।',
+    'gates.pp_approval.style_mismatch':
+      'অ্যাপ্রুভ হওয়া স্যাম্পলটি যে স্টাইলের, কাটা হচ্ছে অন্য স্টাইল।',
+    'gates.pp_approval.demo_bypass':
+      'ডেমোর জন্য PP গেট বাইপাস করা হয়েছে। ডেভেলপমেন্টের বাইরে এটি কখনো হয় না।',
+    'gates.issued_fabric.blocked':
+      'ইস্যু করা কাপড়ের চেক পাস করেনি, তাই লে আটকে রাখা হয়েছে।',
+    'gates.final_inspection.none':
+      'এই অর্ডারের কোনো ফাইনাল ইন্সপেকশন নেই। একটি না হওয়া পর্যন্ত শিপমেন্ট আটকে থাকবে।',
+    'gates.final_inspection.failed':
+      'ফাইনাল ইন্সপেকশন ফেল করেছে। বায়ার লটটি নিলে কমার্শিয়াল বা ওনার রেকর্ডে মওকুফ করতে পারেন।',
+    'gates.final_inspection.blocked': 'ফাইনাল ইন্সপেকশন এই শিপমেন্ট ছাড় করেনি।',
+    'gates.exp_number.missing':
+      'এই শিপমেন্টে EXP নম্বর নেই। বাংলাদেশ ব্যাংক ডকুমেন্ট জমার আগে এটি চায়, তাই দেরি না করে হ্যান্ডঅফ আটকে দেওয়া হয়েছে।',
+    'gates.lc_date.after_latest_shipment':
+      'এই শিপমেন্ট {plannedExFactoryDate} তারিখে গেছে — LC-র শেষ শিপমেন্ট তারিখ {latestShipmentDate}-এর {daysOver} দিন পরে। ব্যাংক প্রেজেন্টেশন নেবে না। ডিপার্চার কনফার্ম করার আগে কমার্শিয়াল রেকর্ডে এই ব্যত্যয় মেনে নিতে পারেন।',
+    'gates.lc_date.expired':
+      'LC-র মেয়াদ {expiryDate} তারিখে শেষ হয়েছে, এই শিপমেন্ট তারিখের {daysOver} দিন আগে। জমা দেওয়ার মতো কিছু আর নেই। ডিপার্চার কনফার্ম করার আগে কমার্শিয়াল রেকর্ডে এই ব্যত্যয় মেনে নিতে পারেন।',
+    'gates.btb_headroom.no_btb':
+      'কোনো ব্যাক-টু-ব্যাক ক্রেডিট যুক্ত নেই, আর সেটি ছাড়া ইমপোর্ট PO ইস্যু করা যায় না — তাহলে ফ্যাক্টরি সাপ্লায়ারের কাছে দায়বদ্ধ হবে অথচ টাকার উৎস থাকবে না।',
+    'gates.btb_headroom.exceeded':
+      'এই পারচেজ অর্ডার ব্যাক-টু-ব্যাক ক্রেডিটকে সিলিং ছাড়িয়ে নিয়ে যাবে। লিমিট {limit} {currency}, ব্যবহৃত {used}, বাকি {free}।',
+    'gates.btb_headroom.btb_not_found': 'এই ব্যাক-টু-ব্যাক ক্রেডিট আর নেই।',
+    'gates.btb_headroom.master_not_found':
+      'এই ব্যাক-টু-ব্যাকের পেছনের মাস্টার ক্রেডিট নেই, তাই এর হেডরুম মেলানো যাচ্ছে না।',
+    'gates.btb_headroom.master_not_active':
+      'মাস্টার ক্রেডিট সক্রিয় নয়, তাই এই ব্যাক-টু-ব্যাকের পেছনে কোনো টাকার উৎস নেই।',
+    'gates.btb_headroom.currency_mismatch':
+      'ব্যাক-টু-ব্যাক আর তার মাস্টার ক্রেডিট আলাদা মুদ্রায় ({btbCurrency} বনাম {masterCurrency}), আর মেলানোর মতো কোনো রেট বলা হয়নি।',
     'gates.fabric_inspection.not_inspected':
       'এই রোলগুলোর ৪-পয়েন্ট ইন্সপেকশন এখনও হয়নি: {rolls}',
     'gates.fabric_inspection.failed':
