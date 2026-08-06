@@ -6,7 +6,16 @@ import { z } from 'zod'
 
 import { requireRole } from '@/modules/core/session'
 
-import { convertLead, logActivity, setLeadStage } from './service'
+import { getPolicy } from '@/modules/settings/service'
+
+import {
+  convertLead,
+  detectDuplicates,
+  logActivity,
+  setLeadStage,
+  type BuyerDeskPolicy,
+  type DuplicateCandidate,
+} from './service'
 
 /**
  * 1.1 Buyer & Lead Desk writes.
@@ -50,6 +59,48 @@ const convertInput = z.object({
   /** Buyer code — short, stable, and what every downstream document keys off. */
   code: z.string().min(1).max(20),
 })
+
+/**
+ * Who this lead might already be (plan 5.2).
+ *
+ * Step one of the conversion, and a read. `detectDuplicates` has existed since 1.1 and was
+ * reachable only from `createLead`, which checks at the other end — so the desk could not
+ * ask the one question worth asking before it makes a permanent record: is this company
+ * already a buyer under a slightly different name?
+ *
+ * Two buyers for one company splits the order history and every scorecard built on it, and
+ * the split is invisible until somebody asks why a buyer's volume halved. Trigram similarity
+ * over the normalised name catches "Ltd" against "Limited"; a shared website beats any name
+ * score and sorts first.
+ *
+ * It does not block. A genuine second entity — a division, a sourcing office — is a real
+ * buyer with a real similar name, and a check that refused would be a check people learn to
+ * work around by mistyping the name.
+ */
+export async function findConversionDuplicates(input: {
+  leadId: string
+  name: string
+  website?: string
+}): Promise<DuplicateCandidate[]> {
+  const ctx = await requireRole(await headers(), 'merchandiser', 'commercial')
+  const parsed = z
+    .object({
+      leadId: z.string().uuid(),
+      name: z.string().min(1).max(300),
+      website: z.string().max(300).optional(),
+    })
+    .parse(input)
+
+  const policy = await getPolicy<BuyerDeskPolicy>(ctx, 'buyers')
+  const candidates = await detectDuplicates(
+    ctx,
+    { name: parsed.name, website: parsed.website ?? null },
+    policy,
+  )
+
+  // The lead being converted matches itself, obviously and unhelpfully.
+  return candidates.filter((candidate) => candidate.id !== parsed.leadId)
+}
 
 export async function convertLeadToBuyer(input: z.input<typeof convertInput>) {
   const ctx = await requireRole(await headers(), 'merchandiser', 'commercial')

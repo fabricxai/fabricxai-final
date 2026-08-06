@@ -140,6 +140,31 @@ describe('1.1 · duplicate detection', () => {
     expect(candidates).toHaveLength(0)
   })
 
+it('matches the lead being converted against ITSELF, which the desk has to filter', async () => {
+    /*
+     * Plan 5.2. `findConversionDuplicates` drops the lead it was asked about, and this is
+     * why: trigram similarity of a name against itself is 1.0, so without the filter the
+     * conversion dialog would open on every single lead saying "1 record looks like this
+     * company" and point at the lead being converted. A warning that always fires is a
+     * warning nobody reads, and the one time it means something is the time it is ignored.
+     */
+    await reset()
+    const { leadId } = await createLead(ctx, {
+      source: 'fair',
+      companyName: 'Padma Knitwear Limited',
+      website: 'padmaknit.com.bd',
+    })
+
+    const candidates = await detectDuplicates(
+      ctx,
+      { name: 'Padma Knitwear Limited', website: 'padmaknit.com.bd' },
+      POLICY,
+    )
+
+    expect(candidates.some((c) => c.id === leadId)).toBe(true)
+    expect(candidates.filter((c) => c.id !== leadId)).toEqual([])
+  })
+
   it('does not offer a lead that has already become a buyer', async () => {
     await reset()
     const { leadId } = await createLead(ctx, {

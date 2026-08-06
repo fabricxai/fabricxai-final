@@ -315,6 +315,57 @@ export const UI_MESSAGES: Catalogue = {
     'ui.orders.actualized_slipped':
       'Recorded. {count} milestone(s) moved and the ship date is now {date}, {days} day(s) later.',
 
+    // ── buyers · the lead desk write surface (plan 5.2) ──
+    'ui.buyers.stage_new': 'New',
+    'ui.buyers.stage_contacted': 'Contacted',
+    'ui.buyers.stage_sampling_talk': 'Sampling talk',
+    'ui.buyers.stage_negotiation': 'Negotiation',
+    'ui.buyers.stage_won': 'Won',
+    'ui.buyers.stage_lost': 'Lost',
+    'ui.buyers.kind_call': 'Call',
+    'ui.buyers.kind_email': 'Email',
+    'ui.buyers.kind_meeting': 'Meeting',
+    'ui.buyers.kind_note': 'Note',
+    'ui.buyers.kind_of_buyer': 'already a buyer',
+    'ui.buyers.kind_of_lead': 'another lead',
+    'ui.buyers.log_activity': 'Log what happened',
+    'ui.buyers.activity_placeholder': 'What was said, in one line',
+    'ui.buyers.log_it': 'Log it',
+    'ui.buyers.activity_logged': 'Logged. The quiet clock restarts from today.',
+    'ui.buyers.activity_failed': 'Nothing was logged.',
+    'ui.buyers.move_stage': 'Move it',
+    'ui.buyers.choose_stage': 'Where to',
+    'ui.buyers.move_it': 'Move',
+    'ui.buyers.stage_moved': 'Moved to {stage}.',
+    'ui.buyers.stage_failed': 'The lead did not move.',
+    'ui.buyers.stage_terminal':
+      'A won lead does not move again. Its buyer is on the list below.',
+    'ui.buyers.lost_reason': 'Why it was lost',
+    'ui.buyers.lost_reason_hint':
+      'Required. A board full of bare “lost” rows has no answer to why we are losing — and a 3% price loss and a 22% one are different problems.',
+    'ui.buyers.last_touch': 'last {kind} on {on} · {days}d quiet',
+    'ui.buyers.never_touched': 'nothing ever logged · {days}d',
+    'ui.buyers.convert': 'Make it a buyer',
+    'ui.buyers.convert_body':
+      'This creates the buyer every order, LC and shipment afterwards hangs off, and closes the lead as won.',
+    'ui.buyers.convert_start': 'Convert…',
+    'ui.buyers.convert_title': 'Convert {name}',
+    'ui.buyers.convert_confirm': 'Create the buyer',
+    'ui.buyers.convert_failed': 'The buyer was not created.',
+    'ui.buyers.converted': 'Converted. The lead is closed as won.',
+    'ui.buyers.already_converted':
+      'This lead had already been converted — you are looking at the buyer it made.',
+    'ui.buyers.checking_duplicates': 'Checking who this might already be…',
+    'ui.buyers.no_duplicates': 'Nothing here looks like this company already.',
+    'ui.buyers.duplicates_found':
+      '{count} record(s) look like this company. Two buyers for one company splits the order history and every scorecard built on it.',
+    'ui.buyers.duplicates_unavailable':
+      'The duplicate check could not run, so nothing has been ruled out.',
+    'ui.buyers.same_website': 'same website',
+    'ui.buyers.buyer_code': 'Buyer code',
+    'ui.buyers.buyer_code_hint':
+      'Short and permanent — every document downstream keys off it.',
+
     // ── store · 3.1 ──
     'ui.store.receive_eyebrow': 'Store · receive goods',
     'ui.store.receive_title': 'Receive against a challan',
@@ -1234,6 +1285,54 @@ export const UI_MESSAGES: Catalogue = {
       'রেকর্ড হয়েছে। {count}টি ধাপ সরেছে; শিপের তারিখ ঠিক আছে।',
     'ui.orders.actualized_slipped':
       'রেকর্ড হয়েছে। {count}টি ধাপ সরেছে আর শিপের তারিখ এখন {date}, {days} দিন পরে।',
+
+    // ── buyers ──
+    'ui.buyers.stage_new': 'নতুন',
+    'ui.buyers.stage_contacted': 'যোগাযোগ হয়েছে',
+    'ui.buyers.stage_sampling_talk': 'স্যাম্পল আলোচনা',
+    'ui.buyers.stage_negotiation': 'দরকষাকষি',
+    'ui.buyers.stage_won': 'পাওয়া গেছে',
+    'ui.buyers.stage_lost': 'হারানো',
+    'ui.buyers.kind_call': 'ফোন',
+    'ui.buyers.kind_email': 'ইমেইল',
+    'ui.buyers.kind_meeting': 'মিটিং',
+    'ui.buyers.kind_note': 'নোট',
+    'ui.buyers.kind_of_buyer': 'আগে থেকেই বায়ার',
+    'ui.buyers.kind_of_lead': 'আরেকটি লিড',
+    'ui.buyers.log_activity': 'কী হয়েছে লিখুন',
+    'ui.buyers.activity_placeholder': 'এক লাইনে কী কথা হয়েছে',
+    'ui.buyers.log_it': 'লিখে রাখুন',
+    'ui.buyers.activity_logged': 'লেখা হয়েছে। চুপচাপ থাকার হিসাব আজ থেকে আবার শুরু।',
+    'ui.buyers.activity_failed': 'কিছু লেখা হয়নি।',
+    'ui.buyers.move_stage': 'সরান',
+    'ui.buyers.choose_stage': 'কোথায়',
+    'ui.buyers.move_it': 'সরান',
+    'ui.buyers.stage_moved': '{stage}-এ সরানো হয়েছে।',
+    'ui.buyers.stage_failed': 'লিডটি সরেনি।',
+    'ui.buyers.stage_terminal': 'পাওয়া লিড আর সরে না। এর বায়ার নিচের তালিকায় আছে।',
+    'ui.buyers.lost_reason': 'কেন হারানো গেল',
+    'ui.buyers.lost_reason_hint':
+      'লাগবেই। শুধু “হারানো” লেখা বোর্ড থেকে কেন হারাচ্ছি তার উত্তর মেলে না — ৩% দামের পার্থক্য আর ২২% দুটো আলাদা সমস্যা।',
+    'ui.buyers.last_touch': 'শেষ {kind} {on} তারিখে · {days} দিন চুপ',
+    'ui.buyers.never_touched': 'কিছুই লেখা হয়নি · {days} দিন',
+    'ui.buyers.convert': 'বায়ার বানান',
+    'ui.buyers.convert_body':
+      'এতে সেই বায়ার তৈরি হয় যার সঙ্গে পরের সব অর্ডার, LC আর শিপমেন্ট যুক্ত থাকবে, আর লিডটি won হিসেবে বন্ধ হয়।',
+    'ui.buyers.convert_start': 'কনভার্ট…',
+    'ui.buyers.convert_title': '{name} কনভার্ট করুন',
+    'ui.buyers.convert_confirm': 'বায়ার তৈরি করুন',
+    'ui.buyers.convert_failed': 'বায়ার তৈরি হয়নি।',
+    'ui.buyers.converted': 'কনভার্ট হয়েছে। লিডটি won হিসেবে বন্ধ।',
+    'ui.buyers.already_converted':
+      'এই লিড আগেই কনভার্ট হয়েছিল — আপনি সেই বায়ারটিই দেখছেন।',
+    'ui.buyers.checking_duplicates': 'এটি আগে থেকেই কেউ কিনা দেখা হচ্ছে…',
+    'ui.buyers.no_duplicates': 'এই কোম্পানির মতো আর কিছু পাওয়া যায়নি।',
+    'ui.buyers.duplicates_found':
+      '{count}টি রেকর্ড এই কোম্পানির মতো দেখাচ্ছে। এক কোম্পানির দুই বায়ার হলে অর্ডারের ইতিহাস ও তার উপর দাঁড়ানো সব স্কোরকার্ড ভাগ হয়ে যায়।',
+    'ui.buyers.duplicates_unavailable': 'ডুপ্লিকেট চেক চলেনি, তাই কিছুই বাদ দেওয়া যায়নি।',
+    'ui.buyers.same_website': 'একই ওয়েবসাইট',
+    'ui.buyers.buyer_code': 'বায়ার কোড',
+    'ui.buyers.buyer_code_hint': 'ছোট আর স্থায়ী — পরের সব ডকুমেন্ট এটি ধরেই চলে।',
 
     // ── store · 3.1 ──
     // Bangla nouns do not inflect after a numeral, so the _one and _other forms of a key

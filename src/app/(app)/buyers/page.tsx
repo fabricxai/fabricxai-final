@@ -5,10 +5,15 @@ import { Badge } from '@/components/fx/primitives'
 import { EmptyState } from '@/components/fx/feedback'
 import { Eyebrow, SectionHeading } from '@/components/fx/signature'
 import { PageHeader } from '@/components/shell/page-shell'
+import { canWrite, NAV } from '@/components/shell/nav'
 import { getCtx } from '@/modules/core/session'
+import { companyProfile } from '@/modules/settings/service'
 import { buyerAccounts, pipeline } from '@/modules/buyers/queries'
 import type { BuyerDeskPolicy } from '@/modules/buyers/service'
 import { getPolicy } from '@/modules/settings/service'
+
+import { LeadOpener } from './pipeline-client'
+import type { DrawerLead } from './lead-drawer'
 
 /**
  * 1.1 Buyer & Lead Desk.
@@ -32,6 +37,23 @@ export default async function BuyersPage() {
     buyerAccounts(ctx),
   ])
 
+  const profile = await companyProfile(ctx)
+  const mayWrite = canWrite(
+    NAV.find((n) => n.id === 'buyers')!,
+    ctx.roles,
+    profile?.factoryType ?? 'woven',
+  )
+
+  /** What the drawer needs, from the card the board already has. */
+  const drawerLead = (lead: (typeof board.quiet)[number]): DrawerLead => ({
+    id: lead.id,
+    companyName: lead.companyName,
+    country: lead.country,
+    stage: lead.stage,
+    daysQuiet: lead.daysQuiet,
+    lastActivity: lead.lastActivity,
+  })
+
   const open = board.stages
     .filter((s) => s.stage !== 'won' && s.stage !== 'lost')
     .reduce((n, s) => n + s.leads.length, 0)
@@ -53,8 +75,8 @@ export default async function BuyersPage() {
             </SectionHeading>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {board.quiet.map((lead) => (
+                <LeadOpener key={lead.id} lead={drawerLead(lead)} canWrite={mayWrite}>
                 <div
-                  key={lead.id}
                   className="fx-selvage"
                   data-status={lead.daysQuiet >= policy.quietAfterDays * 2 ? 'late' : 'at-risk'}
                   style={{
@@ -100,6 +122,7 @@ export default async function BuyersPage() {
                     </div>
                   </div>
                 </div>
+                </LeadOpener>
               ))}
             </div>
           </section>
@@ -147,8 +170,8 @@ export default async function BuyersPage() {
                   </div>
 
                   {column.leads.map((lead) => (
+                    <LeadOpener key={lead.id} lead={drawerLead(lead)} canWrite={mayWrite}>
                     <div
-                      key={lead.id}
                       style={{
                         background: 'var(--fx-bg-surface)',
                         border: '1px solid var(--fx-border-subtle)',
@@ -212,6 +235,7 @@ export default async function BuyersPage() {
                         </span>
                       ) : null}
                     </div>
+                    </LeadOpener>
                   ))}
                 </div>
               ))}

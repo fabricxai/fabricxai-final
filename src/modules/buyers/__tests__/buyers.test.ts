@@ -165,4 +165,25 @@ describe('leadStageMachine', () => {
     // the conversion stats it feeds become fiction.
     expect(() => leadStageMachine.assert('new', 'won')).toThrow()
   })
+
+  it('23 · offers the desk exactly the moves the server would accept (plan 5.2)', () => {
+    /*
+     * The drawer builds its dropdown from `next()`, so this table IS the screen. Offering a
+     * move the server refuses is how somebody learns to distrust a board — every click
+     * would be a coin toss between working and a 409 — and offering fewer than the legal
+     * ones strands a lead where nobody can move it.
+     */
+    expect([...leadStageMachine.next('new')]).toEqual(['contacted', 'lost'])
+    expect([...leadStageMachine.next('negotiation')]).toEqual(['won', 'lost'])
+    // Reopening is a legal move, and the desk has to offer it: a buyer who went elsewhere
+    // on price this season is next season's enquiry.
+    expect([...leadStageMachine.next('lost')]).toEqual(['contacted', 'negotiation'])
+  })
+
+  it('24 · leaves a won lead with nothing to offer, which the drawer says out loud', () => {
+    // An empty dropdown reads as a broken control. The drawer branches on this to say "a
+    // won lead does not move again" instead, so the emptiness has to be real and stable.
+    expect(leadStageMachine.next('won')).toEqual([])
+    expect(leadStageMachine.terminal).toContain('won')
+  })
 })
