@@ -11,6 +11,7 @@ import { asc, desc, eq, inArray } from 'drizzle-orm'
 
 import { buyers } from '@/modules/buyers/schema'
 import type { AnyCtx } from '@/modules/core/ctx'
+import { scoped } from '@/modules/core/scoped'
 import { withTenantRead } from '@/modules/core/tenancy'
 
 import { lossReasons, quotes, rfqClarifications, rfqs } from './schema'
@@ -107,7 +108,7 @@ export async function board(
           status: quotes.status,
         })
         .from(quotes)
-        .where(inArray(quotes.rfqId, ids))
+        .where(scoped(quotes, ctx, inArray(quotes.rfqId, ids)))
         .orderBy(desc(quotes.version)),
       tx
         .select({
@@ -116,7 +117,7 @@ export async function board(
           answeredAt: rfqClarifications.answeredAt,
         })
         .from(rfqClarifications)
-        .where(inArray(rfqClarifications.rfqId, ids))
+        .where(scoped(rfqClarifications, ctx, inArray(rfqClarifications.rfqId, ids)))
         .orderBy(asc(rfqClarifications.askedAt)),
     ])
 

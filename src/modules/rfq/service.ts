@@ -19,6 +19,7 @@ import { recordChange, registerAuditedTables } from '../core/audit'
 import type { AnyCtx, RequestCtx } from '../core/ctx'
 import { AppError, conflict, notFound } from '../core/errors'
 import { emit } from '../core/outbox'
+import { scoped } from '../core/scoped'
 import { withTenantRead, withTenantTx, type TenantDb } from '../core/tenancy'
 
 import { RFQ_EVENTS } from './events'
@@ -85,7 +86,7 @@ export async function commitRfq(
   const [buyer] = await tx
     .select({ id: buyers.id })
     .from(buyers)
-    .where(eq(buyers.id, payload.buyerId))
+    .where(scoped(buyers, ctx, eq(buyers.id, payload.buyerId)))
   // Read under tenant scope BEFORE the insert. Postgres runs FK checks with RLS bypassed,
   // so the foreign key alone would happily accept another factory's buyer id.
   if (!buyer) throw notFound('rfq.errors.buyer_not_found', { buyerId: payload.buyerId })
@@ -132,7 +133,7 @@ export async function askClarification(
   const payload = clarificationPayload.parse(input)
 
   return withTenantTx(ctx, async (tx) => {
-    const [rfq] = await tx.select().from(rfqs).where(eq(rfqs.id, payload.rfqId)).for('update')
+    const [rfq] = await tx.select().from(rfqs).where(scoped(rfqs, ctx, eq(rfqs.id, payload.rfqId))).for('update')
     if (!rfq) throw notFound('rfq.errors.not_found', { rfqId: payload.rfqId })
 
     const [row] = await tx
@@ -154,7 +155,7 @@ export async function askClarification(
       await tx
         .update(rfqs)
         .set({ status: 'clarifying', updatedAt: new Date() })
-        .where(eq(rfqs.id, rfq.id))
+        .where(scoped(rfqs, ctx, eq(rfqs.id, rfq.id)))
     }
 
     return { clarificationId: row.id }
@@ -169,7 +170,7 @@ export async function answerClarification(
     const [row] = await tx
       .select()
       .from(rfqClarifications)
-      .where(eq(rfqClarifications.id, input.clarificationId))
+      .where(scoped(rfqClarifications, ctx, eq(rfqClarifications.id, input.clarificationId)))
       .for('update')
 
     if (!row) {
@@ -184,7 +185,7 @@ export async function answerClarification(
     await tx
       .update(rfqClarifications)
       .set({ answer: input.answer, answeredAt: input.answeredAt })
-      .where(eq(rfqClarifications.id, row.id))
+      .where(scoped(rfqClarifications, ctx, eq(rfqClarifications.id, row.id)))
   })
 }
 
@@ -215,7 +216,7 @@ export async function draftQuote(
   policy: RfqPolicy,
 ): Promise<DraftQuoteResult> {
   return withTenantTx(ctx, async (tx) => {
-    const [rfq] = await tx.select().from(rfqs).where(eq(rfqs.id, input.rfqId)).for('update')
+    const [rfq] = await tx.select().from(rfqs).where(scoped(rfqs, ctx, eq(rfqs.id, input.rfqId))).for('update')
     if (!rfq) throw notFound('rfq.errors.not_found', { rfqId: input.rfqId })
 
     rfqStatusMachine.assert(rfq.status as RfqStatus, 'quoted')
@@ -265,7 +266,7 @@ export async function draftQuote(
     const [latest] = await tx
       .select({ version: quotes.version })
       .from(quotes)
-      .where(eq(quotes.rfqId, rfq.id))
+      .where(scoped(quotes, ctx, eq(quotes.rfqId, rfq.id)))
       .orderBy(desc(quotes.version))
       .limit(1)
 
@@ -277,7 +278,7 @@ export async function draftQuote(
     const superseded = await tx
       .update(quotes)
       .set({ status: 'superseded', updatedAt: new Date() })
-      .where(and(eq(quotes.rfqId, rfq.id), sql`${quotes.status} <> 'superseded'`))
+      .where(scoped(quotes, ctx, and(eq(quotes.rfqId, rfq.id), sql`${quotes.status} <> 'superseded'`)))
       .returning({ id: quotes.id })
 
     const [row] = await tx
@@ -301,7 +302,7 @@ export async function draftQuote(
     await tx
       .update(rfqs)
       .set({ status: 'quoted', updatedAt: new Date() })
-      .where(eq(rfqs.id, rfq.id))
+      .where(scoped(rfqs, ctx, eq(rfqs.id, rfq.id)))
 
     const belowFloor =
       policy.marginFloorPct !== undefined &&
@@ -400,7 +401,7 @@ export async function sendQuote(
   policy: RfqPolicy,
 ): Promise<{ quoteId: string; belowFloor: boolean }> {
   return withTenantTx(ctx, async (tx) => {
-    const [quote] = await tx.select().from(quotes).where(eq(quotes.id, input.quoteId)).for('update')
+    const [quote] = await tx.select().from(quotes).where(scoped(quotes, ctx, eq(quotes.id, input.quoteId))).for('update')
     if (!quote) throw notFound('rfq.errors.quote_not_found', { quoteId: input.quoteId })
 
     if (quote.status !== 'draft') {
@@ -440,7 +441,7 @@ export async function sendQuote(
           : null,
         updatedAt: new Date(),
       })
-      .where(eq(quotes.id, quote.id))
+      .where(scoped(quotes, ctx, eq(quotes.id, quote.id)))
 
     await recordChange(ctx, tx, {
       action: 'update',
@@ -484,7 +485,7 @@ export async function markWon(
   input: { rfqId: string },
 ): Promise<{ rfqId: string; payload: Record<string, unknown> }> {
   return withTenantTx(ctx, async (tx) => {
-    const [rfq] = await tx.select().from(rfqs).where(eq(rfqs.id, input.rfqId)).for('update')
+    const [rfq] = await tx.select().from(rfqs).where(scoped(rfqs, ctx, eq(rfqs.id, input.rfqId))).for('update')
     if (!rfq) throw notFound('rfq.errors.not_found', { rfqId: input.rfqId })
 
     rfqStatusMachine.assert(rfq.status as RfqStatus, 'won')
@@ -492,7 +493,7 @@ export async function markWon(
     const [quote] = await tx
       .select()
       .from(quotes)
-      .where(and(eq(quotes.rfqId, rfq.id), sql`${quotes.status} <> 'superseded'`))
+      .where(scoped(quotes, ctx, and(eq(quotes.rfqId, rfq.id), sql`${quotes.status} <> 'superseded'`)))
       .orderBy(desc(quotes.version))
       .limit(1)
 
@@ -514,7 +515,7 @@ export async function markWon(
       }),
     )
 
-    await tx.update(rfqs).set({ status: 'won', updatedAt: new Date() }).where(eq(rfqs.id, rfq.id))
+    await tx.update(rfqs).set({ status: 'won', updatedAt: new Date() }).where(scoped(rfqs, ctx, eq(rfqs.id, rfq.id)))
 
     await recordChange(ctx, tx, {
       action: 'update',
@@ -542,7 +543,7 @@ export async function markLost(
   input: { rfqId: string; lossReasonCode: string; note?: string },
 ): Promise<void> {
   await withTenantTx(ctx, async (tx) => {
-    const [rfq] = await tx.select().from(rfqs).where(eq(rfqs.id, input.rfqId)).for('update')
+    const [rfq] = await tx.select().from(rfqs).where(scoped(rfqs, ctx, eq(rfqs.id, input.rfqId))).for('update')
     if (!rfq) throw notFound('rfq.errors.not_found', { rfqId: input.rfqId })
 
     rfqStatusMachine.assert(rfq.status as RfqStatus, 'lost')
@@ -550,7 +551,7 @@ export async function markLost(
     const [reason] = await tx
       .select({ code: lossReasons.code })
       .from(lossReasons)
-      .where(eq(lossReasons.code, input.lossReasonCode))
+      .where(scoped(lossReasons, ctx, eq(lossReasons.code, input.lossReasonCode)))
 
     if (!reason) {
       // A free-text reason cannot be counted, and counting is the point.
@@ -562,7 +563,7 @@ export async function markLost(
     await tx
       .update(rfqs)
       .set({ status: 'lost', lossReasonCode: input.lossReasonCode, updatedAt: new Date() })
-      .where(eq(rfqs.id, rfq.id))
+      .where(scoped(rfqs, ctx, eq(rfqs.id, rfq.id)))
 
     await emit(ctx, tx, {
       eventName: RFQ_EVENTS.lost,
@@ -594,13 +595,13 @@ export async function deadlinesNear(
     const rows = await tx
       .select({ id: rfqs.id, title: rfqs.title, deadline: rfqs.deadline })
       .from(rfqs)
-      .where(
+      .where(scoped(rfqs, ctx, 
         and(
           lte(rfqs.deadline, horizon),
           // A quoted RFQ has met its deadline; a lost one no longer has one.
           sql`${rfqs.status} in ('open', 'clarifying')`,
         ),
-      )
+      ))
       .orderBy(rfqs.deadline)
 
     return rows
@@ -626,7 +627,7 @@ export async function staleClarifications(
     const rows = await tx
       .select()
       .from(rfqClarifications)
-      .where(and(isNull(rfqClarifications.answeredAt), lte(rfqClarifications.askedAt, cutoff)))
+      .where(scoped(rfqClarifications, ctx, and(isNull(rfqClarifications.answeredAt), lte(rfqClarifications.askedAt, cutoff))))
       .orderBy(rfqClarifications.askedAt)
 
     return rows.map((row) => ({
@@ -647,7 +648,7 @@ export async function expiredQuotes(
     const rows = await tx
       .select()
       .from(quotes)
-      .where(sql`${quotes.status} = 'sent'`)
+      .where(scoped(quotes, ctx, sql`${quotes.status} = 'sent'`))
 
     return rows.filter((row) =>
       wrapRfqError(() => isQuoteExpired({ validityDate: row.validityDate, today: input.today })),
@@ -714,7 +715,7 @@ export async function seedDefaultLossReasons(
       const [already] = await tx
         .select({ code: lossReasons.code })
         .from(lossReasons)
-        .where(eq(lossReasons.code, code))
+        .where(scoped(lossReasons, ctx, eq(lossReasons.code, code)))
 
       if (already) {
         existing.push(code)
