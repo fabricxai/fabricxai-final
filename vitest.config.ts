@@ -5,7 +5,10 @@ import { defineConfig } from 'vitest/config'
 /** Unit tests: pure logic only, no database. Integration lives in vitest.integration.config.ts. */
 export default defineConfig({
   test: {
-    include: ['src/**/__tests__/**/*.test.ts'],
+    // `docs/__tests__` is here too: the handoff contract check reads markdown and asserts
+    // against source, and it belongs in the fast suite for the same reason every other
+    // source scan does.
+    include: ['src/**/__tests__/**/*.test.ts', 'docs/__tests__/**/*.test.ts'],
     exclude: [
       'src/**/__tests__/**/*.integration.test.ts',
       // `__tests__/browser/` is the jsdom project (plan 7.2). Its files are `.ts` as well as

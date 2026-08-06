@@ -10,11 +10,19 @@ Next.js 16 (app router, server actions) + Drizzle + PostgreSQL 16 + Redis/BullMQ
 - `docs/02-backend/fabricxai-backend-architecture.md` — topology, layers, data, security
 - `docs/02-backend/fabricxai-backend-briefs.md` — draft backend contract per module
   (per-module briefs: `docs/02-backend/briefs/<id>.md`)
-- `docs/handoffs/HANDOFF-<module>.md` — FINAL contract per module (wins over the brief on fields/states; the brief wins on invariants)
+- `docs/handoffs/HANDOFF-<module>.md` — per-module contract (wins over the brief on
+  fields/states; the brief wins on invariants). **The eight pilot modules' handoffs are
+  RETROACTIVE** — written after the build, so they describe what shipped and serve as
+  acceptance checklists. Their §5/§6/§7 are checked against code by
+  `docs/__tests__/handoff-contract.test.ts`. The other fifteen modules have none.
 - `docs/01-design/fabricxai-department-build-pack.md` — screens context per module
 - `docs/PROGRESS.md` (module ticks) · `docs/STUBS.md` (owed replacements)
 
-**Never start backend work on a module without its HANDOFF file with §8 empty.**
+**A new module needs its HANDOFF before the build, with §8 empty.** Stated plainly because
+it has never once been honoured: twenty-three modules shipped without one, X.1 included,
+despite the PLAYBOOK making it a precondition. Plan 8.1 backfilled the eight pilot modules
+rather than pretending the gate had held — a contract written after the work is a
+description, and the files say so at the top. The rule stands for what is built NEXT.
 
 ## Commands
 - `pnpm dev` / `pnpm worker:dev` — app / BullMQ worker
