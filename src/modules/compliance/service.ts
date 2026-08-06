@@ -25,6 +25,7 @@ import type { AnyCtx, RequestCtx } from '../core/ctx'
 import { AppError, forbidden, notFound } from '../core/errors'
 import { emit } from '../core/outbox'
 import { defineStateMachine } from '../core/state-machine'
+import { scoped } from '../core/scoped'
 import { withTenantRead, withTenantTx, type TenantDb } from '../core/tenancy'
 
 import {
@@ -155,7 +156,7 @@ export async function commitFindingsBatch(
 
   // Read the parent under tenant scope. Postgres runs FK checks with RLS bypassed, so the
   // foreign key alone would happily attach these findings to another factory's audit.
-  const [audit] = await tx.select().from(audits).where(eq(audits.id, payload.auditId))
+  const [audit] = await tx.select().from(audits).where(scoped(audits, ctx, eq(audits.id, payload.auditId)))
   if (!audit) throw notFound('compliance.errors.audit_not_found', { auditId: payload.auditId })
 
   const inserted: string[] = []
@@ -205,12 +206,12 @@ export async function openCap(
   const payload = capInput.parse(input)
 
   return withTenantTx(ctx, async (tx) => {
-    const [finding] = await tx.select().from(findings).where(eq(findings.id, payload.findingId))
+    const [finding] = await tx.select().from(findings).where(scoped(findings, ctx, eq(findings.id, payload.findingId)))
     if (!finding) {
       throw notFound('compliance.errors.finding_not_found', { findingId: payload.findingId })
     }
 
-    const [audit] = await tx.select().from(audits).where(eq(audits.id, finding.auditId))
+    const [audit] = await tx.select().from(audits).where(scoped(audits, ctx, eq(audits.id, finding.auditId)))
     if (!audit) throw notFound('compliance.errors.audit_not_found', { auditId: finding.auditId })
 
     // Computed from the regime's policy unless somebody supplied one. `capDeadline` refuses
@@ -264,7 +265,7 @@ export async function advanceCap(
   const payload = capProgressInput.parse(input)
 
   return withTenantTx(ctx, async (tx) => {
-    const [cap] = await tx.select().from(caps).where(eq(caps.id, payload.capId)).for('update')
+    const [cap] = await tx.select().from(caps).where(scoped(caps, ctx, eq(caps.id, payload.capId))).for('update')
     if (!cap) throw notFound('compliance.errors.cap_not_found', { capId: payload.capId })
 
     capMachine.assert(cap.status as CapStatus, payload.status)
@@ -272,7 +273,7 @@ export async function advanceCap(
     await tx
       .update(caps)
       .set({ status: payload.status, updatedAt: new Date() })
-      .where(eq(caps.id, cap.id))
+      .where(scoped(caps, ctx, eq(caps.id, cap.id)))
 
     return { capId: cap.id, status: payload.status }
   })
@@ -292,7 +293,7 @@ export async function addCapEvidence(
   }
 
   return withTenantTx(ctx, async (tx) => {
-    const [cap] = await tx.select().from(caps).where(eq(caps.id, payload.capId)).for('update')
+    const [cap] = await tx.select().from(caps).where(scoped(caps, ctx, eq(caps.id, payload.capId))).for('update')
     if (!cap) throw notFound('compliance.errors.cap_not_found', { capId: payload.capId })
 
     if (cap.status === 'closed') {
@@ -314,7 +315,7 @@ export async function addCapEvidence(
     await tx
       .update(caps)
       .set({ closureEvidence: evidence, updatedAt: new Date() })
-      .where(eq(caps.id, cap.id))
+      .where(scoped(caps, ctx, eq(caps.id, cap.id)))
 
     return { capId: cap.id, evidenceCount: evidence.length }
   })
@@ -344,12 +345,12 @@ export async function closeCap(
   }
 
   return withTenantTx(ctx, async (tx) => {
-    const [cap] = await tx.select().from(caps).where(eq(caps.id, payload.capId)).for('update')
+    const [cap] = await tx.select().from(caps).where(scoped(caps, ctx, eq(caps.id, payload.capId))).for('update')
     if (!cap) throw notFound('compliance.errors.cap_not_found', { capId: payload.capId })
 
     capMachine.assert(cap.status as CapStatus, 'closed')
 
-    const [finding] = await tx.select().from(findings).where(eq(findings.id, cap.findingId))
+    const [finding] = await tx.select().from(findings).where(scoped(findings, ctx, eq(findings.id, cap.findingId)))
     if (!finding) {
       throw notFound('compliance.errors.finding_not_found', { findingId: cap.findingId })
     }
@@ -375,7 +376,7 @@ export async function closeCap(
         closedBy: ctx.userId,
         updatedAt: new Date(),
       })
-      .where(eq(caps.id, cap.id))
+      .where(scoped(caps, ctx, eq(caps.id, cap.id)))
 
     await recordChange(ctx, tx, {
       action: 'update',
@@ -520,7 +521,7 @@ export async function capExceptions(ctx: AnyCtx, today: string): Promise<CapExce
       })
       .from(caps)
       .innerJoin(findings, eq(findings.id, caps.findingId))
-      .where(inArray(caps.status, ['open', 'in_progress', 'evidence_submitted']))
+      .where(scoped(caps, ctx, inArray(caps.status, ['open', 'in_progress', 'evidence_submitted'])))
 
     return rows
       .map((row) => ({
@@ -565,13 +566,13 @@ export async function auditPack(
   policy: CompliancePolicy,
 ): Promise<AuditPack> {
   return withTenantRead(ctx, async (tx) => {
-    const [audit] = await tx.select().from(audits).where(eq(audits.id, input.auditId))
+    const [audit] = await tx.select().from(audits).where(scoped(audits, ctx, eq(audits.id, input.auditId)))
     if (!audit) throw notFound('compliance.errors.audit_not_found', { auditId: input.auditId })
 
     const auditFindings = await tx
       .select()
       .from(findings)
-      .where(eq(findings.auditId, input.auditId))
+      .where(scoped(findings, ctx, eq(findings.auditId, input.auditId)))
 
     const auditCaps =
       auditFindings.length === 0
@@ -579,12 +580,12 @@ export async function auditPack(
         : await tx
             .select()
             .from(caps)
-            .where(
+            .where(scoped(caps, ctx, 
               inArray(
                 caps.findingId,
                 auditFindings.map((finding) => finding.id),
               ),
-            )
+            ))
 
     const allCertificates = await tx.select().from(certificates)
     const allTrainings = await tx.select().from(trainings)
@@ -638,7 +639,7 @@ export async function openFindings(
       .select({ finding: findings, cap: caps })
       .from(findings)
       .leftJoin(caps, eq(caps.findingId, findings.id))
-      .where(sql`${caps.status} is null or ${caps.status} <> 'closed'`)
+      .where(scoped(findings, ctx, sql`${caps.status} is null or ${caps.status} <> 'closed'`))
       .orderBy(findings.severity, findings.createdAt)
 
     return rows.map((row) => ({ finding: row.finding, cap: row.cap }))
