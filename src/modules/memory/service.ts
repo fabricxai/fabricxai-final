@@ -31,6 +31,7 @@ import type { AnyCtx, RequestCtx } from '../core/ctx'
 import { AppError, conflict, notFound } from '../core/errors'
 import { emit } from '../core/outbox'
 import { propose } from '../core/pending-changes'
+import { scoped } from '../core/scoped'
 import { withTenantRead, withTenantTx, type TenantDb } from '../core/tenancy'
 import { getProvider } from '../marbim/provider'
 
@@ -109,7 +110,7 @@ export async function embedStyle(ctx: AnyCtx, input: unknown): Promise<EmbedStyl
     const [row] = await tx
       .select()
       .from(styleFingerprints)
-      .where(eq(styleFingerprints.styleCode, payload.styleCode))
+      .where(scoped(styleFingerprints, ctx, eq(styleFingerprints.styleCode, payload.styleCode)))
     return row
   })
 
@@ -211,7 +212,7 @@ export async function findSimilar(ctx: AnyCtx, input: unknown): Promise<SimilarS
         distance: sql<number>`${styleFingerprints.embedding} <=> ${JSON.stringify(query.vector)}::vector`,
       })
       .from(styleFingerprints)
-      .where(
+      .where(scoped(styleFingerprints, ctx, 
         and(
           // Only vectors from the SAME model. Two models place the same style in different
           // spaces, and a distance computed across them is a number with no meaning.
@@ -220,7 +221,7 @@ export async function findSimilar(ctx: AnyCtx, input: unknown): Promise<SimilarS
             ? sql`${styleFingerprints.styleCode} <> ${payload.styleCode}`
             : sql`true`,
         ),
-      )
+      ))
       .orderBy(sql`${styleFingerprints.embedding} <=> ${JSON.stringify(query.vector)}::vector`)
       .limit(payload.k),
   )
@@ -250,7 +251,7 @@ async function resolveQueryVector(
       const [row] = await tx
         .select()
         .from(styleFingerprints)
-        .where(eq(styleFingerprints.styleCode, payload.styleCode!))
+        .where(scoped(styleFingerprints, ctx, eq(styleFingerprints.styleCode, payload.styleCode!)))
       return row
     })
 
@@ -313,7 +314,7 @@ async function outcomesByStyle(
       })
       .from(orderOutcomes)
       .innerJoin(orderStyles, eq(orderStyles.orderId, orderOutcomes.orderId))
-      .where(inArray(orderStyles.styleCode, [...styleCodes]))
+      .where(scoped(orderOutcomes, ctx, inArray(orderStyles.styleCode, [...styleCodes])))
       .orderBy(orderOutcomes.compiledAt)
 
     const latest = new Map<string, SimilarStyle['outcome']>()
@@ -363,16 +364,16 @@ export async function compileOutcome(ctx: AnyCtx, input: unknown): Promise<Compi
   return withTenantTx(ctx, async (tx) => {
     // Read the order under tenant scope first. Postgres runs FK checks with RLS bypassed, so
     // the foreign key alone would accept another factory's order id quite happily.
-    const [order] = await tx.select().from(orders).where(eq(orders.id, orderId))
+    const [order] = await tx.select().from(orders).where(scoped(orders, ctx, eq(orders.id, orderId)))
     if (!order) throw notFound('memory.errors.order_not_found', { orderId })
 
-    const pieces = await piecesShipped(tx, orderId)
+    const pieces = await piecesShipped(ctx, tx, orderId)
 
-    const consumption = await consumptionActuals(tx, orderId, pieces)
-    const curve = await orderEfficiencyCurve(tx, orderId)
-    const defects = await orderTopDefects(tx, orderId)
-    const delays = await orderDelayEvents(tx, orderId)
-    const margins = await orderMargins(tx, orderId)
+    const consumption = await consumptionActuals(ctx, tx, orderId, pieces)
+    const curve = await orderEfficiencyCurve(ctx, tx, orderId)
+    const defects = await orderTopDefects(ctx, tx, orderId)
+    const delays = await orderDelayEvents(ctx, tx, orderId)
+    const margins = await orderMargins(ctx, tx, orderId)
 
     const sources = {
       consumption: consumption.length > 0,
@@ -440,13 +441,22 @@ export async function compileOutcome(ctx: AnyCtx, input: unknown): Promise<Compi
  * for 12,000 and shipped 400 must show the 400 — otherwise it becomes the cheapest style
  * the factory has ever made.
  */
-async function piecesShipped(tx: TenantDb, orderId: string): Promise<number> {
+/*
+ * These six gatherers all took a `ctx` rather than an exemption (plan 1.3).
+ *
+ * They are what an order's OUTCOME is compiled from — pieces shipped, actual consumption,
+ * the efficiency curve, top defects, delays, margin — and that outcome is then embedded and
+ * offered to a merchandiser as "what this factory achieved on the three most similar
+ * styles". A figure gathered from another factory's order would be quoted to a buyer as this
+ * one's own history.
+ */
+async function piecesShipped(ctx: AnyCtx, tx: TenantDb, orderId: string): Promise<number> {
   const { cartons } = await import('@/modules/shipment/schema')
 
   const [row] = await tx
     .select({ pieces: sql<string>`coalesce(sum(${cartons.totalQty}), 0)` })
     .from(cartons)
-    .where(and(eq(cartons.orderId, orderId), sql`${cartons.shipmentId} is not null`))
+    .where(scoped(cartons, ctx, and(eq(cartons.orderId, orderId), sql`${cartons.shipmentId} is not null`)))
 
   return Number(row?.pieces ?? 0)
 }
@@ -461,6 +471,7 @@ interface ConsumptionRow {
 
 /** Total issued per item ÷ pieces shipped. The figure the next cost sheet is seeded from. */
 async function consumptionActuals(
+  ctx: AnyCtx,
   tx: TenantDb,
   orderId: string,
   pieces: number,
@@ -480,7 +491,7 @@ async function consumptionActuals(
     .from(issueLines)
     .innerJoin(issues, eq(issues.id, issueLines.issueId))
     .innerJoin(items, eq(items.id, issueLines.itemId))
-    .where(eq(issues.orderId, orderId))
+    .where(scoped(issueLines, ctx, eq(issues.orderId, orderId)))
     .groupBy(items.code, issueLines.unit)
 
   return rows.map((row) => ({
@@ -499,7 +510,7 @@ async function consumptionActuals(
  * flagged wherever the same line also carried another order that day. The flag is the honest
  * part — see `efficiencyCurve` for why the number is not divided.
  */
-async function orderEfficiencyCurve(tx: TenantDb, orderId: string): Promise<DayEfficiency[]> {
+async function orderEfficiencyCurve(ctx: AnyCtx, tx: TenantDb, orderId: string): Promise<DayEfficiency[]> {
   const { allocations } = await import('@/modules/planning/schema')
   const { efficiencyDaily } = await import('@/modules/production/schema')
 
@@ -510,7 +521,7 @@ async function orderEfficiencyCurve(tx: TenantDb, orderId: string): Promise<DayE
       endDate: allocations.endDate,
     })
     .from(allocations)
-    .where(eq(allocations.orderId, orderId))
+    .where(scoped(allocations, ctx, eq(allocations.orderId, orderId)))
 
   if (mine.length === 0) return []
 
@@ -525,13 +536,13 @@ async function orderEfficiencyCurve(tx: TenantDb, orderId: string): Promise<DayE
         efficiencyPct: efficiencyDaily.efficiencyPct,
       })
       .from(efficiencyDaily)
-      .where(
+      .where(scoped(efficiencyDaily, ctx, 
         and(
           eq(efficiencyDaily.lineId, window.lineId),
           gte(efficiencyDaily.forDate, window.startDate),
           lte(efficiencyDaily.forDate, window.endDate),
         ),
-      )
+      ))
 
     for (const day of daily) {
       // A line can appear in two allocations for the same order (a split run). The pure
@@ -542,13 +553,13 @@ async function orderEfficiencyCurve(tx: TenantDb, orderId: string): Promise<DayE
       const [others] = await tx
         .select({ n: sql<string>`count(distinct ${allocations.orderId})` })
         .from(allocations)
-        .where(
+        .where(scoped(allocations, ctx, 
           and(
             eq(allocations.lineId, day.lineId),
             lte(allocations.startDate, day.forDate),
             gte(allocations.endDate, day.forDate),
           ),
-        )
+        ))
       ordersOnLineDate[`${day.lineId}|${day.forDate}`] = Number(others?.n ?? 1)
     }
   }
@@ -557,19 +568,19 @@ async function orderEfficiencyCurve(tx: TenantDb, orderId: string): Promise<DayE
 }
 
 /** What went wrong, from the inline checks recorded against this order. */
-async function orderTopDefects(tx: TenantDb, orderId: string): Promise<DefectTally[]> {
+async function orderTopDefects(ctx: AnyCtx, tx: TenantDb, orderId: string): Promise<DefectTally[]> {
   const { inlineChecks } = await import('@/modules/quality/schema')
 
   const rows = await tx
     .select({ defects: inlineChecks.defects })
     .from(inlineChecks)
-    .where(eq(inlineChecks.orderId, orderId))
+    .where(scoped(inlineChecks, ctx, eq(inlineChecks.orderId, orderId)))
 
   return wrapMemoryError(() => topDefects(rows.map((row) => ({ defects: row.defects }))))
 }
 
 /** Which milestones moved. An un-actualized milestone is a gap, not an on-time delivery. */
-async function orderDelayEvents(tx: TenantDb, orderId: string): Promise<DelayEvent[]> {
+async function orderDelayEvents(ctx: AnyCtx, tx: TenantDb, orderId: string): Promise<DelayEvent[]> {
   const { tnaMilestones } = await import('@/modules/orders/schema')
 
   const rows = await tx
@@ -579,7 +590,7 @@ async function orderDelayEvents(tx: TenantDb, orderId: string): Promise<DelayEve
       actualDate: tnaMilestones.actualDate,
     })
     .from(tnaMilestones)
-    .where(eq(tnaMilestones.orderId, orderId))
+    .where(scoped(tnaMilestones, ctx, eq(tnaMilestones.orderId, orderId)))
 
   return wrapMemoryError(() => delayEvents(rows))
 }
@@ -592,6 +603,7 @@ async function orderDelayEvents(tx: TenantDb, orderId: string): Promise<DelayEve
  * an actual on the other would produce a variance the factory would act on.
  */
 async function orderMargins(
+  ctx: AnyCtx,
   tx: TenantDb,
   orderId: string,
 ): Promise<{ quotedMarginPct: string; actualMarginPct: string; marginBasis: string } | null> {
@@ -604,7 +616,7 @@ async function orderMargins(
       marginBasis: orderProfitabilityRows.marginBasis,
     })
     .from(orderProfitabilityRows)
-    .where(eq(orderProfitabilityRows.orderId, orderId))
+    .where(scoped(orderProfitabilityRows, ctx, eq(orderProfitabilityRows.orderId, orderId)))
 
   return row ?? null
 }
@@ -635,7 +647,7 @@ export async function setOutcomeNote(
     const [outcome] = await tx
       .select()
       .from(orderOutcomes)
-      .where(eq(orderOutcomes.orderId, payload.orderId))
+      .where(scoped(orderOutcomes, ctx, eq(orderOutcomes.orderId, payload.orderId)))
       .for('update')
 
     if (!outcome) throw notFound('memory.errors.outcome_not_found', { orderId: payload.orderId })
@@ -656,7 +668,7 @@ export async function setOutcomeNote(
         noteUpdatedBy: ctx.userId,
         updatedAt: now,
       })
-      .where(eq(orderOutcomes.id, outcome.id))
+      .where(scoped(orderOutcomes, ctx, eq(orderOutcomes.id, outcome.id)))
 
     return { outcomeId: outcome.id }
   })
@@ -693,13 +705,13 @@ export async function seedCostSheet(ctx: RequestCtx, input: unknown): Promise<Se
 
   const gathered = await withTenantRead(ctx, async (tx) => {
     // Both parents read under tenant scope before anything references them.
-    const [rfq] = await tx.select().from(rfqs).where(eq(rfqs.id, payload.targetRfqId))
+    const [rfq] = await tx.select().from(rfqs).where(scoped(rfqs, ctx, eq(rfqs.id, payload.targetRfqId)))
     if (!rfq) throw notFound('memory.errors.rfq_not_found', { rfqId: payload.targetRfqId })
 
     const [outcome] = await tx
       .select()
       .from(orderOutcomes)
-      .where(eq(orderOutcomes.orderId, payload.fromOrderId))
+      .where(scoped(orderOutcomes, ctx, eq(orderOutcomes.orderId, payload.fromOrderId)))
     if (!outcome) {
       // Seeding from an order whose outcome was never compiled would copy the ESTIMATES off
       // its BOM and present them as history. The whole value of seeding is the measurement.
@@ -709,7 +721,7 @@ export async function seedCostSheet(ctx: RequestCtx, input: unknown): Promise<Se
     const [sourceStyle] = await tx
       .select({ styleCode: orderStyles.styleCode })
       .from(orderStyles)
-      .where(eq(orderStyles.orderId, payload.fromOrderId))
+      .where(scoped(orderStyles, ctx, eq(orderStyles.orderId, payload.fromOrderId)))
     if (!sourceStyle) {
       throw notFound('memory.errors.source_style_not_found', { orderId: payload.fromOrderId })
     }
@@ -717,13 +729,13 @@ export async function seedCostSheet(ctx: RequestCtx, input: unknown): Promise<Se
     const [sourceBom] = await tx
       .select()
       .from(boms)
-      .where(eq(boms.styleCode, sourceStyle.styleCode))
+      .where(scoped(boms, ctx, eq(boms.styleCode, sourceStyle.styleCode)))
       .orderBy(boms.createdAt)
     if (!sourceBom) {
       throw notFound('memory.errors.no_source_bom', { styleCode: sourceStyle.styleCode })
     }
 
-    const lines = await tx.select().from(bomLines).where(eq(bomLines.bomId, sourceBom.id))
+    const lines = await tx.select().from(bomLines).where(scoped(bomLines, ctx, eq(bomLines.bomId, sourceBom.id)))
     if (lines.length === 0) {
       throw new AppError('validation_failed', 'memory.errors.empty_source_bom', {
         bomId: sourceBom.id,
@@ -794,7 +806,7 @@ export async function outcomeFor(
   orderId: string,
 ): Promise<typeof orderOutcomes.$inferSelect | null> {
   return withTenantRead(ctx, async (tx) => {
-    const [row] = await tx.select().from(orderOutcomes).where(eq(orderOutcomes.orderId, orderId))
+    const [row] = await tx.select().from(orderOutcomes).where(scoped(orderOutcomes, ctx, eq(orderOutcomes.orderId, orderId)))
     return row ?? null
   })
 }

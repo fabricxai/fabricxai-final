@@ -16,6 +16,7 @@ import { desc, eq, inArray } from 'drizzle-orm'
 import { roundToScale, subtractDecimalStrings } from '@/lib/quantity'
 import type { AnyCtx } from '@/modules/core/ctx'
 import { readJsonbArray, readJsonbObject } from '@/modules/core/jsonb'
+import { scoped } from '@/modules/core/scoped'
 import { withTenantRead } from '@/modules/core/tenancy'
 import { buyers } from '@/modules/buyers/schema'
 import { orderStyles, orders } from '@/modules/orders/schema'
@@ -89,11 +90,11 @@ export async function outcomes(ctx: AnyCtx, limit = 30): Promise<OutcomeCard[]> 
         .select({ id: orders.id, poNumbers: orders.poNumbers, buyerName: buyers.name })
         .from(orders)
         .leftJoin(buyers, eq(buyers.id, orders.buyerId))
-        .where(inArray(orders.id, orderIds)),
+        .where(scoped(orders, ctx, inArray(orders.id, orderIds))),
       tx
         .select({ orderId: orderStyles.orderId, styleCode: orderStyles.styleCode })
         .from(orderStyles)
-        .where(inArray(orderStyles.orderId, orderIds)),
+        .where(scoped(orderStyles, ctx, inArray(orderStyles.orderId, orderIds))),
     ])
 
     return rows.map((row): OutcomeCard => {
