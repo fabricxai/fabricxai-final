@@ -154,15 +154,22 @@ export default tseslint.config(
 
   // ── CLAUDE.md rule 2 · the query names its company (wall 1) ───────────────
   //
-  // An ADOPTION RATCHET, deliberately not a repo-wide rule. Rule 2 says RLS is "the second
-  // wall, never the only wall", and it was the only wall: eight incidental company
-  // predicates across 466 query sites (audit BE-B1). Converting all of them in one pass
-  // would be a mechanical diff across money and payroll that nobody could review honestly.
+  // An ADOPTION RATCHET, and it is now nearly complete. Rule 2 says RLS is "the second wall,
+  // never the only wall", and it was the only wall: eight incidental company predicates
+  // across 466 query sites (audit BE-B1).
   //
-  // So a file appears here once its queries carry the predicate, and then cannot regress.
-  // What is still outside the list is recorded in docs/STUBS.md rather than implied done.
-  // 10.1 workforce is first because it is the 🔒 module: a leak here is another factory's
-  // wage bill.
+  // Converted module by module rather than in one pass — a single mechanical diff across
+  // money and payroll is one nobody could review honestly. Workforce went first because it
+  // is the 🔒 module, then the ⚖ set, then the floor, then the desks, then core.
+  //
+  // A file appears here once its queries carry the predicate, and then cannot regress. Two
+  // tables are permanently outside it and say so at the call site: `aql_tables` (the ISO
+  // 2859-1 sampling plans, identical for every factory on earth) and `users` (a person can
+  // belong to more than one). Both are REFUSED by `scoped()` at compile time rather than
+  // being a judgement somebody has to remember.
+  //
+  // Test fixtures are outside it too: a suite asserting cross-tenant isolation has to be
+  // able to look at both companies.
   {
     files: [
       'src/modules/workforce/service.ts',
