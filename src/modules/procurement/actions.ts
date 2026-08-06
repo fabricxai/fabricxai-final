@@ -10,6 +10,8 @@ import type { QuoteComparison } from './procurement'
 import {
   applyReceipt,
   compareQuotesForItem,
+  createPurchaseRequisition as createPurchaseRequisitionIn,
+  createSupplier as createSupplierIn,
   issuePo,
   recordSupplierQuote,
   setPoStatus,
@@ -20,6 +22,54 @@ import {
 function refresh(prId?: string): void {
   revalidatePath('/procurement')
   if (prId) revalidatePath(`/procurement/${prId}`)
+}
+
+/**
+ * Add a supplier (plan 5.5 — every root record must be creatable from a screen).
+ *
+ * `createSupplier` has existed since 3.2 with no action over it, so the only way a supplier
+ * got into the system was the approve inbox committing a MARBIM draft — and with no provider
+ * registered, that path does not run. A factory with no suppliers cannot raise a quote,
+ * cannot compare one, and cannot issue a purchase order.
+ *
+ * `origin` is not a label. Local and import are different purchases: an import PO needs BTB
+ * headroom and its fabric needs a UD, and the gates key off this field.
+ */
+export async function createSupplier(input: {
+  code: string
+  name: string
+  type: 'fabric_mill' | 'trims' | 'embellishment' | 'subcontract'
+  origin: 'local' | 'import'
+  paymentTerms?: string
+  defaultCurrency?: string
+  contacts?: { name: string; role?: string; email?: string; phone?: string }[]
+}): Promise<{ supplierId: string }> {
+  const ctx = await requireRole(await headers(), 'procurement')
+  const result = await createSupplierIn(ctx, input)
+
+  refresh()
+  return result
+}
+
+/**
+ * Raise a purchase requisition.
+ *
+ * The other half of the same gap. A requisition with no lines buys nothing — the zod refuses
+ * an empty list rather than filing a header somebody fills in later, because a PR sitting
+ * open with nothing on it looks like procurement in progress.
+ */
+export async function createPurchaseRequisition(input: {
+  prNo: string
+  neededBy: string
+  orderId?: string
+  requisitionId?: string
+  lines: { itemId: string; qty: string; unit: string }[]
+}): Promise<{ purchaseRequisitionId: string; lineCount: number }> {
+  const ctx = await requireRole(await headers(), 'procurement', 'merchandiser')
+  const result = await createPurchaseRequisitionIn(ctx, input)
+
+  refresh()
+  return result
 }
 
 /**

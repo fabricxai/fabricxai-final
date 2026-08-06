@@ -10,6 +10,8 @@ import { getPolicy } from '@/modules/settings/service'
 import {
   amendLc,
   checkUdBalance,
+  createLc as createLcIn,
+  createUd as createUdIn,
   openBtb,
   openSubmission,
   postRealization,
@@ -21,6 +23,69 @@ import {
 } from './service'
 import type { UdDrawDecision } from './ud'
 import { factoryToday } from '@/lib/dates'
+
+/**
+ * Record a letter of credit (plan 5.5, audit — every root record must be creatable).
+ *
+ * `createLc` has existed since 2.1 with **no action over it**, so the credit that every
+ * shipment date, every BTB ceiling and every bank presentation is checked against could only
+ * arrive by seeding. A factory with no LC on record has an `lcLatestShipment` gate with
+ * nothing to check, an EXP submission with no docs checklist to build, and a BTB headroom
+ * calculation with no master credit behind it.
+ *
+ * Commercial and the owner only. An LC is a promise to pay held at a bank, and its two dates
+ * — latest shipment and expiry — are the ones every shipment crisis is about.
+ */
+export async function createLc(input: {
+  buyerId: string
+  number: string
+  value: string
+  currency: string
+  tolerancePct?: string
+  issueDate?: string
+  latestShipmentDate?: string
+  expiryDate?: string
+  /** `{ commercial_invoice: true, bl: true }` — a MAP, because 8.1 looks documents up by kind. */
+  docsRequired?: Record<string, boolean>
+  documentId?: string
+}): Promise<{ lcId: string; number: string }> {
+  const ctx = await requireRole(await headers(), 'commercial')
+  const result = await createLcIn(ctx, input)
+
+  revalidatePath('/lcs')
+  // The shipment desk reads the credit's dates before it confirms a departure.
+  revalidatePath('/shipment')
+  return result
+}
+
+/**
+ * Record a customs Utilization Declaration.
+ *
+ * Also actionless since 2.2, and the consequence is sharper than the LC's: the UD balance
+ * gate FAILS CLOSED, so with no declaration on record **no bonded fabric can be issued at
+ * all**. A factory running duty-free cloth — which is most of them — would find the store
+ * refusing every issue with a gate it had no way to satisfy.
+ *
+ * The authorised items ARE the declaration: the zod refuses an empty list rather than storing
+ * a shell somebody fills in later, because every bonded issue is checked against these
+ * quantities and a UD recorded wrong is a gate calibrated wrong.
+ */
+export async function createUd(input: {
+  number: string
+  issueDate?: string
+  validUntil?: string
+  authorizedItems: { itemRef: string; qty: string; unit: string }[]
+  documentId?: string
+}): Promise<{ udId: string; number: string }> {
+  const ctx = await requireRole(await headers(), 'commercial', 'store')
+  const result = await createUdIn(ctx, input)
+
+  revalidatePath('/ud')
+  // The store's issue screen reads the balance this creates.
+  revalidatePath('/store')
+  revalidatePath('/store/issue')
+  return result
+}
 
 /**
  * Ask an owner to authorise an overdraw.

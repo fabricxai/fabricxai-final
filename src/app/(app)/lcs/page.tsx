@@ -8,10 +8,15 @@ import { Badge } from '@/components/fx/primitives'
 import { Eyebrow, SectionHeading } from '@/components/fx/signature'
 import { Ident } from '@/components/fx/format'
 import { PageHeader } from '@/components/shell/page-shell'
+import { canWrite, NAV } from '@/components/shell/nav'
 import { getCtx } from '@/modules/core/session'
+import { buyerAccounts } from '@/modules/buyers/queries'
+import { companyProfile } from '@/modules/settings/service'
 import { exposureByCurrency, register, type LcAlert, type LcRow } from '@/modules/commercial/queries'
 import type { BankDocsPolicy } from '@/modules/commercial/service'
 import { getPolicy } from '@/modules/settings/service'
+
+import { NewLcButton } from './new-lc'
 
 /**
  * 2.1 LC Register.
@@ -41,9 +46,20 @@ export default async function LcsPage() {
 
   const flagged = rows.filter((r) => r.alerts.length > 0)
 
+  const profile = await companyProfile(ctx)
+  const mayWrite = canWrite(
+    NAV.find((n) => n.id === 'lcs')!,
+    ctx.roles,
+    profile?.factoryType ?? 'woven',
+  )
+  // An LC belongs to a buyer's bank, so the buyer has to exist first. Read through the
+  // buyers module's own queries (rule 11).
+  const buyers = mayWrite ? await buyerAccounts(ctx) : []
+
   return (
     <>
       <PageHeader
+        actions={mayWrite ? <NewLcButton buyers={buyers} /> : undefined}
         eyebrow="LC register"
         title={rows.length === 0 ? 'No credits on file' : `${rows.length} letters of credit`}
         meta={flagged.length > 0 ? `${flagged.length} need attention` : undefined}

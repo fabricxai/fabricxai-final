@@ -9,10 +9,12 @@ import { Badge } from '@/components/fx/primitives'
 import { SectionHeading } from '@/components/fx/signature'
 import { Ident } from '@/components/fx/format'
 import { PageHeader } from '@/components/shell/page-shell'
-import { canSee, NAV } from '@/components/shell/nav'
+import { canSee, canWrite, NAV } from '@/components/shell/nav'
 import { getCtx } from '@/modules/core/session'
 import { udRegister, type UdCard } from '@/modules/commercial/ud-queries'
 import { companyProfile } from '@/modules/settings/service'
+
+import { NewUdButton } from './new-ud'
 
 /**
  * 2.2 UD Workbench [WOVEN].
@@ -46,6 +48,7 @@ export default async function UdPage() {
     (c) => c.status === 'active' && c.daysToExpiry !== null && c.daysToExpiry <= 30,
   )
   const incomplete = cards.filter((c) => c.unreadableItems > 0)
+  const mayWrite = canWrite(item, ctx.roles, factoryType)
 
   return (
     <FloorScreen>
@@ -54,6 +57,7 @@ export default async function UdPage() {
         title={cards.length === 0 ? 'No declarations' : `${cards.length} declarations`}
         meta={expiringSoon.length > 0 ? `${expiringSoon.length} expiring` : undefined}
         ownsAmber
+        actions={mayWrite ? <NewUdButton /> : undefined}
       />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>

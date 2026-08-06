@@ -7,7 +7,11 @@ import { Badge } from '@/components/fx/primitives'
 import { SectionHeading } from '@/components/fx/signature'
 import { Ident } from '@/components/fx/format'
 import { PageHeader } from '@/components/shell/page-shell'
+import { canWrite, NAV } from '@/components/shell/nav'
 import { getCtx } from '@/modules/core/session'
+import { companyProfile } from '@/modules/settings/service'
+import { NewSupplierButton } from './new-supplier'
+
 import {
   openRequisitions,
   purchaseOrders,
@@ -41,6 +45,13 @@ export default async function ProcurementPage() {
   const late = pos.filter((p) => p.daysToDelivery !== null && p.daysToDelivery < 0)
   const urgentPrs = requisitions.filter((r) => r.daysToNeeded !== null && r.daysToNeeded <= 7)
 
+  const profile = await companyProfile(ctx)
+  const mayWrite = canWrite(
+    NAV.find((n) => n.id === 'procurement')!,
+    ctx.roles,
+    profile?.factoryType ?? 'woven',
+  )
+
   return (
     <>
       <PageHeader
@@ -48,6 +59,7 @@ export default async function ProcurementPage() {
         title={pos.length === 0 ? 'No purchase orders' : `${pos.length} purchase orders`}
         meta={late.length > 0 ? `${late.length} overdue` : undefined}
         ownsAmber
+        actions={mayWrite ? <NewSupplierButton /> : undefined}
       />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
