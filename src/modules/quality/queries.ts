@@ -14,6 +14,7 @@ import { and, asc, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm'
 import { compareDecimalStrings } from '@/lib/quantity'
 
 import type { AnyCtx } from '@/modules/core/ctx'
+import { scoped } from '@/modules/core/scoped'
 import { withTenantRead } from '@/modules/core/tenancy'
 import { lines } from '@/modules/planning/schema'
 
@@ -41,7 +42,7 @@ export async function dhuByLine(
       tx
         .select({ id: lines.id, code: lines.code, name: lines.name })
         .from(lines)
-        .where(eq(lines.isActive, true))
+        .where(scoped(lines, ctx, eq(lines.isActive, true)))
         .orderBy(asc(lines.code)),
       tx
         .select({
@@ -51,7 +52,7 @@ export async function dhuByLine(
           defects: dhuDaily.defects,
         })
         .from(dhuDaily)
-        .where(eq(dhuDaily.dhuDate, input.on)),
+        .where(scoped(dhuDaily, ctx, eq(dhuDaily.dhuDate, input.on))),
       // The day may not be closed yet, so fall back to the raw checks rather
       // than showing nothing until somebody runs the close.
       tx
@@ -61,7 +62,7 @@ export async function dhuByLine(
           defectQty: inlineChecks.defectQty,
         })
         .from(inlineChecks)
-        .where(eq(inlineChecks.checkedOn, input.on)),
+        .where(scoped(inlineChecks, ctx, eq(inlineChecks.checkedOn, input.on))),
     ])
 
     return lineRows.map((line): LineDhu => {
@@ -152,7 +153,7 @@ export async function inlineActivity(
         offlineKey: inlineChecks.offlineKey,
       })
       .from(inlineChecks)
-      .where(and(gte(inlineChecks.checkedOn, input.from), lte(inlineChecks.checkedOn, input.to)))
+      .where(scoped(inlineChecks, ctx, and(gte(inlineChecks.checkedOn, input.from), lte(inlineChecks.checkedOn, input.to))))
 
     return {
       checks: rows.length,
@@ -174,7 +175,7 @@ export async function defectLabels(
     const rows = await tx
       .select({ code: defectCodes.code, label: defectCodes.label, severity: defectCodes.severity })
       .from(defectCodes)
-      .where(inArray(defectCodes.code, [...codes]))
+      .where(scoped(defectCodes, ctx, inArray(defectCodes.code, [...codes])))
 
     return new Map(rows.map((r) => [r.code, { label: r.label, severity: r.severity }]))
   })
@@ -236,12 +237,12 @@ export async function inlineCaptureContext(
           severity: defectCodes.severity,
         })
         .from(defectCodes)
-        .where(eq(defectCodes.isActive, true))
+        .where(scoped(defectCodes, ctx, eq(defectCodes.isActive, true)))
         .orderBy(asc(defectCodes.category), asc(defectCodes.label)),
       tx
         .select({ operation: inlineChecks.operation, defects: inlineChecks.defects })
         .from(inlineChecks)
-        .where(eq(inlineChecks.lineId, input.lineId))
+        .where(scoped(inlineChecks, ctx, eq(inlineChecks.lineId, input.lineId)))
         .orderBy(desc(inlineChecks.occurredAt))
         .limit(400),
       tx
@@ -251,7 +252,7 @@ export async function inlineCaptureContext(
           designation: workers.designation,
         })
         .from(workers)
-        .where(and(eq(workers.lineId, input.lineId), eq(workers.status, 'active')))
+        .where(scoped(workers, ctx, and(eq(workers.lineId, input.lineId), eq(workers.status, 'active'))))
         .orderBy(asc(workers.name)),
       tx
         .select({
@@ -262,7 +263,7 @@ export async function inlineCaptureContext(
           occurredAt: inlineChecks.occurredAt,
         })
         .from(inlineChecks)
-        .where(eq(inlineChecks.lineId, input.lineId))
+        .where(scoped(inlineChecks, ctx, eq(inlineChecks.lineId, input.lineId)))
         .orderBy(desc(inlineChecks.occurredAt))
         .limit(input.recentLimit ?? 5),
     ])
@@ -374,7 +375,7 @@ export async function inspectableGrns(
       // Fabric only — the 4-point system grades cloth by area. Trims and accessories are
       // roll-tracked in this store too, and listing a carton of buttons on an inspection
       // frame screen is how an inspector learns to ignore the list.
-      .where(eq(items.kind, 'fabric'))
+      .where(scoped(rolls, ctx, eq(items.kind, 'fabric')))
       .orderBy(desc(grns.receivedAt), asc(rolls.rollNo))
 
     if (rollRows.length === 0) return []
@@ -387,7 +388,7 @@ export async function inspectableGrns(
         pointsPer100SqYd: fabricInspections.pointsPer100SqYd,
       })
       .from(fabricInspections)
-      .where(inArray(fabricInspections.grnId, [...new Set(rollRows.map((r) => r.grnId))]))
+      .where(scoped(fabricInspections, ctx, inArray(fabricInspections.grnId, [...new Set(rollRows.map((r) => r.grnId))])))
 
     const byRoll = new Map(inspections.filter((i) => i.rollId).map((i) => [i.rollId!, i]))
     const byGrn = new Map(inspections.filter((i) => !i.rollId).map((i) => [i.grnId, i]))
@@ -489,7 +490,7 @@ export async function finalInspectionLots(ctx: AnyCtx): Promise<FinalInspectionL
       .from(orders)
       .leftJoin(buyers, eq(buyers.id, orders.buyerId))
       .leftJoin(orderStyles, eq(orderStyles.orderId, orders.id))
-      .where(inArray(orders.status, ['confirmed', 'in_production', 'shipped_partial'])),
+      .where(scoped(orders, ctx, inArray(orders.status, ['confirmed', 'in_production', 'shipped_partial']))),
   )
 
   if (rows.length === 0) return []
@@ -509,12 +510,12 @@ export async function finalInspectionLots(ctx: AnyCtx): Promise<FinalInspectionL
         inspectedAt: finalInspections.inspectedAt,
       })
       .from(finalInspections)
-      .where(
+      .where(scoped(finalInspections, ctx, 
         inArray(
           finalInspections.orderId,
           rows.map((r) => r.orderId),
         ),
-      )
+      ))
       .orderBy(desc(finalInspections.inspectedAt)),
   )
 
@@ -572,7 +573,7 @@ export async function dhuTrend(
         checked: sql<string>`sum(${dhuDaily.checked})::text`,
       })
       .from(dhuDaily)
-      .where(and(gte(dhuDaily.dhuDate, input.from), lte(dhuDaily.dhuDate, input.to)))
+      .where(scoped(dhuDaily, ctx, and(gte(dhuDaily.dhuDate, input.from), lte(dhuDaily.dhuDate, input.to))))
       .groupBy(dhuDaily.dhuDate)
       .orderBy(asc(dhuDaily.dhuDate)),
   )
@@ -627,7 +628,7 @@ export async function defectPareto(
     const rows = await tx
       .select({ defects: inlineChecks.defects })
       .from(inlineChecks)
-      .where(and(gte(inlineChecks.checkedOn, input.from), lte(inlineChecks.checkedOn, input.to)))
+      .where(scoped(inlineChecks, ctx, and(gte(inlineChecks.checkedOn, input.from), lte(inlineChecks.checkedOn, input.to))))
 
     const tally = new Map<string, number>()
     for (const row of rows) {
@@ -642,7 +643,7 @@ export async function defectPareto(
         severity: defectCodes.severity,
       })
       .from(defectCodes)
-      .where(inArray(defectCodes.code, [...tally.keys()]))
+      .where(scoped(defectCodes, ctx, inArray(defectCodes.code, [...tally.keys()])))
     const meta = new Map(codes.map((c) => [c.code, c]))
 
     // Not `total` — the money-name heuristic reads that stem, and it is right to. These
@@ -710,7 +711,7 @@ export async function measurementSubjects(ctx: AnyCtx): Promise<MeasurementSubje
       .from(orders)
       .leftJoin(buyers, eq(buyers.id, orders.buyerId))
       .leftJoin(orderStyles, eq(orderStyles.orderId, orders.id))
-      .where(inArray(orders.status, ['confirmed', 'in_production', 'shipped_partial']))
+      .where(scoped(orders, ctx, inArray(orders.status, ['confirmed', 'in_production', 'shipped_partial'])))
 
     if (rows.length === 0) return []
 
@@ -726,12 +727,12 @@ export async function measurementSubjects(ctx: AnyCtx): Promise<MeasurementSubje
         result: measurementChecks.result,
       })
       .from(measurementChecks)
-      .where(
+      .where(scoped(measurementChecks, ctx, 
         inArray(
           measurementChecks.orderId,
           rows.map((r) => r.orderId),
         ),
-      )
+      ))
 
     return rows.map((row) => {
       // Ordered by version desc above, so the first match is the current chart.

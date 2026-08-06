@@ -22,6 +22,7 @@ import { AppError, conflict, notFound } from '../core/errors'
 import { GATES, type GateResult } from '../core/gates'
 import { emit } from '../core/outbox'
 import { defineStateMachine } from '../core/state-machine'
+import { scoped } from '../core/scoped'
 import { withTenantRead, withTenantTx, type TenantDb } from '../core/tenancy'
 
 import { QUALITY_EVENTS } from './events'
@@ -149,6 +150,9 @@ export async function upsertDefectCode(
  * defect passes an inspection.
  */
 async function resolveSeverities(
+  // `ctx`, because a severity decides whether a lot passes AQL. Reading another factory's
+  // taxonomy would weigh a defect against the wrong acceptance number.
+  ctx: AnyCtx,
   tx: TenantDb,
   codes: readonly string[],
 ): Promise<Map<string, 'critical' | 'major' | 'minor'>> {
@@ -158,7 +162,7 @@ async function resolveSeverities(
   const rows = await tx
     .select({ code: defectCodes.code, severity: defectCodes.severity })
     .from(defectCodes)
-    .where(inArray(defectCodes.code, unique))
+    .where(scoped(defectCodes, ctx, inArray(defectCodes.code, unique)))
 
   const known = new Map(rows.map((row) => [row.code, row.severity]))
   const missing = unique.filter((code) => !known.has(code))
@@ -199,12 +203,13 @@ async function captureInlineCheckIn(
   // let another tenant file a check against this factory's line. The app layer is the
   // first wall (rule 2).
   const { lines } = await import('@/modules/planning/schema')
-  const [line] = await tx.select({ id: lines.id }).from(lines).where(eq(lines.id, payload.lineId))
+  const [line] = await tx.select({ id: lines.id }).from(lines).where(scoped(lines, ctx, eq(lines.id, payload.lineId)))
   if (!line) throw notFound('quality.errors.line_not_found', { lineId: payload.lineId })
 
   // Validates the codes exist. An inline check referencing a code nobody defined would
   // pollute the DHU trend and the repeat-defect analysis with an untraceable bucket.
   await resolveSeverities(
+    ctx,
     tx,
     payload.defects.map((d) => d.code),
   )
@@ -282,7 +287,7 @@ export async function closeDhuDay(
         checked: sql<string>`coalesce(sum(${inlineChecks.checkedQty}), 0)::text`,
       })
       .from(inlineChecks)
-      .where(and(eq(inlineChecks.lineId, input.lineId), eq(inlineChecks.checkedOn, input.date)))
+      .where(scoped(inlineChecks, ctx, and(eq(inlineChecks.lineId, input.lineId), eq(inlineChecks.checkedOn, input.date))))
 
     const defects = Number(totals?.defects ?? '0')
     const checked = Number(totals?.checked ?? '0')
@@ -362,13 +367,13 @@ export async function repeatDefectAlerts(
         defects: inlineChecks.defects,
       })
       .from(inlineChecks)
-      .where(
+      .where(scoped(inlineChecks, ctx, 
         and(
           gte(inlineChecks.checkedOn, input.from),
           lte(inlineChecks.checkedOn, input.to),
           input.lineId ? eq(inlineChecks.lineId, input.lineId) : undefined,
         ),
-      )
+      ))
 
     const occurrences = rows.flatMap((row) =>
       row.defects.map((defect) => ({
@@ -486,7 +491,7 @@ export async function createMeasurementSpec(
     const [latest] = await tx
       .select({ version: measurementSpecs.version })
       .from(measurementSpecs)
-      .where(eq(measurementSpecs.styleCode, payload.styleCode))
+      .where(scoped(measurementSpecs, ctx, eq(measurementSpecs.styleCode, payload.styleCode)))
       .orderBy(desc(measurementSpecs.version))
       .limit(1)
 
@@ -516,7 +521,7 @@ export async function recordMeasurementCheck(
   const payload = measurementCheckPayload.parse(input)
 
   return withTenantTx(ctx, async (tx) => {
-    const spec = await loadSpec(tx, payload.measurementSpecId)
+    const spec = await loadSpec(ctx, tx, payload.measurementSpecId)
     return writePiece(ctx, tx, spec, payload, null)
   })
 }
@@ -567,7 +572,7 @@ export async function recordMeasuredSetIn(
   // FOR UPDATE, and not only to read the chart: it serialises two submissions of the same
   // size behind each other, so the duplicate check below cannot be raced past. The unique
   // index other offline tables lean on is unavailable here — one key covers N rows.
-  const spec = await loadSpec(tx, payload.measurementSpecId, true)
+  const spec = await loadSpec(ctx, tx, payload.measurementSpecId, true)
 
   if (payload.offlineKey) {
     const already = await tx
@@ -628,8 +633,8 @@ export async function recordMeasuredSetIn(
   return { pieces, duplicate: false }
 }
 
-async function loadSpec(tx: TenantDb, measurementSpecId: string, lock = false) {
-  const query = tx.select().from(measurementSpecs).where(eq(measurementSpecs.id, measurementSpecId))
+async function loadSpec(ctx: AnyCtx, tx: TenantDb, measurementSpecId: string, lock = false) {
+  const query = tx.select().from(measurementSpecs).where(scoped(measurementSpecs, ctx, eq(measurementSpecs.id, measurementSpecId)))
   const [spec] = lock ? await query.for('update') : await query
 
   if (!spec) {
@@ -716,6 +721,17 @@ async function loadAqlRows(
       reject: aqlTables.reject,
     })
     .from(aqlTables)
+    /*
+     * NOT scoped, and the type system is what said so: `aql_tables` has no `company_id`, so
+     * it cannot be passed to `scoped()` at all — which is the structural typing in
+     * `scoped.ts` doing exactly its job. The ISO 2859-1 sampling plans are the same for
+     * every factory on earth; giving them a tenant column would be inventing one.
+     *
+     * What protects this table is a GRANT rather than a policy: the app role has SELECT and
+     * no INSERT. Recorded in docs/STUBS.md, because that protection assumes the app never
+     * connects as the table owner.
+     */
+    // eslint-disable-next-line fabricxai/require-tenant-predicate -- install-wide reference data, see above
     .where(
       and(
         eq(aqlTables.standard, input.standard),
@@ -852,6 +868,7 @@ export async function runFinalInspectionIn(
   )
 
   const severities = await resolveSeverities(
+    ctx,
     tx,
     payload.defects.map((d) => d.code),
   )
@@ -948,7 +965,7 @@ export async function setFinalInspectionStatus(
     const [row] = await tx
       .select()
       .from(finalInspections)
-      .where(eq(finalInspections.id, input.finalInspectionId))
+      .where(scoped(finalInspections, ctx, eq(finalInspections.id, input.finalInspectionId)))
       .for('update')
 
     if (!row) {
@@ -962,7 +979,7 @@ export async function setFinalInspectionStatus(
     await tx
       .update(finalInspections)
       .set({ status: input.status, updatedAt: new Date() })
-      .where(eq(finalInspections.id, row.id))
+      .where(scoped(finalInspections, ctx, eq(finalInspections.id, row.id)))
 
     await recordChange(ctx, tx, {
       action: 'update',
@@ -994,7 +1011,7 @@ export async function resolveFinalInspectionGate(
   const [latest] = await tx
     .select()
     .from(finalInspections)
-    .where(eq(finalInspections.orderId, input.orderId))
+    .where(scoped(finalInspections, ctx, eq(finalInspections.orderId, input.orderId)))
     .orderBy(desc(finalInspections.inspectedAt))
     .limit(1)
 
@@ -1092,7 +1109,7 @@ export async function recordThirdPartyResult(
     const [row] = await tx
       .select()
       .from(thirdPartyInspections)
-      .where(eq(thirdPartyInspections.id, input.thirdPartyInspectionId))
+      .where(scoped(thirdPartyInspections, ctx, eq(thirdPartyInspections.id, input.thirdPartyInspectionId)))
       .for('update')
 
     if (!row) {
@@ -1117,7 +1134,7 @@ export async function recordThirdPartyResult(
         documentId: input.documentId ?? null,
         updatedAt: new Date(),
       })
-      .where(eq(thirdPartyInspections.id, row.id))
+      .where(scoped(thirdPartyInspections, ctx, eq(thirdPartyInspections.id, row.id)))
 
     await emit(ctx, tx, {
       eventName: QUALITY_EVENTS.thirdPartyResult,
@@ -1165,13 +1182,13 @@ export async function preFinalReadiness(
     const milestones = await tx
       .select({ orderId: tnaMilestones.orderId, plannedDate: tnaMilestones.plannedDate })
       .from(tnaMilestones)
-      .where(
+      .where(scoped(tnaMilestones, ctx, 
         and(
           eq(tnaMilestones.name, 'final_inspection'),
           lte(tnaMilestones.plannedDate, horizon),
           eq(tnaMilestones.status, 'pending'),
         ),
-      )
+      ))
 
     const out: FinalReadiness[] = []
 
@@ -1181,7 +1198,7 @@ export async function preFinalReadiness(
       const [measurement] = await tx
         .select({ result: measurementChecks.result })
         .from(measurementChecks)
-        .where(eq(measurementChecks.orderId, milestone.orderId))
+        .where(scoped(measurementChecks, ctx, eq(measurementChecks.orderId, milestone.orderId)))
         .orderBy(desc(measurementChecks.createdAt))
         .limit(1)
 
@@ -1191,7 +1208,7 @@ export async function preFinalReadiness(
       const [thirdParty] = await tx
         .select({ result: thirdPartyInspections.result })
         .from(thirdPartyInspections)
-        .where(eq(thirdPartyInspections.orderId, milestone.orderId))
+        .where(scoped(thirdPartyInspections, ctx, eq(thirdPartyInspections.orderId, milestone.orderId)))
         .orderBy(desc(thirdPartyInspections.scheduledAt))
         .limit(1)
 
@@ -1231,13 +1248,13 @@ export async function buyerReportPack(
     const checks = await tx
       .select()
       .from(inlineChecks)
-      .where(
+      .where(scoped(inlineChecks, ctx, 
         and(
           eq(inlineChecks.orderId, input.orderId),
           gte(inlineChecks.checkedOn, input.from),
           lte(inlineChecks.checkedOn, input.to),
         ),
-      )
+      ))
       .orderBy(inlineChecks.checkedOn)
 
     const lineIds = [...new Set(checks.map((c) => c.lineId))]
@@ -1247,24 +1264,24 @@ export async function buyerReportPack(
         ? tx
             .select()
             .from(dhuDaily)
-            .where(
+            .where(scoped(dhuDaily, ctx, 
               and(
                 inArray(dhuDaily.lineId, lineIds),
                 gte(dhuDaily.dhuDate, input.from),
                 lte(dhuDaily.dhuDate, input.to),
               ),
-            )
+            ))
             .orderBy(dhuDaily.dhuDate)
         : Promise.resolve([]),
       tx
         .select()
         .from(finalInspections)
-        .where(eq(finalInspections.orderId, input.orderId))
+        .where(scoped(finalInspections, ctx, eq(finalInspections.orderId, input.orderId)))
         .orderBy(desc(finalInspections.inspectedAt)),
       tx
         .select()
         .from(measurementChecks)
-        .where(eq(measurementChecks.orderId, input.orderId))
+        .where(scoped(measurementChecks, ctx, eq(measurementChecks.orderId, input.orderId)))
         .orderBy(desc(measurementChecks.createdAt)),
     ])
 
@@ -1355,7 +1372,7 @@ export async function seedDefaultDefectCodes(
       const [already] = await tx
         .select({ code: defectCodes.code })
         .from(defectCodes)
-        .where(eq(defectCodes.code, entry.code))
+        .where(scoped(defectCodes, ctx, eq(defectCodes.code, entry.code)))
 
       if (already) {
         existing.push(entry.code)
@@ -1410,7 +1427,7 @@ export async function resolveFabricInspection(
     .from(rolls)
     .innerJoin(grnLines, eq(grnLines.id, rolls.grnLineId))
     .innerJoin(items, eq(items.id, rolls.itemId))
-    .where(inArray(rolls.id, [...input.rollIds]))
+    .where(scoped(rolls, ctx, inArray(rolls.id, [...input.rollIds])))
 
   if (rollRows.length !== input.rollIds.length) {
     // A roll the gate cannot resolve is a roll it cannot clear. Blocking is the safe
@@ -1439,7 +1456,7 @@ export async function resolveFabricInspection(
       pointsPer100SqYd: fabricInspections.pointsPer100SqYd,
     })
     .from(fabricInspections)
-    .where(inArray(fabricInspections.grnId, grnIds))
+    .where(scoped(fabricInspections, ctx, inArray(fabricInspections.grnId, grnIds)))
 
   const byRoll = new Map(inspections.filter((i) => i.rollId).map((i) => [i.rollId!, i]))
   // Latest wins per GRN; a re-inspection after a claim is the answer that counts.
@@ -1497,7 +1514,7 @@ async function rollUpGrnInspection(ctx: AnyCtx, tx: TenantDb, grnId: string): Pr
   const filed = await tx
     .select({ result: fabricInspections.result })
     .from(fabricInspections)
-    .where(eq(fabricInspections.grnId, grnId))
+    .where(scoped(fabricInspections, ctx, eq(fabricInspections.grnId, grnId)))
 
   if (filed.length === 0) return
 
@@ -1539,7 +1556,7 @@ export async function commitMeasurementSpec(
   const [latest] = await tx
     .select({ version: measurementSpecs.version })
     .from(measurementSpecs)
-    .where(eq(measurementSpecs.styleCode, payload.styleCode))
+    .where(scoped(measurementSpecs, ctx, eq(measurementSpecs.styleCode, payload.styleCode)))
     .orderBy(desc(measurementSpecs.version))
     .limit(1)
 
