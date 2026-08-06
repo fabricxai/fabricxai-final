@@ -29,6 +29,7 @@ import type { AnyCtx, RequestCtx } from '../core/ctx'
 import { AppError, conflict, notFound } from '../core/errors'
 import { emit } from '../core/outbox'
 import { defineStateMachine } from '../core/state-machine'
+import { scoped } from '../core/scoped'
 import { type TenantDb, withTenantRead, withTenantTx } from '../core/tenancy'
 
 import { ORDER_EVENTS } from './events'
@@ -186,12 +187,12 @@ export async function saveBreakdownIn(
     const [style] = await tx
       .select()
       .from(orderStyles)
-      .where(eq(orderStyles.id, input.orderStyleId))
+      .where(scoped(orderStyles, ctx, eq(orderStyles.id, input.orderStyleId)))
       .for('update')
 
     if (!style) throw notFound('orders.errors.style_not_found', { id: input.orderStyleId })
 
-    const [order] = await tx.select().from(orders).where(eq(orders.id, style.orderId)).for('update')
+    const [order] = await tx.select().from(orders).where(scoped(orders, ctx, eq(orders.id, style.orderId))).for('update')
     if (!order) throw notFound('orders.errors.order_not_found', { id: style.orderId })
 
     const totals = checkBreakdownTotal({
@@ -221,12 +222,12 @@ export async function saveBreakdownIn(
         qty: orderBreakdowns.qty,
       })
       .from(orderBreakdowns)
-      .where(
+      .where(scoped(orderBreakdowns, ctx, 
         and(
           eq(orderBreakdowns.orderStyleId, style.id),
           eq(orderBreakdowns.revision, style.activeRevision),
         ),
-      )
+      ))
 
     if (!isNewRevision) {
       // Replace the active revision wholesale: a partial update would leave cells the
@@ -234,9 +235,9 @@ export async function saveBreakdownIn(
       // is a real way to over-cut.
       await tx
         .delete(orderBreakdowns)
-        .where(
+        .where(scoped(orderBreakdowns, ctx, 
           and(eq(orderBreakdowns.orderStyleId, style.id), eq(orderBreakdowns.revision, revision)),
-        )
+        ))
     }
 
     await tx.insert(orderBreakdowns).values(
@@ -254,7 +255,7 @@ export async function saveBreakdownIn(
       await tx
         .update(orderStyles)
         .set({ activeRevision: revision, updatedAt: new Date() })
-        .where(eq(orderStyles.id, style.id))
+        .where(scoped(orderStyles, ctx, eq(orderStyles.id, style.id)))
 
       await tx.insert(orderRevisions).values({
         companyId: ctx.companyId,
@@ -371,13 +372,13 @@ export async function generateTna(
   input: { orderId: string; templateId: string; exFactoryDate: string },
 ): Promise<{ milestones: ScheduledMilestone[]; preserved: number }> {
   return withTenantTx(ctx, async (tx) => {
-    const [order] = await tx.select().from(orders).where(eq(orders.id, input.orderId)).for('update')
+    const [order] = await tx.select().from(orders).where(scoped(orders, ctx, eq(orders.id, input.orderId))).for('update')
     if (!order) throw notFound('orders.errors.order_not_found', { id: input.orderId })
 
     const [template] = await tx
       .select()
       .from(tnaTemplates)
-      .where(eq(tnaTemplates.id, input.templateId))
+      .where(scoped(tnaTemplates, ctx, eq(tnaTemplates.id, input.templateId)))
     if (!template) throw notFound('orders.errors.template_not_found', { id: input.templateId })
 
     const parsed = tnaTemplatePayload.safeParse({
@@ -412,7 +413,7 @@ export async function generateTna(
     const existing = await tx
       .select()
       .from(tnaMilestones)
-      .where(eq(tnaMilestones.orderId, order.id))
+      .where(scoped(tnaMilestones, ctx, eq(tnaMilestones.orderId, order.id)))
 
     const actualized = new Map(
       existing.filter((m) => m.actualDate).map((m) => [m.name, m.actualDate!]),
@@ -421,7 +422,7 @@ export async function generateTna(
     // Wipe only what has not happened. Recorded history stays.
     const replaceable = existing.filter((m) => !m.actualDate).map((m) => m.id)
     if (replaceable.length > 0) {
-      await tx.delete(tnaMilestones).where(inArray(tnaMilestones.id, replaceable))
+      await tx.delete(tnaMilestones).where(scoped(tnaMilestones, ctx, inArray(tnaMilestones.id, replaceable)))
     }
 
     const today = factoryToday()
@@ -445,7 +446,7 @@ export async function generateTna(
       await tx
         .update(orders)
         .set({ plannedExFactoryDate: exFactory.plannedDate, updatedAt: new Date() })
-        .where(eq(orders.id, order.id))
+        .where(scoped(orders, ctx, eq(orders.id, order.id)))
     }
 
     await emit(ctx, tx, {
@@ -465,11 +466,17 @@ export async function generateTna(
 }
 
 /** Load an order's milestones in the shape the pure engine expects. */
-async function loadSchedule(tx: TenantDb, orderId: string): Promise<ScheduledMilestone[]> {
+async function loadSchedule(
+  // `ctx`: the TNA is what every downstream date ripples from, so a schedule read from
+  // another factory's order would move this one's milestones.
+  ctx: AnyCtx,
+  tx: TenantDb,
+  orderId: string,
+): Promise<ScheduledMilestone[]> {
   const rows = await tx
     .select()
     .from(tnaMilestones)
-    .where(eq(tnaMilestones.orderId, orderId))
+    .where(scoped(tnaMilestones, ctx, eq(tnaMilestones.orderId, orderId)))
     .orderBy(asc(tnaMilestones.plannedDate))
 
   return rows.map((row) => ({
@@ -495,11 +502,11 @@ export async function previewRipple(
     const [milestone] = await tx
       .select()
       .from(tnaMilestones)
-      .where(eq(tnaMilestones.id, input.milestoneId))
+      .where(scoped(tnaMilestones, ctx, eq(tnaMilestones.id, input.milestoneId)))
 
     if (!milestone) throw notFound('orders.errors.milestone_not_found', { id: input.milestoneId })
 
-    const schedule = await loadSchedule(tx, milestone.orderId)
+    const schedule = await loadSchedule(ctx, tx, milestone.orderId)
     const preview = previewRipplePure({
       schedule,
       milestone: milestone.name,
@@ -527,7 +534,7 @@ export async function actualizeMilestone(
     const [milestone] = await tx
       .select()
       .from(tnaMilestones)
-      .where(eq(tnaMilestones.id, input.milestoneId))
+      .where(scoped(tnaMilestones, ctx, eq(tnaMilestones.id, input.milestoneId)))
       .for('update')
 
     if (!milestone) throw notFound('orders.errors.milestone_not_found', { id: input.milestoneId })
@@ -538,7 +545,7 @@ export async function actualizeMilestone(
       })
     }
 
-    const schedule = await loadSchedule(tx, milestone.orderId)
+    const schedule = await loadSchedule(ctx, tx, milestone.orderId)
     const ripple = previewRipplePure({
       schedule,
       milestone: milestone.name,
@@ -558,7 +565,7 @@ export async function actualizeMilestone(
         }) as never,
         updatedAt: new Date(),
       })
-      .where(eq(tnaMilestones.id, milestone.id))
+      .where(scoped(tnaMilestones, ctx, eq(tnaMilestones.id, milestone.id)))
 
     for (const change of ripple.changes) {
       await tx
@@ -568,18 +575,18 @@ export async function actualizeMilestone(
           status: deriveMilestoneStatus({ plannedDate: change.toDate, today }) as never,
           updatedAt: new Date(),
         })
-        .where(
+        .where(scoped(tnaMilestones, ctx, 
           and(eq(tnaMilestones.orderId, milestone.orderId), eq(tnaMilestones.name, change.name)),
-        )
+        ))
     }
 
     if (ripple.newExFactoryDate) {
-      const [order] = await tx.select().from(orders).where(eq(orders.id, milestone.orderId))
+      const [order] = await tx.select().from(orders).where(scoped(orders, ctx, eq(orders.id, milestone.orderId)))
 
       await tx
         .update(orders)
         .set({ plannedExFactoryDate: ripple.newExFactoryDate, updatedAt: new Date() })
-        .where(eq(orders.id, milestone.orderId))
+        .where(scoped(orders, ctx, eq(orders.id, milestone.orderId)))
 
       await emit(ctx, tx, {
         eventName: ORDER_EVENTS.exFactorySlipped,
@@ -635,7 +642,7 @@ export async function setOrderStatus(
   input: { orderId: string; status: OrderStatus },
 ): Promise<{ from: OrderStatus; to: OrderStatus }> {
   return withTenantTx(ctx, async (tx) => {
-    const [order] = await tx.select().from(orders).where(eq(orders.id, input.orderId)).for('update')
+    const [order] = await tx.select().from(orders).where(scoped(orders, ctx, eq(orders.id, input.orderId))).for('update')
     if (!order) throw notFound('orders.errors.order_not_found', { id: input.orderId })
 
     const from = order.status as OrderStatus
@@ -645,7 +652,7 @@ export async function setOrderStatus(
     await tx
       .update(orders)
       .set({ status: input.status as never, updatedAt: new Date() })
-      .where(eq(orders.id, order.id))
+      .where(scoped(orders, ctx, eq(orders.id, order.id)))
 
     await recordChange(ctx, tx, {
       action: 'update',
@@ -678,7 +685,7 @@ export async function refreshMilestoneStatuses(
     const rows = await tx
       .select()
       .from(tnaMilestones)
-      .where(sql`${tnaMilestones.actualDate} IS NULL`)
+      .where(scoped(tnaMilestones, ctx, sql`${tnaMilestones.actualDate} IS NULL`))
 
     let updated = 0
     for (const row of rows) {
@@ -692,7 +699,7 @@ export async function refreshMilestoneStatuses(
       await tx
         .update(tnaMilestones)
         .set({ status: status as never, updatedAt: new Date() })
-        .where(eq(tnaMilestones.id, row.id))
+        .where(scoped(tnaMilestones, ctx, eq(tnaMilestones.id, row.id)))
       updated += 1
     }
 
@@ -761,7 +768,7 @@ export async function createOrderIn(
     const [buyer] = await tx
       .select({ id: buyers.id })
       .from(buyers)
-      .where(eq(buyers.id, orderInput.buyerId))
+      .where(scoped(buyers, ctx, eq(buyers.id, orderInput.buyerId)))
 
     // Postgres runs foreign-key checks with RLS bypassed, so the FK alone does not enforce
     // tenancy (rule 2 — the app layer is the first wall).
@@ -884,7 +891,7 @@ export async function findMilestone(
     const [row] = await tx
       .select()
       .from(tnaMilestones)
-      .where(and(eq(tnaMilestones.orderId, input.orderId), eq(tnaMilestones.name, input.name)))
+      .where(scoped(tnaMilestones, ctx, and(eq(tnaMilestones.orderId, input.orderId), eq(tnaMilestones.name, input.name))))
     return row ?? null
   })
 }
@@ -918,7 +925,7 @@ export async function seedDefaultTnaTemplates(
       const [already] = await tx
         .select({ id: tnaTemplates.id })
         .from(tnaTemplates)
-        .where(eq(tnaTemplates.productType, parsed.productType))
+        .where(scoped(tnaTemplates, ctx, eq(tnaTemplates.productType, parsed.productType)))
 
       if (already) {
         existing.push(parsed.productType)
@@ -960,7 +967,7 @@ export async function findTemplateForProductType(
       const [row] = await tx
         .select()
         .from(tnaTemplates)
-        .where(and(eq(tnaTemplates.productType, candidate), eq(tnaTemplates.isActive, true)))
+        .where(scoped(tnaTemplates, ctx, and(eq(tnaTemplates.productType, candidate), eq(tnaTemplates.isActive, true))))
       if (row) return row
     }
     return null

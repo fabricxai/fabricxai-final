@@ -100,7 +100,7 @@ export async function orderList(ctx: AnyCtx, input: { now: Date } = { now: new D
           contractedQty: orderStyles.contractedQty,
         })
         .from(orderStyles)
-        .where(inArray(orderStyles.orderId, ids)),
+        .where(scoped(orderStyles, ctx, inArray(orderStyles.orderId, ids))),
       tx
         .select({
           orderId: tnaMilestones.orderId,
@@ -109,7 +109,7 @@ export async function orderList(ctx: AnyCtx, input: { now: Date } = { now: new D
           critical: tnaMilestones.critical,
         })
         .from(tnaMilestones)
-        .where(inArray(tnaMilestones.orderId, ids)),
+        .where(scoped(tnaMilestones, ctx, inArray(tnaMilestones.orderId, ids))),
     ])
 
     return rows.map((row) => {
@@ -203,20 +203,20 @@ export async function orderDetail(ctx: AnyCtx, orderId: string): Promise<OrderDe
       })
       .from(orders)
       .leftJoin(buyers, eq(buyers.id, orders.buyerId))
-      .where(eq(orders.id, orderId))
+      .where(scoped(orders, ctx, eq(orders.id, orderId)))
 
     if (!row) return null
 
     const [style] = await tx
       .select()
       .from(orderStyles)
-      .where(eq(orderStyles.orderId, orderId))
+      .where(scoped(orderStyles, ctx, eq(orderStyles.orderId, orderId)))
       .orderBy(asc(orderStyles.createdAt))
 
     const milestones = await tx
       .select()
       .from(tnaMilestones)
-      .where(eq(tnaMilestones.orderId, orderId))
+      .where(scoped(tnaMilestones, ctx, eq(tnaMilestones.orderId, orderId)))
       .orderBy(asc(tnaMilestones.plannedDate))
 
     // Only the ACTIVE revision. Showing every revision's cells at once is how a
@@ -229,12 +229,12 @@ export async function orderDetail(ctx: AnyCtx, orderId: string): Promise<OrderDe
             qty: orderBreakdowns.qty,
           })
           .from(orderBreakdowns)
-          .where(
+          .where(scoped(orderBreakdowns, ctx, 
             and(
               eq(orderBreakdowns.orderStyleId, style.id),
               eq(orderBreakdowns.revision, style.activeRevision),
             ),
-          )
+          ))
       : []
 
     const { health } = healthOf(row.status, milestones)
@@ -316,14 +316,14 @@ export async function ordersInProduction(ctx: AnyCtx): Promise<OrderInProduction
       })
       .from(orders)
       .innerJoin(orderStyles, eq(orderStyles.orderId, orders.id))
-      .where(inArray(orders.status, ['confirmed', 'in_production']))
+      .where(scoped(orders, ctx, inArray(orders.status, ['confirmed', 'in_production'])))
 
     if (rows.length === 0) return []
 
     const sewingEnds = await tx
       .select({ orderId: tnaMilestones.orderId, plannedDate: tnaMilestones.plannedDate })
       .from(tnaMilestones)
-      .where(
+      .where(scoped(tnaMilestones, ctx, 
         and(
           inArray(
             tnaMilestones.orderId,
@@ -331,7 +331,7 @@ export async function ordersInProduction(ctx: AnyCtx): Promise<OrderInProduction
           ),
           eq(tnaMilestones.name, 'sewing_end'),
         ),
-      )
+      ))
 
     const endByOrder = new Map(sewingEnds.map((m) => [m.orderId, m.plannedDate]))
 

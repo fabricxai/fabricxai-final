@@ -183,6 +183,8 @@ export default tseslint.config(
       'src/modules/sampling/queries.ts',
       'src/modules/quality/service.ts',
       'src/modules/quality/queries.ts',
+      'src/modules/orders/service.ts',
+      'src/modules/orders/queries.ts',
     ],
     rules: { 'fabricxai/require-tenant-predicate': 'error' },
   },
