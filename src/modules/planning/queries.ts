@@ -12,6 +12,7 @@ import { z } from 'zod'
 
 import type { AnyCtx } from '@/modules/core/ctx'
 import { readJsonbArray, readJsonbObject } from '@/modules/core/jsonb'
+import { scoped } from '@/modules/core/scoped'
 import { withTenantRead } from '@/modules/core/tenancy'
 import { orderStyles, orders } from '@/modules/orders/schema'
 
@@ -103,7 +104,7 @@ export async function board(
           machinesCount: lines.machinesCount,
         })
         .from(lines)
-        .where(eq(lines.isActive, true))
+        .where(scoped(lines, ctx, eq(lines.isActive, true)))
         .orderBy(asc(lines.code)),
       tx
         .select({
@@ -114,9 +115,9 @@ export async function board(
           manpower: lineCalendars.manpower,
         })
         .from(lineCalendars)
-        .where(
+        .where(scoped(lineCalendars, ctx, 
           and(gte(lineCalendars.calendarDate, input.from), lte(lineCalendars.calendarDate, to)),
-        ),
+        )),
       // Anything overlapping the window, not merely starting inside it — a run
       // that began last week still consumes this week's capacity.
       tx
@@ -132,7 +133,7 @@ export async function board(
           acceptedViolations: allocations.acceptedViolations,
         })
         .from(allocations)
-        .where(and(lte(allocations.startDate, to), gte(allocations.endDate, input.from))),
+        .where(scoped(allocations, ctx, and(lte(allocations.startDate, to), gte(allocations.endDate, input.from)))),
     ])
 
     const orderIds = [...new Set(allocRows.map((a) => a.orderId))]
@@ -147,13 +148,13 @@ export async function board(
         ? tx
             .select({ id: orders.id, poNumbers: orders.poNumbers })
             .from(orders)
-            .where(inArray(orders.id, orderIds))
+            .where(scoped(orders, ctx, inArray(orders.id, orderIds)))
         : Promise.resolve([] as { id: string; poNumbers: string[] | null }[]),
       styleIds.length > 0
         ? tx
             .select({ id: orderStyles.id, styleCode: orderStyles.styleCode })
             .from(orderStyles)
-            .where(inArray(orderStyles.id, styleIds))
+            .where(scoped(orderStyles, ctx, inArray(orderStyles.id, styleIds)))
         : Promise.resolve([] as { id: string; styleCode: string }[]),
     ])
 
@@ -228,7 +229,7 @@ export async function openScenarios(
         baseSnapshotAt: scenarios.baseSnapshotAt,
       })
       .from(scenarios)
-      .where(eq(scenarios.status, 'draft'))
+      .where(scoped(scenarios, ctx, eq(scenarios.status, 'draft')))
       .orderBy(asc(scenarios.createdAt)),
   )
 }

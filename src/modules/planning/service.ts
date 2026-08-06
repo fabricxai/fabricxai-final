@@ -16,6 +16,7 @@ import { recordChange, registerAuditedTables } from '../core/audit'
 import type { AnyCtx, RequestCtx } from '../core/ctx'
 import { AppError, conflict, notFound } from '../core/errors'
 import { emit } from '../core/outbox'
+import { scoped } from '../core/scoped'
 import { withTenantRead, withTenantTx, type TenantDb } from '../core/tenancy'
 
 import {
@@ -175,11 +176,17 @@ async function recordSmvIn(
 }
 
 /** The newest SMV on record for a style. Refuses rather than guessing one. */
-async function requireSmv(tx: TenantDb, styleCode: string): Promise<string> {
+/*
+ * The five helpers here all took a `ctx` rather than an exemption (plan 1.3). They are the
+ * inputs to a capacity plan — the SMV, the learning curve, the line's available days and
+ * what is already committed on them — and a plan built from another factory's numbers would
+ * look entirely reasonable and be wrong about when a shipment can leave.
+ */
+async function requireSmv(ctx: AnyCtx, tx: TenantDb, styleCode: string): Promise<string> {
   const [row] = await tx
     .select({ smv: smvRecords.smv })
     .from(smvRecords)
-    .where(eq(smvRecords.styleCode, styleCode))
+    .where(scoped(smvRecords, ctx, eq(smvRecords.styleCode, styleCode)))
     .orderBy(sql`${smvRecords.measuredAt} desc nulls last`, sql`${smvRecords.createdAt} desc`)
     .limit(1)
 
@@ -192,13 +199,14 @@ async function requireSmv(tx: TenantDb, styleCode: string): Promise<string> {
 }
 
 async function loadCurve(
+  ctx: AnyCtx,
   tx: TenantDb,
   productType: string,
 ): Promise<{ dayIndex: number; efficiencyPct: string }[]> {
   return tx
     .select({ dayIndex: learningCurves.dayIndex, efficiencyPct: learningCurves.efficiencyPct })
     .from(learningCurves)
-    .where(eq(learningCurves.productType, productType))
+    .where(scoped(learningCurves, ctx, eq(learningCurves.productType, productType)))
     .orderBy(learningCurves.dayIndex)
 }
 
@@ -210,6 +218,7 @@ async function loadCurve(
  * shift is how a plan quietly counts capacity on Eid.
  */
 async function loadLineDays(
+  ctx: AnyCtx,
   tx: TenantDb,
   input: {
     lineIds: readonly string[]
@@ -227,7 +236,7 @@ async function loadLineDays(
   const lineRows = await tx
     .select({ id: lines.id, capacityManpower: lines.capacityManpower, isActive: lines.isActive })
     .from(lines)
-    .where(inArray(lines.id, [...input.lineIds]))
+    .where(scoped(lines, ctx, inArray(lines.id, [...input.lineIds])))
 
   const byLine = new Map(lineRows.map((row) => [row.id, row]))
   for (const lineId of input.lineIds) {
@@ -241,13 +250,13 @@ async function loadLineDays(
   const calendars = await tx
     .select()
     .from(lineCalendars)
-    .where(
+    .where(scoped(lineCalendars, ctx, 
       and(
         inArray(lineCalendars.lineId, [...input.lineIds]),
         gte(lineCalendars.calendarDate, from),
         lte(lineCalendars.calendarDate, to),
       ),
-    )
+    ))
 
   const byKey = new Map(calendars.map((row) => [`${row.lineId}:${row.calendarDate}`, row]))
   const out: LineDayCapacity[] = []
@@ -291,6 +300,7 @@ async function loadLineDays(
  * still counts the allocation being moved would compare it with itself.
  */
 async function loadCommitted(
+  ctx: AnyCtx,
   tx: TenantDb,
   input: { lineIds: readonly string[]; from: string; to: string; excludeAllocationId?: string },
 ): Promise<{ loads: Map<string, PlannedLoad[]>; unmeasured: { orderId: string; reason: string }[] }> {
@@ -305,17 +315,17 @@ async function loadCommitted(
       endDate: allocations.endDate,
     })
     .from(allocations)
-    .where(
+    .where(scoped(allocations, ctx, 
       and(
         inArray(allocations.lineId, [...input.lineIds]),
         lte(allocations.startDate, input.to),
         gte(allocations.endDate, input.from),
         inArray(allocations.status, ['planned', 'active']),
       ),
-    )
+    ))
 
   const relevant = rows.filter((row) => row.id !== input.excludeAllocationId)
-  const { styles, unmeasured } = await resolveOrderStyles(tx, relevant)
+  const { styles, unmeasured } = await resolveOrderStyles(ctx, tx, relevant)
 
   const loads = new Map<string, PlannedLoad[]>()
 
@@ -365,6 +375,7 @@ function unmeasuredViolations(
  * row block every new plan on that line.
  */
 async function resolveOrderStyles(
+  ctx: AnyCtx,
   tx: TenantDb,
   refs: readonly { orderId: string; orderStyleId?: string | null }[],
   options: { strict?: boolean } = {},
@@ -382,7 +393,7 @@ async function resolveOrderStyles(
   const rows = await tx
     .select({ id: orderStyles.id, orderId: orderStyles.orderId, styleCode: orderStyles.styleCode })
     .from(orderStyles)
-    .where(inArray(orderStyles.orderId, orderIds))
+    .where(scoped(orderStyles, ctx, inArray(orderStyles.orderId, orderIds)))
 
   const byOrder = new Map<string, typeof rows>()
   for (const row of rows) {
@@ -414,7 +425,7 @@ async function resolveOrderStyles(
     try {
       styles.set(ref.orderId, {
         styleCode: chosen.styleCode,
-        smv: await requireSmv(tx, chosen.styleCode),
+        smv: await requireSmv(ctx, tx, chosen.styleCode),
       })
     } catch (error) {
       if (options.strict) throw error
@@ -459,15 +470,15 @@ export async function allocate(
   return withTenantTx(ctx, async (tx) => {
     const dates = datesOf(payload)
     // strict: a plan being submitted must be measurable, or it is not a plan.
-    const { styles } = await resolveOrderStyles(tx, [payload], { strict: true })
+    const { styles } = await resolveOrderStyles(ctx, tx, [payload], { strict: true })
     const style = styles.get(payload.orderId)!
 
-    const curve = options.productType ? await loadCurve(tx, options.productType) : []
+    const curve = options.productType ? await loadCurve(ctx, tx, options.productType) : []
     // Day 1 of the run is the first day of THIS allocation — the learning curve is per
     // style run, not per calendar.
     const dayIndex = new Map(dates.map((date, i) => [date, i + 1]))
 
-    const lineDays = await loadLineDays(tx, {
+    const lineDays = await loadLineDays(ctx, tx, {
       lineIds: [payload.lineId],
       dates,
       efficiencyFor: (_lineId, date) =>
@@ -477,7 +488,7 @@ export async function allocate(
       policy,
     })
 
-    const committed = await loadCommitted(tx, {
+    const committed = await loadCommitted(ctx, tx, {
       lineIds: [payload.lineId],
       from: dates[0]!,
       to: dates[dates.length - 1]!,
@@ -607,7 +618,7 @@ export async function moveAllocation(
     const [existing] = await tx
       .select()
       .from(allocations)
-      .where(eq(allocations.id, input.allocationId))
+      .where(scoped(allocations, ctx, eq(allocations.id, input.allocationId)))
       .for('update')
 
     if (!existing) {
@@ -628,13 +639,13 @@ export async function moveAllocation(
     })
 
     const dates = datesOf(payload)
-    const { styles } = await resolveOrderStyles(tx, [payload], { strict: true })
+    const { styles } = await resolveOrderStyles(ctx, tx, [payload], { strict: true })
     const style = styles.get(payload.orderId)!
 
-    const curve = input.productType ? await loadCurve(tx, input.productType) : []
+    const curve = input.productType ? await loadCurve(ctx, tx, input.productType) : []
     const dayIndex = new Map(dates.map((date, i) => [date, i + 1]))
 
-    const lineDays = await loadLineDays(tx, {
+    const lineDays = await loadLineDays(ctx, tx, {
       lineIds: [payload.lineId],
       dates,
       efficiencyFor: (_lineId, date) =>
@@ -645,7 +656,7 @@ export async function moveAllocation(
     })
 
     // Exclude the row being moved, or the check would compare the plan with itself.
-    const committed = await loadCommitted(tx, {
+    const committed = await loadCommitted(ctx, tx, {
       lineIds: [payload.lineId],
       from: dates[0]!,
       to: dates[dates.length - 1]!,
@@ -686,7 +697,7 @@ export async function moveAllocation(
         acceptedViolations: fits ? [] : violations,
         updatedAt: new Date(),
       })
-      .where(eq(allocations.id, existing.id))
+      .where(scoped(allocations, ctx, eq(allocations.id, existing.id)))
 
     await recordChange(ctx, tx, {
       action: 'update',
@@ -759,7 +770,7 @@ export async function setAllocationStatus(
     const [row] = await tx
       .select()
       .from(allocations)
-      .where(eq(allocations.id, input.allocationId))
+      .where(scoped(allocations, ctx, eq(allocations.id, input.allocationId)))
       .for('update')
 
     if (!row) {
@@ -771,7 +782,7 @@ export async function setAllocationStatus(
     await tx
       .update(allocations)
       .set({ status: input.status, updatedAt: new Date() })
-      .where(eq(allocations.id, row.id))
+      .where(scoped(allocations, ctx, eq(allocations.id, row.id)))
 
     await recordChange(ctx, tx, {
       action: 'update',
@@ -802,12 +813,12 @@ export async function capacityQuery(
   const policy = input.policy ?? {}
 
   return withTenantRead(ctx, async (tx) => {
-    const smv = await requireSmv(tx, input.styleCode)
-    const curve = input.productType ? await loadCurve(tx, input.productType) : []
+    const smv = await requireSmv(ctx, tx, input.styleCode)
+    const curve = input.productType ? await loadCurve(ctx, tx, input.productType) : []
     const sorted = [...input.dates].sort()
     const dayIndex = new Map(sorted.map((date, i) => [date, i + 1]))
 
-    const lineDays = await loadLineDays(tx, {
+    const lineDays = await loadLineDays(ctx, tx, {
       lineIds: input.lineIds,
       dates: sorted,
       efficiencyFor: (_lineId, date) =>
@@ -817,7 +828,7 @@ export async function capacityQuery(
       policy,
     })
 
-    const committed = await loadCommitted(tx, {
+    const committed = await loadCommitted(ctx, tx, {
       lineIds: input.lineIds,
       from: sorted[0] ?? '1970-01-01',
       to: sorted[sorted.length - 1] ?? '1970-01-01',
@@ -863,14 +874,14 @@ export async function forkScenario(
         plannedDaily: allocations.plannedDaily,
       })
       .from(allocations)
-      .where(
+      .where(scoped(allocations, ctx, 
         and(
           inArray(allocations.status, ['planned', 'active']),
           input.lineIds?.length ? inArray(allocations.lineId, [...input.lineIds]) : undefined,
           input.from ? gte(allocations.endDate, input.from) : undefined,
           input.to ? lte(allocations.startDate, input.to) : undefined,
         ),
-      )
+      ))
 
     const [row] = await tx
       .insert(scenarios)
@@ -907,7 +918,7 @@ export async function compareScenario(
   input: { scenarioId: string; policy: Required<PlanningPolicy> },
 ): Promise<ScenarioComparison> {
   return withTenantRead(ctx, async (tx) => {
-    const [scenario] = await tx.select().from(scenarios).where(eq(scenarios.id, input.scenarioId))
+    const [scenario] = await tx.select().from(scenarios).where(scoped(scenarios, ctx, eq(scenarios.id, input.scenarioId)))
     if (!scenario) {
       throw notFound('planning.errors.scenario_not_found', { scenarioId: input.scenarioId })
     }
@@ -920,20 +931,20 @@ export async function compareScenario(
       return { scenarioId: scenario.id, perLine: [], draftViolations: [] }
     }
 
-    const lineDays = await loadLineDays(tx, {
+    const lineDays = await loadLineDays(ctx, tx, {
       lineIds,
       dates,
       efficiencyFor: () => input.policy.defaultEfficiencyPct,
       policy: input.policy,
     })
 
-    const live = await loadCommitted(tx, {
+    const live = await loadCommitted(ctx, tx, {
       lineIds,
       from: dates[0]!,
       to: dates[dates.length - 1]!,
     })
 
-    const { styles, unmeasured } = await resolveOrderStyles(tx, drafts)
+    const { styles, unmeasured } = await resolveOrderStyles(ctx, tx, drafts)
     const draftViolations: PlanningViolation[] = unmeasuredViolations(unmeasured)
     const baseMinutes = new Map<string, string>()
     const draftMinutes = new Map<string, string>()
@@ -996,7 +1007,7 @@ export async function proposeScenarioApply(
   const { propose } = await import('../core/pending-changes')
 
   const scenario = await withTenantRead(ctx, async (tx) => {
-    const [row] = await tx.select().from(scenarios).where(eq(scenarios.id, input.scenarioId))
+    const [row] = await tx.select().from(scenarios).where(scoped(scenarios, ctx, eq(scenarios.id, input.scenarioId)))
     return row
   })
 
@@ -1054,7 +1065,7 @@ export async function commitScenarioApply(
   const [scenario] = await tx
     .select()
     .from(scenarios)
-    .where(eq(scenarios.id, payload.scenarioId))
+    .where(scoped(scenarios, ctx, eq(scenarios.id, payload.scenarioId)))
     .for('update')
 
   if (!scenario) {
@@ -1078,21 +1089,21 @@ export async function commitScenarioApply(
   for (const [lineId, drafts] of perLine) {
     const dates = [...new Set(drafts.flatMap((d) => Object.keys(d.plannedDaily)))].sort()
 
-    const lineDays = await loadLineDays(tx, {
+    const lineDays = await loadLineDays(ctx, tx, {
       lineIds: [lineId],
       dates,
       efficiencyFor: () => payload.assumptions.expectedEfficiencyPct,
       policy,
     })
 
-    const committed = await loadCommitted(tx, {
+    const committed = await loadCommitted(ctx, tx, {
       lineIds: [lineId],
       from: dates[0]!,
       to: dates[dates.length - 1]!,
     })
 
     // strict: approving a plan we cannot price in minutes is approving nothing.
-    const { styles } = await resolveOrderStyles(tx, drafts, { strict: true })
+    const { styles } = await resolveOrderStyles(ctx, tx, drafts, { strict: true })
 
     for (const day of lineDays) {
       const proposed: PlannedLoad[] = [...(committed.loads.get(`${lineId}:${day.date}`) ?? [])]
@@ -1143,7 +1154,7 @@ export async function commitScenarioApply(
   await tx
     .update(scenarios)
     .set({ status: 'applied', updatedAt: new Date() })
-    .where(eq(scenarios.id, scenario.id))
+    .where(scoped(scenarios, ctx, eq(scenarios.id, scenario.id)))
 
   return {
     rowId: scenario.id,
