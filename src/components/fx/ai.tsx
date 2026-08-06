@@ -7,13 +7,26 @@ import { MarbimMark } from './mark'
 /**
  * The MARBIM surfaces.
  *
- * Two rules from the system prompt show up as UI here, not just as prose:
- * MARBIM never claims an action is done (it proposes, a human approves), and it
- * never states a number it did not read from a tool. So the tool strip is not
- * decoration — it is the citation, and it stays visible next to the answer.
+ * One rule from the system prompt shows up as UI here rather than only as prose: MARBIM
+ * never claims an action is done — it proposes, and a human approves.
+ *
+ * ## The strip is not a citation yet, and it used to say it was (plan 6.2, audit AI-B3)
+ *
+ * This header claimed "it never states a number it did not read from a tool. So the tool
+ * strip is not decoration — it is the citation". **Nothing executes a tool.** `chat` hands
+ * the model a list of tool names and records which ones it ASKED for; there is no execution
+ * loop, and `runDraftTool` — the only path from a tool to a write — has no production
+ * caller. So every entry in the strip was a request rendered as a completed read, under a
+ * footer promising the answer was grounded in it.
+ *
+ * That is the worst kind of wrong for this particular product: the whole argument for
+ * letting a model near an order book is that its claims are traceable, and a fabricated
+ * citation is more dangerous than no citation, because it stops the reader checking.
+ *
+ * `requested` exists to say the true thing until 6.5 lands the execution loop.
  */
 
-export type ToolStepState = 'done' | 'active' | 'pending' | 'failed'
+export type ToolStepState = 'done' | 'active' | 'pending' | 'failed' | 'requested'
 
 export interface ToolStep {
   label: string
@@ -36,7 +49,9 @@ export function ToolStrip({ steps, footer }: { steps: readonly ToolStep[]; foote
         const colour =
           step.state === 'failed'
             ? 'var(--fx-danger)'
-            : step.state === 'pending'
+            : // A requested-but-unrun tool reads like a pending one, because that is what it
+              // is: something the model asked for and nothing did.
+              step.state === 'pending' || step.state === 'requested'
               ? 'var(--fx-text-tertiary)'
               : 'var(--fx-text-primary)'
 
@@ -69,6 +84,9 @@ export function ToolStrip({ steps, footer }: { steps: readonly ToolStep[]; foote
                     width: 2,
                     height: 12,
                     transform: 'skewX(var(--fx-slash-angle))',
+                    // Amber only for work that actually happened. `requested` falls through
+                    // to the inert border colour with everything else that has not run —
+                    // three filled slashes ARE the claim that a read took place.
                     background:
                       step.state === 'done'
                         ? 'var(--fx-accent)'
@@ -95,6 +113,14 @@ export function ToolStrip({ steps, footer }: { steps: readonly ToolStep[]; foote
             >
               <span style={{ font: "500 12.5px/1.4 var(--fx-font-mono)", color: colour }}>
                 {step.label}
+                {step.state === 'requested' ? (
+                  // Said on the row, not only in the footer. Somebody skimming reads the
+                  // strip and not the caption under it.
+                  <span style={{ color: 'var(--fx-text-tertiary)', fontWeight: 400 }}>
+                    {' '}
+                    · asked for, not run
+                  </span>
+                ) : null}
               </span>
               {step.meta ? (
                 <span
