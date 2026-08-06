@@ -55,18 +55,29 @@ export default async function OrdersPage() {
           body="Orders arrive from a buyer PO — drop one on MARBIM and it drafts the order, its TNA and the size breakdown for you to approve."
         />
       ) : (
+        /*
+         * Scrolls sideways inside the card, not with the page (plan 4.4).
+         *
+         * Seven columns cannot stack — the header is one grid and every row is another,
+         * so stacking would leave the labels above columns they no longer line up with.
+         * The minimum keeps each column readable and lets the card scroll; a cut-off
+         * column says there is more to the right, which a page that quietly grew wider
+         * than the screen does not.
+         */
         <div
+          className="fx-scroll-x"
           style={{
             background: 'var(--fx-bg-surface)',
             border: '1px solid var(--fx-border-subtle)',
             borderRadius: 'var(--fx-radius-md)',
-            overflow: 'hidden',
+            overflowY: 'hidden',
           }}
         >
           <div
             style={{
               display: 'grid',
               gridTemplateColumns: '1.1fr 1fr 1.6fr .8fr .9fr .8fr .9fr',
+              minWidth: 780,
               gap: 14,
               padding: '10px 18px 10px 21px',
               background: 'var(--fx-bg-sunken)',
@@ -102,9 +113,9 @@ export default async function OrdersPage() {
               <div
                 style={{
                   flex: 1,
-                  minWidth: 0,
-                  display: 'grid',
+                                    display: 'grid',
                   gridTemplateColumns: '1.1fr 1fr 1.6fr .8fr .9fr .8fr .9fr',
+                  minWidth: 780,
                   gap: 14,
                   padding: '14px 18px',
                   alignItems: 'center',

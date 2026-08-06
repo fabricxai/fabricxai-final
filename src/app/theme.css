@@ -506,3 +506,104 @@ a:hover {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ============================================================
+   TABLETS (audit FE-H6, plan 4.4)
+
+   Every screen in this product was laid out for a desk monitor, and the
+   thirteen that matter most are used on a 10" tablet held in portrait —
+   the cutting table, the delivery bay, the inline check, the packing
+   floor. Until now the whole app had ONE media query, for reduced motion.
+
+   The sizes are the two a floor tablet actually is: 768x1024 held upright
+   and 1024x768 turned over. Nothing here is a phone layout; a phone is not
+   a device this product is used on, and pretending otherwise would mean
+   testing a case nobody has.
+
+   These are the only rules in the file that key on width, and they are
+   here rather than inline because a media query cannot be written as a
+   style object — which is the reason there were none.
+   ============================================================ */
+
+/* The sidebar drops to its glyphs, keeping the amber slash and the tap
+   target. 232px of chrome out of 768 is a third of the screen spent on
+   navigation; at 60px it is a twelfth, and the icons are already drawn. */
+@media (max-width: 900px) {
+  .fx-sidebar {
+    width: 60px;
+    padding: 20px 8px;
+  }
+  /* The label goes, the accessible name does not — every link keeps its
+     `aria-label`, so a screen reader and a long-press both still say
+     "Cutting" while the eye reads the glyph. */
+  .fx-sidebar-label {
+    display: none;
+  }
+  /* Section headings become a hairline. The grouping is the information;
+     the word for it does not fit and was never the point. */
+  .fx-sidebar-section {
+    height: 1px;
+    padding: 0;
+    margin: 4px 8px 6px;
+    overflow: hidden;
+    background: var(--fx-border-subtle);
+    color: transparent;
+  }
+  .fx-sidebar-link {
+    justify-content: center;
+    padding: 10px 0;
+    gap: 0;
+  }
+
+  /* The search column had a hard 240px floor, so on a narrow bar it took
+     its width out of the factory chip and the account menu rather than
+     out of itself. Below this width it shrinks with everything else. */
+  .fx-topbar {
+    /* Fractions, not a fixed 420px cap: a fixed middle track takes its width
+       first and leaves the factory chip and the account menu to split what is
+       left, which at 768px is about 150px each — not enough for either. */
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr) minmax(0, 1fr);
+    gap: 10px;
+    padding: 0 14px;
+  }
+
+  /* The page's own gutters. 48px each side of a 768px screen is an eighth
+     of it spent on margin. */
+  .fx-page-body {
+    padding: 22px 18px 96px;
+  }
+}
+
+/* A row of cells becomes a stack of them.
+   
+   For CARD lists — the approve inbox, the lots on the final-inspection
+   screen — where each row is its own grid and every cell already says what
+   it is. Four columns adding up to 560px of fixed width on a 612px canvas
+   leaves the title column at nothing; stacked, each fact keeps its own
+   line and the row grows taller instead of thinner.
+   
+   `!important` because the grid is an inline style, and an inline style
+   beats a class. It is the one thing a media query cannot express as a
+   style object, which is the reason this file has to exist at all. */
+@media (max-width: 900px) {
+  .fx-stack-tablet {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+    align-items: start !important;
+  }
+  /* A number right-aligned in its own column reads as a total. Stacked, it
+     reads as a stray value pushed to the far edge of the screen. */
+  .fx-stack-tablet > * {
+    text-align: left !important;
+  }
+}
+
+/* Wide rows scroll INSIDE their own box rather than pushing the page
+   sideways. A page that scrolls horizontally hides the thing somebody is
+   reaching for behind a gesture they do not know is available; a table
+   that scrolls says so by showing a cut-off column. */
+.fx-scroll-x {
+  overflow-x: auto;
+  /* Momentum without a visible bar on a tablet, which is where this runs. */
+  -webkit-overflow-scrolling: touch;
+}

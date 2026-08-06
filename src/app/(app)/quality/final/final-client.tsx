@@ -585,6 +585,7 @@ export function FinalClient({
         const last = l.history[0]
         return (
           <div
+            className="fx-stack-tablet"
             key={l.orderId}
             style={{
               display: 'grid',

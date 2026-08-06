@@ -148,6 +148,7 @@ export function RequisitionClient({
                 const cheapest = index === 0
                 return (
                   <button
+                    className="fx-stack-tablet"
                     key={quote.quoteId}
                     onClick={() =>
                       setChosen((c) => ({ ...c, [line.itemId]: quote.supplierId }))

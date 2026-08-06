@@ -41,6 +41,7 @@ export function Sidebar({ items }: { items: readonly NavItem[] }) {
       {bySection.map((section) => (
         <div key={section.id} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <div
+            className="fx-sidebar-section"
             style={{
               font: "500 11px/1 var(--fx-font-mono)",
               letterSpacing: '.09em',
@@ -78,6 +79,17 @@ function SidebarLink({
     <Link
       href={item.href}
       aria-current={active ? 'page' : undefined}
+      className="fx-sidebar-link"
+      /*
+       * The accessible name is on the LINK, not only in the text (plan 4.4).
+       *
+       * Under 900px the label is hidden and the glyph is all that renders. Without this a
+       * collapsed sidebar reads to a screen reader as a column of unlabelled links — which
+       * is not a smaller sidebar, it is no sidebar at all. `title` gives the same word to a
+       * long-press on the tablet this collapse exists for.
+       */
+      aria-label={label}
+      title={label}
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -102,7 +114,7 @@ function SidebarLink({
         }}
       />
       <NavIcon id={item.id} />
-      {label}
+      <span className="fx-sidebar-label">{label}</span>
     </Link>
   )
 }

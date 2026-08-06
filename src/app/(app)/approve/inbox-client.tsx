@@ -457,6 +457,7 @@ function InboxRowItem({
       </div>
 
       <div
+        className="fx-stack-tablet"
         style={{
           flex: 1,
           minWidth: 0,

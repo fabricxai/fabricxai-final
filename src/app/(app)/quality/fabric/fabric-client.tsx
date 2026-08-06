@@ -368,6 +368,7 @@ export function FabricClient({
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 2 }}>
                 {grn.rolls.map((roll) => (
                   <div
+                    className="fx-stack-tablet"
                     key={roll.rollId}
                     style={{
                       display: 'grid',

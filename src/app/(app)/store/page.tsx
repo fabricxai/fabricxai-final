@@ -126,18 +126,29 @@ export default async function StorePage() {
               body={tui(locale, 'ui.store.stock_empty_body')}
             />
           ) : (
+            /*
+             * Scrolls sideways inside the card, not with the page (plan 4.4).
+             *
+             * Six columns of stock cannot stack: the header is one grid and every row is
+             * another, so stacking would leave the labels above a column they no longer
+             * line up with. A minimum width keeps the numbers readable and lets the card
+             * scroll — a cut-off column tells a storekeeper there is more to the right,
+             * which a page that quietly grew wider than the screen does not.
+             */
             <div
+              className="fx-scroll-x"
               style={{
                 background: 'var(--fx-bg-surface)',
                 border: '1px solid var(--fx-border-subtle)',
                 borderRadius: 'var(--fx-radius-md)',
-                overflow: 'hidden',
+                overflowY: 'hidden',
               }}
             >
               <div
                 style={{
                   display: 'grid',
                   gridTemplateColumns: '1fr 2fr .8fr .9fr .9fr .9fr',
+                  minWidth: 720,
                   gap: 12,
                   padding: '12px 20px',
                   background: 'var(--fx-bg-sunken)',
@@ -167,6 +178,7 @@ export default async function StorePage() {
                       flex: 1,
                       display: 'grid',
                       gridTemplateColumns: '1fr 2fr .8fr .9fr .9fr .9fr',
+                      minWidth: 720,
                       gap: 12,
                       padding: '14px 20px',
                       alignItems: 'center',

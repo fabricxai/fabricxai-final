@@ -38,12 +38,16 @@ export function TopBar({
 }) {
   return (
     <header
+      className="fx-topbar"
       style={{
         height: 60,
         flexShrink: 0,
         borderBottom: '1px solid var(--fx-border-subtle)',
         background: 'var(--fx-bg-surface)',
         display: 'grid',
+        // The 240px floor holds the search box usable on a desk. Below 900px it is dropped
+        // in theme.css — see the tablet block there — because a floor that cannot yield
+        // takes its width out of the factory chip and the account menu instead of itself.
         gridTemplateColumns: 'minmax(0, 1fr) minmax(240px, 420px) minmax(0, 1fr)',
         alignItems: 'center',
         gap: 16,
@@ -107,7 +111,17 @@ export function PageHeader({
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 32 }}>
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 20 }}>
+      {/* Wraps rather than squeezes: a title and its actions on one line at 768px leaves
+          the buttons overlapping the heading. The actions drop under it instead. */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'flex-end',
+          justifyContent: 'space-between',
+          gap: 20,
+          flexWrap: 'wrap',
+        }}
+      >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
           {back ? (
             <a
@@ -167,8 +181,13 @@ export function PageBody({ children }: { children: ReactNode }) {
       // open the screen behind it is context, not content. The rule lives in theme.css
       // because the panel is a sibling of this element, not an ancestor.
       data-fx-host
+      className="fx-page-body"
       style={{
         flex: 1,
+        // Without this the main cannot shrink below its widest child, so one over-wide
+        // table pushed the whole flex row — sidebar included — off the side of a tablet.
+        // A flex item defaults to `min-width: auto`, which is the trap.
+        minWidth: 0,
         overflowY: 'auto',
         background: 'var(--fx-bg-canvas)',
         padding: '32px 48px 96px',
