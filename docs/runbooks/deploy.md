@@ -3,7 +3,29 @@
 One VPS, one factory. First deploy is §1–§4; every deploy after that is §5, which is
 three commands.
 
-**Sizing:** 4 vCPU / 8GB / 80GB SSD carries one factory (~2,400 workers, 20 lines)
+**Sizing:** 6 vCPU / 12GB / 200GB **NVMe** carries one factory (~2,400 workers, 20 lines)
+comfortably. The arithmetic, because "8GB is fine" was written before the memory limits
+in `docker-compose.prod.yml` existed and did not add up against them:
+
+| | |
+|---|---|
+| container limits | postgres 2G + app 1.2G + worker 900M + redis 700M + minio 700M = **5.5G** |
+| caddy, pgbouncer, migrate | ~250M |
+| Ubuntu + Docker daemon | ~1G |
+| **left for page cache** | **~5G** — which is what decides whether reads feel fast |
+
+8GB works and leaves almost nothing for cache; 12GB is the comfortable floor. CPU is not
+the constraint — a floor posts ~50 hourly counts an hour, while `production_burst`
+generates 600 writes a minute, about 12× a real peak.
+
+**NVMe, not SATA.** Postgres is tuned for it (`random_page_cost=1.1`) and this schema
+carries 24 indexes the stock value would talk the planner out of using. On other storage,
+raise `POSTGRES_RANDOM_PAGE_COST` back toward 4 — it is a claim about the hardware, and a
+wrong claim produces bad plans rather than an error.
+
+**The backup repo does not live on that disk.** Same disk is not a backup, and pgBackRest
+is also the thing most likely to fill it. Growth to watch is MinIO — documents are capped
+at 25MB each and are what consumes the 200GB, not the database
 comfortably. The memory limits in `docker-compose.prod.yml` add to ~5.5GB, leaving the
 host room for the page cache Postgres actually runs on.
 

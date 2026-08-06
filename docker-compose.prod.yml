@@ -223,8 +223,70 @@ services:
       - max_wal_senders=3
       - -c
       - shared_preload_libraries=pg_stat_statements
+      # 200 is headroom, not a working number. PgBouncer runs transaction pooling with
+      # `default_pool_size=25` + a reserve of 5, so real backends top out around 30; the
+      # rest of the slots exist so a migration or a psql session is never refused.
       - -c
       - max_connections=200
+
+      # ── Tuning, sized for THIS container on a small VPS ────────────────────
+      #
+      # Postgres ships `shared_buffers=128MB`, which inside a 2G container leaves most of
+      # the limit unused, and assumes `effective_cache_size=4GB` it cannot verify. On a
+      # 64GB host nobody notices. On a 12GB VPS — 5.5GB of container limits, ~1.25GB of
+      # host and daemon, so roughly 5GB of page cache left — it is the difference between
+      # the owner dashboard feeling instant and feeling slow.
+      #
+      # Every value is overridable, because the right number depends on the box and the
+      # next factory's may not be this one.
+      #
+      #   shared_buffers        25% of the container limit, the usual starting ratio.
+      #   effective_cache_size  NOT an allocation — a hint about what the OS is likely
+      #                         holding. Set below the real free page cache so the planner
+      #                         does not assume more than the host can give it.
+      #   work_mem              PER SORT, per backend. 8MB × ~30 real backends is ~240MB
+      #                         worst case, which fits beside shared_buffers inside 2G.
+      #                         Raise it only alongside the container limit.
+      #   maintenance_work_mem  VACUUM and CREATE INDEX. Migrations build indexes; this is
+      #                         the one value where being generous costs nothing at rest.
+      - -c
+      - shared_buffers=${POSTGRES_SHARED_BUFFERS:-512MB}
+      - -c
+      - effective_cache_size=${POSTGRES_EFFECTIVE_CACHE_SIZE:-3GB}
+      - -c
+      - work_mem=${POSTGRES_WORK_MEM:-8MB}
+      - -c
+      - maintenance_work_mem=${POSTGRES_MAINTENANCE_WORK_MEM:-256MB}
+
+      # ── NVMe ───────────────────────────────────────────────────────────────
+      #
+      # The highest-value two lines here. `random_page_cost=4` is Postgres's default and
+      # it describes a spinning disk: it tells the planner a random read costs four times
+      # a sequential one, so on anything but tiny tables it prefers a sequential scan to
+      # an index. On NVMe the ratio is nearly 1, and this deployment added 24 indexes for
+      # cascade FKs (audit DB-M4) that the default would talk the planner out of using.
+      #
+      # If a future host is NOT on NVMe, raise these back — they are a claim about the
+      # hardware, and a wrong claim here produces bad plans rather than an error.
+      - -c
+      - random_page_cost=${POSTGRES_RANDOM_PAGE_COST:-1.1}
+      - -c
+      - effective_io_concurrency=${POSTGRES_EFFECTIVE_IO_CONCURRENCY:-200}
+
+      # ── WAL ────────────────────────────────────────────────────────────────
+      #
+      # pgBackRest streams this offsite continuously, so WAL volume is bandwidth and
+      # storage somebody pays for. Compression trades a little CPU — of which this box has
+      # spare — for less of both. Spreading the checkpoint over 90% of the interval keeps
+      # a floor write from landing during an I/O spike.
+      - -c
+      - wal_compression=on
+      - -c
+      - checkpoint_completion_target=0.9
+      - -c
+      - max_wal_size=${POSTGRES_MAX_WAL_SIZE:-2GB}
+      - -c
+      - min_wal_size=512MB
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
