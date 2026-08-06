@@ -5,10 +5,12 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  compareDecimalStrings,
   QuantityError,
+  compareDecimalStrings,
   ratioAsPercent,
   subtractDecimalStrings,
+  toMinor,
+  toMinorAtScale,
 } from '@/lib/quantity'
 
 describe('subtractDecimalStrings', () => {
@@ -79,5 +81,47 @@ describe('ratioAsPercent', () => {
   it('keeps the sign of the ratio', () => {
     expect(ratioAsPercent('-25', '100')).toBe('-25.0')
     expect(ratioAsPercent('25', '-100')).toBe('-25.0')
+  })
+})
+
+describe('toMinorAtScale · a consumption is not a stock figure', () => {
+  it('reads four decimals, which is what the column stores', () => {
+    /*
+     * `bom_lines.consumption` is `numeric(12, 4)`. The schema decided four decimals; the
+     * costing arithmetic read two, and a trims line of 0.0083 kg per piece — thread, an
+     * entirely ordinary figure — truncated to 0.00. That line then contributed NOTHING to
+     * the quoted price and nothing to the realised margin, silently, for the life of the
+     * module (plan 2.9).
+     */
+    expect(toMinorAtScale('0.0083', 4)).toBe(83n)
+    expect(toMinorAtScale('1.5500', 4)).toBe(15_500n)
+    expect(toMinorAtScale('-0.0083', 4)).toBe(-83n)
+  })
+
+  it('agrees with toMinor at scale 2', () => {
+    // Guards the guard: if the two disagreed, every value the old code COULD represent would
+    // have quietly changed price when this landed.
+    for (const value of ['0.00', '1.55', '12.34', '-7.80', '1000.05']) {
+      expect(toMinorAtScale(value, 2), value).toBe(toMinor(value))
+    }
+  })
+
+  it('still refuses a digit it would have to drop', () => {
+    // The refusal is the whole reason the bug surfaced. A converter that silently truncated
+    // at scale 4 would just move the same failure two decimal places along.
+    expect(() => toMinorAtScale('0.00831', 4)).toThrow(QuantityError)
+    expect(() => toMinorAtScale('0.00831', 4)).toThrow(/more than 4 decimal places/)
+    // A trailing zero drops nothing, so it is accepted.
+    expect(toMinorAtScale('0.00830', 4)).toBe(83n)
+  })
+
+  it('refuses a scale that is not a usable number of places', () => {
+    expect(() => toMinorAtScale('1.0', -1)).toThrow(QuantityError)
+    expect(() => toMinorAtScale('1.0', 1.5)).toThrow(QuantityError)
+  })
+
+  it('reads a whole number at any scale', () => {
+    expect(toMinorAtScale('12', 4)).toBe(120_000n)
+    expect(toMinorAtScale('12', 0)).toBe(12n)
   })
 })

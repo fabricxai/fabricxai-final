@@ -180,6 +180,44 @@ describe('1.2 · drafting a quote', () => {
     expect(breakdown.componentsTotal).toBe(breakdown.totalCost)
   })
 
+  it('the CM component is not zero, and the trims line costs something', async () => {
+    /*
+     * The bug this pins (plan 2.9), and both halves of it were silent.
+     *
+     * `cost_sheets.fx_rate_local_to_base` is `numeric(12, 6)` and BDT→USD is ≈0.0083. The
+     * breakdown read it at TWO decimals, so it truncated to 0.00 and the CM component —
+     * usually the largest single part of a garment's FOB — computed as ZERO on every sheet
+     * priced in local currency. Nothing looked broken, because `commercial` is derived as
+     * the total minus the named components, so the whole CM cost silently landed there and
+     * the reconciliation above still passed.
+     *
+     * `bom_lines.consumption` is `numeric(12, 4)` and was read at two the same way, so a
+     * trims line of 0.0083 kg per piece — thread — contributed nothing at all.
+     *
+     * The fixture already used 0.0083 for the fx rate before this was found; the assertion
+     * is what was missing.
+     */
+    await reset()
+    const styleCode = `ST-${randomUUID().slice(0, 6)}`
+    await approvedSheet(styleCode)
+    const { rfqId } = await newRfq({ styleCode })
+
+    const drafted = await draftQuote(ctx, { rfqId, styleCode }, POLICY)
+    const [quote] = await db.select().from(quotes).where(eq(quotes.id, drafted.quoteId))
+    const breakdown = quote!.fobBreakdown as {
+      components: Record<string, string>
+      reconciles: boolean
+    }
+
+    // CM is 600.00 BDT per dozen → 50.00 per piece → × 0.0083 = 0.415 → 0.41.
+    expect(Number(breakdown.components.cm)).toBeGreaterThan(0)
+    expect(breakdown.components.cm).toBe('0.41')
+
+    // And the whole thing still reconciles, which is what makes the misattribution above so
+    // hard to notice: a zero CM never broke this invariant, it just moved the money.
+    expect(breakdown.reconciles).toBe(true)
+  })
+
   it('a new version supersedes its predecessor', async () => {
     await reset()
     const styleCode = `ST-${randomUUID().slice(0, 6)}`

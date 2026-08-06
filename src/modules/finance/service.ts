@@ -10,6 +10,7 @@
  * type is a cost somebody will type, and the entire value of a variance report is that
  * neither side of it was chosen by the person the report is about.
  */
+import { fromMinor, toMinor, toMinorAtScale } from '@/lib/quantity'
 import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
 
 import { recordChange, registerAuditedTables } from '../core/audit'
@@ -22,6 +23,13 @@ import { scoped } from '../core/scoped'
 import { withTenantRead, withTenantTx, type TenantDb } from '../core/tenancy'
 
 import { FINANCE_EVENTS } from './events'
+
+/**
+ * `bom_lines.consumption` is `numeric(12, 4)`; `cost_sheets.fx_rate_local_to_base` is
+ * `numeric(12, 6)`. This file used to read both at two — see the call sites (plan 2.9).
+ */
+const CONSUMPTION_SCALE = 4
+const FX_SCALE = 6
 import {
   cashTimeline,
   expectedRealizationDate,
@@ -622,7 +630,7 @@ export async function accrueOrderCosts(
         .limit(1)
 
       if (!priced?.unitPrice) continue
-      materialMinor = sumMinor(materialMinor, mulMinor(toMinor(row.qty), toMinor(priced.unitPrice)))
+      materialMinor = sumMinor(materialMinor, mulScaled2HalfUp(toMinor(row.qty), toMinor(priced.unitPrice)))
     }
 
     components.materials = fromMinor(materialMinor / BigInt(input.pieces))
@@ -671,7 +679,7 @@ export async function accrueOrderCosts(
       )
 
       components.cm = fromMinor(
-        mulMinor(BigInt(lineDays) * 100n, toMinor(policy.loadedLineDayRate)) /
+        mulScaled2HalfUp(BigInt(lineDays) * 100n, toMinor(policy.loadedLineDayRate)) /
           BigInt(input.pieces),
       )
       basis.cm = {
@@ -781,7 +789,10 @@ export async function orderPnl(
         : '0.00',
       cm: sheet.cmLocalPerPiece && sheet.fxRateLocalToBase
         ? fromMinor(
-            mulMinor(toMinor(sheet.cmLocalPerPiece), toMinor(sheet.fxRateLocalToBase)),
+            (toMinor(sheet.cmLocalPerPiece) *
+                toMinorAtScale(sheet.fxRateLocalToBase, FX_SCALE, 'fx rate') +
+                500_000n) /
+                1_000_000n,
           )
         : '0.00',
       commercial: fromMinor(
@@ -791,7 +802,10 @@ export async function orderPnl(
           -toMinor(
             sheet.cmLocalPerPiece && sheet.fxRateLocalToBase
               ? fromMinor(
-                  mulMinor(toMinor(sheet.cmLocalPerPiece), toMinor(sheet.fxRateLocalToBase)),
+                  (toMinor(sheet.cmLocalPerPiece) *
+                toMinorAtScale(sheet.fxRateLocalToBase, FX_SCALE, 'fx rate') +
+                500_000n) /
+                1_000_000n,
                 )
               : '0.00',
           ),
@@ -882,7 +896,18 @@ function sumQuotedMaterials(sections: Record<string, unknown>): string {
     for (const line of lines) {
       const entry = line as { consumption?: string; ratePerUom?: string }
       if (!entry.consumption || !entry.ratePerUom) continue
-      total = sumMinor(total, mulMinor(toMinor(entry.consumption), toMinor(entry.ratePerUom)))
+
+      /*
+       * Consumption at SCALE 4 — `bom_lines.consumption` is `numeric(12, 4)` (plan 2.9).
+       * Read at two, a trims line of 0.0083 kg per piece became 0.00, so the PLANNED side of
+       * this variance lost it while the ACTUAL side, which comes from real issues, counted
+       * it in full. The waterfall then reported a material variance that was partly an
+       * arithmetic artefact.
+       *
+       *   cost×10²  =  consumption×10⁴ · rate×10²  /  10⁴, half up
+       */
+      const consumption = toMinorAtScale(entry.consumption, CONSUMPTION_SCALE, 'consumption')
+      total = sumMinor(total, (consumption * toMinor(entry.ratePerUom) + 5_000n) / 10_000n)
     }
   }
   return fromMinor(total)
@@ -913,22 +938,19 @@ function sumMinor(...values: readonly bigint[]): bigint {
   return values.reduce((carried, next) => carried + next, 0n)
 }
 
-function toMinor(value: string): bigint {
-  const negative = value.startsWith('-')
-  const [whole = '0', fraction = ''] = value.replace('-', '').split('.')
-  const minor = BigInt(whole + fraction.padEnd(2, '0').slice(0, 2))
-  return negative ? -minor : minor
-}
-
 /** Two 2-minor-digit values → one, rounded once at the end. */
-function mulMinor(a: bigint, b: bigint): bigint {
+/**
+ * Two scale-2 minors multiplied back to scale 2, rounding HALF UP.
+ *
+ * Renamed from `mulMinor` (plan 2.9): three files defined that name and the three rounded
+ * differently — half up here, truncating at scale 2 in rfq, truncating at scale 4 in
+ * procurement. One name over three conventions invites the reader to assume they agree.
+ *
+ * Half up because this is money leaving the company: a truncating multiply on a payable pays
+ * a supplier one paisa short every time, forever.
+ */
+function mulScaled2HalfUp(a: bigint, b: bigint): bigint {
   return (a * b + 50n) / 100n
-}
-
-function fromMinor(minor: bigint): string {
-  const negative = minor < 0n
-  const digits = (negative ? -minor : minor).toString().padStart(3, '0')
-  return `${negative ? '-' : ''}${digits.slice(0, -2)}.${digits.slice(-2)}`
 }
 
 export { conflict }

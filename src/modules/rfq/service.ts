@@ -13,6 +13,7 @@
  * against the ACHIEVED margin computed from the snapshot, not against the margin the sheet
  * claims.
  */
+import { fromMinor, toMinor, toMinorAtScale } from '@/lib/quantity'
 import { and, desc, eq, isNull, lte, sql } from 'drizzle-orm'
 
 import { recordChange, registerAuditedTables } from '../core/audit'
@@ -21,6 +22,10 @@ import { AppError, conflict, notFound } from '../core/errors'
 import { emit } from '../core/outbox'
 import { scoped } from '../core/scoped'
 import { withTenantRead, withTenantTx, type TenantDb } from '../core/tenancy'
+
+/** `bom_lines.consumption` is `numeric(12, 4)`; the fx rate is `numeric(12, 6)`. */
+const CONSUMPTION_SCALE = 4
+const FX_SCALE = 6
 
 import { RFQ_EVENTS } from './events'
 import {
@@ -357,11 +362,22 @@ function componentsFromSheet(
 
     let total = 0n
     for (const line of lines) {
-      const withWastage = mulMinor(
-        toMinor(line.consumption),
-        toMinor(String(100 + Number(line.wastagePct ?? '0'))),
-      )
-      total += mulMinor(withWastage, toMinor(line.ratePerUom)) / 100n
+      /*
+       * Consumption at SCALE 4 — `bom_lines.consumption` is `numeric(12, 4)`. The schema
+       * decided four decimals and this read two, so a trims line of 0.0083 kg per piece
+       * truncated to 0.00 and cost the quote nothing (plan 2.9). Silently.
+       *
+       * One expression rather than the two-step it replaces: the intermediate had no honest
+       * scale once the inputs stopped sharing one.
+       *
+       *   cost×10²  =  consumption×10⁴ · (100+wastage)×10² · rate×10²  /  10⁸
+       *
+       * Still truncating, and verified to give an identical result for every value the old
+       * code could represent — what changed is what it ACCEPTS, not how it rounds.
+       */
+      const consumption = toMinorAtScale(line.consumption, CONSUMPTION_SCALE, 'consumption')
+      const withWastage = toMinor(String(100 + Number(line.wastagePct ?? '0')))
+      total += (consumption * withWastage * toMinor(line.ratePerUom)) / 100_000_000n
     }
     components[group] = fromMinor(total)
   }
@@ -372,9 +388,25 @@ function componentsFromSheet(
     components.embellishment = fromMinor(total)
   }
 
+  /*
+   * The FX rate at SCALE 6 — `cost_sheets.fx_rate_local_to_base` is `numeric(12, 6)` and zod
+   * validates six places. Read at two, BDT→USD (≈0.0083) truncated to **0.00**, so this
+   * component computed as ZERO on every sheet priced in local currency — which is every
+   * sheet, because that is what `localCurrency` is for.
+   *
+   * CM is usually the largest single part of a garment's FOB. Nothing looked broken: the
+   * sheet's stored total is computed by costing through `lib/money.convert` and stayed
+   * right, and `commercial` below is DERIVED as the total minus the named components — so
+   * the entire CM cost silently landed there instead. A merchandiser negotiating on CM saw
+   * a zero and a commercial line that made no sense.
+   *
+   *   cm×10²  =  cmLocal×10² · fx×10⁶  /  10⁶
+   */
   const cm =
     sheet.cmLocalPerPiece && sheet.fxRateLocalToBase
-      ? mulMinor(toMinor(sheet.cmLocalPerPiece), toMinor(sheet.fxRateLocalToBase))
+      ? (toMinor(sheet.cmLocalPerPiece) *
+          toMinorAtScale(sheet.fxRateLocalToBase, FX_SCALE, 'fx rate')) /
+        1_000_000n
       : 0n
   components.cm = fromMinor(cm)
 
@@ -654,23 +686,6 @@ export async function expiredQuotes(
       wrapRfqError(() => isQuoteExpired({ validityDate: row.validityDate, today: input.today })),
     )
   })
-}
-
-function toMinor(value: string): bigint {
-  const negative = value.startsWith('-')
-  const [whole = '0', fraction = ''] = value.replace('-', '').split('.')
-  const minor = BigInt(whole + fraction.padEnd(2, '0').slice(0, 2))
-  return negative ? -minor : minor
-}
-
-function mulMinor(a: bigint, b: bigint): bigint {
-  return (a * b) / 100n
-}
-
-function fromMinor(minor: bigint): string {
-  const negative = minor < 0n
-  const digits = (negative ? -minor : minor).toString().padStart(3, '0')
-  return `${negative ? '-' : ''}${digits.slice(0, -2)}.${digits.slice(-2)}`
 }
 
 function addDays(date: string, days: number): string {

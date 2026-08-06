@@ -47,6 +47,43 @@ export function toMinor(value: string, what = 'quantity'): bigint {
   return negative ? -minor : minor
 }
 
+/**
+ * The same conversion at a scale the caller names.
+ *
+ * `toMinor` is fixed at `QUANTITY_SCALE` (2), which is right for a stock figure and wrong for
+ * a CONSUMPTION. `bom_lines.consumption` is `numeric(12, 4)` — the schema decided four
+ * decimals — and a trims line of `0.0083` kg per piece is an ordinary figure, not an edge
+ * case: it is thread.
+ *
+ * Read at scale 2 it truncates to `0.00`, so that line costs nothing in the quote and nothing
+ * in the realised margin. Silently, and it had for the whole life of the module (plan 2.9,
+ * found by swapping a local copy for this one; the local copy did not validate, so it zeroed
+ * the value where this refuses it).
+ *
+ * Here rather than in the two modules that need it, because two private scale-4 converters is
+ * how this debt started.
+ */
+export function toMinorAtScale(value: string, scale: number, what = 'quantity'): bigint {
+  if (!Number.isInteger(scale) || scale < 0 || scale > 12) {
+    throw new QuantityError(`scale ${scale} is not a usable number of decimal places`)
+  }
+
+  const trimmed = value.trim()
+  if (!DECIMAL.test(trimmed)) throw new QuantityError(`"${value}" is not a decimal ${what}`)
+
+  const negative = trimmed.startsWith('-')
+  const [whole = '0', fraction = ''] = trimmed.replace('-', '').split('.')
+
+  // Same refusal as `toMinor`, at the caller's scale. Silently dropping a digit is how a
+  // per-piece consumption becomes a cost of zero.
+  if (fraction.length > scale && /[1-9]/.test(fraction.slice(scale))) {
+    throw new QuantityError(`"${value}" has more than ${scale} decimal places — round explicitly`)
+  }
+
+  const minor = BigInt(whole + fraction.padEnd(scale, '0').slice(0, scale))
+  return negative ? -minor : minor
+}
+
 export function fromMinor(minor: bigint): string {
   const negative = minor < 0n
   const digits = (negative ? -minor : minor).toString().padStart(QUANTITY_SCALE + 1, '0')
