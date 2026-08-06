@@ -19,6 +19,7 @@ import { recordChange, registerAuditedTables } from '../core/audit'
 import type { AnyCtx, RequestCtx } from '../core/ctx'
 import { AppError, conflict, notFound } from '../core/errors'
 import { emit } from '../core/outbox'
+import { scoped } from '../core/scoped'
 import { withTenantRead, withTenantTx, type TenantDb } from '../core/tenancy'
 
 import {
@@ -108,10 +109,10 @@ export async function detectDuplicates(
         domainMatch: sql<boolean>`${buyers.normalizedDomain} is not null and ${buyers.normalizedDomain} = ${domain}`,
       })
       .from(buyers)
-      .where(
+      .where(scoped(buyers, ctx, 
         sql`(${buyers.normalizedName} is not null and similarity(${buyers.normalizedName}, ${normalized}) >= ${threshold})
             or (${domain}::text is not null and ${buyers.normalizedDomain} = ${domain})`,
-      )
+      ))
       .orderBy(sql`similarity(${buyers.normalizedName}, ${normalized}) desc`)
       .limit(10)
 
@@ -123,7 +124,7 @@ export async function detectDuplicates(
         domainMatch: sql<boolean>`${leads.normalizedDomain} is not null and ${leads.normalizedDomain} = ${domain}`,
       })
       .from(leads)
-      .where(
+      .where(scoped(leads, ctx, 
         and(
           // A converted lead is already represented by its buyer; showing both would be
           // two candidates for one company.
@@ -131,7 +132,7 @@ export async function detectDuplicates(
           sql`(${leads.normalizedName} is not null and similarity(${leads.normalizedName}, ${normalized}) >= ${threshold})
               or (${domain}::text is not null and ${leads.normalizedDomain} = ${domain})`,
         ),
-      )
+      ))
       .orderBy(sql`similarity(${leads.normalizedName}, ${normalized}) desc`)
       .limit(10)
 
@@ -196,7 +197,7 @@ export async function logActivity(
   const payload = logActivityPayload.parse(input)
 
   return withTenantTx(ctx, async (tx) => {
-    const [lead] = await tx.select({ id: leads.id }).from(leads).where(eq(leads.id, payload.leadId))
+    const [lead] = await tx.select({ id: leads.id }).from(leads).where(scoped(leads, ctx, eq(leads.id, payload.leadId)))
     if (!lead) throw notFound('buyers.errors.lead_not_found', { leadId: payload.leadId })
 
     const [row] = await tx
@@ -221,7 +222,7 @@ export async function setLeadStage(
   input: { leadId: string; stage: LeadStage; lostReason?: string },
 ): Promise<void> {
   await withTenantTx(ctx, async (tx) => {
-    const [lead] = await tx.select().from(leads).where(eq(leads.id, input.leadId)).for('update')
+    const [lead] = await tx.select().from(leads).where(scoped(leads, ctx, eq(leads.id, input.leadId))).for('update')
     if (!lead) throw notFound('buyers.errors.lead_not_found', { leadId: input.leadId })
 
     leadStageMachine.assert(lead.stage as LeadStage, input.stage)
@@ -239,7 +240,7 @@ export async function setLeadStage(
         lostReason: input.stage === 'lost' ? input.lostReason! : lead.lostReason,
         updatedAt: new Date(),
       })
-      .where(eq(leads.id, lead.id))
+      .where(scoped(leads, ctx, eq(leads.id, lead.id)))
 
     await emit(ctx, tx, {
       eventName: BUYERS_EVENTS.leadStageChanged,
@@ -271,7 +272,7 @@ export async function convertLead(
   input: { leadId: string; code: string },
 ): Promise<ConversionResult> {
   return withTenantTx(ctx, async (tx) => {
-    const [lead] = await tx.select().from(leads).where(eq(leads.id, input.leadId)).for('update')
+    const [lead] = await tx.select().from(leads).where(scoped(leads, ctx, eq(leads.id, input.leadId))).for('update')
     if (!lead) throw notFound('buyers.errors.lead_not_found', { leadId: input.leadId })
 
     // Already converted. Return what it became rather than making a second buyer.
@@ -304,7 +305,7 @@ export async function convertLead(
     await tx
       .update(leads)
       .set({ stage: 'won', convertedBuyerId: buyer.id, updatedAt: new Date() })
-      .where(eq(leads.id, lead.id))
+      .where(scoped(leads, ctx, eq(leads.id, lead.id)))
 
     await emit(ctx, tx, {
       eventName: BUYERS_EVENTS.leadConverted,
@@ -341,7 +342,7 @@ export async function quietLeads(
       .from(leads)
       .leftJoin(leadActivities, eq(leadActivities.leadId, leads.id))
       // A won or lost lead is not waiting on anybody.
-      .where(sql`${leads.stage} not in ('won', 'lost')`)
+      .where(scoped(leads, ctx, sql`${leads.stage} not in ('won', 'lost')`))
       .groupBy(leads.id, leads.companyName, leads.stage, leads.createdAt)
 
     const out: { leadId: string; companyName: string; stage: string; days: number }[] = []
@@ -430,13 +431,13 @@ async function upsertTermsIn(
     const [buyer] = await tx
       .select({ id: buyers.id })
       .from(buyers)
-      .where(eq(buyers.id, payload.buyerId))
+      .where(scoped(buyers, ctx, eq(buyers.id, payload.buyerId)))
     if (!buyer) throw notFound('buyers.errors.buyer_not_found', { buyerId: payload.buyerId })
 
     const [latest] = await tx
       .select({ version: buyerTerms.version, validFrom: buyerTerms.validFrom })
       .from(buyerTerms)
-      .where(eq(buyerTerms.buyerId, payload.buyerId))
+      .where(scoped(buyerTerms, ctx, eq(buyerTerms.buyerId, payload.buyerId)))
       .orderBy(desc(buyerTerms.version))
       .limit(1)
 
@@ -508,7 +509,7 @@ export async function termsFor(
     const versions = await tx
       .select()
       .from(buyerTerms)
-      .where(eq(buyerTerms.buyerId, input.buyerId))
+      .where(scoped(buyerTerms, ctx, eq(buyerTerms.buyerId, input.buyerId)))
       .orderBy(desc(buyerTerms.validFrom))
 
     const match = wrapBuyersError(() => termsInForceOn(versions, input.onDate))
@@ -563,7 +564,7 @@ export async function commitBuyerRequirements(
 /** Agents, for the lead form's dropdown and the commission report. */
 export async function listAgents(ctx: AnyCtx): Promise<(typeof agents.$inferSelect)[]> {
   return withTenantRead(ctx, async (tx) =>
-    tx.select().from(agents).where(eq(agents.isActive, true)).orderBy(agents.name),
+    tx.select().from(agents).where(scoped(agents, ctx, eq(agents.isActive, true))).orderBy(agents.name),
   )
 }
 
@@ -576,7 +577,7 @@ export async function primaryContact(
     const [row] = await tx
       .select()
       .from(buyerContacts)
-      .where(and(eq(buyerContacts.buyerId, input.buyerId), eq(buyerContacts.isPrimary, true)))
+      .where(scoped(buyerContacts, ctx, and(eq(buyerContacts.buyerId, input.buyerId), eq(buyerContacts.isPrimary, true))))
     return row ?? null
   })
 }

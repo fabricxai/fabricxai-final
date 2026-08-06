@@ -195,6 +195,8 @@ export default tseslint.config(
       'src/modules/rfq/queries.ts',
       'src/modules/planning/service.ts',
       'src/modules/planning/queries.ts',
+      'src/modules/buyers/service.ts',
+      'src/modules/buyers/queries.ts',
     ],
     rules: { 'fabricxai/require-tenant-predicate': 'error' },
   },

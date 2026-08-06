@@ -92,12 +92,12 @@ export async function pipeline(
         occurredAt: leadActivities.occurredAt,
       })
       .from(leadActivities)
-      .where(
+      .where(scoped(leadActivities, ctx, 
         inArray(
           leadActivities.leadId,
           rows.map((r) => r.id),
         ),
-      )
+      ))
       .orderBy(desc(leadActivities.occurredAt))
 
     const latest = new Map<string, (typeof activity)[number]>()
@@ -161,7 +161,7 @@ export async function buyerAccounts(ctx: AnyCtx): Promise<BuyerAccount[]> {
       })
       .from(buyers)
       .leftJoin(orders, eq(orders.buyerId, buyers.id))
-      .where(eq(buyers.isActive, true))
+      .where(scoped(buyers, ctx, eq(buyers.isActive, true)))
       .groupBy(buyers.id)
       .orderBy(buyers.name)
 
