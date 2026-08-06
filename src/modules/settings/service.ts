@@ -23,7 +23,7 @@ import { recordChange, registerAuditedTables } from '../core/audit'
 import type { AnyCtx, RequestCtx, Role } from '../core/ctx'
 import { AppError, conflict, notFound } from '../core/errors'
 import { emit } from '../core/outbox'
-import { withTenantRead, withTenantTx } from '../core/tenancy'
+import { withTenantRead, withTenantTx, type TenantDb } from '../core/tenancy'
 
 import { SETTINGS_EVENTS } from './events'
 import {
@@ -75,15 +75,26 @@ function assertPolicyAdmin(ctx: RequestCtx): void {
  * is an error somebody can fix in a settings screen.
  */
 export async function getPolicy<T>(ctx: AnyCtx, moduleId: string): Promise<T> {
-  const stored = await withTenantRead(ctx, async (tx) => {
-    const [row] = await tx
-      .select({ overrides: policySettings.overrides })
-      .from(policySettings)
-      .where(eq(policySettings.moduleId, moduleId))
-    return row?.overrides ?? null
-  })
+  return withTenantRead(ctx, (tx) => getPolicyIn<T>(tx, moduleId))
+}
 
-  return wrapSettingsError(() => resolvePolicyValue<T>(moduleId, stored))
+/**
+ * The same policy, on a transaction the caller already holds.
+ *
+ * For callers that are already inside one — an offline sync handler is the case this exists
+ * for. `getPolicy` opens its own read transaction, which means taking a SECOND pooled
+ * connection while the first is still held; PgBouncer pools 25 for the whole factory, and a
+ * pattern that doubles connection use per write is not one to let spread from a floor
+ * endpoint. Reading on the caller's transaction also means the policy and the write it
+ * governs see the same snapshot.
+ */
+export async function getPolicyIn<T>(tx: TenantDb, moduleId: string): Promise<T> {
+  const [row] = await tx
+    .select({ overrides: policySettings.overrides })
+    .from(policySettings)
+    .where(eq(policySettings.moduleId, moduleId))
+
+  return wrapSettingsError(() => resolvePolicyValue<T>(moduleId, row?.overrides ?? null))
 }
 
 export interface PolicyView {

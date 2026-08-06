@@ -9,7 +9,7 @@ import { getPolicy } from '@/modules/settings/service'
 import {
   aqlPlanFor,
   inspectFabric,
-  recordMeasurementCheck,
+  recordMeasuredSet,
   runFinalInspection,
   type QualityPolicy,
 } from './service'
@@ -108,9 +108,15 @@ export async function submitFinalInspection(
  * row would have to choose between recording that as a pass or a fail. Three rows say
  * "two of three passed", which is the sentence a buyer report needs.
  *
- * Nothing partial survives a bad piece: `recordMeasurementCheck` validates each set against
- * the chart, and a throw on piece 2 leaves pieces 1 and 3 unwritten rather than filing a
- * half-measured size.
+ * Nothing partial survives a bad piece — **which this comment claimed and the code did not
+ * do** (plan 4.1). It looped over `recordMeasurementCheck`, and each call opened its OWN
+ * transaction: a throw on piece 2 left piece 1 committed and piece 3 never attempted. A
+ * half-measured size reads as a completed check on a buyer report, with no sign that two of
+ * the three garments are missing. It survived because the intent was written down here and
+ * the behaviour was somewhere else.
+ *
+ * It now goes through `recordMeasuredSet`, which validates every piece before writing any
+ * and puts the whole size in one transaction.
  *
  * The two ways a check fails are reported SEPARATELY. A garment measuring 0.9cm short is out
  * of tolerance; a garment where six of eight points were never measured is incomplete. Both
@@ -123,28 +129,20 @@ export async function recordMeasuredPieces(input: {
   orderId: string
   sampledSize: string
   pieces: Record<string, string>[]
+  /** The device's key for this size, so a retried submit does not file it twice. */
+  offlineKey?: string
 }): Promise<{ pieces: number; failed: number; outOfTolerance: number; incomplete: number }> {
   const ctx = await requireRole(await headers(), 'quality')
 
-  const results = []
-  for (const values of input.pieces) {
-    results.push(
-      await recordMeasurementCheck(ctx, {
-        measurementSpecId: input.measurementSpecId,
-        orderId: input.orderId,
-        sampledSize: input.sampledSize,
-        values,
-      }),
-    )
-  }
+  const { pieces } = await recordMeasuredSet(ctx, input)
 
   revalidatePath('/quality/measurements')
   revalidatePath('/quality')
 
   return {
-    pieces: results.length,
-    failed: results.filter((r) => r.result === 'fail').length,
-    outOfTolerance: results.filter((r) => r.outOfTolerance.length > 0).length,
-    incomplete: results.filter((r) => r.missing.length > 0).length,
+    pieces: pieces.length,
+    failed: pieces.filter((r) => r.result === 'fail').length,
+    outOfTolerance: pieces.filter((r) => r.outOfTolerance.length > 0).length,
+    incomplete: pieces.filter((r) => r.missing.length > 0).length,
   }
 }

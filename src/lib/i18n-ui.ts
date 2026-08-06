@@ -599,6 +599,9 @@ export const UI_MESSAGES: Catalogue = {
     'ui.quality.final_none_note':
       'No final inspections yet. The AQL plan comes from the standard table and is snapshotted onto the inspection, so a lot is judged by the plan in force when it was inspected.',
     'ui.quality.final_not_filed': 'The inspection was not filed.',
+    'ui.quality.final_queued':
+      '{inspection} saved on this device. The verdict is decided by the server when it sends.',
+    'ui.quality.looks_out_of_spec': '{count} look out of spec here',
     'ui.quality.grade_roll': 'Grade this roll',
     'ui.quality.grading_eyebrow': 'challan {challan}',
     'ui.quality.in_spec_badge': '{size} · {passed}/{total} in spec',
@@ -639,6 +642,7 @@ export const UI_MESSAGES: Catalogue = {
     'ui.quality.measure_heading': 'Points of measure · size {size} · {count} pieces',
     'ui.quality.measure_not_saved': 'The measurements were not saved.',
     'ui.quality.measure_noted': '{size} · {summary}',
+    'ui.quality.measure_queued': '{size} · {summary} · saved on this device',
     'ui.quality.nav_fabric': 'Fabric inspection',
     'ui.quality.nav_final': 'Final inspection',
     'ui.quality.nav_inline': 'Walk a line',
@@ -1317,6 +1321,9 @@ export const UI_MESSAGES: Catalogue = {
     'ui.quality.final_none_note':
       'এখনো কোনো ফাইনাল ইন্সপেকশন হয়নি। AQL প্ল্যান স্ট্যান্ডার্ড টেবিল থেকে আসে আর ইন্সপেকশনের সাথেই তুলে রাখা হয় — তাই যেদিন দেখা হয়েছে সেদিনের প্ল্যান দিয়েই lot বিচার হয়।',
     'ui.quality.final_not_filed': 'ইন্সপেকশন জমা হয়নি।',
+    'ui.quality.final_queued':
+      '{inspection} এই ডিভাইসে সেভ হয়েছে। পাঠানোর সময় সার্ভার রায় দেবে।',
+    'ui.quality.looks_out_of_spec': 'এখানে {count}টি স্পেকের বাইরে মনে হচ্ছে',
     'ui.quality.grade_roll': 'এই roll গ্রেড করুন',
     'ui.quality.grading_eyebrow': 'চালান {challan}',
     'ui.quality.in_spec_badge': '{size} · {total}-এর মধ্যে {passed} মাপে ঠিক',
@@ -1357,6 +1364,7 @@ export const UI_MESSAGES: Catalogue = {
     'ui.quality.measure_heading': 'মাপের পয়েন্ট · সাইজ {size} · {count}টি পিস',
     'ui.quality.measure_not_saved': 'মাপ সেভ হয়নি।',
     'ui.quality.measure_noted': 'সাইজ {size} · {summary}',
+    'ui.quality.measure_queued': 'সাইজ {size} · {summary} · এই ডিভাইসে সেভ হয়েছে',
     'ui.quality.nav_fabric': 'কাপড় ইন্সপেকশন',
     'ui.quality.nav_final': 'ফাইনাল ইন্সপেকশন',
     'ui.quality.nav_inline': 'লাইনে হাঁটুন',

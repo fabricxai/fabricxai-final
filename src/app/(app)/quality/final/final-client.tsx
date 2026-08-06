@@ -10,7 +10,9 @@ import { useLocale, useT } from '@/components/fx/locale'
 import { Badge, Button } from '@/components/fx/primitives'
 import { SectionHeading } from '@/components/fx/signature'
 import type { Translator } from '@/lib/i18n-ui'
-import { previewAqlPlan, submitFinalInspection } from '@/modules/quality/actions'
+import { previewAqlPlan } from '@/modules/quality/actions'
+import { SyncPill } from '@/components/fx/floor'
+import { useOfflineQueue } from '@/lib/offline/use-offline-queue'
 import type { AqlPlan } from '@/modules/quality/quality'
 
 interface DefectCode {
@@ -99,6 +101,7 @@ export function FinalClient({
   const locale = useLocale()
   const router = useRouter()
   const [pending, startTransition] = useTransition()
+  const { capture, online, queued, syncing, refused, sync, clear } = useOfflineQueue()
 
   const [lot, setLot] = useState<Lot | null>(null)
   const [lotQty, setLotQty] = useState('')
@@ -112,6 +115,16 @@ export function FinalClient({
   // in Bangla the word is not there, and a failed lot would have shown in the success tone.
   const [outcome, setOutcome] = useState<{ failed: boolean; text: string } | null>(null)
   const [failure, setFailure] = useState<string | null>(null)
+  /**
+   * Inspections filed from this device since the page loaded.
+   *
+   * The inspection number is derived from how many the lot already has, and that count only
+   * moves when the server answers. Queuing broke it: three inspections captured on a dead
+   * network would all be numbered `-1`, and `inspection_no` is unique per company — so two
+   * of the three would be refused at sync, hours later, with the lot long since shipped or
+   * reworked. Counting locally keeps them distinct while offline.
+   */
+  const [filedHere, setFiledHere] = useState<Record<string, number>>({})
 
   // eslint-disable-next-line fabricxai/no-float-money -- keypad lot size in pieces, quantity not money; NaN falls back to 0
   const qty = Number.parseInt(lotQty, 10) || 0
@@ -129,7 +142,8 @@ export function FinalClient({
     setLot(next)
     const prefilled = next.contractedQty ?? 0
     setLotQty(prefilled > 0 ? String(prefilled) : '')
-    setInspectionNo(`FI-${next.poNumber ?? next.orderId.slice(0, 6)}-${next.history.length + 1}`)
+    const already = next.history.length + (filedHere[next.orderId] ?? 0)
+    setInspectionNo(`FI-${next.poNumber ?? next.orderId.slice(0, 6)}-${already + 1}`)
     setFound({})
     setPlan(null)
     setPlanError(null)
@@ -167,37 +181,49 @@ export function FinalClient({
     })
   }
 
+  /**
+   * Queue the inspection (plan 4.1, audit FE-H5).
+   *
+   * A final inspection happens in a finishing area at the far end of a shed; this was one of
+   * two floor screens still posting straight to a server action with no written reason for
+   * it. Losing the network mid-inspection lost a count somebody had spent an hour making.
+   *
+   * **The verdict is still the server's.** Nothing here decides pass or fail — that is
+   * computed from the versioned AQL table when the write lands, exactly as before, which is
+   * what stops an inspector making a lot pass. What queuing changes is WHEN the inspector
+   * learns it, so the confirmation says the inspection is saved and stops there rather than
+   * guessing at an answer this file is deliberately not allowed to reach.
+   */
   function submit() {
     if (!lot || !plan || qty <= 0) return
     setFailure(null)
+    const orderId = lot.orderId
 
     startTransition(async () => {
       try {
-        const result = await submitFinalInspection({
-          orderId: lot.orderId,
-          ...(lot.orderStyleId ? { orderStyleId: lot.orderStyleId } : {}),
-          inspectionNo,
-          lotQty: qty,
-          inspectionLevel: level,
-          majorAql: lot.majorAql,
-          minorAql: lot.minorAql,
-          defects: Object.entries(found)
-            .filter(([, n]) => n > 0)
-            .map(([code, count]) => ({ code, count })),
+        await capture({
+          moduleId: 'quality',
+          operation: 'final_inspection',
+          payload: {
+            orderId,
+            ...(lot.orderStyleId ? { orderStyleId: lot.orderStyleId } : {}),
+            inspectionNo,
+            lotQty: qty,
+            inspectionLevel: level,
+            majorAql: lot.majorAql,
+            minorAql: lot.minorAql,
+            defects: Object.entries(found)
+              .filter(([, n]) => n > 0)
+              .map(([code, count]) => ({ code, count })),
+          },
         })
 
-        setOutcome(
-          result.verdict === 'pass'
-            ? {
-                failed: false,
-                text: t('ui.quality.inspection_passed', { inspection: inspectionNo }),
-              }
-            : {
-                failed: true,
-                text: t('ui.quality.inspection_failed', { inspection: inspectionNo }),
-              },
-        )
+        // Neutral tone deliberately: this is a receipt, not a verdict. The lot's history
+        // shows what the server decided once the write has landed.
+        setOutcome({ failed: false, text: t('ui.quality.final_queued', { inspection: inspectionNo }) })
+        setFiledHere((f) => ({ ...f, [orderId]: (f[orderId] ?? 0) + 1 }))
         setLot(null)
+        if (online) await sync()
         router.refresh()
       } catch (error) {
         setFailure(actionErrorMessage(error, t('ui.quality.final_not_filed'), locale))
@@ -207,6 +233,30 @@ export function FinalClient({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+      <SyncPill online={online} queued={queued} syncing={syncing} onSync={() => void sync()} />
+
+      {refused.length > 0 ? (
+        <InlineAlert tone="danger">
+          {t.plural('ui.quality.checks_refused', refused.length)}
+          {refused.map((r) => (
+            <button
+              key={r.offlineKey}
+              onClick={() => void clear(r.offlineKey)}
+              style={{
+                marginLeft: 8,
+                background: 'transparent',
+                border: 'none',
+                textDecoration: 'underline',
+                cursor: 'pointer',
+                font: 'inherit',
+              }}
+            >
+              {t('ui.common.dismiss')}
+            </button>
+          ))}
+        </InlineAlert>
+      ) : null}
+
       {outcome ? (
         <InlineAlert tone={outcome.failed ? 'danger' : 'success'}>{outcome.text}</InlineAlert>
       ) : null}

@@ -8,7 +8,8 @@ import { useLocale, useT } from '@/components/fx/locale'
 import { actionErrorMessage } from '@/lib/action-error'
 import { Badge, Button } from '@/components/fx/primitives'
 import { SectionHeading } from '@/components/fx/signature'
-import { recordMeasuredPieces } from '@/modules/quality/actions'
+import { SyncPill } from '@/components/fx/floor'
+import { useOfflineQueue } from '@/lib/offline/use-offline-queue'
 
 interface SpecPoint {
   name: string
@@ -70,6 +71,7 @@ export function MeasurementsClient({ subjects }: { subjects: readonly Subject[] 
   const t = useT()
   const locale = useLocale()
   const [pending, startTransition] = useTransition()
+  const { capture, online, queued, syncing, refused, sync, clear } = useOfflineQueue()
 
   const [subject, setSubject] = useState<Subject | null>(null)
   const [size, setSize] = useState<string>('L')
@@ -95,37 +97,66 @@ export function MeasurementsClient({ subjects }: { subjects: readonly Subject[] 
     (piece) => Object.values(piece).filter((v) => v.trim() !== '').length < pointCount,
   ).length
 
+  /**
+   * Queue the size (plan 4.1, audit FE-H5).
+   *
+   * This screen used to post straight to a server action, with no written reason — unlike
+   * `quality/fabric`, which is a fixed frame in the store and says so. Measurements are
+   * taken at a table with a tape and a printed chart, often in a corner of the finishing
+   * floor, and losing the network there lost the readings.
+   *
+   * The whole size goes as ONE queued write, which is also what made it atomic: the server
+   * validates every piece before writing any, so a bad value cannot leave a half-measured
+   * size that reads as a completed check.
+   *
+   * The summary below is built from the CELL HINTS, not from a verdict. The hints already
+   * exist — they colour the cells while the tape is still on the garment — and the file's
+   * standing rule applies: the server re-derives every deviation from the stored chart, and
+   * if the two disagree the server is right. So this says what it looks like here, and the
+   * list refreshes with what was actually filed once the write lands.
+   */
   function save() {
     if (!subject?.specId || filledPieces.length === 0) return
     setFailure(null)
 
+    const points = subject.points
+    const looksOut = filledPieces.filter((piece) =>
+      points.some((point) => {
+        const state = cellState(point, piece[point.name] ?? '')
+        return state === 'over' || state === 'under'
+      }),
+    ).length
+
     startTransition(async () => {
       try {
-        const result = await recordMeasuredPieces({
-          measurementSpecId: subject.specId!,
-          orderId: subject.orderId,
-          sampledSize: size,
-          // Blank cells are dropped rather than sent as zero. The server records them as
-          // MISSING points, which is the truth — an unmeasured point is not a good one, and
-          // a zero would read as a garment measuring nothing at the chest.
-          pieces: filledPieces.map((piece) =>
-            Object.fromEntries(Object.entries(piece).filter(([, v]) => v.trim() !== '')),
-          ),
+        await capture({
+          moduleId: 'quality',
+          operation: 'measurement_set',
+          payload: {
+            measurementSpecId: subject.specId!,
+            orderId: subject.orderId,
+            sampledSize: size,
+            // Blank cells are dropped rather than sent as zero. The server records them as
+            // MISSING points, which is the truth — an unmeasured point is not a good one, and
+            // a zero would read as a garment measuring nothing at the chest.
+            pieces: filledPieces.map((piece) =>
+              Object.fromEntries(Object.entries(piece).filter(([, v]) => v.trim() !== '')),
+            ),
+          },
         })
 
-        // Named separately — see the note on the action. "Out of tolerance" and
+        // Named separately — see the note on the action. "Looks out of spec" and
         // "not fully measured" are different findings and lead to different actions.
-        const parts = [t.plural('ui.quality.pieces_recorded', result.pieces)]
-        if (result.outOfTolerance > 0) {
-          parts.push(t('ui.quality.out_of_tolerance', { count: result.outOfTolerance }))
+        const parts = [t.plural('ui.quality.pieces_recorded', filledPieces.length)]
+        if (looksOut > 0) parts.push(t('ui.quality.looks_out_of_spec', { count: looksOut }))
+        if (partPieces > 0) {
+          parts.push(t('ui.quality.not_fully_measured', { count: partPieces }))
         }
-        if (result.incomplete > 0) {
-          parts.push(t('ui.quality.not_fully_measured', { count: result.incomplete }))
-        }
-        if (result.failed === 0) parts.push(t('ui.quality.all_within_spec'))
+        if (looksOut === 0 && partPieces === 0) parts.push(t('ui.quality.all_within_spec'))
 
-        setNoted(t('ui.quality.measure_noted', { size, summary: parts.join(' · ') }))
+        setNoted(t('ui.quality.measure_queued', { size, summary: parts.join(' · ') }))
         setSubject(null)
+        if (online) await sync()
         router.refresh()
       } catch (error) {
         setFailure(actionErrorMessage(error, t('ui.quality.measure_not_saved'), locale))
@@ -135,6 +166,30 @@ export function MeasurementsClient({ subjects }: { subjects: readonly Subject[] 
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+      <SyncPill online={online} queued={queued} syncing={syncing} onSync={() => void sync()} />
+
+      {refused.length > 0 ? (
+        <InlineAlert tone="danger">
+          {t.plural('ui.quality.checks_refused', refused.length)}
+          {refused.map((r) => (
+            <button
+              key={r.offlineKey}
+              onClick={() => void clear(r.offlineKey)}
+              style={{
+                marginLeft: 8,
+                background: 'transparent',
+                border: 'none',
+                textDecoration: 'underline',
+                cursor: 'pointer',
+                font: 'inherit',
+              }}
+            >
+              {t('ui.common.dismiss')}
+            </button>
+          ))}
+        </InlineAlert>
+      ) : null}
+
       {noted ? <InlineAlert tone="success">{noted}</InlineAlert> : null}
       {failure ? <InlineAlert tone="danger">{failure}</InlineAlert> : null}
 

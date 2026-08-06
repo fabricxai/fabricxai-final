@@ -56,6 +56,7 @@ import {
   finalInspectionPayload,
   inlineCheckPayload,
   measurementCheckPayload,
+  measurementSetPayload,
   measurementSpecPayload,
   thirdPartyInspectionPayload,
 } from './zod'
@@ -511,68 +512,188 @@ export async function createMeasurementSpec(
 export async function recordMeasurementCheck(
   ctx: RequestCtx,
   input: unknown,
-): Promise<{
+): Promise<PieceResult> {
+  const payload = measurementCheckPayload.parse(input)
+
+  return withTenantTx(ctx, async (tx) => {
+    const spec = await loadSpec(tx, payload.measurementSpecId)
+    return writePiece(ctx, tx, spec, payload, null)
+  })
+}
+
+export interface PieceResult {
   measurementCheckId: string
   result: 'pass' | 'fail'
   outOfTolerance: unknown[]
   missing: string[]
-}> {
-  const payload = measurementCheckPayload.parse(input)
+}
 
-  return withTenantTx(ctx, async (tx) => {
-    const [spec] = await tx
+export interface MeasurementSetResult {
+  pieces: PieceResult[]
+  /** True when this key had already been recorded and nothing new was written. */
+  duplicate: boolean
+}
+
+/**
+ * Every piece measured for one size, in ONE transaction (plan 4.1, audit FE-H5).
+ *
+ * The action used to loop over `recordMeasurementCheck`, each call opening its own
+ * transaction — so a bad value on piece 2 left piece 1 committed and piece 3 never
+ * attempted. The action's own comment claimed the opposite ("a throw on piece 2 leaves
+ * pieces 1 and 3 unwritten"), which is how it survived: the intent was written down and
+ * the code did something else.
+ *
+ * A half-measured size is worse than an unmeasured one. It reads as a completed check on
+ * the buyer report, with two of the three garments that were actually measured missing and
+ * nothing saying so — and this is the floor screen with the weakest network in the factory.
+ *
+ * Validation runs over EVERY piece before the first row is written. A set that is going to
+ * be refused is refused before it has half-landed, rather than at the piece that happens to
+ * carry the bad value.
+ */
+export async function recordMeasuredSet(
+  ctx: AnyCtx,
+  input: unknown,
+): Promise<MeasurementSetResult> {
+  const payload = measurementSetPayload.parse(input)
+  return withTenantTx(ctx, async (tx) => recordMeasuredSetIn(ctx, tx, payload))
+}
+
+export async function recordMeasuredSetIn(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  payload: ReturnType<typeof measurementSetPayload.parse>,
+): Promise<MeasurementSetResult> {
+  // FOR UPDATE, and not only to read the chart: it serialises two submissions of the same
+  // size behind each other, so the duplicate check below cannot be raced past. The unique
+  // index other offline tables lean on is unavailable here — one key covers N rows.
+  const spec = await loadSpec(tx, payload.measurementSpecId, true)
+
+  if (payload.offlineKey) {
+    const already = await tx
       .select()
-      .from(measurementSpecs)
-      .where(eq(measurementSpecs.id, payload.measurementSpecId))
+      .from(measurementChecks)
+      .where(
+        and(
+          eq(measurementChecks.companyId, ctx.companyId),
+          eq(measurementChecks.offlineKey, payload.offlineKey),
+        ),
+      )
+      .orderBy(measurementChecks.createdAt)
 
-    if (!spec) {
-      throw notFound('quality.errors.spec_not_found', {
-        measurementSpecId: payload.measurementSpecId,
-      })
-    }
-
-    const outcome = wrapQualityError(() =>
-      measurementVariance(spec.points as MeasurementPoint[], payload.values),
-    )
-
-    const [row] = await tx
-      .insert(measurementChecks)
-      .values({
-        companyId: ctx.companyId,
-        measurementSpecId: spec.id,
-        orderId: payload.orderId,
-        sampledSize: payload.sampledSize,
-        values: payload.values,
-        outOfTolerance: outcome.outOfTolerance,
-        missingPoints: outcome.missing,
-        result: outcome.passed ? 'pass' : 'fail',
-      })
-      .returning({ id: measurementChecks.id })
-
-    if (!row) throw new Error('measurement_checks insert returned nothing')
-
-    if (!outcome.passed) {
-      await emit(ctx, tx, {
-        eventName: QUALITY_EVENTS.measurementFailed,
-        payload: {
+    if (already.length > 0) {
+      // The set that landed, returned as it was. Nothing is re-emitted: a second
+      // `measurement.failed` would raise the same alarm twice for one garment.
+      return {
+        duplicate: true,
+        pieces: already.map((row) => ({
           measurementCheckId: row.id,
+          result: row.result as 'pass' | 'fail',
+          outOfTolerance: row.outOfTolerance,
+          missing: row.missingPoints,
+        })),
+      }
+    }
+  }
+
+  const points = spec.points as MeasurementPoint[]
+
+  // All of them, before any of them. `measurementVariance` throws on a malformed value, and
+  // doing this piece-by-piece inside the write loop is what made the set non-atomic in the
+  // first place — the transaction would roll back, but only after the caller had been told
+  // by an earlier piece's result that the size was being recorded.
+  const outcomes = payload.pieces.map((values) =>
+    wrapQualityError(() => measurementVariance(points, values)),
+  )
+
+  const pieces: PieceResult[] = []
+  for (const [index, values] of payload.pieces.entries()) {
+    pieces.push(
+      await writePiece(
+        ctx,
+        tx,
+        spec,
+        {
+          measurementSpecId: spec.id,
           orderId: payload.orderId,
           sampledSize: payload.sampledSize,
-          outOfTolerance: outcome.outOfTolerance,
-          missing: outcome.missing,
+          values,
         },
-        aggregateTable: 'measurement_checks',
-        aggregateId: row.id,
-      })
-    }
+        payload.offlineKey ?? null,
+        outcomes[index]!,
+      ),
+    )
+  }
 
-    return {
-      measurementCheckId: row.id,
-      result: outcome.passed ? 'pass' : 'fail',
+  return { pieces, duplicate: false }
+}
+
+async function loadSpec(tx: TenantDb, measurementSpecId: string, lock = false) {
+  const query = tx.select().from(measurementSpecs).where(eq(measurementSpecs.id, measurementSpecId))
+  const [spec] = lock ? await query.for('update') : await query
+
+  if (!spec) {
+    throw notFound('quality.errors.spec_not_found', { measurementSpecId })
+  }
+  return spec
+}
+
+/** One garment against the chart. Shared by the single-piece path and the set. */
+async function writePiece(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  spec: { id: string; points: unknown },
+  payload: {
+    measurementSpecId: string
+    orderId: string
+    sampledSize: string
+    values: Record<string, string>
+  },
+  offlineKey: string | null,
+  precomputed?: ReturnType<typeof measurementVariance>,
+): Promise<PieceResult> {
+  const outcome =
+    precomputed ??
+    wrapQualityError(() => measurementVariance(spec.points as MeasurementPoint[], payload.values))
+
+  const [row] = await tx
+    .insert(measurementChecks)
+    .values({
+      companyId: ctx.companyId,
+      measurementSpecId: spec.id,
+      orderId: payload.orderId,
+      sampledSize: payload.sampledSize,
+      values: payload.values,
       outOfTolerance: outcome.outOfTolerance,
-      missing: outcome.missing,
-    }
-  })
+      missingPoints: outcome.missing,
+      result: outcome.passed ? 'pass' : 'fail',
+      offlineKey,
+    })
+    .returning({ id: measurementChecks.id })
+
+  if (!row) throw new Error('measurement_checks insert returned nothing')
+
+  if (!outcome.passed) {
+    await emit(ctx, tx, {
+      eventName: QUALITY_EVENTS.measurementFailed,
+      payload: {
+        measurementCheckId: row.id,
+        orderId: payload.orderId,
+        sampledSize: payload.sampledSize,
+        outOfTolerance: outcome.outOfTolerance,
+        missing: outcome.missing,
+      },
+      aggregateTable: 'measurement_checks',
+      aggregateId: row.id,
+    })
+  }
+
+  return {
+    measurementCheckId: row.id,
+    result: outcome.passed ? 'pass' : 'fail',
+    outOfTolerance: outcome.outOfTolerance,
+    missing: outcome.missing,
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -656,115 +777,167 @@ export async function aqlPlanFor(
 }
 
 export async function runFinalInspection(
-  ctx: RequestCtx,
+  ctx: AnyCtx,
   input: unknown,
   policy: QualityPolicy,
 ): Promise<FinalInspectionResult> {
   const payload = finalInspectionPayload.parse(input)
+  return withTenantTx(ctx, async (tx) => runFinalInspectionIn(ctx, tx, payload, policy))
+}
 
-  return withTenantTx(ctx, async (tx) => {
-    const rows = await loadAqlRows(tx, {
-      standard: policy.aqlStandard,
-      inspectionLevel: payload.inspectionLevel,
-      lotQty: payload.lotQty,
-    })
+export async function runFinalInspectionIn(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  payload: ReturnType<typeof finalInspectionPayload.parse>,
+  policy: QualityPolicy,
+): Promise<FinalInspectionResult> {
+  /*
+   * A replayed inspection returns the verdict that landed (plan 4.1).
+   *
+   * `inspection_no` is unique per company and would already stop a resend — but as a
+   * constraint violation, and the sync layer remembers a refused row as refused. So a
+   * tablet replaying a batch the server had applied would tell the inspector their
+   * inspection failed, for a lot that passed. The key turns that into the original answer.
+   */
+  if (payload.offlineKey) {
+    const [already] = await tx
+      .select()
+      .from(finalInspections)
+      .where(
+        and(
+          eq(finalInspections.companyId, ctx.companyId),
+          eq(finalInspections.offlineKey, payload.offlineKey),
+        ),
+      )
 
-    const plan = wrapQualityError(() =>
-      resolveAqlPlan(rows, {
-        lotQty: payload.lotQty,
-        inspectionLevel: payload.inspectionLevel,
-        majorAql: payload.majorAql,
-        minorAql: payload.minorAql,
-      }),
-    )
-
-    const severities = await resolveSeverities(
-      tx,
-      payload.defects.map((d) => d.code),
-    )
-
-    const counts = { critical: 0, major: 0, minor: 0 }
-    const breakdown: { code: string; severity: string; count: number }[] = []
-    for (const defect of payload.defects) {
-      const severity = severities.get(defect.code)!
-      counts[severity] += defect.count
-      breakdown.push({ code: defect.code, severity, count: defect.count })
+    if (already) {
+      // Rebuilt from the SNAPSHOT on the row, not by re-reading `aql_tables`. The table is
+      // versioned and buyer terms change; recomputing the plan on a replay could answer with
+      // different acceptance numbers from the ones the verdict was actually reached under.
+      return {
+        finalInspectionId: already.id,
+        outcome: {
+          verdict: already.verdict as AqlOutcome['verdict'],
+          reasons: already.failReasons as AqlOutcome['reasons'],
+          plan: {
+            lotQty: already.lotQty,
+            sampleSize: already.sampleSize,
+            hundredPercent: already.hundredPercent,
+            inspectionLevel: already.inspectionLevel,
+            majorAql: already.majorAql,
+            majorAccept: already.majorAccept,
+            majorReject: already.majorAccept + 1,
+            minorAql: already.minorAql,
+            minorAccept: already.minorAccept,
+            minorReject: already.minorAccept + 1,
+          },
+        },
+      }
     }
+  }
 
-    const outcome = wrapQualityError(() => aqlVerdict(plan, counts))
-
-    const [row] = await tx
-      .insert(finalInspections)
-      .values({
-        companyId: ctx.companyId,
-        orderId: payload.orderId,
-        orderStyleId: payload.orderStyleId ?? null,
-        inspectionNo: payload.inspectionNo,
-        lotQty: payload.lotQty,
-
-        // The snapshot. `aql_tables` is versioned and buyer terms change; a verdict that
-        // recomputes from today's table is one nobody can defend later.
-        standard: policy.aqlStandard,
-        inspectionLevel: plan.inspectionLevel,
-        majorAql: plan.majorAql,
-        minorAql: plan.minorAql,
-        sampleSize: plan.sampleSize,
-        majorAccept: plan.majorAccept,
-        minorAccept: plan.minorAccept,
-        hundredPercent: plan.hundredPercent,
-
-        criticalFound: counts.critical,
-        majorFound: counts.major,
-        minorFound: counts.minor,
-        defects: breakdown,
-
-        verdict: outcome.verdict,
-        failReasons: outcome.reasons,
-        inspectedBy: ctx.userId,
-      })
-      .returning({ id: finalInspections.id })
-
-    if (!row) throw new Error('final_inspections insert returned nothing')
-
-    await recordChange(ctx, tx, {
-      action: 'insert',
-      targetTable: 'final_inspections',
-      targetId: row.id,
-      after: {
-        orderId: payload.orderId,
-        inspectionNo: payload.inspectionNo,
-        lotQty: payload.lotQty,
-        sampleSize: plan.sampleSize,
-        verdict: outcome.verdict,
-        criticalFound: counts.critical,
-        majorFound: counts.major,
-        minorFound: counts.minor,
-      },
-    })
-
-    await emit(ctx, tx, {
-      eventName:
-        outcome.verdict === 'pass'
-          ? QUALITY_EVENTS.finalInspectionPassed
-          : QUALITY_EVENTS.finalInspectionFailed,
-      payload: {
-        finalInspectionId: row.id,
-        orderId: payload.orderId,
-        lotQty: payload.lotQty,
-        sampleSize: plan.sampleSize,
-        verdict: outcome.verdict,
-        reasons: outcome.reasons,
-        // Carried so 1.3 stamps the milestone with the day the lot was actually inspected
-        // rather than the day the queue happened to drain it. A worker that was down over
-        // a weekend must not record Monday as the inspection date.
-        inspectedOn: factoryToday(),
-      },
-      aggregateTable: 'final_inspections',
-      aggregateId: row.id,
-    })
-
-    return { finalInspectionId: row.id, outcome }
+  const rows = await loadAqlRows(tx, {
+    standard: policy.aqlStandard,
+    inspectionLevel: payload.inspectionLevel,
+    lotQty: payload.lotQty,
   })
+
+  const plan = wrapQualityError(() =>
+    resolveAqlPlan(rows, {
+      lotQty: payload.lotQty,
+      inspectionLevel: payload.inspectionLevel,
+      majorAql: payload.majorAql,
+      minorAql: payload.minorAql,
+    }),
+  )
+
+  const severities = await resolveSeverities(
+    tx,
+    payload.defects.map((d) => d.code),
+  )
+
+  const counts = { critical: 0, major: 0, minor: 0 }
+  const breakdown: { code: string; severity: string; count: number }[] = []
+  for (const defect of payload.defects) {
+    const severity = severities.get(defect.code)!
+    counts[severity] += defect.count
+    breakdown.push({ code: defect.code, severity, count: defect.count })
+  }
+
+  const outcome = wrapQualityError(() => aqlVerdict(plan, counts))
+
+  const [row] = await tx
+    .insert(finalInspections)
+    .values({
+      companyId: ctx.companyId,
+      orderId: payload.orderId,
+      orderStyleId: payload.orderStyleId ?? null,
+      inspectionNo: payload.inspectionNo,
+      lotQty: payload.lotQty,
+
+      // The snapshot. `aql_tables` is versioned and buyer terms change; a verdict that
+      // recomputes from today's table is one nobody can defend later.
+      standard: policy.aqlStandard,
+      inspectionLevel: plan.inspectionLevel,
+      majorAql: plan.majorAql,
+      minorAql: plan.minorAql,
+      sampleSize: plan.sampleSize,
+      majorAccept: plan.majorAccept,
+      minorAccept: plan.minorAccept,
+      hundredPercent: plan.hundredPercent,
+
+      criticalFound: counts.critical,
+      majorFound: counts.major,
+      minorFound: counts.minor,
+      defects: breakdown,
+
+      verdict: outcome.verdict,
+      failReasons: outcome.reasons,
+      offlineKey: payload.offlineKey ?? null,
+      inspectedBy: isSystemCtx(ctx) ? null : ctx.userId,
+    })
+    .returning({ id: finalInspections.id })
+
+  if (!row) throw new Error('final_inspections insert returned nothing')
+
+  await recordChange(ctx, tx, {
+    action: 'insert',
+    targetTable: 'final_inspections',
+    targetId: row.id,
+    after: {
+      orderId: payload.orderId,
+      inspectionNo: payload.inspectionNo,
+      lotQty: payload.lotQty,
+      sampleSize: plan.sampleSize,
+      verdict: outcome.verdict,
+      criticalFound: counts.critical,
+      majorFound: counts.major,
+      minorFound: counts.minor,
+    },
+  })
+
+  await emit(ctx, tx, {
+    eventName:
+      outcome.verdict === 'pass'
+        ? QUALITY_EVENTS.finalInspectionPassed
+        : QUALITY_EVENTS.finalInspectionFailed,
+    payload: {
+      finalInspectionId: row.id,
+      orderId: payload.orderId,
+      lotQty: payload.lotQty,
+      sampleSize: plan.sampleSize,
+      verdict: outcome.verdict,
+      reasons: outcome.reasons,
+      // Carried so 1.3 stamps the milestone with the day the lot was actually inspected
+      // rather than the day the queue happened to drain it. A worker that was down over
+      // a weekend must not record Monday as the inspection date.
+      inspectedOn: factoryToday(),
+    },
+    aggregateTable: 'final_inspections',
+    aggregateId: row.id,
+  })
+
+  return { finalInspectionId: row.id, outcome }
 }
 
 export async function setFinalInspectionStatus(

@@ -258,12 +258,26 @@ export const measurementChecks = pgTable(
     missingPoints: text('missing_points').array().notNull().default(sql`'{}'::text[]`),
     result: inspectionResultEnum('result').notNull(),
 
+    /**
+     * The device's key for the SET this piece belongs to.
+     *
+     * Not unique, and that is the difference from every other offline-keyed table here: one
+     * key covers the three-or-more pieces measured for a size, because that is the unit a QC
+     * actually captures and the unit that has to survive or fail together. `recordMeasuredSet`
+     * writes them in one transaction and refuses to start a second set under a key it has
+     * already seen, so either all the pieces exist or none do.
+     */
+    offlineKey: text('offline_key'),
+
     createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     index('measurement_checks_company_order_idx').on(t.companyId, t.orderId, t.createdAt.desc()),
     index('measurement_checks_company_result_idx').on(t.companyId, t.result),
+    index('measurement_checks_offline_key_idx')
+      .on(t.companyId, t.offlineKey)
+      .where(sql`offline_key IS NOT NULL`),
   ],
 ).enableRLS()
 
@@ -352,11 +366,25 @@ export const finalInspections = pgTable(
     inspectedAt: timestamp('inspected_at', { withTimezone: true }).notNull().defaultNow(),
     inspectedBy: text('inspected_by').references(() => users.id, { onDelete: 'set null' }),
 
+    /**
+     * The device's key. An inspection is one row, so this is unique like everywhere else.
+     *
+     * `inspection_no` is already unique per company and would catch a straight resend — but
+     * as a constraint violation, which the sync layer can only report as a rejection. A
+     * refused row is remembered as refused, so a tablet replaying a batch the server had
+     * already applied would tell the inspector their inspection failed. The key is what
+     * makes a replay return the ORIGINAL verdict instead.
+     */
+    offlineKey: text('offline_key'),
+
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     uniqueIndex('final_inspections_company_no_key').on(t.companyId, t.inspectionNo),
+    uniqueIndex('final_inspections_offline_key')
+      .on(t.companyId, t.offlineKey)
+      .where(sql`offline_key IS NOT NULL`),
     // "Has this order passed final?" — the shipment gate's lookup.
     index('final_inspections_company_order_idx').on(
       t.companyId,

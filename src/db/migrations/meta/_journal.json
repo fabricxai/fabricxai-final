@@ -533,6 +533,13 @@
       "when": 1785999959416,
       "tag": "0075_wise_yellow_claw",
       "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1786001286871,
+      "tag": "0076_smart_moira_mactaggert",
+      "breakpoints": true
     }
   ]
 }

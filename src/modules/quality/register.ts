@@ -22,10 +22,18 @@ import {
   commitDefectCode,
   commitMeasurementSpec,
   offlineCaptureInlineCheck,
+  recordMeasuredSetIn,
   resolveFabricInspection,
+  runFinalInspectionIn,
+  type QualityPolicy,
 } from './service'
 import { qualityToolPack } from './tools'
-import { inlineCheckPayload, QUALITY_ZOD_MAP } from './zod'
+import {
+  finalInspectionPayload,
+  inlineCheckPayload,
+  measurementSetPayload,
+  QUALITY_ZOD_MAP,
+} from './zod'
 
 export const qualityModule = registerModule({
   id: 'quality',
@@ -104,6 +112,38 @@ registerSyncHandler('quality', 'inline_check', { roles: ['quality'] }, async (ct
   const payload = inlineCheckPayload.parse({ ...row.payload, offlineKey: row.offlineKey })
   const result = await offlineCaptureInlineCheck(ctx, tx, payload)
   return { rowId: result.inlineCheckId }
+})
+
+/*
+ * Final inspection and measurements go through the queue too (plan 4.1, audit FE-H5).
+ *
+ * These were the two floor screens still posting straight to a server action, and neither
+ * had a written reason — unlike `store/rolls` and `quality/fabric`, which are fixed
+ * mains-powered terminals and say so. A final inspection happens in a finishing area at the
+ * far end of a shed, and measurements are taken at a table with a chart and a tape. Losing
+ * the network there used to lose the work.
+ *
+ * The verdict is still computed on the server from the versioned AQL table (rule: never
+ * client math). Queuing changes WHEN the inspector learns it, not who decides it.
+ */
+registerSyncHandler('quality', 'final_inspection', { roles: ['quality'] }, async (ctx, tx, row) => {
+  const payload = finalInspectionPayload.parse({ ...row.payload, offlineKey: row.offlineKey })
+  // The tenant's own AQL standard. A constant here would judge one factory's lot against
+  // another's agreed table. Read on the sync transaction rather than through `getPolicy`,
+  // which would open a second pooled connection while this one is still held.
+  const { getPolicyIn } = await import('../settings/service')
+  const policy = await getPolicyIn<QualityPolicy>(tx, 'quality')
+
+  const result = await runFinalInspectionIn(ctx, tx, payload, policy)
+  return { rowId: result.finalInspectionId }
+})
+
+registerSyncHandler('quality', 'measurement_set', { roles: ['quality'] }, async (ctx, tx, row) => {
+  const payload = measurementSetPayload.parse({ ...row.payload, offlineKey: row.offlineKey })
+  const result = await recordMeasuredSetIn(ctx, tx, payload)
+  // The first piece of the size. One key covers the whole set, so there is no single row
+  // that IS the set — this is the handle the device reconciles against.
+  return { rowId: result.pieces[0]!.measurementCheckId }
 })
 
 // ─────────────────────────────────────────────────────────────────────────────

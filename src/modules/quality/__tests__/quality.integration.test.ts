@@ -33,6 +33,7 @@ import {
   dhuDaily,
   finalInspections,
   inlineChecks,
+  measurementChecks,
 } from '@/modules/quality/schema'
 import {
   captureInlineCheck,
@@ -40,6 +41,7 @@ import {
   closeDhuDay,
   createMeasurementSpec,
   inspectFabric,
+  recordMeasuredSet,
   recordMeasurementCheck,
   recordThirdPartyResult,
   repeatDefectAlerts,
@@ -641,5 +643,200 @@ describe('7.1 · tenancy', () => {
         defects: [],
       }),
     ).rejects.toThrow(/line_not_found/)
+  })
+})
+
+describe('7.1 · a size is measured as one thing (plan 4.1, audit FE-H5)', () => {
+  /*
+   * The action looped over `recordMeasurementCheck`, and each call opened its own
+   * transaction — so a bad value on piece 2 left piece 1 committed and piece 3 never
+   * attempted. The action's own comment claimed the opposite, which is how it survived: the
+   * intent was written down and the code did something else.
+   *
+   * A half-measured size is worse than an unmeasured one. It reads as a completed check on
+   * a buyer report with two of the three garments silently absent.
+   */
+  it('writes every piece or none of them', async () => {
+    const spec = await createMeasurementSpec(ctx, {
+      styleCode: 'ST-ATOMIC',
+      points: [{ name: 'Chest', spec: '52.00', tolPlus: '0.50', tolMinus: '0.50' }],
+    })
+
+    await expect(
+      recordMeasuredSet(ctx, {
+        measurementSpecId: spec.measurementSpecId,
+        orderId,
+        sampledSize: 'M',
+        pieces: [
+          { Chest: '52.00' },
+          // Not a number the chart can be read against. Under the old loop, piece 1 was
+          // already filed by the time this threw.
+          { Chest: 'not-a-number' },
+          { Chest: '52.10' },
+        ],
+      }),
+    ).rejects.toThrow()
+
+    const rows = await withTenantRead(ctx, (tx) =>
+      tx
+        .select()
+        .from(measurementChecks)
+        .where(eq(measurementChecks.measurementSpecId, spec.measurementSpecId)),
+    )
+    expect(rows).toHaveLength(0)
+  })
+
+  it('files a failing piece beside its passing ones rather than refusing the set', async () => {
+    // Out of tolerance is a RESULT, not an error. Two of three passing is exactly the
+    // sentence a buyer report needs, and refusing the set would lose the measurement.
+    const spec = await createMeasurementSpec(ctx, {
+      styleCode: 'ST-MIXED',
+      points: [{ name: 'Chest', spec: '52.00', tolPlus: '0.50', tolMinus: '0.50' }],
+    })
+
+    const set = await recordMeasuredSet(ctx, {
+      measurementSpecId: spec.measurementSpecId,
+      orderId,
+      sampledSize: 'L',
+      pieces: [{ Chest: '52.00' }, { Chest: '51.00' }, { Chest: '52.20' }],
+    })
+
+    expect(set.pieces.map((p) => p.result)).toEqual(['pass', 'fail', 'pass'])
+    expect(set.duplicate).toBe(false)
+  })
+
+  it('a resent size does not double the pieces', async () => {
+    const spec = await createMeasurementSpec(ctx, {
+      styleCode: 'ST-REPLAY',
+      points: [{ name: 'Chest', spec: '52.00', tolPlus: '0.50', tolMinus: '0.50' }],
+    })
+    const offlineKey = `meas-${randomUUID()}`
+
+    const batch = [
+      {
+        offlineKey,
+        moduleId: 'quality',
+        operation: 'measurement_set',
+        payload: {
+          measurementSpecId: spec.measurementSpecId,
+          orderId,
+          sampledSize: 'S',
+          pieces: [{ Chest: '52.00' }, { Chest: '52.10' }],
+        },
+      },
+    ]
+
+    expect((await syncBatch(ctx, batch))[0]?.status).toBe('applied')
+    expect((await syncBatch(ctx, batch))[0]?.status).toBe('duplicate')
+
+    const rows = await withTenantRead(ctx, (tx) =>
+      tx
+        .select()
+        .from(measurementChecks)
+        .where(eq(measurementChecks.measurementSpecId, spec.measurementSpecId)),
+    )
+    expect(rows).toHaveLength(2)
+    // One key across the whole size — the unit a QC actually captures.
+    expect(rows.every((r) => r.offlineKey === offlineKey)).toBe(true)
+  })
+
+  it('returns the original set when the same key comes back through the service', async () => {
+    // The desk-retry path, which the sync ledger does not cover. Same shape as sampling's
+    // verdict guard: return what landed rather than filing it again.
+    const spec = await createMeasurementSpec(ctx, {
+      styleCode: 'ST-RETRY',
+      points: [{ name: 'Chest', spec: '52.00', tolPlus: '0.50', tolMinus: '0.50' }],
+    })
+    const offlineKey = `desk-${randomUUID()}`
+    const input = {
+      measurementSpecId: spec.measurementSpecId,
+      orderId,
+      sampledSize: 'XL',
+      pieces: [{ Chest: '52.00' }, { Chest: '51.00' }],
+      offlineKey,
+    }
+
+    const first = await recordMeasuredSet(ctx, input)
+    const again = await recordMeasuredSet(ctx, input)
+
+    expect(again.duplicate).toBe(true)
+    expect(again.pieces.map((p) => p.measurementCheckId)).toEqual(
+      first.pieces.map((p) => p.measurementCheckId),
+    )
+    // And the failing piece did not raise its alarm a second time.
+    const emitted = await db.execute<{ n: string }>(
+      sql`select count(*)::text as n from outbox
+          where company_id = ${COMPANY}
+            and event_name = 'quality.measurement.failed'
+            and aggregate_id = ${first.pieces[1]!.measurementCheckId}`,
+    )
+    expect(Number(emitted[0]!.n)).toBe(1)
+  })
+})
+
+describe('7.1 · a final inspection survives the network (plan 4.1)', () => {
+  const lot = (inspectionNo: string) => ({
+    orderId,
+    inspectionNo,
+    lotQty: 1200,
+    inspectionLevel: 'II',
+    majorAql: '2.5',
+    minorAql: '4.0',
+    defects: [{ code: 'SKIP_STITCH', count: 1 }],
+  })
+
+  it('queues from the finishing floor and returns the server s verdict', async () => {
+    const inspectionNo = `FI-Q-${randomUUID().slice(0, 6)}`
+    const batch = [
+      {
+        offlineKey: `fi-${randomUUID()}`,
+        moduleId: 'quality',
+        operation: 'final_inspection',
+        payload: lot(inspectionNo),
+      },
+    ]
+
+    const [applied] = await syncBatch(ctx, batch)
+    expect(applied?.status).toBe('applied')
+
+    const [row] = await withTenantRead(ctx, (tx) =>
+      tx.select().from(finalInspections).where(eq(finalInspections.inspectionNo, inspectionNo)),
+    )
+    // Still computed on the server from the seeded table — queuing changed WHEN the
+    // inspector learns the verdict, not who decides it.
+    expect(row?.verdict).toBe('pass')
+    expect(row?.sampleSize).toBeGreaterThan(0)
+    expect(row?.standard).toBe('ansi-z1.4')
+  })
+
+  it('a replayed inspection returns the verdict rather than a refusal', async () => {
+    /*
+     * `inspection_no` is unique per company, so a resend would already have been stopped —
+     * but as a constraint violation, and a refused row is REMEMBERED as refused. The tablet
+     * would have shown the inspector that their inspection failed, for a lot that passed.
+     */
+    const offlineKey = `fi-replay-${randomUUID()}`
+    const inspectionNo = `FI-R-${randomUUID().slice(0, 6)}`
+    const batch = [
+      {
+        offlineKey,
+        moduleId: 'quality',
+        operation: 'final_inspection',
+        payload: lot(inspectionNo),
+      },
+    ]
+
+    const first = await syncBatch(ctx, batch)
+    expect(first[0]?.status).toBe('applied')
+
+    const replay = await syncBatch(ctx, batch)
+    expect(replay[0]?.status).toBe('duplicate')
+    expect((replay[0] as { rowId: string }).rowId).toBe((first[0] as { rowId: string }).rowId)
+
+    const rows = await withTenantRead(ctx, (tx) =>
+      tx.select().from(finalInspections).where(eq(finalInspections.inspectionNo, inspectionNo)),
+    )
+    expect(rows).toHaveLength(1)
+    expect(rows[0]?.offlineKey).toBe(offlineKey)
   })
 })

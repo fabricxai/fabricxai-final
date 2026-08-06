@@ -72,6 +72,25 @@ export const measurementCheckPayload = z.object({
   values: z.record(z.string().min(1), decimal(8)),
 })
 
+/**
+ * The pieces measured for one size, captured together.
+ *
+ * A size is what a QC actually measures — three garments side by side against the buyer's
+ * chart — and it is the unit that has to survive or fail as one. The per-piece action wrote
+ * each check in its OWN transaction, so a bad value on piece 2 left piece 1 filed and piece
+ * 3 missing: a half-measured size that reads as a completed one, on the floor screen with
+ * the weakest network in the factory.
+ */
+export const measurementSetPayload = z.object({
+  measurementSpecId: z.string().uuid(),
+  orderId: z.string().uuid(),
+  sampledSize: z.string().min(1).max(20),
+  pieces: z
+    .array(z.record(z.string().min(1), decimal(8)))
+    .min(1, 'a size with no pieces measures nothing'),
+  offlineKey: z.string().min(1).max(120).optional(),
+})
+
 export const finalInspectionPayload = z.object({
   orderId: z.string().uuid(),
   orderStyleId: z.string().uuid().optional(),
@@ -88,6 +107,8 @@ export const finalInspectionPayload = z.object({
   defects: z
     .array(z.object({ code: z.string().min(1), count: z.number().int().min(1) }))
     .default([]),
+  /** The device's key, so a replayed batch returns the original verdict. */
+  offlineKey: z.string().min(1).max(120).optional(),
 })
 
 export const thirdPartyInspectionPayload = z
@@ -101,6 +122,8 @@ export const thirdPartyInspectionPayload = z
     message: 'name the agency when it is not one of the majors',
     path: ['agencyName'],
   })
+
+export type MeasurementSetPayload = z.infer<typeof measurementSetPayload>
 
 export const QUALITY_ZOD_MAP = {
   defect_code: defectCodePayload,
