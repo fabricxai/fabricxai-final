@@ -24,6 +24,7 @@ import type { AnyCtx, RequestCtx } from '../core/ctx'
 import { AppError, conflict, notFound } from '../core/errors'
 import { emit } from '../core/outbox'
 import { defineStateMachine } from '../core/state-machine'
+import { scoped } from '../core/scoped'
 import { withTenantRead, withTenantTx, type TenantDb } from '../core/tenancy'
 
 import { MAINTENANCE_EVENTS } from './events'
@@ -116,13 +117,13 @@ export async function registerMachine(
   const payload = machineInput.parse(input)
 
   return withTenantTx(ctx, async (tx) => {
-    if (payload.lineId) await assertLine(tx, payload.lineId)
+    if (payload.lineId) await assertLine(ctx, tx, payload.lineId)
 
     if (payload.serial) {
       const [existing] = await tx
         .select({ id: machines.id })
         .from(machines)
-        .where(eq(machines.serial, payload.serial))
+        .where(scoped(machines, ctx, eq(machines.serial, payload.serial)))
 
       // A typed conflict rather than the `machines_company_serial_key` violation. Serials
       // are copied off a plate by hand and collide for ordinary reasons — and the second
@@ -170,11 +171,11 @@ export async function assignMachineToLine(
     const [machine] = await tx
       .select()
       .from(machines)
-      .where(eq(machines.id, input.machineId))
+      .where(scoped(machines, ctx, eq(machines.id, input.machineId)))
       .for('update')
     if (!machine) throw notFound('maintenance.errors.machine_not_found', { id: input.machineId })
 
-    if (input.lineId) await assertLine(tx, input.lineId)
+    if (input.lineId) await assertLine(ctx, tx, input.lineId)
 
     const history = [...(machine.assignmentHistory as { lineId: string; to: string | null }[])]
     const open = history.find((entry) => entry.to === null)
@@ -184,7 +185,7 @@ export async function assignMachineToLine(
     await tx
       .update(machines)
       .set({ lineId: input.lineId, assignmentHistory: history, updatedAt: new Date() })
-      .where(eq(machines.id, machine.id))
+      .where(scoped(machines, ctx, eq(machines.id, machine.id)))
 
     return { machineId: machine.id }
   })
@@ -196,9 +197,11 @@ export async function assignMachineToLine(
  * Postgres runs foreign-key checks with RLS bypassed, so the FK alone would accept another
  * factory's line perfectly happily and quietly attach this company's machine to it.
  */
-async function assertLine(tx: TenantDb, lineId: string): Promise<void> {
+// `ctx` on both: these two exist because a foreign key is checked with RLS bypassed, so
+// the query proving ownership had better name the company itself (plan 1.3).
+async function assertLine(ctx: AnyCtx, tx: TenantDb, lineId: string): Promise<void> {
   const { lines } = await import('@/modules/planning/schema')
-  const [line] = await tx.select({ id: lines.id }).from(lines).where(eq(lines.id, lineId))
+  const [line] = await tx.select({ id: lines.id }).from(lines).where(scoped(lines, ctx, eq(lines.id, lineId)))
   if (!line) throw notFound('maintenance.errors.line_not_found', { lineId })
 }
 
@@ -233,15 +236,15 @@ export async function openTicketFromDowntime(
     const [existing] = await tx
       .select()
       .from(tickets)
-      .where(eq(tickets.downtimeId, payload.downtimeId))
+      .where(scoped(tickets, ctx, eq(tickets.downtimeId, payload.downtimeId)))
 
     if (existing) {
       return { ticketId: existing.id, status: existing.status as TicketStatus, created: false }
     }
 
     // The machine id travels on the event and belongs to this company or it does not exist.
-    if (payload.machineId) await assertMachine(tx, payload.machineId)
-    await assertLine(tx, payload.lineId)
+    if (payload.machineId) await assertMachine(ctx, tx, payload.machineId)
+    await assertLine(ctx, tx, payload.lineId)
 
     const [row] = await tx
       .insert(tickets)
@@ -282,8 +285,8 @@ export async function openTicket(ctx: RequestCtx, input: unknown): Promise<Ticke
   const payload = manualTicketInput.parse(input)
 
   return withTenantTx(ctx, async (tx) => {
-    if (payload.machineId) await assertMachine(tx, payload.machineId)
-    if (payload.lineId) await assertLine(tx, payload.lineId)
+    if (payload.machineId) await assertMachine(ctx, tx, payload.machineId)
+    if (payload.lineId) await assertLine(ctx, tx, payload.lineId)
 
     const [row] = await tx
       .insert(tickets)
@@ -318,8 +321,8 @@ export async function openTicket(ctx: RequestCtx, input: unknown): Promise<Ticke
   })
 }
 
-async function assertMachine(tx: TenantDb, machineId: string): Promise<void> {
-  const [machine] = await tx.select({ id: machines.id }).from(machines).where(eq(machines.id, machineId))
+async function assertMachine(ctx: AnyCtx, tx: TenantDb, machineId: string): Promise<void> {
+  const [machine] = await tx.select({ id: machines.id }).from(machines).where(scoped(machines, ctx, eq(machines.id, machineId)))
   if (!machine) throw notFound('maintenance.errors.machine_not_found', { id: machineId })
 }
 
@@ -337,7 +340,7 @@ export async function claimTicket(ctx: RequestCtx, input: unknown): Promise<Tick
     const [ticket] = await tx
       .select()
       .from(tickets)
-      .where(eq(tickets.id, payload.ticketId))
+      .where(scoped(tickets, ctx, eq(tickets.id, payload.ticketId)))
       .for('update')
     if (!ticket) throw notFound('maintenance.errors.ticket_not_found', { id: payload.ticketId })
 
@@ -346,7 +349,7 @@ export async function claimTicket(ctx: RequestCtx, input: unknown): Promise<Tick
     await tx
       .update(tickets)
       .set({ status: 'claimed', claimedBy: ctx.userId, claimedAt: new Date(), updatedAt: new Date() })
-      .where(eq(tickets.id, ticket.id))
+      .where(scoped(tickets, ctx, eq(tickets.id, ticket.id)))
 
     return { ticketId: ticket.id, status: 'claimed' as const, created: false }
   })
@@ -377,7 +380,7 @@ export async function resolveTicket(ctx: RequestCtx, input: unknown): Promise<Re
     const [ticket] = await tx
       .select()
       .from(tickets)
-      .where(eq(tickets.id, payload.ticketId))
+      .where(scoped(tickets, ctx, eq(tickets.id, payload.ticketId)))
       .for('update')
     if (!ticket) throw notFound('maintenance.errors.ticket_not_found', { id: payload.ticketId })
 
@@ -390,7 +393,7 @@ export async function resolveTicket(ctx: RequestCtx, input: unknown): Promise<Re
       const [part] = await tx
         .select()
         .from(spareParts)
-        .where(eq(spareParts.id, used.partId))
+        .where(scoped(spareParts, ctx, eq(spareParts.id, used.partId)))
         .for('update')
       if (!part) throw notFound('maintenance.errors.part_not_found', { partId: used.partId })
 
@@ -408,7 +411,7 @@ export async function resolveTicket(ctx: RequestCtx, input: unknown): Promise<Re
       await tx
         .update(spareParts)
         .set({ onHand: Math.max(0, part.onHand - used.qty), updatedAt: new Date() })
-        .where(eq(spareParts.id, part.id))
+        .where(scoped(spareParts, ctx, eq(spareParts.id, part.id)))
 
       recorded.push({ partId: part.id, name: part.name, qty: used.qty, shortfall })
     }
@@ -422,7 +425,7 @@ export async function resolveTicket(ctx: RequestCtx, input: unknown): Promise<Re
         notes: payload.notes ?? ticket.notes,
         updatedAt: new Date(),
       })
-      .where(eq(tickets.id, ticket.id))
+      .where(scoped(tickets, ctx, eq(tickets.id, ticket.id)))
 
     await emit(ctx, tx, {
       eventName: MAINTENANCE_EVENTS.ticketResolved,
@@ -459,7 +462,7 @@ export async function cancelTicket(
     const [ticket] = await tx
       .select()
       .from(tickets)
-      .where(eq(tickets.id, input.ticketId))
+      .where(scoped(tickets, ctx, eq(tickets.id, input.ticketId)))
       .for('update')
     if (!ticket) throw notFound('maintenance.errors.ticket_not_found', { id: input.ticketId })
 
@@ -472,7 +475,7 @@ export async function cancelTicket(
         notes: [ticket.notes, `cancelled: ${input.reason}`].filter(Boolean).join('\n'),
         updatedAt: new Date(),
       })
-      .where(eq(tickets.id, ticket.id))
+      .where(scoped(tickets, ctx, eq(tickets.id, ticket.id)))
 
     return { ticketId: ticket.id, status: 'cancelled' as const, created: false }
   })
@@ -497,7 +500,7 @@ export async function pmDue(ctx: AnyCtx, today: string): Promise<(PmDue & { mach
     const fleet = await tx
       .select({ id: machines.id, machineType: machines.machineType })
       .from(machines)
-      .where(inArray(machines.machineType, schedules.map((s) => s.machineType)))
+      .where(scoped(machines, ctx, inArray(machines.machineType, schedules.map((s) => s.machineType))))
 
     const completions = await tx
       .select({
@@ -556,18 +559,18 @@ export async function upsertPmSchedule(
     const [existing] = await tx
       .select({ id: pmSchedules.id })
       .from(pmSchedules)
-      .where(
+      .where(scoped(pmSchedules, ctx, 
         and(
           eq(pmSchedules.machineType, payload.machineType),
           eq(pmSchedules.cadence, payload.cadence),
         ),
-      )
+      ))
 
     if (existing) {
       await tx
         .update(pmSchedules)
         .set({ checklist: payload.checklist, updatedAt: new Date() })
-        .where(eq(pmSchedules.id, existing.id))
+        .where(scoped(pmSchedules, ctx, eq(pmSchedules.id, existing.id)))
 
       return { scheduleId: existing.id, replaced: true }
     }
@@ -624,12 +627,12 @@ export async function completePm(
     const [schedule] = await tx
       .select()
       .from(pmSchedules)
-      .where(eq(pmSchedules.id, payload.scheduleId))
+      .where(scoped(pmSchedules, ctx, eq(pmSchedules.id, payload.scheduleId)))
     if (!schedule) {
       throw notFound('maintenance.errors.schedule_not_found', { id: payload.scheduleId })
     }
 
-    const [machine] = await tx.select().from(machines).where(eq(machines.id, payload.machineId))
+    const [machine] = await tx.select().from(machines).where(scoped(machines, ctx, eq(machines.id, payload.machineId)))
     if (!machine) throw notFound('maintenance.errors.machine_not_found', { id: payload.machineId })
 
     if (machine.machineType !== schedule.machineType) {
@@ -644,13 +647,13 @@ export async function completePm(
     const [existing] = await tx
       .select()
       .from(pmCompletions)
-      .where(
+      .where(scoped(pmCompletions, ctx, 
         and(
           eq(pmCompletions.machineId, payload.machineId),
           eq(pmCompletions.scheduleId, payload.scheduleId),
           eq(pmCompletions.completedOn, payload.completedOn),
         ),
-      )
+      ))
 
     // A double-tap on a handset is not a second service.
     if (existing) return { completionId: existing.id, alreadyRecorded: true }
@@ -732,7 +735,7 @@ export async function compileMonthlyDowntimeCosts(
         minutes: sql<string>`coalesce(sum(extract(epoch from (${downtimes.endedAt} - ${downtimes.startedAt})) / 60), 0)`,
       })
       .from(downtimes)
-      .where(
+      .where(scoped(downtimes, ctx, 
         and(
           eq(downtimes.reason, 'machine'),
           sql`${downtimes.machineId} is not null`,
@@ -740,7 +743,7 @@ export async function compileMonthlyDowntimeCosts(
           gte(downtimes.startedAt, start),
           lte(downtimes.startedAt, end),
         ),
-      )
+      ))
       .groupBy(downtimes.machineId)
 
     let totalMinutes = 0
@@ -808,13 +811,13 @@ export async function breakdownReport(
     const counted = await tx
       .select({ machineId: tickets.machineId, n: sql<string>`count(*)` })
       .from(tickets)
-      .where(
+      .where(scoped(tickets, ctx, 
         and(
           sql`${tickets.status} <> 'cancelled'`,
           gte(tickets.reportedAt, input.from),
           lte(tickets.reportedAt, input.to),
         ),
-      )
+      ))
       .groupBy(tickets.machineId)
 
     const byMachine = new Map(counted.map((row) => [row.machineId, Number(row.n)]))
@@ -849,14 +852,14 @@ export async function machineUtilization(
         minutes: sql<string>`coalesce(sum(extract(epoch from (${downtimes.endedAt} - ${downtimes.startedAt})) / 60), 0)`,
       })
       .from(downtimes)
-      .where(
+      .where(scoped(downtimes, ctx, 
         and(
           eq(downtimes.machineId, input.machineId),
           sql`${downtimes.endedAt} is not null`,
           gte(downtimes.startedAt, input.from),
           lte(downtimes.startedAt, input.to),
         ),
-      )
+      ))
 
     const downMinutes = Math.round(Number(row?.minutes ?? 0))
 
@@ -882,7 +885,7 @@ export async function openTickets(ctx: AnyCtx): Promise<(typeof tickets.$inferSe
     tx
       .select()
       .from(tickets)
-      .where(inArray(tickets.status, ['open', 'claimed']))
+      .where(scoped(tickets, ctx, inArray(tickets.status, ['open', 'claimed'])))
       // line_down first, then oldest — the order a mechanic should work in.
       .orderBy(sql`${tickets.priority}`, tickets.reportedAt),
   )
@@ -893,7 +896,7 @@ export async function ticketById(
   ticketId: string,
 ): Promise<typeof tickets.$inferSelect | null> {
   return withTenantRead(ctx, async (tx) => {
-    const [row] = await tx.select().from(tickets).where(eq(tickets.id, ticketId))
+    const [row] = await tx.select().from(tickets).where(scoped(tickets, ctx, eq(tickets.id, ticketId)))
     return row ?? null
   })
 }

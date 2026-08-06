@@ -13,6 +13,7 @@
 import { asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
 
 import type { AnyCtx } from '@/modules/core/ctx'
+import { scoped } from '@/modules/core/scoped'
 import { withTenantRead } from '@/modules/core/tenancy'
 import { lines } from '@/modules/planning/schema'
 
@@ -70,7 +71,7 @@ export async function ticketBoard(
         machineId: tickets.machineId,
       })
       .from(tickets)
-      .where(inArray(tickets.status, ['open', 'claimed']))
+      .where(scoped(tickets, ctx, inArray(tickets.status, ['open', 'claimed'])))
       .orderBy(desc(tickets.reportedAt))
       .limit(150)
 
@@ -81,7 +82,7 @@ export async function ticketBoard(
 
     const [lineRows, machineRows] = await Promise.all([
       lineIds.length > 0
-        ? tx.select({ id: lines.id, code: lines.code }).from(lines).where(inArray(lines.id, lineIds))
+        ? tx.select({ id: lines.id, code: lines.code }).from(lines).where(scoped(lines, ctx, inArray(lines.id, lineIds)))
         : Promise.resolve([] as { id: string; code: string }[]),
       machineIds.length > 0
         ? tx
@@ -91,7 +92,7 @@ export async function ticketBoard(
               serial: machines.serial,
             })
             .from(machines)
-            .where(inArray(machines.id, machineIds))
+            .where(scoped(machines, ctx, inArray(machines.id, machineIds)))
         : Promise.resolve([] as { id: string; machineType: string; serial: string | null }[]),
     ])
 
@@ -198,7 +199,7 @@ export async function unassigned(ctx: AnyCtx): Promise<number> {
     const [row] = await tx
       .select({ n: sql<number>`count(*)`.mapWith(Number) })
       .from(machines)
-      .where(isNull(machines.lineId))
+      .where(scoped(machines, ctx, isNull(machines.lineId)))
     return row?.n ?? 0
   })
 }
@@ -299,7 +300,7 @@ export async function pmWorklist(ctx: AnyCtx, today: string): Promise<PmDueRow[]
     const schedules = await tx
       .select({ id: pmSchedules.id, cadence: pmSchedules.cadence, checklist: pmSchedules.checklist })
       .from(pmSchedules)
-      .where(inArray(pmSchedules.id, [...new Set(due.map((d) => d.scheduleId))]))
+      .where(scoped(pmSchedules, ctx, inArray(pmSchedules.id, [...new Set(due.map((d) => d.scheduleId))])))
 
     const detail = await tx
       .select({
@@ -311,7 +312,7 @@ export async function pmWorklist(ctx: AnyCtx, today: string): Promise<PmDueRow[]
       })
       .from(machines)
       .leftJoin(lines, eq(lines.id, machines.lineId))
-      .where(inArray(machines.id, [...new Set(due.map((d) => d.machineId))]))
+      .where(scoped(machines, ctx, inArray(machines.id, [...new Set(due.map((d) => d.machineId))])))
 
     const scheduleById = new Map(schedules.map((s) => [s.id, s]))
     const machineById = new Map(detail.map((m) => [m.id, m]))
