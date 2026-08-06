@@ -53,6 +53,10 @@ const NO_SCREEN_YET: Record<string, string> = {
   'quality/recordMeasuredPieces': 'superseded by the offline path (plan 4.1); delete or wire',
   'quality/submitFinalInspection': 'superseded by the offline path (plan 4.1); delete or wire',
 
+  // Written in 5.8 for the policy editor, which is the one piece of that item still owed.
+  // The action and its service gate are done; the screen renders policies read-only.
+  'settings/saveModulePolicy': 'the policy override editor is still a read-only panel',
+
   // Written in 5.1 for a surface that does not exist yet.
   'orders/generateOrderTna':
     'the desk can create an order but not yet ask for its schedule — needs a template picker',

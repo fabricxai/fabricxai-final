@@ -129,6 +129,24 @@ export function ProfileForm({
             value={form.bondLicenceNo ?? ''}
             onChange={(e) => set('bondLicenceNo', e.target.value)}
           />
+          {/*
+            * The control that was missing (plan 5.8, audit FE-S14).
+            *
+            * The form initialised with a hardcoded `locale: 'en'` and offered no way to
+            * change it, so the FIRST profile save wrote English into the company record
+            * with nobody having chosen it — a setting decided by a default. It is now the
+            * shell's fallback for any device that has not picked a language itself, which
+            * is what a wall-mounted tablet on a cutting floor actually is.
+            */}
+          <Select
+            label="Default language"
+            hint="What a device that has not chosen one shows. A person switching language on a shared tablet still wins."
+            value={form.locale}
+            onChange={(e) => set('locale', e.target.value)}
+          >
+            <option value="en">English</option>
+            <option value="bn">বাংলা</option>
+          </Select>
           <Select
             label="Factory type"
             hint="Decides which modules exist for this unit."

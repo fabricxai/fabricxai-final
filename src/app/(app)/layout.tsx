@@ -65,7 +65,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // A storekeeper whose inbox reads "Nothing routed to you" must not carry a "4" on every
   // screen — a badge that cannot be cleared is one people stop reading.
   const routed = await routedPendingCount(ctx, approvalsPolicy)
-  const locale = await requestLocale()
+  // The factory's configured language is the default for a device that has not chosen
+  // one. Every client component reads this through `LocaleProvider` below.
+  const locale = await requestLocale(profile?.locale)
   const factoryType: FactoryType = profile?.factoryType ?? 'woven'
   const nav = visibleNav(ctx.roles, factoryType)
 

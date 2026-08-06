@@ -30,11 +30,25 @@ export { LOCALE_COOKIE }
  * resolves to English. A screen in the wrong language is a bad screen; a screen that 500s
  * because it could not decide on a language is no screen at all.
  */
-export async function requestLocale(): Promise<Locale> {
+export async function requestLocale(companyDefault?: string | null): Promise<Locale> {
   const [cookieStore, requestHeaders] = await Promise.all([cookies(), headers()])
 
   const chosen = cookieStore.get(LOCALE_COOKIE)?.value
   if (chosen) return resolveLocale(chosen)
+
+  /*
+   * The FACTORY's own language, before the device's (plan 5.8).
+   *
+   * `company_profiles.locale` was written on save and read by nothing, which made it a
+   * setting that did nothing — worse than a missing one, because the screen implied a
+   * choice was being honoured. It sits here rather than above the cookie because a shared
+   * tablet's explicit switch is a person deciding for the shift in front of them, and a
+   * company default should not override somebody standing at the machine.
+   *
+   * Above `accept-language`, though. A phone bought in Dhaka sends `bn` and a wall tablet
+   * imaged in English sends `en`, and neither is a statement about what the factory runs in.
+   */
+  if (companyDefault) return resolveLocale(companyDefault)
 
   return localeFromAcceptLanguage(requestHeaders.get('accept-language'))
 }

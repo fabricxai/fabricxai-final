@@ -6,8 +6,10 @@ import { Badge } from '@/components/fx/primitives'
 import { SectionHeading } from '@/components/fx/signature'
 import { PageHeader } from '@/components/shell/page-shell'
 import { getCtx } from '@/modules/core/session'
-import { companyProfile, listPolicies, roleMatrix } from '@/modules/settings/service'
+import { auditTrail, auditedTables, companyProfile, listPolicies, roleMatrix } from '@/modules/settings/service'
 
+import { AuditViewer } from './audit-viewer'
+import { RoleControls } from './role-controls'
 import { FactoryTypePanel, ProfileForm } from './settings-client'
 
 /**
@@ -30,6 +32,12 @@ export default async function SettingsPage() {
     listPolicies(ctx),
     roleMatrix(ctx),
   ])
+
+  // The trail names who did what, so it is owner and admin only — a screen showing
+  // everybody every action turns an accountability record into a surveillance one.
+  const [trail, trailTables] = canEdit
+    ? await Promise.all([auditTrail(ctx, { limit: 200 }), auditedTables(ctx)])
+    : [[], []]
 
   return (
     <>
@@ -168,7 +176,7 @@ export default async function SettingsPage() {
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: '1.2fr 1.6fr 2fr',
+                gridTemplateColumns: canEdit ? '1.2fr 1.6fr 2fr 1.6fr' : '1.2fr 1.6fr 2fr',
                 gap: 14,
                 padding: '10px 18px',
                 background: 'var(--fx-bg-sunken)',
@@ -181,19 +189,21 @@ export default async function SettingsPage() {
               <div>Name</div>
               <div>Email</div>
               <div>Roles</div>
+              {canEdit ? <div>Change</div> : null}
             </div>
             {matrix.map((row) => (
               <div
                 key={row.userId}
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: '1.2fr 1.6fr 2fr',
+                  gridTemplateColumns: canEdit ? '1.2fr 1.6fr 2fr 1.6fr' : '1.2fr 1.6fr 2fr',
                   gap: 14,
                   padding: '13px 18px',
                   borderTop: '1px solid var(--fx-border-subtle)',
                   alignItems: 'center',
                   minHeight: 'var(--fx-row-height)',
                 }}
+                className="fx-stack-tablet"
               >
                 <span style={{ font: "500 14px/1.3 var(--fx-font-sans)" }}>{row.name ?? '—'}</span>
                 <span
@@ -226,10 +236,36 @@ export default async function SettingsPage() {
                       </span>
                     ))}
                 </span>
+
+                {canEdit ? (
+                  <RoleControls
+                    userId={row.userId}
+                    held={row.roles.filter((r) => !r.revokedAt).map((r) => r.role)}
+                  />
+                ) : null}
               </div>
             ))}
           </div>
         </section>
+
+        {canEdit ? (
+          <section>
+            <SectionHeading eyebrow="who changed what, and when">The audit trail</SectionHeading>
+            <AuditViewer
+              initial={trail.map((row) => ({
+                id: String(row.id),
+                actorUserId: row.actorUserId,
+                actorRole: row.actorRole,
+                action: row.action,
+                targetTable: row.targetTable,
+                targetId: row.targetId,
+                changedFields: row.changedFields,
+                occurredAt: row.occurredAt.toISOString(),
+              }))}
+              tables={trailTables}
+            />
+          </section>
+        ) : null}
       </div>
     </>
   )
