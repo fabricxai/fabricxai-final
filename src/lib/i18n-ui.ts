@@ -403,6 +403,33 @@ export const UI_MESSAGES: Catalogue = {
     'ui.rfq.settled':
       'This enquiry is settled. Nothing more happens to it here.',
 
+    // ── planning · the board write surface (plan 5.4) ──
+    'ui.planning.move': 'Move',
+    'ui.planning.move_title': 'Move {style}',
+    'ui.planning.move_body':
+      '{total} pieces, spread evenly across the new window. The server re-checks every line-day against what is already committed there.',
+    'ui.planning.from': 'From',
+    'ui.planning.to': 'To',
+    'ui.planning.check': 'Check it',
+    'ui.planning.check_failed': 'The check could not run, so nothing has been ruled out.',
+    'ui.planning.fits':
+      'It fits. Nothing on this line is over-committed by the move.',
+    'ui.planning.does_not_fit':
+      'It does not fit — {count} line-day(s) would be over-committed.',
+    'ui.planning.move_it': 'Move it',
+    'ui.planning.move_anyway': 'Move it anyway, over-committed',
+    'ui.planning.moved': 'Moved.',
+    'ui.planning.moved_over':
+      'Moved. {count} overload(s) recorded as accepted, so the board shows them as decisions rather than problems.',
+    'ui.planning.move_failed': 'The run did not move.',
+    'ui.planning.mark_active': 'Mark started',
+    'ui.planning.mark_done': 'Mark finished',
+    'ui.planning.status_active': 'started',
+    'ui.planning.status_done': 'finished',
+    'ui.planning.status_planned': 'planned',
+    'ui.planning.status_set': 'Marked {status}.',
+    'ui.planning.status_failed': 'The status did not change.',
+
     // ── store · 3.1 ──
     'ui.store.receive_eyebrow': 'Store · receive goods',
     'ui.store.receive_title': 'Receive against a challan',
@@ -1408,6 +1435,32 @@ export const UI_MESSAGES: Catalogue = {
     'ui.rfq.asked': 'জিজ্ঞাসা করা হয়েছে। এর হিসাব আজ থেকে শুরু।',
     'ui.rfq.settled':
       'এই এনকোয়ারির নিষ্পত্তি হয়ে গেছে। এখানে আর কিছু হবে না।',
+
+    // ── planning ──
+    'ui.planning.move': 'সরান',
+    'ui.planning.move_title': '{style} সরান',
+    'ui.planning.move_body':
+      '{total} পিস, নতুন সময়ের মধ্যে সমানভাবে ভাগ হবে। সার্ভার প্রতিটি লাইন-দিন আগের কমিটমেন্টের সঙ্গে মিলিয়ে দেখবে।',
+    'ui.planning.from': 'শুরু',
+    'ui.planning.to': 'শেষ',
+    'ui.planning.check': 'যাচাই করুন',
+    'ui.planning.check_failed': 'যাচাই চলেনি, তাই কিছুই বাদ দেওয়া যায়নি।',
+    'ui.planning.fits': 'এঁটে যাচ্ছে। এই লাইনে অতিরিক্ত কমিট হচ্ছে না।',
+    'ui.planning.does_not_fit':
+      'এঁটে যাচ্ছে না — {count}টি লাইন-দিন অতিরিক্ত কমিট হয়ে যাবে।',
+    'ui.planning.move_it': 'সরিয়ে দিন',
+    'ui.planning.move_anyway': 'তবু সরান, অতিরিক্ত কমিট মেনে',
+    'ui.planning.moved': 'সরানো হয়েছে।',
+    'ui.planning.moved_over':
+      'সরানো হয়েছে। {count}টি অতিরিক্ত কমিট মেনে নেওয়া হিসেবে রাখা হয়েছে, তাই বোর্ডে এগুলো সমস্যা নয় — সিদ্ধান্ত হিসেবে দেখাবে।',
+    'ui.planning.move_failed': 'রানটি সরেনি।',
+    'ui.planning.mark_active': 'শুরু হয়েছে দিন',
+    'ui.planning.mark_done': 'শেষ হয়েছে দিন',
+    'ui.planning.status_active': 'শুরু',
+    'ui.planning.status_done': 'শেষ',
+    'ui.planning.status_planned': 'পরিকল্পিত',
+    'ui.planning.status_set': '{status} হিসেবে দেওয়া হয়েছে।',
+    'ui.planning.status_failed': 'স্ট্যাটাস বদলায়নি।',
 
     // ── store · 3.1 ──
     // Bangla nouns do not inflect after a numeral, so the _one and _other forms of a key

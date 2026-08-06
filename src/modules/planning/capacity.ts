@@ -15,6 +15,8 @@
  */
 import { multiplyDecimalStrings, roundToScale } from '@/lib/quantity'
 
+import { defineStateMachine } from '../core/state-machine'
+
 export class PlanningError extends Error {
   override readonly name = 'PlanningError'
 }
@@ -336,3 +338,39 @@ const addDecimals = (a: string, b: string): string =>
 
 const subtractDecimals = (a: string, b: string): string =>
   fromMinorMinutes(toMinorMinutes(a) - toMinorMinutes(b))
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Status machines
+// ─────────────────────────────────────────────────────────────────────────────
+
+/*
+ * Here rather than in `service.ts`, and the reason is the planning board's own buttons.
+ *
+ * A screen that offers a move the server would refuse teaches people to distrust it, so the
+ * client reads the same transition table the server enforces — and a client component
+ * importing `service.ts` pulls in the database client, and with it `postgres`, which the
+ * browser cannot bundle. This file is pure, so both sides can read it.
+ */
+export const allocationMachine = defineStateMachine({
+  field: 'status',
+  initial: 'planned',
+  transitions: {
+    planned: ['active'],
+    active: ['done'],
+    done: [],
+  },
+})
+
+export const scenarioMachine = defineStateMachine({
+  field: 'status',
+  initial: 'draft',
+  transitions: {
+    draft: ['applied', 'discarded'],
+    applied: [],
+    discarded: [],
+  },
+})
+
+export type AllocationStatus = (typeof allocationMachine.states)[number]
+export type ScenarioStatus = (typeof scenarioMachine.states)[number]

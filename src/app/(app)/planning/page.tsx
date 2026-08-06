@@ -7,9 +7,13 @@ import { Badge } from '@/components/fx/primitives'
 import { SectionHeading } from '@/components/fx/signature'
 import { Ident } from '@/components/fx/format'
 import { PageHeader } from '@/components/shell/page-shell'
+import { canWrite, NAV } from '@/components/shell/nav'
 import { getCtx } from '@/modules/core/session'
+import { companyProfile } from '@/modules/settings/service'
 import { board, openScenarios, type BoardLine } from '@/modules/planning/queries'
 import { factoryToday } from '@/lib/dates'
+
+import { RunActions } from './allocation-actions'
 
 /**
  * 5.2 Planning Board.
@@ -32,6 +36,13 @@ export default async function PlanningPage() {
     board(ctx, { from, days: WINDOW_DAYS }),
     openScenarios(ctx),
   ])
+
+  const profile = await companyProfile(ctx)
+  const mayWrite = canWrite(
+    NAV.find((n) => n.id === 'planning')!,
+    ctx.roles,
+    profile?.factoryType ?? 'woven',
+  )
 
   const dates = lines[0]?.days.map((d) => d.date) ?? []
 
@@ -166,6 +177,20 @@ export default async function PlanningPage() {
                         {a.plannedTotal.toLocaleString()} pcs
                       </span>
                       <Badge tone={a.status === 'active' ? 'success' : 'neutral'}>{a.status}</Badge>
+
+                      <RunActions
+                        run={{
+                          id: a.id,
+                          lineCode: a.lineCode,
+                          styleCode: a.styleCode,
+                          startDate: a.startDate,
+                          endDate: a.endDate,
+                          plannedDaily: a.plannedDaily,
+                          plannedTotal: a.plannedTotal,
+                          status: a.status,
+                        }}
+                        canWrite={mayWrite}
+                      />
 
                       {a.acceptedViolations.length > 0 ? (
                         <span

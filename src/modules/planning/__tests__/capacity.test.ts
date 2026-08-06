@@ -12,6 +12,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
+import { allocationMachine, scenarioMachine } from '@/modules/planning/capacity'
 import {
   answerCapacityQuery,
   checkLineDayLoad,
@@ -223,3 +224,43 @@ describe('answerCapacityQuery · the owner card', () => {
     ).toThrow(/no line-days/i)
   })
 })
+
+describe('the status machines the board reads (plan 5.4)', () => {
+  /*
+   * They live in this file, not in `service.ts`, and the reason is a build break: the
+   * planning board's buttons need the legal transitions, and a client component importing
+   * the service drags the database client — and `postgres` — into the browser bundle.
+   *
+   * Which makes this table the SCREEN. The buttons are built from `next()`, so offering a
+   * move the server refuses would make every click a coin toss between working and a 409,
+   * and offering fewer than the legal ones strands a run nobody can advance.
+   */
+  it('offers the board exactly the moves the server accepts', () => {
+    expect([...allocationMachine.next('planned')]).toEqual(['active'])
+    expect([...allocationMachine.next('active')]).toEqual(['done'])
+  })
+
+  it('leaves a finished run with nothing to offer', () => {
+    // No buttons at all on a done run, which is the correct empty rather than a broken one.
+    expect(allocationMachine.next('done')).toEqual([])
+    expect(allocationMachine.terminal).toContain('done')
+  })
+
+  it('never walks a run backwards', () => {
+    // A run moved back to `planned` after the line has started on it puts work back on a
+    // board that is already being cut to.
+    illegal(() => allocationMachine.assert('active', 'planned'))
+    illegal(() => allocationMachine.assert('done', 'active'))
+  })
+
+  it('lets a scenario be applied or discarded, once', () => {
+    expect(() => scenarioMachine.assert('draft', 'applied')).not.toThrow()
+    expect(() => scenarioMachine.assert('draft', 'discarded')).not.toThrow()
+    // Applying twice would re-plan lines against a board that has already moved.
+    illegal(() => scenarioMachine.assert('applied', 'applied'))
+    illegal(() => scenarioMachine.assert('discarded', 'applied'))
+  })
+})
+
+const illegal = (fn: () => void) =>
+  expect(fn).toThrowError(expect.objectContaining({ status: 409, code: 'illegal_transition' }))

@@ -16,19 +16,22 @@ import { recordChange, registerAuditedTables } from '../core/audit'
 import type { AnyCtx, RequestCtx } from '../core/ctx'
 import { AppError, conflict, notFound } from '../core/errors'
 import { emit } from '../core/outbox'
-import { defineStateMachine } from '../core/state-machine'
 import { withTenantRead, withTenantTx, type TenantDb } from '../core/tenancy'
 
 import {
+  allocationMachine,
   answerCapacityQuery,
   checkLineDayLoad,
   efficiencyForDay,
   PlanningError,
+  scenarioMachine,
+  type AllocationStatus,
   type CapacityAnswer,
   type LineDayCapacity,
   type LineDayLoadResult,
   type PlannedLoad,
   type PlanningViolation,
+  type ScenarioStatus,
 } from './capacity'
 import { PLANNING_EVENTS } from './events'
 import {
@@ -49,28 +52,21 @@ registerAuditedTables('allocations', 'smv_records')
  * is deleted, because a cancelled row that still sits on the board is a line somebody
  * thinks is busy.
  */
-export const allocationMachine = defineStateMachine({
-  field: 'status',
-  initial: 'planned',
-  transitions: {
-    planned: ['active'],
-    active: ['done'],
-    done: [],
-  },
-})
-
-export const scenarioMachine = defineStateMachine({
-  field: 'status',
-  initial: 'draft',
-  transitions: {
-    draft: ['applied', 'discarded'],
-    applied: [],
-    discarded: [],
-  },
-})
-
-export type AllocationStatus = (typeof allocationMachine.states)[number]
-export type ScenarioStatus = (typeof scenarioMachine.states)[number]
+/*
+ * The two machines live in `capacity.ts`, which is pure (plan 5.4).
+ *
+ * Re-exported here because every caller reads them from the service. They MOVED because the
+ * planning board's own buttons need the legal transitions — offering a move the server
+ * refuses is how somebody learns to distrust a board — and a client component importing this
+ * file drags the database client, and therefore `postgres`, into the browser bundle. The
+ * build says so, eventually, in a message about `fs`.
+ */
+export {
+  allocationMachine,
+  scenarioMachine,
+  type AllocationStatus,
+  type ScenarioStatus,
+} from './capacity'
 
 /**
  * Company planning defaults. Owned by Settings (X.3); passed in until that module exists.
