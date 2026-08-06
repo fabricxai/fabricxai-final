@@ -38,8 +38,62 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      - name: Unit tests
-        run: pnpm test
+      # With coverage, and against a floor that only goes up (plan 7.3, audit TEST-M10).
+      #
+      # The floor is `coverage/floor.json`, committed. It is the UNIT project only —
+      # services and pure logic — so it is far lower than how well the product is tested
+      # and must not be read as the whole story; what it catches is a service gaining a
+      # branch nothing exercises, on the day it happens.
+      - name: Unit tests · coverage ratchet
+        run: pnpm coverage
+
+      # Nothing consumed a machine-readable result before, so a failing test was a line in
+      # a log somebody had to scroll. `if: always()` because the run that FAILED is the one
+      # whose report is worth having.
+      - name: Test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-unit
+          path: |
+            reports/
+            coverage/unit/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  # ── The frontend, which had no home at all until 7.2 ───────────────────────
+  #
+  # Both vitest projects were node-env and `.ts`-only, so no `.tsx` file in the repo was
+  # reachable by any test and there was nothing for CI to run. There is now: the offline
+  # queue that decides whether a floor's writes survive a dead access point, and the inbox
+  # keyboard that decides which row a reviewer actually signs.
+  #
+  # Its own job rather than a step in `static`: jsdom needs no services but does need a
+  # different environment, and keeping them apart means the 934 node tests stay fast.
+  browser:
+    name: jsdom
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Component and DOM tests
+        run: pnpm test:browser
+
+      - name: Test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-browser
+          path: reports/
+          retention-days: 14
+          if-no-files-found: ignore
 
   # ── Schema and migrations ──────────────────────────────────────────────────
   migrations:
@@ -304,6 +358,114 @@ jobs:
         run: |
           pnpm seed --scale=pilot
           pnpm seed --scale=pilot
+
+      - name: Test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-integration
+          path: reports/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  # ── The golden path and WCAG, on the screens used in gloves ────────────────
+  #
+  # Plan 7.2. One journey — sign in, reach the floor, see the approve inbox — plus axe-core
+  # on the five floor screens at two viewports. Deliberately narrow: a broad Playwright
+  # suite over a product still gaining screens is a maintenance bill paid in flaky reruns.
+  #
+  # It needs the same services as `integration` because it drives the real product, and a
+  # production build because `next dev` is a different one — 7.1 measured the same page at
+  # 2,887ms in dev and 296ms built, which is enough to turn a timeout into a pass.
+  e2e:
+    name: e2e · a11y
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: fabricxai
+          POSTGRES_PASSWORD: fabricxai
+          POSTGRES_DB: fabricxai
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U fabricxai" --health-interval 5s
+          --health-timeout 5s --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s
+          --health-timeout 5s --health-retries 20
+    env:
+      DATABASE_URL: postgres://fabricxai_app_rw:ci-secret@localhost:5432/fabricxai
+      DIRECT_DATABASE_URL: postgres://fabricxai:fabricxai@localhost:5432/fabricxai
+      REDIS_URL: redis://localhost:6379
+      APP_URL: http://localhost:3000
+      BETTER_AUTH_URL: http://localhost:3000
+      BETTER_AUTH_SECRET: ci-only-secret-0123456789abcdef0123456789
+      S3_ENDPOINT: http://localhost:9000
+      S3_ACCESS_KEY_ID: fabricxai
+      S3_SECRET_ACCESS_KEY: fabricxai-dev-secret
+      S3_BUCKET: fabricxai-documents
+      S3_FORCE_PATH_STYLE: 'true'
+      SMTP_HOST: localhost
+      SMTP_PORT: '1025'
+      # The suite runs against a PRODUCTION build, and `env.ts` refuses the mock there —
+      # 6.4's boot assertion, doing exactly what it was written for.
+      MARBIM_MOCK: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Start MinIO and create the private bucket
+        run: |
+          docker run -d --name minio -p 9000:9000 \
+            -e MINIO_ROOT_USER=fabricxai \
+            -e MINIO_ROOT_PASSWORD=fabricxai-dev-secret \
+            minio/minio:RELEASE.2025-04-22T22-12-26Z server /data
+
+          for i in $(seq 1 40); do
+            curl -sf http://localhost:9000/minio/health/live >/dev/null && break
+            sleep 2
+          done
+          docker run --rm --network host --entrypoint sh minio/mc:RELEASE.2025-04-16T18-13-26Z -c "
+            mc alias set local http://localhost:9000 fabricxai fabricxai-dev-secret &&
+            mc mb --ignore-existing local/fabricxai-documents &&
+            mc anonymous set none local/fabricxai-documents"
+
+      - name: Migrate, create the application role, seed the people the suite signs in as
+        run: |
+          pnpm db:migrate
+          pnpm db:setup-roles
+          pnpm seed --scale=pilot
+
+      # Chromium only. The tablet project is the same engine at a 768px viewport, because
+      # what 4.4 changed is a CSS breakpoint — the viewport is the variable, not the engine.
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      # `playwright.config.ts` builds and starts the server itself.
+      - name: Golden path and axe-core
+        run: pnpm test:e2e
+
+      - name: Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-e2e
+          path: |
+            e2e-results.xml
+            playwright-report/
+            test-results/
+          retention-days: 14
+          if-no-files-found: ignore
 
   # ── Image builds ───────────────────────────────────────────────────────────
   # ── Supply chain ───────────────────────────────────────────────────────────

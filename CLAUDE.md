@@ -22,6 +22,8 @@ Next.js 16 (app router, server actions) + Drizzle + PostgreSQL 16 + Redis/BullMQ
 - `pnpm db:generate` / `pnpm db:migrate` — drizzle (uses DIRECT_DATABASE_URL)
 - `pnpm test` / `pnpm test:integration` — vitest / + testcontainers
 - `pnpm test:browser` — vitest jsdom, for `__tests__/browser/` (components and DOM code)
+- `pnpm coverage` — unit coverage against the ratchet in `coverage/floor.json`
+  (`--update` raises it; lowering needs `--force` and a reason in the commit)
 - `pnpm test:e2e` — Playwright: one golden path + axe-core on the five floor screens.
   Needs `pnpm seed` and a production build; the suite starts one itself if none is running.
 - `pnpm seed` — factory-scale seed (also used by k6 and demos)

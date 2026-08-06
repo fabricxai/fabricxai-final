@@ -1,0 +1,148 @@
+name: Load
+
+# ── Why this is not part of CI ─────────────────────────────────────────────────
+#
+# Each scenario runs for a minute of wall clock against a factory-scale seed, and there are
+# three of them. Per pull request that is five minutes of runner time on every typo fix, for
+# a signal that changes on maybe one commit in fifty — and a shared runner's throughput
+# varies enough between runs that a p95 measured there would flap around the ±30% regression
+# band and teach everybody to ignore it.
+#
+# So: nightly, and on demand. Nightly catches the drift nobody would attribute to a specific
+# commit; `workflow_dispatch` is what you use when you have just changed something you think
+# is hot and want to know before merging it.
+#
+# The baselines in `k6/baselines/` were recorded on a developer machine and say so in their
+# own `host.note`. A GitHub runner is different hardware again, so the FIRST nightly run here
+# will fail its comparison — that is correct and expected, and the fix is one deliberate
+# `--update-baseline` run recording the runner as the reference, not a widened tolerance.
+on:
+  schedule:
+    # 02:00 UTC — 08:00 in Dhaka, so a failure is waiting when the office opens.
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      update_baseline:
+        description: 'Record this run as the new baseline'
+        type: boolean
+        default: false
+
+concurrency:
+  group: load
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  k6:
+    name: k6 · ${{ matrix.scenario }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      # Serial. The scenarios share one database and one server, and two of them assert row
+      # counts — a concurrent run would be another factory writing into the numbers.
+      max-parallel: 1
+      fail-fast: false
+      matrix:
+        scenario: [production_burst, store_grn, owner_dashboard]
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: fabricxai
+          POSTGRES_PASSWORD: fabricxai
+          POSTGRES_DB: fabricxai
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U fabricxai" --health-interval 5s
+          --health-timeout 5s --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s
+          --health-timeout 5s --health-retries 20
+    env:
+      DATABASE_URL: postgres://fabricxai_app_rw:ci-secret@localhost:5432/fabricxai
+      DIRECT_DATABASE_URL: postgres://fabricxai:fabricxai@localhost:5432/fabricxai
+      REDIS_URL: redis://localhost:6379
+      APP_URL: http://localhost:3000
+      BETTER_AUTH_URL: http://localhost:3000
+      BETTER_AUTH_SECRET: ci-only-secret-0123456789abcdef0123456789
+      S3_ENDPOINT: http://localhost:9000
+      S3_ACCESS_KEY_ID: fabricxai
+      S3_SECRET_ACCESS_KEY: fabricxai-dev-secret
+      S3_BUCKET: fabricxai-documents
+      S3_FORCE_PATH_STYLE: 'true'
+      SMTP_HOST: localhost
+      SMTP_PORT: '1025'
+      MARBIM_MOCK: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Start MinIO and create the private bucket
+        run: |
+          docker run -d --name minio -p 9000:9000 \
+            -e MINIO_ROOT_USER=fabricxai \
+            -e MINIO_ROOT_PASSWORD=fabricxai-dev-secret \
+            minio/minio:RELEASE.2025-04-22T22-12-26Z server /data
+          for i in $(seq 1 40); do
+            curl -sf http://localhost:9000/minio/health/live >/dev/null && break
+            sleep 2
+          done
+          docker run --rm --network host --entrypoint sh minio/mc:RELEASE.2025-04-16T18-13-26Z -c "
+            mc alias set local http://localhost:9000 fabricxai fabricxai-dev-secret &&
+            mc mb --ignore-existing local/fabricxai-documents &&
+            mc anonymous set none local/fabricxai-documents"
+
+      - uses: grafana/setup-k6-action@v1
+
+      # Factory scale, because that is what the baselines were recorded against and a
+      # smaller seed measures a smaller table.
+      - name: Migrate, provision roles, seed at factory scale
+        run: |
+          pnpm db:migrate
+          pnpm db:setup-roles
+          pnpm seed --scale=factory
+
+      # A production build, for the same reason the e2e job uses one.
+      - name: Build and start
+        run: |
+          pnpm build
+          pnpm start &
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:3000/login >/dev/null && break
+            sleep 2
+          done
+          curl -sf http://localhost:3000/login >/dev/null \
+            || { echo "::error::the server never came up"; exit 1; }
+
+      # `scripts/k6.ts` creates the load identities, signs them in, supplies the fixtures,
+      # and asserts the row invariants either side of the run — the assertion that used to
+      # be a comment asking a human to go and run SQL.
+      - name: ${{ matrix.scenario }}
+        run: |
+          pnpm k6 ${{ matrix.scenario }} \
+            ${{ inputs.update_baseline && '--update-baseline' || '' }}
+
+      - name: Baseline diff
+        if: always()
+        run: git --no-pager diff -- k6/baselines/ || true
+
+      - name: k6 summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-${{ matrix.scenario }}
+          path: |
+            k6/.last-summary.json
+            k6/baselines/
+          retention-days: 30
+          if-no-files-found: ignore

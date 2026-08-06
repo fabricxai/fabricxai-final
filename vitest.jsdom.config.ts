@@ -34,6 +34,9 @@ export default defineConfig({
     environment: 'jsdom',
     // `fake-indexeddb` and jest-dom's matchers, installed once per file.
     setupFiles: ['./vitest.setup.jsdom.ts'],
+    reporters: process.env.CI
+      ? ['default', ['junit', { outputFile: 'reports/browser.xml' }]]
+      : ['default'],
     // Each file gets a fresh jsdom. The offline queue is a module-level IndexedDB handle and
     // a shared one would leak a queue between suites — which is exactly the bug class these
     // tests exist to catch.

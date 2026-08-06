@@ -15,6 +15,9 @@ export default defineConfig({
     // Belt and braces with the unit config's exclude: the jsdom project owns `browser/`.
     exclude: ['src/**/__tests__/browser/**'],
     environment: 'node',
+    reporters: process.env.CI
+      ? ['default', ['junit', { outputFile: 'reports/integration.xml' }]]
+      : ['default'],
     testTimeout: 60_000,
     hookTimeout: 120_000,
     // Containers are expensive; suites share one database and isolate by company.

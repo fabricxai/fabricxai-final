@@ -23,7 +23,8 @@ next-env.d.ts
 docker/data/
 
 # test / build output
-coverage/
+coverage/*
+!coverage/floor.json
 dist/
 playwright-report/
 test-results/
@@ -43,3 +44,6 @@ e2e/.auth/
 test-results/
 playwright-report/
 e2e-results.xml
+
+# Test reports (JUnit). Uploaded by CI, never committed.
+reports/
