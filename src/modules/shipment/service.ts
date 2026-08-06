@@ -28,6 +28,7 @@ import { AppError, conflict, notFound } from '../core/errors'
 import { assertGate, GATES } from '../core/gates'
 import { emit } from '../core/outbox'
 import { defineStateMachine } from '../core/state-machine'
+import { scoped } from '../core/scoped'
 import { withTenantRead, withTenantTx, type TenantDb } from '../core/tenancy'
 
 import { SHIPMENT_EVENTS } from './events'
@@ -147,7 +148,7 @@ async function recordFinishingOutputIn(
 ): Promise<{ finishingOutputId: string; totalQty: number }> {
   // Postgres runs foreign-key checks with RLS bypassed, so verify the order is ours before
   // referencing it (rule 2 — the app layer is the first wall).
-  await assertOwnOrder(tx, payload.orderId)
+  await assertOwnOrder(ctx, tx, payload.orderId)
 
   const totalQty = sumCells(payload.cells)
 
@@ -182,18 +183,18 @@ async function recordFinishingOutputIn(
   return { finishingOutputId: row.id, totalQty }
 }
 
-async function assertOwnOrder(tx: TenantDb, orderId: string): Promise<void> {
+async function assertOwnOrder(ctx: AnyCtx, tx: TenantDb, orderId: string): Promise<void> {
   const { orders } = await import('@/modules/orders/schema')
-  const [order] = await tx.select({ id: orders.id }).from(orders).where(eq(orders.id, orderId))
+  const [order] = await tx.select({ id: orders.id }).from(orders).where(scoped(orders, ctx, eq(orders.id, orderId)))
   if (!order) throw notFound('shipment.errors.order_not_found', { orderId })
 }
 
 /** Everything finishing has produced for an order, as one grid. */
-async function finishedCells(tx: TenantDb, orderId: string): Promise<CellMap> {
+async function finishedCells(ctx: AnyCtx, tx: TenantDb, orderId: string): Promise<CellMap> {
   const rows = await tx
     .select({ cells: finishingOutputs.cells })
     .from(finishingOutputs)
-    .where(eq(finishingOutputs.orderId, orderId))
+    .where(scoped(finishingOutputs, ctx, eq(finishingOutputs.orderId, orderId)))
 
   const total: CellMap = {}
   for (const row of rows) {
@@ -206,6 +207,7 @@ async function finishedCells(tx: TenantDb, orderId: string): Promise<CellMap> {
 
 /** Everything already in cartons for an order, as one grid. */
 async function packedCells(
+  ctx: AnyCtx,
   tx: TenantDb,
   orderId: string,
   options: { excludeCartonId?: string } = {},
@@ -213,7 +215,7 @@ async function packedCells(
   const rows = await tx
     .select({ id: cartons.id, contents: cartons.contents })
     .from(cartons)
-    .where(eq(cartons.orderId, orderId))
+    .where(scoped(cartons, ctx, eq(cartons.orderId, orderId)))
 
   const total: CellMap = {}
   for (const row of rows) {
@@ -232,8 +234,8 @@ export async function remainingToPackFor(
 ): Promise<{ remaining: CellMap; finished: CellMap; packed: CellMap }> {
   return withTenantRead(ctx, async (tx) => {
     const [finished, packed] = await Promise.all([
-      finishedCells(tx, input.orderId),
-      packedCells(tx, input.orderId),
+      finishedCells(ctx, tx, input.orderId),
+      packedCells(ctx, tx, input.orderId),
     ])
 
     // `allowOverPack` so the report shows an existing over-pack rather than refusing to
@@ -309,10 +311,10 @@ async function packCartonIn(
   tx: TenantDb,
   payload: ReturnType<typeof cartonPayload.parse>,
 ): Promise<PackCartonResult> {
-  await assertOwnOrder(tx, payload.orderId)
+  await assertOwnOrder(ctx, tx, payload.orderId)
 
-  const finished = await finishedCells(tx, payload.orderId)
-  const alreadyPacked = await packedCells(tx, payload.orderId)
+  const finished = await finishedCells(ctx, tx, payload.orderId)
+  const alreadyPacked = await packedCells(ctx, tx, payload.orderId)
 
   // This carton on top of everything already packed. Throws with per-cell detail if the
   // result would exceed what finishing produced.
@@ -382,7 +384,7 @@ export async function freightSummary(
     const rows = await tx
       .select({ cbm: cartons.cbm, grossKg: cartons.grossKg })
       .from(cartons)
-      .where(eq(cartons.orderId, input.orderId))
+      .where(scoped(cartons, ctx, eq(cartons.orderId, input.orderId)))
 
     if (rows.length === 0) {
       throw notFound('shipment.errors.no_cartons', { orderId: input.orderId })
@@ -414,13 +416,21 @@ export async function freightSummary(
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** The buyer's ordered grid, from the active breakdown revision (orders owns it). */
-async function orderedCells(tx: TenantDb, orderId: string): Promise<CellMap> {
+/*
+ * The four helpers above and below all took a `ctx` rather than an exemption (plan 1.3).
+ *
+ * They are the arithmetic behind the packing gate: ordered vs finished vs packed, cell by
+ * cell. A count read from another factory's order would let a shipment close short — or
+ * refuse one that was complete — and nothing downstream re-checks it, because these cells
+ * ARE the check.
+ */
+async function orderedCells(ctx: AnyCtx, tx: TenantDb, orderId: string): Promise<CellMap> {
   const { orderBreakdowns, orderStyles } = await import('@/modules/orders/schema')
 
   const styles = await tx
     .select({ id: orderStyles.id, activeRevision: orderStyles.activeRevision })
     .from(orderStyles)
-    .where(eq(orderStyles.orderId, orderId))
+    .where(scoped(orderStyles, ctx, eq(orderStyles.orderId, orderId)))
 
   if (styles.length === 0) {
     throw notFound('shipment.errors.no_order_styles', { orderId })
@@ -435,12 +445,12 @@ async function orderedCells(tx: TenantDb, orderId: string): Promise<CellMap> {
         qty: orderBreakdowns.qty,
       })
       .from(orderBreakdowns)
-      .where(
+      .where(scoped(orderBreakdowns, ctx, 
         and(
           eq(orderBreakdowns.orderStyleId, style.id),
           eq(orderBreakdowns.revision, style.activeRevision),
         ),
-      )
+      ))
 
     for (const row of rows) {
       const cell = `${row.color}|${row.size}`
@@ -470,12 +480,12 @@ export async function generatePackingList(
   input: { orderId: string; shipmentId?: string },
 ): Promise<PackingListResult> {
   return withTenantTx(ctx, async (tx) => {
-    await assertOwnOrder(tx, input.orderId)
+    await assertOwnOrder(ctx, tx, input.orderId)
 
     const cartonRows = await tx
       .select()
       .from(cartons)
-      .where(eq(cartons.orderId, input.orderId))
+      .where(scoped(cartons, ctx, eq(cartons.orderId, input.orderId)))
       .orderBy(asc(cartons.cartonNo))
 
     if (cartonRows.length === 0) {
@@ -483,8 +493,8 @@ export async function generatePackingList(
     }
 
     const [ordered, packed] = await Promise.all([
-      orderedCells(tx, input.orderId),
-      packedCells(tx, input.orderId),
+      orderedCells(ctx, tx, input.orderId),
+      packedCells(ctx, tx, input.orderId),
     ])
 
     const report = wrapShipmentError(() => packingMismatches(ordered, packed))
@@ -492,7 +502,7 @@ export async function generatePackingList(
     const [latest] = await tx
       .select({ version: packingLists.version })
       .from(packingLists)
-      .where(eq(packingLists.orderId, input.orderId))
+      .where(scoped(packingLists, ctx, eq(packingLists.orderId, input.orderId)))
       .orderBy(desc(packingLists.version))
       .limit(1)
 
@@ -573,7 +583,7 @@ export async function approvePackingList(
     const [list] = await tx
       .select()
       .from(packingLists)
-      .where(eq(packingLists.id, input.packingListId))
+      .where(scoped(packingLists, ctx, eq(packingLists.id, input.packingListId)))
       .for('update')
 
     if (!list) {
@@ -610,7 +620,7 @@ export async function approvePackingList(
     const superseded = await tx
       .update(packingLists)
       .set({ status: 'superseded', updatedAt: new Date() })
-      .where(and(eq(packingLists.orderId, list.orderId), eq(packingLists.status, 'approved')))
+      .where(scoped(packingLists, ctx, and(eq(packingLists.orderId, list.orderId), eq(packingLists.status, 'approved'))))
       .returning({ id: packingLists.id })
 
     await tx
@@ -621,7 +631,7 @@ export async function approvePackingList(
         approvedAt: new Date(),
         updatedAt: new Date(),
       })
-      .where(eq(packingLists.id, list.id))
+      .where(scoped(packingLists, ctx, eq(packingLists.id, list.id)))
 
     await recordChange(ctx, tx, {
       action: 'approve',
@@ -667,12 +677,12 @@ export async function createShipment(
   const payload = shipmentPayload.parse(input)
 
   return withTenantTx(ctx, async (tx) => {
-    await assertOwnOrder(tx, payload.orderId)
+    await assertOwnOrder(ctx, tx, payload.orderId)
 
     if (payload.lcId) {
       // Same reason as the order check: an FK does not enforce tenancy.
       const { lcs } = await import('@/modules/commercial/schema')
-      const [lc] = await tx.select({ id: lcs.id }).from(lcs).where(eq(lcs.id, payload.lcId))
+      const [lc] = await tx.select({ id: lcs.id }).from(lcs).where(scoped(lcs, ctx, eq(lcs.id, payload.lcId)))
       if (!lc) throw notFound('shipment.errors.lc_not_found', { lcId: payload.lcId })
     }
 
@@ -718,7 +728,7 @@ export async function loadCartons(
     const [shipment] = await tx
       .select()
       .from(shipments)
-      .where(eq(shipments.id, input.shipmentId))
+      .where(scoped(shipments, ctx, eq(shipments.id, input.shipmentId)))
 
     if (!shipment) {
       throw notFound('shipment.errors.shipment_not_found', { shipmentId: input.shipmentId })
@@ -735,7 +745,7 @@ export async function loadCartons(
     const rows = await tx
       .select({ id: cartons.id, shipmentId: cartons.shipmentId, orderId: cartons.orderId })
       .from(cartons)
-      .where(inArray(cartons.id, [...input.cartonIds]))
+      .where(scoped(cartons, ctx, inArray(cartons.id, [...input.cartonIds])))
 
     if (rows.length !== input.cartonIds.length) {
       throw notFound('shipment.errors.carton_not_found', {
@@ -761,7 +771,7 @@ export async function loadCartons(
     await tx
       .update(cartons)
       .set({ shipmentId: shipment.id, updatedAt: new Date() })
-      .where(inArray(cartons.id, [...input.cartonIds]))
+      .where(scoped(cartons, ctx, inArray(cartons.id, [...input.cartonIds])))
 
     return { loaded: rows.length }
   })
@@ -794,7 +804,7 @@ export async function confirmExFactory(
     const [shipment] = await tx
       .select()
       .from(shipments)
-      .where(eq(shipments.id, input.shipmentId))
+      .where(scoped(shipments, ctx, eq(shipments.id, input.shipmentId)))
       .for('update')
 
     if (!shipment) {
@@ -806,7 +816,7 @@ export async function confirmExFactory(
     const loaded = await tx
       .select({ totalQty: cartons.totalQty })
       .from(cartons)
-      .where(eq(cartons.shipmentId, shipment.id))
+      .where(scoped(cartons, ctx, eq(cartons.shipmentId, shipment.id)))
 
     if (loaded.length === 0) {
       throw new AppError('validation_failed', 'shipment.errors.no_cartons_loaded', {
@@ -855,10 +865,10 @@ export async function confirmExFactory(
 
     if (shipment.lcId) {
       const { lcs } = await import('@/modules/commercial/schema')
-      const [lc] = await tx.select().from(lcs).where(eq(lcs.id, shipment.lcId))
+      const [lc] = await tx.select().from(lcs).where(scoped(lcs, ctx, eq(lcs.id, shipment.lcId)))
 
       if (lc) {
-        const ordered = await orderedCells(tx, shipment.orderId)
+        const ordered = await orderedCells(ctx, tx, shipment.orderId)
         const lcQty = Object.values(ordered).reduce((a, b) => a + b, 0)
 
         if (lcQty > 0) {
@@ -872,7 +882,7 @@ export async function confirmExFactory(
         const [order] = await tx
           .select({ id: orders.id, poNumbers: orders.poNumbers, status: orders.status })
           .from(orders)
-          .where(eq(orders.id, shipment.orderId))
+          .where(scoped(orders, ctx, eq(orders.id, shipment.orderId)))
 
         if (order) {
           lcConflicts = detectLcConflicts({
@@ -959,7 +969,7 @@ export async function confirmExFactory(
         portStatus: 'ex_factory',
         updatedAt: new Date(),
       })
-      .where(eq(shipments.id, shipment.id))
+      .where(scoped(shipments, ctx, eq(shipments.id, shipment.id)))
 
     await recordChange(ctx, tx, {
       action: 'update',
@@ -1020,7 +1030,7 @@ export async function advancePortStatus(
     const [shipment] = await tx
       .select()
       .from(shipments)
-      .where(eq(shipments.id, input.shipmentId))
+      .where(scoped(shipments, ctx, eq(shipments.id, input.shipmentId)))
       .for('update')
 
     if (!shipment) {
@@ -1036,7 +1046,7 @@ export async function advancePortStatus(
         blAwb: input.blAwb ?? shipment.blAwb,
         updatedAt: new Date(),
       })
-      .where(eq(shipments.id, shipment.id))
+      .where(scoped(shipments, ctx, eq(shipments.id, shipment.id)))
 
     await recordChange(ctx, tx, {
       action: 'update',
@@ -1069,7 +1079,7 @@ export async function setExpNumber(
     const [shipment] = await tx
       .select()
       .from(shipments)
-      .where(eq(shipments.id, input.shipmentId))
+      .where(scoped(shipments, ctx, eq(shipments.id, input.shipmentId)))
       .for('update')
 
     if (!shipment) {
@@ -1087,7 +1097,7 @@ export async function setExpNumber(
     await tx
       .update(shipments)
       .set({ expNumber: input.expNumber, updatedAt: new Date() })
-      .where(eq(shipments.id, shipment.id))
+      .where(scoped(shipments, ctx, eq(shipments.id, shipment.id)))
 
     await recordChange(ctx, tx, {
       action: 'update',
@@ -1112,7 +1122,7 @@ export async function buildDocChecklist(
     const [shipment] = await tx
       .select()
       .from(shipments)
-      .where(eq(shipments.id, input.shipmentId))
+      .where(scoped(shipments, ctx, eq(shipments.id, input.shipmentId)))
 
     if (!shipment) {
       throw notFound('shipment.errors.shipment_not_found', { shipmentId: input.shipmentId })
@@ -1122,7 +1132,7 @@ export async function buildDocChecklist(
 
     if (shipment.lcId) {
       const { lcs } = await import('@/modules/commercial/schema')
-      const [lc] = await tx.select({ docsRequired: lcs.docsRequired }).from(lcs).where(eq(lcs.id, shipment.lcId))
+      const [lc] = await tx.select({ docsRequired: lcs.docsRequired }).from(lcs).where(scoped(lcs, ctx, eq(lcs.id, shipment.lcId)))
       const required = lc?.docsRequired as Record<string, unknown> | undefined
       if (required && Object.keys(required).length > 0) kinds = Object.keys(required)
     }
@@ -1153,9 +1163,9 @@ export async function setDocStatus(ctx: RequestCtx, input: unknown): Promise<voi
     const [row] = await tx
       .select()
       .from(shipmentDocs)
-      .where(
+      .where(scoped(shipmentDocs, ctx, 
         and(eq(shipmentDocs.shipmentId, payload.shipmentId), eq(shipmentDocs.kind, payload.kind)),
-      )
+      ))
       .for('update')
 
     if (!row) {
@@ -1181,7 +1191,7 @@ export async function setDocStatus(ctx: RequestCtx, input: unknown): Promise<voi
         submittedAt: payload.status === 'submitted' ? new Date() : row.submittedAt,
         updatedAt: new Date(),
       })
-      .where(eq(shipmentDocs.id, row.id))
+      .where(scoped(shipmentDocs, ctx, eq(shipmentDocs.id, row.id)))
   })
 }
 
@@ -1211,7 +1221,7 @@ export async function handoffDocsToBank(
     const [row] = await tx
       .select({ id: shipments.id, orderId: shipments.orderId, expNumber: shipments.expNumber })
       .from(shipments)
-      .where(eq(shipments.id, input.shipmentId))
+      .where(scoped(shipments, ctx, eq(shipments.id, input.shipmentId)))
     return row
   })
 
@@ -1244,7 +1254,7 @@ export async function handoffDocsToBank(
     const [shipment] = await tx
       .select()
       .from(shipments)
-      .where(eq(shipments.id, input.shipmentId))
+      .where(scoped(shipments, ctx, eq(shipments.id, input.shipmentId)))
       .for('update')
 
     if (!shipment) {
@@ -1265,7 +1275,7 @@ export async function handoffDocsToBank(
     const docs = await tx
       .select()
       .from(shipmentDocs)
-      .where(eq(shipmentDocs.shipmentId, shipment.id))
+      .where(scoped(shipmentDocs, ctx, eq(shipmentDocs.shipmentId, shipment.id)))
 
     if (docs.length === 0) {
       throw notFound('shipment.errors.no_checklist', { shipmentId: shipment.id })
@@ -1282,7 +1292,7 @@ export async function handoffDocsToBank(
     await tx
       .update(shipmentDocs)
       .set({ status: 'submitted', submittedAt: new Date(), updatedAt: new Date() })
-      .where(and(eq(shipmentDocs.shipmentId, shipment.id), eq(shipmentDocs.status, 'ready')))
+      .where(scoped(shipmentDocs, ctx, and(eq(shipmentDocs.shipmentId, shipment.id), eq(shipmentDocs.status, 'ready'))))
 
     await recordChange(ctx, tx, {
       action: 'update',
@@ -1333,7 +1343,7 @@ export async function proposeToleranceOverride(
   const { propose } = await import('../core/pending-changes')
 
   const assessment = await withTenantRead(ctx, async (tx) => {
-    const [shipment] = await tx.select().from(shipments).where(eq(shipments.id, input.shipmentId))
+    const [shipment] = await tx.select().from(shipments).where(scoped(shipments, ctx, eq(shipments.id, input.shipmentId)))
     if (!shipment) {
       throw notFound('shipment.errors.shipment_not_found', { shipmentId: input.shipmentId })
     }
@@ -1344,16 +1354,16 @@ export async function proposeToleranceOverride(
     }
 
     const { lcs } = await import('@/modules/commercial/schema')
-    const [lc] = await tx.select().from(lcs).where(eq(lcs.id, shipment.lcId))
+    const [lc] = await tx.select().from(lcs).where(scoped(lcs, ctx, eq(lcs.id, shipment.lcId)))
     if (!lc) throw notFound('shipment.errors.lc_not_found', { lcId: shipment.lcId })
 
     const loaded = await tx
       .select({ totalQty: cartons.totalQty })
       .from(cartons)
-      .where(eq(cartons.shipmentId, shipment.id))
+      .where(scoped(cartons, ctx, eq(cartons.shipmentId, shipment.id)))
 
     const shippedQty = sumPieces(loaded)
-    const ordered = await orderedCells(tx, shipment.orderId)
+    const ordered = await orderedCells(ctx, tx, shipment.orderId)
     const lcQty = Object.values(ordered).reduce((a, b) => a + b, 0)
 
     const tolerance = wrapShipmentError(() =>
@@ -1406,7 +1416,7 @@ export async function commitToleranceOverride(
   const [shipment] = await tx
     .select()
     .from(shipments)
-    .where(eq(shipments.id, payload.shipmentId))
+    .where(scoped(shipments, ctx, eq(shipments.id, payload.shipmentId)))
     .for('update')
 
   if (!shipment) {
@@ -1422,7 +1432,7 @@ export async function commitToleranceOverride(
   await tx
     .update(shipments)
     .set({ toleranceOverride: override, updatedAt: new Date() })
-    .where(eq(shipments.id, shipment.id))
+    .where(scoped(shipments, ctx, eq(shipments.id, shipment.id)))
 
   await emit(ctx, tx, {
     eventName: SHIPMENT_EVENTS.toleranceOverridden,
@@ -1472,14 +1482,14 @@ export async function latestShipmentAlerts(
         latestShipmentDate: lcs.latestShipmentDate,
       })
       .from(lcs)
-      .where(
+      .where(scoped(lcs, ctx, 
         and(
           inArray(lcs.status, ['draft', 'active']),
           // A null date cannot be counted down; it is reported by the per-shipment path
           // instead, so the scan does not have to carry every LC in the book.
           lte(lcs.latestShipmentDate, horizon),
         ),
-      )
+      ))
 
     if (liveLcs.length === 0) return []
 
@@ -1490,12 +1500,12 @@ export async function latestShipmentAlerts(
         actualExFactory: shipments.actualExFactory,
       })
       .from(shipments)
-      .where(
+      .where(scoped(shipments, ctx, 
         inArray(
           shipments.lcId,
           liveLcs.map((lc) => lc.id),
         ),
-      )
+      ))
 
     const alerts: CountdownAlert[] = []
     const seen = new Set<string>()
@@ -1506,7 +1516,7 @@ export async function latestShipmentAlerts(
         if (seen.has(key)) continue
         seen.add(key)
 
-        const ordered = await orderedCells(tx, row.orderId)
+        const ordered = await orderedCells(ctx, tx, row.orderId)
         const orderedQty = Object.values(ordered).reduce((a, b) => a + b, 0)
 
         // Only cartons on shipments that have actually left count as shipped.
@@ -1514,12 +1524,12 @@ export async function latestShipmentAlerts(
           .select({ totalQty: cartons.totalQty })
           .from(cartons)
           .innerJoin(shipments, eq(cartons.shipmentId, shipments.id))
-          .where(
+          .where(scoped(cartons, ctx, 
             and(
               eq(shipments.orderId, row.orderId),
               isNotNull(shipments.actualExFactory),
             ),
-          )
+          ))
 
         const shippedQty = sumPieces(shipped)
         const result = wrapShipmentError(() =>
@@ -1600,7 +1610,7 @@ export async function waiveFinalInspection(
     const [shipment] = await tx
       .select()
       .from(shipments)
-      .where(eq(shipments.id, input.shipmentId))
+      .where(scoped(shipments, ctx, eq(shipments.id, input.shipmentId)))
       .for('update')
 
     if (!shipment) {
@@ -1634,7 +1644,7 @@ export async function waiveFinalInspection(
     await tx
       .update(shipments)
       .set({ qcWaiver: waiver, updatedAt: new Date() })
-      .where(eq(shipments.id, shipment.id))
+      .where(scoped(shipments, ctx, eq(shipments.id, shipment.id)))
 
     await recordChange(ctx, tx, {
       action: 'update',
@@ -1689,7 +1699,7 @@ export async function waiveLcDate(
     const [shipment] = await tx
       .select()
       .from(shipments)
-      .where(eq(shipments.id, input.shipmentId))
+      .where(scoped(shipments, ctx, eq(shipments.id, input.shipmentId)))
       .for('update')
 
     if (!shipment) {
@@ -1712,7 +1722,7 @@ export async function waiveLcDate(
     await tx
       .update(shipments)
       .set({ lcWaiver: waiver, updatedAt: new Date() })
-      .where(eq(shipments.id, shipment.id))
+      .where(scoped(shipments, ctx, eq(shipments.id, shipment.id)))
 
     await recordChange(ctx, tx, {
       action: 'update',
@@ -1742,7 +1752,7 @@ export async function unloadedCartons(
     tx
       .select()
       .from(cartons)
-      .where(and(eq(cartons.orderId, input.orderId), isNull(cartons.shipmentId)))
+      .where(scoped(cartons, ctx, and(eq(cartons.orderId, input.orderId), isNull(cartons.shipmentId))))
       .orderBy(asc(cartons.cartonNo)),
   )
 }

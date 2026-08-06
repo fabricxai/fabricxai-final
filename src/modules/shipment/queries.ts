@@ -15,6 +15,7 @@ import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm'
 
 import { lcs } from '@/modules/commercial/schema'
 import type { AnyCtx } from '@/modules/core/ctx'
+import { scoped } from '@/modules/core/scoped'
 import { withTenantRead } from '@/modules/core/tenancy'
 import { orders } from '@/modules/orders/schema'
 
@@ -98,14 +99,14 @@ export async function shipmentBoard(ctx: AnyCtx): Promise<ShipmentRow[]> {
       tx
         .select({ shipmentId: cartons.shipmentId, totalQty: cartons.totalQty })
         .from(cartons)
-        .where(inArray(cartons.shipmentId, ids)),
+        .where(scoped(cartons, ctx, inArray(cartons.shipmentId, ids))),
       // Cartons packed against these orders that no shipment has claimed yet. Counted
       // separately because "packed" and "loaded" are different facts — a pallet on the
       // floor is not in the container, and only the loaded ones are on the manifest.
       tx
         .select({ orderId: cartons.orderId, id: cartons.id })
         .from(cartons)
-        .where(and(inArray(cartons.orderId, orderIds), isNull(cartons.shipmentId))),
+        .where(scoped(cartons, ctx, and(inArray(cartons.orderId, orderIds), isNull(cartons.shipmentId)))),
       tx
         .select({
           id: packingLists.id,
@@ -116,7 +117,7 @@ export async function shipmentBoard(ctx: AnyCtx): Promise<ShipmentRow[]> {
           totalQty: packingLists.totalQty,
         })
         .from(packingLists)
-        .where(inArray(packingLists.shipmentId, ids))
+        .where(scoped(packingLists, ctx, inArray(packingLists.shipmentId, ids)))
         .orderBy(desc(packingLists.version)),
       tx
         .select({
@@ -126,13 +127,13 @@ export async function shipmentBoard(ctx: AnyCtx): Promise<ShipmentRow[]> {
           documentId: shipmentDocs.documentId,
         })
         .from(shipmentDocs)
-        .where(inArray(shipmentDocs.shipmentId, ids))
+        .where(scoped(shipmentDocs, ctx, inArray(shipmentDocs.shipmentId, ids)))
         .orderBy(asc(shipmentDocs.kind)),
       orderIds.length > 0
         ? tx
             .select({ id: orders.id, poNumbers: orders.poNumbers })
             .from(orders)
-            .where(inArray(orders.id, orderIds))
+            .where(scoped(orders, ctx, inArray(orders.id, orderIds)))
         : Promise.resolve([] as { id: string; poNumbers: string[] | null }[]),
       lcIds.length > 0
         ? tx
@@ -142,7 +143,7 @@ export async function shipmentBoard(ctx: AnyCtx): Promise<ShipmentRow[]> {
               latestShipmentDate: lcs.latestShipmentDate,
             })
             .from(lcs)
-            .where(inArray(lcs.id, lcIds))
+            .where(scoped(lcs, ctx, inArray(lcs.id, lcIds)))
         : Promise.resolve([] as { id: string; number: string; latestShipmentDate: string | null }[]),
     ])
 
@@ -223,7 +224,7 @@ export async function unassignedCartons(
     tx
       .select({ id: cartons.id })
       .from(cartons)
-      .where(and(eq(cartons.orderId, input.orderId), isNull(cartons.shipmentId))),
+      .where(scoped(cartons, ctx, and(eq(cartons.orderId, input.orderId), isNull(cartons.shipmentId)))),
   )
 }
 
