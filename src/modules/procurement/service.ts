@@ -21,6 +21,7 @@ import { AppError, conflict, notFound } from '../core/errors'
 import { assertGate, GATES } from '../core/gates'
 import { emit } from '../core/outbox'
 import { defineStateMachine } from '../core/state-machine'
+import { scoped } from '../core/scoped'
 import { withTenantRead, withTenantTx, type TenantDb } from '../core/tenancy'
 
 import { PROCUREMENT_EVENTS } from './events'
@@ -140,7 +141,7 @@ async function createSupplierIn(
     const [existing] = await tx
       .select({ id: suppliers.id })
       .from(suppliers)
-      .where(eq(suppliers.code, payload.code))
+      .where(scoped(suppliers, ctx, eq(suppliers.code, payload.code)))
 
     // A typed conflict rather than the `suppliers_company_code_key` violation a generic
     // insert would have surfaced. Supplier codes collide for ordinary reasons — two people
@@ -220,7 +221,7 @@ async function createPurchaseRequisitionIn(
     const [existingPr] = await tx
       .select({ id: purchaseRequisitions.id })
       .from(purchaseRequisitions)
-      .where(eq(purchaseRequisitions.prNo, payload.prNo))
+      .where(scoped(purchaseRequisitions, ctx, eq(purchaseRequisitions.prNo, payload.prNo)))
 
     if (existingPr) {
       throw conflict('procurement.errors.pr_no_exists', { prNo: payload.prNo })
@@ -311,7 +312,7 @@ async function recordSupplierQuoteIn(
     const [pr] = await tx
       .select()
       .from(purchaseRequisitions)
-      .where(eq(purchaseRequisitions.id, payload.purchaseRequisitionId))
+      .where(scoped(purchaseRequisitions, ctx, eq(purchaseRequisitions.id, payload.purchaseRequisitionId)))
 
     if (!pr) {
       throw notFound('procurement.errors.pr_not_found', {
@@ -352,7 +353,7 @@ async function recordSupplierQuoteIn(
       await tx
         .update(purchaseRequisitions)
         .set({ status: 'quoted', updatedAt: new Date() })
-        .where(eq(purchaseRequisitions.id, pr.id))
+        .where(scoped(purchaseRequisitions, ctx, eq(purchaseRequisitions.id, pr.id)))
     }
 
     await emit(ctx, tx, {
@@ -391,7 +392,7 @@ export async function compareQuotesForItem(
     const [pr] = await tx
       .select()
       .from(purchaseRequisitions)
-      .where(eq(purchaseRequisitions.id, input.purchaseRequisitionId))
+      .where(scoped(purchaseRequisitions, ctx, eq(purchaseRequisitions.id, input.purchaseRequisitionId)))
 
     if (!pr) {
       throw notFound('procurement.errors.pr_not_found', {
@@ -402,12 +403,12 @@ export async function compareQuotesForItem(
     const [prLine] = await tx
       .select({ qty: purchaseRequisitionLines.qty, unit: purchaseRequisitionLines.unit })
       .from(purchaseRequisitionLines)
-      .where(
+      .where(scoped(purchaseRequisitionLines, ctx, 
         and(
           eq(purchaseRequisitionLines.purchaseRequisitionId, pr.id),
           eq(purchaseRequisitionLines.itemId, input.itemId),
         ),
-      )
+      ))
 
     if (!prLine) {
       throw notFound('procurement.errors.pr_line_not_found', {
@@ -430,12 +431,12 @@ export async function compareQuotesForItem(
       })
       .from(supplierQuoteLines)
       .innerJoin(supplierQuotes, eq(supplierQuoteLines.supplierQuoteId, supplierQuotes.id))
-      .where(
+      .where(scoped(supplierQuoteLines, ctx, 
         and(
           eq(supplierQuotes.purchaseRequisitionId, pr.id),
           eq(supplierQuoteLines.itemId, input.itemId),
         ),
-      )
+      ))
 
     if (rows.length === 0) {
       throw notFound('procurement.errors.no_quotes', {
@@ -501,7 +502,7 @@ export async function issuePo(
     const [supplier] = await tx
       .select()
       .from(suppliers)
-      .where(eq(suppliers.id, payload.supplierId))
+      .where(scoped(suppliers, ctx, eq(suppliers.id, payload.supplierId)))
 
     if (!supplier) {
       throw notFound('procurement.errors.supplier_not_found', { supplierId: payload.supplierId })
@@ -577,7 +578,7 @@ export async function issuePo(
       await tx
         .update(purchaseRequisitions)
         .set({ status: 'ordered', updatedAt: new Date() })
-        .where(eq(purchaseRequisitions.id, payload.purchaseRequisitionId))
+        .where(scoped(purchaseRequisitions, ctx, eq(purchaseRequisitions.id, payload.purchaseRequisitionId)))
     }
 
     await recordChange(ctx, tx, {
@@ -618,7 +619,7 @@ export async function setPoStatus(
     const [po] = await tx
       .select()
       .from(supplierPos)
-      .where(eq(supplierPos.id, input.supplierPoId))
+      .where(scoped(supplierPos, ctx, eq(supplierPos.id, input.supplierPoId)))
       .for('update')
 
     if (!po) {
@@ -630,7 +631,7 @@ export async function setPoStatus(
     await tx
       .update(supplierPos)
       .set({ status: input.status, updatedAt: new Date() })
-      .where(eq(supplierPos.id, po.id))
+      .where(scoped(supplierPos, ctx, eq(supplierPos.id, po.id)))
 
     await recordChange(ctx, tx, {
       action: 'update',
@@ -672,7 +673,7 @@ export async function applyReceipt(
     const [line] = await tx
       .select()
       .from(supplierPoLines)
-      .where(eq(supplierPoLines.id, input.supplierPoLineId))
+      .where(scoped(supplierPoLines, ctx, eq(supplierPoLines.id, input.supplierPoLineId)))
       .for('update')
 
     if (!line) {
@@ -701,14 +702,14 @@ export async function applyReceipt(
         closedAt: match.closed ? new Date() : null,
         updatedAt: new Date(),
       })
-      .where(eq(supplierPoLines.id, line.id))
+      .where(scoped(supplierPoLines, ctx, eq(supplierPoLines.id, line.id)))
 
     // The PO's status is derived from its lines, in this transaction, from the rows as
     // they now are.
     const siblings = await tx
       .select({ status: supplierPoLines.status })
       .from(supplierPoLines)
-      .where(eq(supplierPoLines.supplierPoId, line.supplierPoId))
+      .where(scoped(supplierPoLines, ctx, eq(supplierPoLines.supplierPoId, line.supplierPoId)))
 
     const allClosed = siblings.every((s) => s.status === 'received' || s.status === 'short_closed')
     const anyReceived = siblings.some((s) => s.status !== 'open')
@@ -721,14 +722,14 @@ export async function applyReceipt(
     const [po] = await tx
       .select()
       .from(supplierPos)
-      .where(eq(supplierPos.id, line.supplierPoId))
+      .where(scoped(supplierPos, ctx, eq(supplierPos.id, line.supplierPoId)))
       .for('update')
 
     if (po && po.status !== nextStatus && po.status !== 'cancelled') {
       await tx
         .update(supplierPos)
         .set({ status: nextStatus, updatedAt: new Date() })
-        .where(eq(supplierPos.id, po.id))
+        .where(scoped(supplierPos, ctx, eq(supplierPos.id, po.id)))
     }
 
     await recordChange(ctx, tx, {
@@ -805,7 +806,7 @@ export async function computeSupplierScores(
     const supplierRows = await tx
       .select({ id: suppliers.id })
       .from(suppliers)
-      .where(eq(suppliers.isActive, true))
+      .where(scoped(suppliers, ctx, eq(suppliers.isActive, true)))
 
     if (supplierRows.length === 0) return { scored: 0 }
 
@@ -816,7 +817,7 @@ export async function computeSupplierScores(
         expectedDeliveryDate: supplierPos.expectedDeliveryDate,
       })
       .from(supplierPos)
-      .where(
+      .where(scoped(supplierPos, ctx, 
         and(
           gte(supplierPos.createdAt, new Date(`${periodStart}T00:00:00Z`)),
           lt(supplierPos.createdAt, new Date(`${periodEnd}T00:00:00Z`)),
@@ -825,7 +826,7 @@ export async function computeSupplierScores(
             supplierRows.map((s) => s.id),
           ),
         ),
-      )
+      ))
 
     const linesByPo = new Map<string, { receivedQty: string; closedAt: Date | null }[]>()
     if (pos.length > 0) {
@@ -836,12 +837,12 @@ export async function computeSupplierScores(
           closedAt: supplierPoLines.closedAt,
         })
         .from(supplierPoLines)
-        .where(
+        .where(scoped(supplierPoLines, ctx, 
           inArray(
             supplierPoLines.supplierPoId,
             pos.map((p) => p.id),
           ),
-        )
+        ))
 
       for (const row of lineRows) {
         linesByPo.set(row.supplierPoId, [...(linesByPo.get(row.supplierPoId) ?? []), row])
@@ -851,12 +852,12 @@ export async function computeSupplierScores(
     const quotesBySupplier = await tx
       .select({ supplierId: supplierQuotes.supplierId, id: supplierQuotes.id })
       .from(supplierQuotes)
-      .where(
+      .where(scoped(supplierQuotes, ctx, 
         and(
           gte(supplierQuotes.quotedOn, periodStart),
           lt(supplierQuotes.quotedOn, periodEnd),
         ),
-      )
+      ))
 
     /**
      * The price index, compared like with like.
@@ -884,12 +885,12 @@ export async function computeSupplierScores(
             })
             .from(supplierQuoteLines)
             .innerJoin(supplierQuotes, eq(supplierQuotes.id, supplierQuoteLines.supplierQuoteId))
-            .where(
+            .where(scoped(supplierQuoteLines, ctx, 
               inArray(
                 supplierQuoteLines.supplierQuoteId,
                 quotesBySupplier.map((q) => q.id),
               ),
-            )
+            ))
         : []
 
     const supplierOfQuote = new Map(quotesBySupplier.map((q) => [q.id, q.supplierId]))
@@ -1001,12 +1002,12 @@ export async function overduePos(
         expectedDeliveryDate: supplierPos.expectedDeliveryDate,
       })
       .from(supplierPos)
-      .where(
+      .where(scoped(supplierPos, ctx, 
         and(
           lte(supplierPos.expectedDeliveryDate, input.asOf),
           sql`${supplierPos.status} not in ('received', 'cancelled')`,
         ),
-      )
+      ))
       .orderBy(supplierPos.expectedDeliveryDate)
 
     return rows.map((row) => ({

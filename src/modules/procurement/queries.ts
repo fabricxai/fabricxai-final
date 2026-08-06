@@ -92,12 +92,12 @@ export async function purchaseOrders(ctx: AnyCtx, input: { now: Date }): Promise
       tx
         .select({ supplierPoId: supplierPoLines.supplierPoId, status: supplierPoLines.status })
         .from(supplierPoLines)
-        .where(inArray(supplierPoLines.supplierPoId, ids)),
+        .where(scoped(supplierPoLines, ctx, inArray(supplierPoLines.supplierPoId, ids))),
       btbIds.length > 0
         ? tx
             .select({ id: btbLcs.id, number: btbLcs.number })
             .from(btbLcs)
-            .where(inArray(btbLcs.id, btbIds))
+            .where(scoped(btbLcs, ctx, inArray(btbLcs.id, btbIds)))
         : Promise.resolve([] as { id: string; number: string }[]),
     ])
 
@@ -161,7 +161,7 @@ export async function supplierBook(ctx: AnyCtx): Promise<SupplierRow[]> {
       })
       .from(suppliers)
       .leftJoin(supplierPos, eq(supplierPos.supplierId, suppliers.id))
-      .where(eq(suppliers.isActive, true))
+      .where(scoped(suppliers, ctx, eq(suppliers.isActive, true)))
       .groupBy(suppliers.id)
       .orderBy(suppliers.name),
   )
@@ -181,7 +181,7 @@ export async function openRequisitions(
         status: purchaseRequisitions.status,
       })
       .from(purchaseRequisitions)
-      .where(inArray(purchaseRequisitions.status, ['open', 'quoted']))
+      .where(scoped(purchaseRequisitions, ctx, inArray(purchaseRequisitions.status, ['open', 'quoted'])))
       .orderBy(purchaseRequisitions.neededBy)
 
     return rows.map((r) => ({
@@ -270,7 +270,7 @@ export async function supplierScorecard(
         supplierScores,
         and(eq(supplierScores.supplierId, suppliers.id), eq(supplierScores.period, input.period)),
       )
-      .where(eq(suppliers.isActive, true))
+      .where(scoped(suppliers, ctx, eq(suppliers.isActive, true)))
       .orderBy(suppliers.name)
 
     return rows.map((row) => ({
@@ -311,7 +311,7 @@ export async function lastPeriodWithRecord(
     const [row] = await tx
       .select({ period: supplierScores.period })
       .from(supplierScores)
-      .where(
+      .where(scoped(supplierScores, ctx, 
         and(
           ne(supplierScores.period, input.excluding),
           // Any evidence at all: a closed receipt, or a quote somebody returned.
@@ -322,7 +322,7 @@ export async function lastPeriodWithRecord(
             isNotNull(supplierScores.responsivenessPct),
           ),
         ),
-      )
+      ))
       .orderBy(desc(supplierScores.period))
       .limit(1)
 
@@ -403,7 +403,7 @@ export async function awaitingReceipt(
       .innerJoin(supplierPos, eq(supplierPos.id, supplierPoLines.supplierPoId))
       .innerJoin(suppliers, eq(suppliers.id, supplierPos.supplierId))
       .innerJoin(items, eq(items.id, supplierPoLines.itemId))
-      .where(
+      .where(scoped(supplierPoLines, ctx, 
         and(
           inArray(supplierPoLines.status, ['open', 'received_partial']),
           inArray(supplierPos.status, [
@@ -414,7 +414,7 @@ export async function awaitingReceipt(
             'received_partial',
           ]),
         ),
-      )
+      ))
 
     return rows
       .map((row) => ({
