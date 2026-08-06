@@ -5,12 +5,17 @@ import { Card } from '@/components/fx/data'
 import { Badge } from '@/components/fx/primitives'
 import { RunRateCard } from '@/components/fx/run-rate'
 import { SectionHeading } from '@/components/fx/signature'
-import { BreakdownGrid, FactPair, MilestoneTimeline } from '@/components/fx/tna'
+import { FactPair } from '@/components/fx/tna'
 import { PageHeader } from '@/components/shell/page-shell'
+import { canWrite, NAV } from '@/components/shell/nav'
 import { getCtx } from '@/modules/core/session'
+import { companyProfile } from '@/modules/settings/service'
 import { orderDetail } from '@/modules/orders/queries'
 import { orderRunRate } from '@/modules/production/queries'
 import { factoryToday } from '@/lib/dates'
+
+import { OrderBreakdown } from './breakdown-client'
+import { OrderTna } from './tna-client'
 
 /**
  * 1.3 Order Desk — one order.
@@ -33,6 +38,15 @@ export default async function OrderDetailPage({
   const { orderId } = await params
   const order = await orderDetail(ctx, orderId)
   if (!order) notFound()
+
+  // The same decision the shell's read-only banner makes, asked here so the timeline is
+  // given no hand to move it with rather than offering a button that a role check refuses.
+  const profile = await companyProfile(ctx)
+  const mayWrite = canWrite(
+    NAV.find((n) => n.id === 'orders')!,
+    ctx.roles,
+    profile?.factoryType ?? 'woven',
+  )
 
   const po = order.poNumbers[0] ?? order.id.slice(0, 8)
   const late = order.milestones.filter((m) => m.status === 'late').length
@@ -109,7 +123,7 @@ export default async function OrderDetailPage({
           <SectionHeading eyebrow={late > 0 ? `${late} late` : undefined}>
             Time and action
           </SectionHeading>
-          <MilestoneTimeline milestones={order.milestones} />
+          <OrderTna milestones={order.milestones} canWrite={mayWrite} />
         </section>
 
         <section>
@@ -118,10 +132,12 @@ export default async function OrderDetailPage({
           >
             Size breakdown
           </SectionHeading>
-          <BreakdownGrid
+          <OrderBreakdown
             cells={order.breakdown}
+            orderStyleId={order.style?.id ?? null}
             contractedQty={order.style?.contractedQty}
             tolerancePct={order.qtyTolerancePct}
+            canWrite={mayWrite}
           />
         </section>
       </div>

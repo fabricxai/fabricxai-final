@@ -269,6 +269,52 @@ export const UI_MESSAGES: Catalogue = {
     'ui.refused.count_one': '{count} refused',
     'ui.refused.count_other': '{count} refused',
 
+    // ── orders · the TNA write surface (plan 5.1) ──
+    'ui.orders.edit_breakdown': 'Edit the breakdown',
+    'ui.orders.no_cells':
+      'This style has no grid yet. A breakdown is entered against the colours and sizes the buyer ordered.',
+    'ui.orders.total_now': 'now {total} pcs',
+    'ui.orders.total_after': 'after {total} pcs',
+    'ui.orders.cells_changed': '{count} cell(s) changed',
+    'ui.orders.revision_reason': 'Why',
+    'ui.orders.revision_reason_hint':
+      'Required for a buyer amendment — it is what whoever approves it reads. Optional for a correction.',
+    'ui.orders.save_correction': 'Save as a correction',
+    'ui.orders.propose_revision': 'Send as a buyer amendment',
+    'ui.orders.breakdown_corrected': 'Breakdown saved. {total} pcs.',
+    'ui.orders.breakdown_failed': 'The breakdown was not saved.',
+    'ui.orders.revision_proposed':
+      'Sent to the approve inbox. The floor keeps cutting to the current revision until somebody signs it.',
+    'ui.orders.revision_failed': 'The amendment was not sent.',
+    'ui.orders.new_order': 'New order',
+    'ui.orders.create_order': 'Open the order',
+    'ui.orders.create_failed': 'The order was not opened.',
+    'ui.orders.buyer': 'Buyer',
+    'ui.orders.choose_buyer': 'Choose a buyer',
+    'ui.orders.no_buyers':
+      'No buyers yet. An order belongs to one, so add the buyer first on the buyer desk.',
+    'ui.orders.po_number': 'Buyer’s PO number',
+    'ui.orders.planned_ex_factory': 'Planned ex-factory',
+    'ui.orders.style_code': 'Style code',
+    'ui.orders.style_hint':
+      'An order needs at least one style — nothing can be cut, costed or planned against one without it.',
+    'ui.orders.contracted_qty': 'Contracted pieces',
+    'ui.orders.unit_price': 'Unit price',
+    'ui.orders.actualize_title': 'Mark this milestone done',
+    'ui.orders.actual_date': 'The date it actually happened',
+    'ui.orders.actualize_confirm': 'Record it',
+    'ui.orders.actualize_failed': 'The milestone was not recorded.',
+    'ui.orders.ripple_unavailable': 'The knock-on effect could not be worked out.',
+    'ui.orders.ripple_none': 'Nothing else moves.',
+    'ui.orders.ripple_absorbed':
+      '{count} milestone(s) move. The ship date holds — the schedule’s slack absorbs it.',
+    'ui.orders.ripple_slips':
+      '{count} milestone(s) move, and the ship date goes back {days} day(s) to {date}. The buyer has to be told.',
+    'ui.orders.actualized_no_slip':
+      'Recorded. {count} milestone(s) moved; the ship date holds.',
+    'ui.orders.actualized_slipped':
+      'Recorded. {count} milestone(s) moved and the ship date is now {date}, {days} day(s) later.',
+
     // ── store · 3.1 ──
     'ui.store.receive_eyebrow': 'Store · receive goods',
     'ui.store.receive_title': 'Receive against a challan',
@@ -1142,6 +1188,52 @@ export const UI_MESSAGES: Catalogue = {
     'ui.refused.reason_unknown': 'কোনো কারণ রেকর্ড হয়নি।',
     'ui.refused.count_one': '{count}টি রিফিউজড',
     'ui.refused.count_other': '{count}টি রিফিউজড',
+
+    // ── orders ──
+    'ui.orders.edit_breakdown': 'ব্রেকডাউন এডিট করুন',
+    'ui.orders.no_cells':
+      'এই স্টাইলের এখনো কোনো গ্রিড নেই। বায়ার যে রং ও সাইজ দিয়েছে তার বিপরীতে ব্রেকডাউন লেখা হয়।',
+    'ui.orders.total_now': 'এখন {total} পিস',
+    'ui.orders.total_after': 'পরে {total} পিস',
+    'ui.orders.cells_changed': '{count}টি ঘর বদলেছে',
+    'ui.orders.revision_reason': 'কেন',
+    'ui.orders.revision_reason_hint':
+      'বায়ার সংশোধনের জন্য লাগবেই — যিনি অ্যাপ্রুভ করবেন তিনি এটিই পড়বেন। কারেকশনের জন্য ঐচ্ছিক।',
+    'ui.orders.save_correction': 'কারেকশন হিসেবে সেভ করুন',
+    'ui.orders.propose_revision': 'বায়ার সংশোধন হিসেবে পাঠান',
+    'ui.orders.breakdown_corrected': 'ব্রেকডাউন সেভ হয়েছে। {total} পিস।',
+    'ui.orders.breakdown_failed': 'ব্রেকডাউন সেভ হয়নি।',
+    'ui.orders.revision_proposed':
+      'অ্যাপ্রুভ ইনবক্সে পাঠানো হয়েছে। কেউ সই না করা পর্যন্ত ফ্লোর বর্তমান রিভিশন ধরেই কাটবে।',
+    'ui.orders.revision_failed': 'সংশোধনটি পাঠানো হয়নি।',
+    'ui.orders.new_order': 'নতুন অর্ডার',
+    'ui.orders.create_order': 'অর্ডার খুলুন',
+    'ui.orders.create_failed': 'অর্ডার খোলা হয়নি।',
+    'ui.orders.buyer': 'বায়ার',
+    'ui.orders.choose_buyer': 'একজন বায়ার বাছুন',
+    'ui.orders.no_buyers':
+      'এখনো কোনো বায়ার নেই। অর্ডার একজন বায়ারের হয়, তাই আগে বায়ার ডেস্কে বায়ার যোগ করুন।',
+    'ui.orders.po_number': 'বায়ারের PO নম্বর',
+    'ui.orders.planned_ex_factory': 'পরিকল্পিত ex-factory',
+    'ui.orders.style_code': 'স্টাইল কোড',
+    'ui.orders.style_hint':
+      'অর্ডারে অন্তত একটি স্টাইল লাগে — সেটি ছাড়া কাটা, কস্টিং বা প্ল্যান কিছুই করা যায় না।',
+    'ui.orders.contracted_qty': 'চুক্তির পিস',
+    'ui.orders.unit_price': 'ইউনিট প্রাইস',
+    'ui.orders.actualize_title': 'এই ধাপটি হয়ে গেছে বলে চিহ্নিত করুন',
+    'ui.orders.actual_date': 'আসলে যেদিন হয়েছে',
+    'ui.orders.actualize_confirm': 'রেকর্ড করুন',
+    'ui.orders.actualize_failed': 'ধাপটি রেকর্ড হয়নি।',
+    'ui.orders.ripple_unavailable': 'এর প্রভাব হিসাব করা যায়নি।',
+    'ui.orders.ripple_none': 'আর কিছু সরছে না।',
+    'ui.orders.ripple_absorbed':
+      '{count}টি ধাপ সরছে। শিপের তারিখ ঠিক থাকছে — শিডিউলের ফাঁকা সময় এটি নিয়ে নিচ্ছে।',
+    'ui.orders.ripple_slips':
+      '{count}টি ধাপ সরছে, আর শিপের তারিখ {days} দিন পিছিয়ে {date} হচ্ছে। বায়ারকে জানাতে হবে।',
+    'ui.orders.actualized_no_slip':
+      'রেকর্ড হয়েছে। {count}টি ধাপ সরেছে; শিপের তারিখ ঠিক আছে।',
+    'ui.orders.actualized_slipped':
+      'রেকর্ড হয়েছে। {count}টি ধাপ সরেছে আর শিপের তারিখ এখন {date}, {days} দিন পরে।',
 
     // ── store · 3.1 ──
     // Bangla nouns do not inflect after a numeral, so the _one and _other forms of a key

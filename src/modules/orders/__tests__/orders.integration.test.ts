@@ -21,6 +21,7 @@ import {
   actualizeMilestone,
   generateTna,
   previewRipple,
+  createOrder,
   saveBreakdown,
   setOrderStatus,
 } from '@/modules/orders/service'
@@ -386,6 +387,114 @@ describe('1.3 · order state machine', () => {
 
     expect(result.isNewRevision).toBe(true)
     expect(result.revision).toBe(3)
+  })
+})
+
+describe('1.3 · the desk originates as well as advances (plan 5.1)', () => {
+  /*
+   * Every service in this module was reachable from exactly two places — the `rfq.won`
+   * consumer and the approve inbox's commit handlers — so the product could advance an
+   * order that arrived from somewhere else and could not open one. What is asserted here is
+   * the shape the DESK sends, because that is the new caller and the one nothing covered.
+   */
+  it('a hand-entered order arrives with its style, which is what makes it usable', async () => {
+    const created = await createOrder(ctxA, {
+      order: {
+        buyerId: BUYER_A,
+        poNumbers: [`PO-DESK-${randomUUID().slice(0, 6)}`],
+        currency: 'USD',
+        plannedExFactoryDate: '2026-11-20',
+      },
+      styles: [{ styleCode: 'ST-DESK', contractedQty: 12_000, unitPrice: '4.25', currency: 'USD' }],
+    })
+
+    const [order] = await db.select().from(orders).where(eq(orders.id, created.orderId))
+    expect(order?.plannedExFactoryDate).toBe('2026-11-20')
+
+    // The part that matters. An order with no style is an order nothing can be cut, costed
+    // or planned against — it would sit in the book looking like work.
+    const styles = await db
+      .select()
+      .from(orderStyles)
+      .where(eq(orderStyles.orderId, created.orderId))
+    expect(styles).toHaveLength(1)
+    expect(styles[0]?.contractedQty).toBe(12_000)
+  })
+
+  it('a desk-proposed amendment validates and commits through the same handler', async () => {
+    /*
+     * The action cannot be called here — it reads `headers()` — so this sends exactly the
+     * payload it builds. That is the point: `proposeOrderRevision` names a zod key and an
+     * operation, and a mismatch between what the screen sends and what the module registered
+     * is invisible until somebody clicks approve.
+     */
+    __resetRegistry()
+    registerModule({ ...ordersModule })
+
+    const [before] = await db.select().from(orderStyles).where(eq(orderStyles.id, styleId))
+
+    const draft = await propose(ctxA, {
+      moduleId: 'orders',
+      targetTable: 'order_breakdowns',
+      // `insert` with no targetId — see the note in `proposeOrderRevision`. An `update`
+      // carrying the STYLE id would make the inbox look order_styles up in
+      // order_breakdowns and show the reviewer no before at all.
+      operation: 'insert',
+      zodSchemaKey: 'order_revision_v1',
+      source: 'user_draft',
+      payload: {
+        orderStyleId: styleId,
+        // Still sums to the contracted 10,000 — a grid that does not is refused by the
+        // tolerance check, which is the point of the check and not of this case.
+        cells: [
+          { color: 'Navy', size: 'M', qty: 6_000 },
+          { color: 'Navy', size: 'L', qty: 4_000 },
+        ],
+        reason: 'Buyer dropped the L split on the phone',
+      },
+    })
+
+    expect(draft.status).toBe('pending')
+    await approve(ctxA, { pendingChangeId: draft.id })
+
+    const [after] = await db.select().from(orderStyles).where(eq(orderStyles.id, styleId))
+    // The floor cuts to `activeRevision`; an amendment that did not move it would leave
+    // people working to a grid nobody agreed.
+    expect(after!.activeRevision).toBe(before!.activeRevision + 1)
+  })
+
+  it('once cutting has started, even a correction is a new revision', async () => {
+    /*
+     * The other door, and the rule that surprised this case into being written properly.
+     *
+     * `isNewRevision` is `buyerRevision || productionStarted`. Before production a
+     * correction overwrites the active revision — the case earlier in this file asserts
+     * that. AFTER it, a correction still bumps, because the floor has been cutting to the
+     * old grid and quietly overwriting it would leave bundles on a table matching no
+     * revision on record. The desk's "save as a correction" button inherits that, so a
+     * merchandiser who expected a silent fix gets a numbered one.
+     */
+    // Whatever the earlier cases left it at, as long as production has begun — the rule
+    // keys on that, not on one status, and pinning a specific one here would make this case
+    // fail for a reason that has nothing to do with breakdowns.
+    const [order] = await db.select().from(orders).where(eq(orders.id, orderId))
+    expect(['in_production', 'shipped_partial', 'shipped_full']).toContain(order?.status)
+
+    const [before] = await db.select().from(orderStyles).where(eq(orderStyles.id, styleId))
+
+    const result = await saveBreakdown(ctxA, {
+      orderStyleId: styleId,
+      cells: [
+        { color: 'Navy', size: 'M', qty: 6_100 },
+        { color: 'Navy', size: 'L', qty: 3_900 },
+      ],
+      buyerRevision: false,
+      reason: 'Recount off the PO',
+    })
+
+    expect(result.isNewRevision).toBe(true)
+    const [after] = await db.select().from(orderStyles).where(eq(orderStyles.id, styleId))
+    expect(after!.activeRevision).toBe(before!.activeRevision + 1)
   })
 })
 

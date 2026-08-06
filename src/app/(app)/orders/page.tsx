@@ -7,8 +7,13 @@ import { EmptyState } from '@/components/fx/feedback'
 import { Ident } from '@/components/fx/format'
 import { StatusLabel } from '@/components/fx/signature'
 import { PageHeader } from '@/components/shell/page-shell'
+import { canWrite, NAV } from '@/components/shell/nav'
 import { getCtx } from '@/modules/core/session'
+import { buyerAccounts } from '@/modules/buyers/queries'
+import { companyProfile } from '@/modules/settings/service'
 import { orderList, type OrderHealth } from '@/modules/orders/queries'
+
+import { NewOrderButton } from './new-order'
 
 /**
  * 1.3 Order Desk — the book.
@@ -40,6 +45,15 @@ export default async function OrdersPage() {
   const rows = await orderList(ctx, { now: new Date() })
   const late = rows.filter((r) => r.health === 'late').length
 
+  // Read through the buyers module's own queries (rule 11), not its tables.
+  const profile = await companyProfile(ctx)
+  const mayWrite = canWrite(
+    NAV.find((n) => n.id === 'orders')!,
+    ctx.roles,
+    profile?.factoryType ?? 'woven',
+  )
+  const buyers = mayWrite ? await buyerAccounts(ctx) : []
+
   return (
     <>
       <PageHeader
@@ -47,12 +61,13 @@ export default async function OrdersPage() {
         title={rows.length === 0 ? 'No orders yet' : `${rows.length} orders`}
         meta={late > 0 ? `${late} late` : undefined}
         ownsAmber
+        actions={mayWrite ? <NewOrderButton buyers={buyers} /> : undefined}
       />
 
       {rows.length === 0 ? (
         <EmptyState
           title="The book is empty"
-          body="Orders arrive from a buyer PO — drop one on MARBIM and it drafts the order, its TNA and the size breakdown for you to approve."
+          body="Orders arrive from a buyer PO — drop one on MARBIM and it drafts the order, its TNA and the size breakdown for you to approve. Or open one here and enter it yourself."
         />
       ) : (
         /*
