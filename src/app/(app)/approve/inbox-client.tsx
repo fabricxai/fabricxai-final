@@ -12,6 +12,14 @@ import { MarbimMark, type MarkState } from '@/components/fx/mark'
 import { approveDraft, draftFields, rejectDraft } from '@/modules/approvals/actions'
 import type { DraftDetail } from '@/modules/approvals/queries'
 
+import {
+  BATCH_CONCURRENCY,
+  mapWithLimit,
+  stillSelected,
+  summariseBatch,
+  type RowOutcome,
+} from './batch'
+
 /** The row shape the server page hands over — dates already serialised. */
 export interface InboxRowView {
   id: string
@@ -57,10 +65,12 @@ export function ApproveInbox({
   const [toast, setToast] = useState<string>('')
   const [mark, setMark] = useState<MarkState>('rest')
   const [pending, startTransition] = useTransition()
+  /** Per-row results of the last batch. Cleared by the reviewer, not by a timer. */
+  const [outcomes, setOutcomes] = useState<RowOutcome<InboxRowView>[]>([])
 
-  const flash = useCallback((message: string) => {
+  const flash = useCallback((message: string, state: MarkState = 'resolved') => {
     setToast(message)
-    setMark('resolved')
+    setMark(state)
     setTimeout(() => {
       setToast('')
       setMark('rest')
@@ -136,6 +146,8 @@ export function ApproveInbox({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <KeyLegend />
 
+      <BatchOutcomes outcomes={outcomes} onDismiss={() => setOutcomes([])} />
+
       <Card padding={0}>
         <div
           style={{
@@ -172,19 +184,45 @@ export function ApproveInbox({
                 variant="primary"
                 onClick={() => {
                   const batch = rows.filter((r) => selected.includes(r.id))
-                  setSelected([])
+                  setOutcomes([])
                   setMark('thinking')
                   startTransition(async () => {
-                    const results = await Promise.allSettled(
-                      batch.map((r) => approveDraft({ pendingChangeId: r.id })),
+                    const settled = await mapWithLimit<InboxRowView, RowOutcome<InboxRowView>>(
+                      batch,
+                      BATCH_CONCURRENCY,
+                      async (row) => {
+                        try {
+                          const result = await approveDraft({ pendingChangeId: row.id })
+                          return result.status === 'committed'
+                            ? { kind: 'committed', row }
+                            : {
+                                kind: 'awaiting',
+                                row,
+                                remaining: result.approvalsRequired - result.approvals,
+                              }
+                        } catch (error) {
+                          // Kept per row. The batch used to discard every `reason`, so a
+                          // reviewer was told three of forty failed and never which three
+                          // or why — which leaves re-approving all forty as the only move.
+                          return {
+                            kind: 'failed',
+                            row,
+                            message: actionErrorMessage(error, 'That did not go through'),
+                          }
+                        }
+                      },
                     )
-                    const ok = results.filter((r) => r.status === 'fulfilled').length
-                    const failed = results.length - ok
-                    flash(
-                      failed === 0
-                        ? `${ok} approved`
-                        : `${ok} approved · ${failed} could not be committed`,
-                    )
+
+                    setOutcomes(settled)
+
+                    // Exactly what did not commit stays selected, so trying again is one
+                    // click and never re-approves something that already went through.
+                    // Clearing the selection up front — which is what this did — made a
+                    // partial failure unrecoverable without picking the rows out by hand.
+                    setSelected(stillSelected(settled))
+
+                    const summary = summariseBatch(settled)
+                    flash(summary.headline, summary.failed > 0 ? 'blocked' : 'resolved')
                   })
                 }}
               >
@@ -266,6 +304,69 @@ export function ApproveInbox({
         </div>
       ) : null}
     </div>
+  )
+}
+
+/**
+ * What the batch did, row by row.
+ *
+ * Shown only when something did NOT simply commit. A panel listing forty successes is noise
+ * a reviewer learns to close without reading, and the next time it carries a refusal they
+ * close that too. The toast already carries the headline; this exists to name the ones that
+ * need a second look and say what stopped them.
+ *
+ * Dismissed by the reviewer rather than on a timer: a refusal that disappears after four
+ * seconds while somebody is reading the row it names is a refusal they have to reproduce.
+ */
+function BatchOutcomes({
+  outcomes,
+  onDismiss,
+}: {
+  outcomes: RowOutcome<InboxRowView>[]
+  onDismiss: () => void
+}) {
+  const unresolved = outcomes.filter((o) => o.kind !== 'committed')
+  if (unresolved.length === 0) return null
+
+  const failed = unresolved.filter((o) => o.kind === 'failed').length
+  const committed = outcomes.length - unresolved.length
+
+  return (
+    <InlineAlert
+      tone={failed > 0 ? 'danger' : 'warning'}
+      action={
+        <Button variant="ghost" size="sm" onClick={onDismiss}>
+          Dismiss
+        </Button>
+      }
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ font: "600 13px/1.4 var(--fx-font-sans)", color: 'var(--fx-text-primary)' }}>
+          {committed} of {outcomes.length} committed. These did not:
+        </div>
+        <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {unresolved.map((outcome) => (
+            <li key={outcome.row.id} style={{ font: "400 13px/1.45 var(--fx-font-sans)" }}>
+              <span style={{ color: 'var(--fx-text-primary)', fontWeight: 500 }}>
+                {outcome.row.title}
+              </span>
+              {outcome.row.reference ? (
+                <span style={{ color: 'var(--fx-text-tertiary)' }}> · {outcome.row.reference}</span>
+              ) : null}
+              <span style={{ color: 'var(--fx-text-secondary)' }}>
+                {' — '}
+                {outcome.kind === 'awaiting'
+                  ? `your approval is recorded; waiting on ${outcome.remaining} more signature(s)`
+                  : outcome.message}
+              </span>
+            </li>
+          ))}
+        </ul>
+        <div style={{ font: "400 12px/1.4 var(--fx-font-mono)", color: 'var(--fx-text-tertiary)' }}>
+          these rows are still selected — nothing already committed will be approved twice
+        </div>
+      </div>
+    </InlineAlert>
   )
 }
 
