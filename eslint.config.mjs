@@ -108,7 +108,6 @@ export default tseslint.config(
       'src/modules/finance/service.ts',
       'src/modules/procurement/procurement.ts',
       'src/modules/procurement/service.ts',
-      'src/modules/production/metrics.ts',
       'src/modules/quality/quality.ts',
       'src/modules/quality/service.ts',
       'src/modules/rfq/rfq.ts',

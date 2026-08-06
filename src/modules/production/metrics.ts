@@ -14,28 +14,43 @@
  * whole efficiency figure hangs off it.
  */
 
+import { QuantityError, fromMinor, toMinor } from '@/lib/quantity'
+
 export class ProductionError extends Error {
   override readonly name = 'ProductionError'
 }
 
-const DECIMAL = /^\d+(\.\d+)?$/
-const SCALE = 2
-
-function toMinor(value: string | number, what: string): bigint {
-  const text = String(value).trim()
-  if (!DECIMAL.test(text)) throw new ProductionError(`"${value}" is not a positive decimal ${what}`)
-
-  const [whole = '0', fraction = ''] = text.split('.')
-  if (fraction.length > SCALE && /[1-9]/.test(fraction.slice(SCALE))) {
-    throw new ProductionError(`"${value}" has more than ${SCALE} decimal places — round first`)
+/**
+ * A positive decimal, as scaled BigInt (plan 2.9, audit BE-M8).
+ *
+ * The conversion itself is `lib/quantity`'s — one implementation, one set of tests, one
+ * place to change when a rounding convention does. This file used to carry its own copy,
+ * exact and unshared, which is the debt rule 4's structural half exists to remove.
+ *
+ * Two things it adds, and both were in the local copy rather than in the shared one:
+ *
+ *  - **positivity.** `lib/quantity.toMinor` accepts a negative, correctly — a stock
+ *    adjustment is signed. An SMV or an output is not, and swapping in the shared function
+ *    without this check would have LOOSENED what this file accepts, which is the way a
+ *    consolidation quietly becomes a behaviour change.
+ *  - **the error type.** `service.ts` catches `ProductionError` to skip a bad line and carry
+ *    on with the rest of the floor; a `QuantityError` escaping instead would take the whole
+ *    board down with a 500.
+ */
+function positiveMinor(value: string | number, what: string): bigint {
+  let minor: bigint
+  try {
+    minor = toMinor(String(value).trim(), what)
+  } catch (error) {
+    if (error instanceof QuantityError) throw new ProductionError(error.message)
+    throw error
   }
-  return BigInt(whole + fraction.padEnd(SCALE, '0').slice(0, SCALE))
+
+  if (minor < 0n) throw new ProductionError(`"${value}" is not a positive decimal ${what}`)
+  return minor
 }
 
-const toDecimal = (minor: bigint): string => {
-  const digits = minor.toString().padStart(SCALE + 1, '0')
-  return `${digits.slice(0, -SCALE)}.${digits.slice(-SCALE)}`
-}
+const toDecimal = (minor: bigint): string => fromMinor(minor)
 
 function divideRoundHalfUp(numerator: bigint, denominator: bigint): bigint {
   const quotient = numerator / denominator
@@ -81,7 +96,7 @@ export function computeEfficiency(input: {
     )
   }
 
-  const earned = toMinor(input.smv, 'SMV') * BigInt(input.output)
+  const earned = positiveMinor(input.smv, 'SMV') * BigInt(input.output)
 
   return {
     earnedMinutes: toDecimal(earned),
