@@ -9,6 +9,7 @@ import { eq, sql } from 'drizzle-orm'
 
 import { compareDecimalStrings, multiplyDecimalStrings } from '@/lib/quantity'
 
+import { scoped } from '../core/scoped'
 import type { SystemCtx } from '../core/ctx'
 import { notify } from '../core/notifications'
 import { withTenantRead } from '../core/tenancy'
@@ -51,7 +52,7 @@ export async function runUdAlerts(
   const { expired } = await expireLapsedUds(ctx, { today })
 
   const live = await withTenantRead(ctx, (tx) =>
-    tx.select().from(uds).where(eq(uds.status, 'active')),
+    tx.select().from(uds).where(scoped(uds, ctx, eq(uds.status, 'active'))),
   )
 
   let expiringSoon = 0
@@ -135,7 +136,7 @@ export async function runReconciliationReminder(
   input: { period: string },
 ): Promise<{ reminded: number }> {
   const live = await withTenantRead(ctx, (tx) =>
-    tx.select().from(uds).where(eq(uds.status, 'active')),
+    tx.select().from(uds).where(scoped(uds, ctx, eq(uds.status, 'active'))),
   )
 
   for (const ud of live) {

@@ -12,6 +12,7 @@
  */
 import { sql } from 'drizzle-orm'
 
+import { scoped } from '../core/scoped'
 import type { AnyCtx, SystemCtx } from '../core/ctx'
 import { withTenantRead } from '../core/tenancy'
 import { hasProvider } from '../marbim/provider'
@@ -82,12 +83,12 @@ export async function runStyleEmbedSweep(ctx: SystemCtx): Promise<EmbedSweepResu
         description: orderStyles.description,
       })
       .from(orderStyles)
-      .where(
+      .where(scoped(orderStyles, ctx, 
         sql`not exists (
           select 1 from ${styleFingerprints}
           where ${styleFingerprints.styleCode} = ${orderStyles.styleCode}
         )`,
-      ),
+      )),
   )
 
   const result: EmbedSweepResult = { styles: styles.length, embedded: 0, unchanged: 0 }

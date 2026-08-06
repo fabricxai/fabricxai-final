@@ -169,6 +169,7 @@ export default tseslint.config(
       'src/modules/workforce/queries.ts',
       'src/modules/commercial/service.ts',
       'src/modules/commercial/queries.ts',
+      'src/modules/commercial/ud-queries.ts',
       'src/modules/finance/service.ts',
       'src/modules/finance/queries.ts',
       'src/modules/approvals/service.ts',
@@ -203,6 +204,12 @@ export default tseslint.config(
       'src/modules/compliance/queries.ts',
       'src/modules/memory/service.ts',
       'src/modules/memory/queries.ts',
+      // BullMQ processors query too, and they run on a SystemCtx with no request behind
+      // them — the one context where a missing scope has nobody to notice it.
+      'src/modules/quality/jobs.ts',
+      'src/modules/orders/jobs.ts',
+      'src/modules/memory/jobs.ts',
+      'src/modules/commercial/jobs.ts',
     ],
     rules: { 'fabricxai/require-tenant-predicate': 'error' },
   },

@@ -11,6 +11,7 @@
  */
 import { and, eq, isNull, sql } from 'drizzle-orm'
 
+import { scoped } from '../core/scoped'
 import { notify } from '../core/notifications'
 import type { SystemCtx } from '../core/ctx'
 import { emit } from '../core/outbox'
@@ -50,7 +51,7 @@ export async function runTnaScan(
         ownerUserId: tnaMilestones.ownerUserId,
       })
       .from(tnaMilestones)
-      .where(isNull(tnaMilestones.actualDate))
+      .where(scoped(tnaMilestones, ctx, isNull(tnaMilestones.actualDate)))
 
     let atRisk = 0
     let late = 0
@@ -67,7 +68,7 @@ export async function runTnaScan(
       await tx
         .update(tnaMilestones)
         .set({ status: status as never, updatedAt: new Date() })
-        .where(eq(tnaMilestones.id, milestone.id))
+        .where(scoped(tnaMilestones, ctx, eq(tnaMilestones.id, milestone.id)))
 
       if (status !== 'at_risk' && status !== 'late') continue
 
@@ -132,7 +133,7 @@ export async function runLcCountdown(
     const live = await tx
       .select()
       .from(lcs)
-      .where(sql`${lcs.status} IN ('draft','active')`)
+      .where(scoped(lcs, ctx, sql`${lcs.status} IN ('draft','active')`))
 
     let raised = 0
     let conflicts = 0
@@ -147,7 +148,7 @@ export async function runLcCountdown(
         })
         .from(orders)
         .innerJoin(orderLcs, eq(orderLcs.orderId, orders.id))
-        .where(and(eq(orderLcs.lcId, lc.id), sql`${orders.status} NOT IN ('shipped_full','closed','cancelled')`))
+        .where(scoped(orders, ctx, and(eq(orderLcs.lcId, lc.id), sql`${orders.status} NOT IN ('shipped_full','closed','cancelled')`)))
 
       if (linked.length === 0) continue
 

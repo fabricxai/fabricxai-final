@@ -9,6 +9,7 @@
  */
 import { and, eq, gte, lte, sql } from 'drizzle-orm'
 
+import { scoped } from '../core/scoped'
 import type { SystemCtx } from '../core/ctx'
 import { notify } from '../core/notifications'
 import { withTenantRead } from '../core/tenancy'
@@ -39,7 +40,7 @@ export async function runQualityDayClose(
     tx
       .selectDistinct({ lineId: inlineChecks.lineId })
       .from(inlineChecks)
-      .where(eq(inlineChecks.checkedOn, forDate)),
+      .where(scoped(inlineChecks, ctx, eq(inlineChecks.checkedOn, forDate))),
   )
 
   let alerts = 0
@@ -102,7 +103,7 @@ export async function linesCheckedBetween(
     tx
       .select({ n: sql<string>`count(distinct ${inlineChecks.lineId})::text` })
       .from(inlineChecks)
-      .where(and(gte(inlineChecks.checkedOn, input.from), lte(inlineChecks.checkedOn, input.to))),
+      .where(scoped(inlineChecks, ctx, and(gte(inlineChecks.checkedOn, input.from), lte(inlineChecks.checkedOn, input.to)))),
   )
   return Number(row?.n ?? 0)
 }

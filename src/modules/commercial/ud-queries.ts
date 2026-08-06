@@ -81,9 +81,13 @@ export async function udRegister(ctx: AnyCtx, input: { now: Date }): Promise<UdC
       .select()
       .from(udConsumptions)
       .where(
-        inArray(
-          udConsumptions.udId,
-          rows.map((r) => r.id),
+        scoped(
+          udConsumptions,
+          ctx,
+          inArray(
+            udConsumptions.udId,
+            rows.map((r) => r.id),
+          ),
         ),
       )
 
@@ -132,7 +136,7 @@ export async function udDraws(
         overrideOf: udConsumptions.overrideOf,
       })
       .from(udConsumptions)
-      .where(eq(udConsumptions.udId, udId))
+      .where(scoped(udConsumptions, ctx, eq(udConsumptions.udId, udId)))
       .orderBy(desc(udConsumptions.createdAt))
       .limit(200),
   )
