@@ -94,13 +94,29 @@ function exportedActions(): Map<string, string> {
 
 const ACTIONS = exportedActions()
 
+/**
+ * Strip comments before scanning.
+ *
+ * A comment that MENTIONS an action is not a caller, and treating it as one is worse than
+ * missing a real call: it makes the ratchet quietly report an orphan as wired. Found the
+ * honest way — a note on the nav entry saying "`findSimilarStyles` has no entry point yet"
+ * made this test declare that it had one.
+ *
+ * Regex, not a parser. A `//` inside a string literal would be stripped too, which can only
+ * ever cause a false ORPHAN — somebody looking at a screen that does call the action — and
+ * never a false pass. That is the safe direction for a list that must only shrink.
+ */
+function withoutComments(source: string): string {
+  return source.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\/\/[^\n]*/g, ' ')
+}
+
 /** Everything that could reference an action, minus the files that declare them. */
 const CALLERS = [...sourceFiles('src/app'), ...sourceFiles('src/components'), ...sourceFiles('src/modules')]
   // `endsWith`, not a regex: an unescaped `/` inside a character class is legal and some
   // lexers still end the literal there, which makes the parser fail on an innocent line
   // forty rows below with a message about a missing semicolon.
   .filter((path) => !path.split(/[\\/]/).slice(-2).join('/').endsWith('/actions.ts'))
-  .map((path) => readFileSync(path, 'utf8'))
+  .map((path) => withoutComments(readFileSync(path, 'utf8')))
   .join('\n')
 
 const unreferenced = [...ACTIONS]

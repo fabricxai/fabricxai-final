@@ -32,8 +32,14 @@ export interface NavItem {
    *
    * This is a LABEL, not the enforcement. Every write still goes through an action that
    * checks for itself; a read-only banner nobody honours would be worse than none.
+   *
+   * **Required, since plan 5.6.** It used to be optional and `canWrite` defaulted to TRUE
+   * when it was absent, which meant twenty-two of twenty-five screens claimed a write
+   * surface by saying nothing — including four that had none at all. A viewer on the order
+   * desk was told they could change the book. Declaring it is the only way to be sure
+   * somebody looked: an empty list is a statement, and no list was a shrug.
    */
-  writeRoles?: readonly Role[]
+  writeRoles: readonly Role[]
   /**
    * How the locked card names this module — "you don't have access to {lockedAs}".
    *
@@ -171,6 +177,9 @@ export const NAV: readonly NavItem[] = [
     // Everyone who can approve anything lands here; the inbox itself filters
     // to what this role may actually decide.
     roles: ['merchandiser', 'commercial', 'planner', 'store', 'procurement', 'production', 'quality', 'compliance', 'finance', 'hr'],
+    // Approving IS the write, and the per-draft rule narrows it further (`requiredRoles`).
+    // This list only says the screen has a write surface at all.
+    writeRoles: ['merchandiser', 'commercial', 'planner', 'store', 'procurement', 'production', 'quality', 'compliance', 'finance', 'hr'],
   },
   {
     id: 'marbim',
@@ -178,8 +187,9 @@ export const NAV: readonly NavItem[] = [
     href: '/marbim',
     section: 'work',
     roles: ['merchandiser', 'commercial', 'planner', 'store', 'procurement', 'cutting', 'production', 'quality', 'shipment', 'maintenance', 'hr', 'compliance', 'finance', 'member', 'viewer'],
-    // No `writeRoles`: MARBIM writes nothing itself. Everything it produces is a draft in
-    // somebody's approve inbox, so asking it a question is a read however it is phrased.
+    // MARBIM writes nothing itself — everything it produces is a draft in somebody's
+    // approve inbox, so asking it a question is a read however it is phrased.
+    writeRoles: [],
   },
   {
     id: 'orders',
@@ -197,6 +207,9 @@ export const NAV: readonly NavItem[] = [
     href: '/memory',
     section: 'work',
     roles: ['merchandiser', 'commercial', 'planner'],
+    // `saveCloseOutNote` — the one write. `findSimilarStyles` is a read with no entry
+    // point yet (plan 5.5).
+    writeRoles: ['merchandiser', 'commercial', 'planner'],
   },
   {
     id: 'sampling',
@@ -204,6 +217,9 @@ export const NAV: readonly NavItem[] = [
     href: '/sampling',
     section: 'work',
     roles: ['merchandiser', 'quality', 'production'],
+    // Quality and production read the sample board; the room itself is merchandising's.
+    // Every sampling action and both sync handlers gate on this one role.
+    writeRoles: ['merchandiser'],
   },
 
   // ── Commercial ──────────────────────────────────────────
@@ -213,6 +229,7 @@ export const NAV: readonly NavItem[] = [
     href: '/buyers',
     section: 'commercial',
     roles: ['merchandiser', 'commercial'],
+    writeRoles: ['merchandiser', 'commercial'],
   },
   {
     id: 'rfq',
@@ -220,6 +237,7 @@ export const NAV: readonly NavItem[] = [
     href: '/rfq',
     section: 'commercial',
     roles: ['merchandiser', 'commercial'],
+    writeRoles: ['merchandiser', 'commercial'],
   },
   {
     id: 'costing',
@@ -227,6 +245,7 @@ export const NAV: readonly NavItem[] = [
     href: '/costing',
     section: 'commercial',
     roles: ['merchandiser', 'commercial', 'finance'],
+    writeRoles: ['merchandiser', 'commercial', 'finance'],
   },
   {
     id: 'lcs',
@@ -234,6 +253,8 @@ export const NAV: readonly NavItem[] = [
     href: '/lcs',
     section: 'commercial',
     roles: ['commercial', 'finance'],
+    // Commercial records the credit and its amendments; finance posts the realization.
+    writeRoles: ['commercial', 'finance'],
   },
   {
     id: 'finance',
@@ -241,6 +262,7 @@ export const NAV: readonly NavItem[] = [
     href: '/finance',
     section: 'commercial',
     roles: ['commercial', 'finance'],
+    writeRoles: ['commercial', 'finance'],
   },
   {
     id: 'procurement',
@@ -248,6 +270,8 @@ export const NAV: readonly NavItem[] = [
     href: '/procurement',
     section: 'commercial',
     roles: ['procurement', 'commercial', 'store'],
+    // Store records a receipt against a PO; commercial owns the BTB the import PO draws on.
+    writeRoles: ['procurement', 'commercial', 'store'],
   },
 
   // ── Floor ───────────────────────────────────────────────
@@ -257,6 +281,8 @@ export const NAV: readonly NavItem[] = [
     href: '/planning',
     section: 'floor',
     roles: ['planner', 'production', 'merchandiser'],
+    // Production reads the board to know what is coming; it does not decide what goes on it.
+    writeRoles: ['planner', 'merchandiser'],
   },
   {
     id: 'store',
@@ -264,6 +290,9 @@ export const NAV: readonly NavItem[] = [
     href: '/store',
     section: 'floor',
     roles: ['store', 'procurement', 'production'],
+    // The floor writes here through the offline batch endpoint, and both its handlers
+    // gate on `store`. Procurement and production read the shelf, they do not move it.
+    writeRoles: ['store'],
   },
   {
     id: 'ud',
@@ -275,6 +304,9 @@ export const NAV: readonly NavItem[] = [
     // duty-free against a UD. Knit units buy or knit their own.
     factoryTypes: ['woven'],
     roles: ['store', 'commercial', 'compliance'],
+    // Store requests an overdraw, commercial records the declaration, compliance runs
+    // the reconciliation the customs office asks for.
+    writeRoles: ['store', 'commercial', 'compliance'],
   },
   {
     id: 'cutting',
@@ -282,6 +314,8 @@ export const NAV: readonly NavItem[] = [
     href: '/cutting',
     section: 'floor',
     roles: ['cutting', 'production', 'planner'],
+    // Both sync handlers gate on these two. A planner reads the floor's progress.
+    writeRoles: ['cutting', 'production'],
   },
   {
     id: 'lines',
@@ -289,6 +323,8 @@ export const NAV: readonly NavItem[] = [
     href: '/lines',
     section: 'floor',
     roles: ['production', 'planner', 'quality'],
+    // Hourly output and downtime, through the offline endpoint. Quality and planning read.
+    writeRoles: ['production'],
   },
   {
     id: 'quality',
@@ -296,6 +332,8 @@ export const NAV: readonly NavItem[] = [
     href: '/quality',
     section: 'floor',
     roles: ['quality', 'production'],
+    // Production taps an inline check; the verdicts are quality's.
+    writeRoles: ['quality', 'production'],
   },
   {
     id: 'shipment',
@@ -303,6 +341,7 @@ export const NAV: readonly NavItem[] = [
     href: '/shipment',
     section: 'floor',
     roles: ['shipment', 'commercial', 'merchandiser'],
+    writeRoles: ['shipment', 'commercial', 'merchandiser'],
   },
   {
     id: 'maintenance',
@@ -310,6 +349,8 @@ export const NAV: readonly NavItem[] = [
     href: '/maintenance',
     section: 'floor',
     roles: ['maintenance', 'production'],
+    // Production reports a stopped machine; maintenance closes the ticket.
+    writeRoles: ['maintenance', 'production'],
   },
 
   // ── Oversight ───────────────────────────────────────────
@@ -321,6 +362,8 @@ export const NAV: readonly NavItem[] = [
     section: 'oversight',
     // Deliberately narrow. This is the whole-factory view.
     roles: [],
+    // Read-only by rule 9 — importing a write op into `modules/analytics` is lint-banned.
+    writeRoles: [],
   },
   {
     id: 'workforce',
@@ -330,6 +373,8 @@ export const NAV: readonly NavItem[] = [
     section: 'oversight',
     // Payroll is hr+owner at API level; anyone else gets a quiet 403 card.
     roles: ['hr'],
+    // 🔒 Payroll. The service gates harder still: hr and owner only, with a bodyless 403.
+    writeRoles: ['hr'],
   },
   {
     id: 'compliance',
@@ -337,6 +382,7 @@ export const NAV: readonly NavItem[] = [
     href: '/compliance',
     section: 'oversight',
     roles: ['compliance'],
+    writeRoles: ['compliance'],
   },
   {
     id: 'refused',
@@ -353,6 +399,9 @@ export const NAV: readonly NavItem[] = [
      * there is nothing here to change, which is the honest shape of a record.
      */
     roles: ['store', 'cutting', 'production', 'quality', 'shipment', 'maintenance', 'merchandiser'],
+    // A record, not a queue. There is nothing here to change — re-entering refused work
+    // happens on the screen that owns it.
+    writeRoles: [],
   },
 
   // ── System ──────────────────────────────────────────────
@@ -391,8 +440,9 @@ export const NAV: readonly NavItem[] = [
  * cannot see at all — harmless where the shell calls it, since it only asks about a screen
  * it has already allowed, and a trap for the next caller who asks it on its own.
  *
- * Owner and admin always may. A screen with no `writeRoles` is one where seeing it and
- * using it are the same permission.
+ * Owner and admin always may. An EMPTY `writeRoles` is a read-only screen, stated rather
+ * than implied — the dashboard, the refused-writes record, MARBIM, and the two System pages
+ * where reading the configuration is everybody's and changing it is the owner's.
  */
 /**
  * The phrase the locked card uses for a module.
@@ -419,8 +469,10 @@ export function canWrite(
 ): boolean {
   if (!canSee(item, roles, factoryType)) return false
   if (roles.some((r) => ALL_ACCESS.includes(r))) return true
-  if (!item.writeRoles) return true
-  return roles.some((r) => item.writeRoles!.includes(r))
+  // No `if (!item.writeRoles) return true` any more. That default was the lie: an entry
+  // that said nothing was read as "everyone may write here", and twenty-two of them said
+  // nothing. The field is required now, so an empty list means what it looks like.
+  return roles.some((r) => item.writeRoles.includes(r))
 }
 
 export function canSee(item: NavItem, roles: readonly Role[], factoryType: FactoryType): boolean {

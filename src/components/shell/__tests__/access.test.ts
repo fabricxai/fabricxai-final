@@ -138,10 +138,42 @@ describe('canSee', () => {
 })
 
 describe('canWrite', () => {
-  it('defaults to "if you can see it you can use it"', () => {
+  it('has no default left to lean on — every screen declares its writers (plan 5.6)', () => {
+    /*
+     * This case used to assert the opposite, and asserting it is what kept it alive:
+     * `writeRoles` was optional and `canWrite` returned TRUE when it was absent, so
+     * twenty-two of twenty-five screens claimed a write surface by saying nothing. A
+     * viewer on the order desk was told they could change the book, and the read-only
+     * banner never appeared on a screen that had no writes at all.
+     *
+     * The field is required now. An empty list is a statement — the dashboard, the
+     * refused-writes record, MARBIM — and no list is a compile error.
+     */
+    const undeclared = NAV.filter((item) => item.writeRoles === undefined).map((i) => i.id)
+    expect(undeclared, `these say nothing about who may write: ${undeclared.join(', ')}`).toEqual([])
+  })
+
+  it('lets the storekeeper write on the store screen and nobody else who can see it', () => {
     const store = NAV.find((i) => i.href === '/store')!
-    expect(store.writeRoles).toBeUndefined()
+
     expect(canWrite(store, ['store'], 'woven')).toBe(true)
+    // Procurement and production read the shelf; the floor's writes go through the offline
+    // endpoint, and both its handlers gate on `store`.
+    expect(canSee(store, ['procurement'], 'woven')).toBe(true)
+    expect(canWrite(store, ['procurement'], 'woven')).toBe(false)
+  })
+
+  it('never lets a role write on a screen it cannot even see', () => {
+    // The trap `canWrite` re-checks visibility for. Asserted across the whole registry
+    // rather than one entry, because the next entry added is the one that gets it wrong.
+    for (const item of NAV) {
+      for (const role of item.writeRoles) {
+        expect(
+          canSee(item, [role], 'woven') || canSee(item, [role], 'knit'),
+          `${item.id} lets ${role} write a screen it cannot open`,
+        ).toBe(true)
+      }
+    }
   })
 
   it('marks a viewer read-only on the order book', () => {
