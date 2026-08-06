@@ -28,6 +28,7 @@ import { isSystemCtx, type AnyCtx, type RequestCtx, type Role } from './ctx'
 import { AppError, conflict, notFound } from './errors'
 import { emit } from './outbox'
 import { getCommitHandler, getModule, resolvePendingSchema } from './registry'
+import { scoped } from './scoped'
 import { type TenantDb, withTenantRead, withTenantTx } from './tenancy'
 
 type Operation = 'insert' | 'update' | 'delete'
@@ -295,7 +296,7 @@ export async function approve(ctx: AnyCtx, input: ApproveInput): Promise<Approve
     const [draft] = await tx
       .select()
       .from(pendingChanges)
-      .where(eq(pendingChanges.id, input.pendingChangeId))
+      .where(scoped(pendingChanges, ctx, eq(pendingChanges.id, input.pendingChangeId)))
       .for('update')
 
     // Scoped by RLS — a draft belonging to another company is simply not visible.
@@ -341,12 +342,12 @@ export async function approve(ctx: AnyCtx, input: ApproveInput): Promise<Approve
       const [existingApproval] = await tx
         .select({ id: pendingChangeApprovals.id })
         .from(pendingChangeApprovals)
-        .where(
+        .where(scoped(pendingChangeApprovals, ctx, 
           and(
             eq(pendingChangeApprovals.pendingChangeId, draft.id),
             eq(pendingChangeApprovals.approverUserId, ctx.userId),
           ),
-        )
+        ))
 
       if (!existingApproval) {
         await tx.insert(pendingChangeApprovals).values({
@@ -363,7 +364,7 @@ export async function approve(ctx: AnyCtx, input: ApproveInput): Promise<Approve
     const approvals = await tx
       .select({ approverUserId: pendingChangeApprovals.approverUserId })
       .from(pendingChangeApprovals)
-      .where(eq(pendingChangeApprovals.pendingChangeId, draft.id))
+      .where(scoped(pendingChangeApprovals, ctx, eq(pendingChangeApprovals.pendingChangeId, draft.id)))
 
     const required = rule.approvalsRequired
 
@@ -400,7 +401,7 @@ export async function approve(ctx: AnyCtx, input: ApproveInput): Promise<Approve
           corrections: input.corrections ?? {},
           updatedAt: new Date(),
         })
-        .where(eq(pendingChanges.id, draft.id))
+        .where(scoped(pendingChanges, ctx, eq(pendingChanges.id, draft.id)))
       return { schemaError: error }
     }
 
@@ -480,7 +481,7 @@ export async function approve(ctx: AnyCtx, input: ApproveInput): Promise<Approve
         committedRowId: rowId,
         updatedAt: new Date(),
       })
-      .where(eq(pendingChanges.id, draft.id))
+      .where(scoped(pendingChanges, ctx, eq(pendingChanges.id, draft.id)))
 
     return { rowId, approvals: approvals.length, required }
   },
@@ -511,7 +512,7 @@ export async function reject(ctx: RequestCtx, id: string, note?: string): Promis
     const [draft] = await tx
       .select()
       .from(pendingChanges)
-      .where(eq(pendingChanges.id, id))
+      .where(scoped(pendingChanges, ctx, eq(pendingChanges.id, id)))
       .for('update')
 
     if (!draft) throw notFound('errors.pending_change_not_found', { id })
@@ -528,7 +529,7 @@ export async function reject(ctx: RequestCtx, id: string, note?: string): Promis
         reviewNote: note ?? null,
         updatedAt: new Date(),
       })
-      .where(eq(pendingChanges.id, id))
+      .where(scoped(pendingChanges, ctx, eq(pendingChanges.id, id)))
 
     await recordChange(ctx, tx, {
       action: 'reject',

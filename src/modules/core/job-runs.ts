@@ -21,6 +21,7 @@ import { and, desc, eq, lt, notInArray, sql } from 'drizzle-orm'
 import { jobRuns } from '@/db/schema/core'
 
 import type { AnyCtx } from './ctx'
+import { scoped } from './scoped'
 import { withTenantRead, withTenantTx } from './tenancy'
 
 /** What a run ended as. `skipped` is neither — see `declinedToRun`. */
@@ -145,7 +146,7 @@ async function closeRun(
       await tx
         .update(jobRuns)
         .set({ ...outcome, finishedAt: new Date() })
-        .where(eq(jobRuns.id, runId))
+        .where(scoped(jobRuns, ctx, eq(jobRuns.id, runId)))
     })
   } catch (error) {
     console.error(`[job-runs] could not close run ${runId}:`, error)
@@ -161,7 +162,7 @@ export async function lastSuccessByTask(ctx: AnyCtx): Promise<Record<string, Dat
         lastSuccessAt: sql<string>`max(${jobRuns.finishedAt})`,
       })
       .from(jobRuns)
-      .where(eq(jobRuns.status, 'succeeded'))
+      .where(scoped(jobRuns, ctx, eq(jobRuns.status, 'succeeded')))
       .groupBy(jobRuns.task),
   )
 
@@ -197,7 +198,7 @@ export async function stuckRuns(
     tx
       .select()
       .from(jobRuns)
-      .where(and(eq(jobRuns.status, 'running'), lt(jobRuns.startedAt, cutoff)))
+      .where(scoped(jobRuns, ctx, and(eq(jobRuns.status, 'running'), lt(jobRuns.startedAt, cutoff))))
       .orderBy(desc(jobRuns.startedAt)),
   )
 
@@ -236,21 +237,21 @@ export async function pruneJobRuns(
     const keep = await tx
       .select({ id: sql<string>`distinct on (${jobRuns.task}) ${jobRuns.id}` })
       .from(jobRuns)
-      .where(eq(jobRuns.status, 'succeeded'))
+      .where(scoped(jobRuns, ctx, eq(jobRuns.status, 'succeeded')))
       .orderBy(jobRuns.task, desc(jobRuns.finishedAt))
 
     const keepIds = keep.map((row) => row.id)
 
     const deleted = await tx
       .delete(jobRuns)
-      .where(
+      .where(scoped(jobRuns, ctx, 
         and(
           lt(jobRuns.startedAt, cutoff),
           // Bound through drizzle rather than hand-written `<> all(...)`: an array passed
           // into a raw fragment arrives as a single scalar and Postgres rejects it.
           keepIds.length > 0 ? notInArray(jobRuns.id, keepIds) : undefined,
         ),
-      )
+      ))
       .returning({ id: jobRuns.id })
 
     return { deleted: deleted.length, keptSince: cutoff.toISOString() }

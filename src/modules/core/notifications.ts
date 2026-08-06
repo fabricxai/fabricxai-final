@@ -17,6 +17,7 @@ import { and, desc, eq, inArray, isNull, or } from 'drizzle-orm'
 import { notifications } from '@/db/schema/core'
 
 import type { AnyCtx, Role } from './ctx'
+import { scoped } from './scoped'
 import { withTenantRead, withTenantTx } from './tenancy'
 
 export interface NotifyInput {
@@ -88,7 +89,7 @@ export async function listUnread(
     tx
       .select()
       .from(notifications)
-      .where(
+      .where(scoped(notifications, ctx, 
         and(
           isNull(notifications.readAt),
           isNull(notifications.dismissedAt),
@@ -99,7 +100,7 @@ export async function listUnread(
               )
             : undefined,
         ),
-      )
+      ))
       .orderBy(desc(notifications.createdAt))
       .limit(limit),
   )
@@ -113,7 +114,7 @@ export async function markRead(ctx: AnyCtx, ids: readonly string[]): Promise<num
       .update(notifications)
       .set({ readAt: new Date() })
       // RLS already bounds this to the company; the isNull keeps the first read time.
-      .where(and(inArray(notifications.id, [...ids]), isNull(notifications.readAt)))
+      .where(scoped(notifications, ctx, and(inArray(notifications.id, [...ids]), isNull(notifications.readAt))))
       .returning({ id: notifications.id }),
   )
 
@@ -127,7 +128,7 @@ export async function dismiss(ctx: AnyCtx, ids: readonly string[]): Promise<numb
     tx
       .update(notifications)
       .set({ dismissedAt: new Date() })
-      .where(and(inArray(notifications.id, [...ids]), isNull(notifications.dismissedAt)))
+      .where(scoped(notifications, ctx, and(inArray(notifications.id, [...ids]), isNull(notifications.dismissedAt))))
       .returning({ id: notifications.id }),
   )
 

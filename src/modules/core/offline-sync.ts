@@ -24,6 +24,7 @@ import { offlineKeys } from '@/db/schema/core'
 
 import { isSystemCtx, type AnyCtx, type Role } from './ctx'
 import { AppError, isAppError } from './errors'
+import { scoped } from './scoped'
 import { withTenantRead, withTenantTx } from './tenancy'
 
 export interface SyncRow {
@@ -197,7 +198,7 @@ async function applyRow(ctx: AnyCtx, row: SyncRow): Promise<SyncRowResult> {
       await tx
         .update(offlineKeys)
         .set({ resultRowId: rowId })
-        .where(eq(offlineKeys.id, claimed[0]!.id))
+        .where(scoped(offlineKeys, ctx, eq(offlineKeys.id, claimed[0]!.id)))
 
       return { offlineKey: row.offlineKey, status: 'applied', rowId }
     })

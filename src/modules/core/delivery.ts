@@ -36,6 +36,7 @@ import { DEFAULT_LOCALE, missingKeys, resolveLocale, t, type Locale } from '@/li
 import { notifications, profiles, roles, users } from '@/db/schema/core'
 
 import type { AnyCtx } from './ctx'
+import { scoped } from './scoped'
 import { withTenantRead, withTenantTx } from './tenancy'
 
 /** What a notification becomes on its way out. Injected so tests need no SMTP. */
@@ -91,6 +92,15 @@ async function recipientsFor(ctx: AnyCtx, row: NotificationRow): Promise<Recipie
         .select({ id: users.id, email: users.email, locale: profiles.locale })
         .from(users)
         .leftJoin(profiles, eq(profiles.userId, users.id))
+        /*
+         * NOT scoped, and the type system said so: `users` has no `company_id`, because a
+         * person can belong to more than one factory. `scoped()` refuses it outright.
+         *
+         * The tenancy that matters here already happened — `row.userId` came from a
+         * notification this company owns, read under its own scope. What remains is turning
+         * an id into an address, and migration 0073 narrows `users` under a scope anyway.
+         */
+        // eslint-disable-next-line fabricxai/require-tenant-predicate -- users is install-wide, see above
         .where(eq(users.id, row.userId))
 
       if (!user?.email) return []
@@ -104,7 +114,7 @@ async function recipientsFor(ctx: AnyCtx, row: NotificationRow): Promise<Recipie
       .from(roles)
       .innerJoin(users, eq(users.id, roles.userId))
       .leftJoin(profiles, eq(profiles.userId, users.id))
-      .where(eq(roles.role, row.role))
+      .where(scoped(roles, ctx, eq(roles.role, row.role)))
 
     return holders
       .filter((holder) => Boolean(holder.email))
@@ -165,12 +175,12 @@ export async function deliverCritical(
     tx
       .select()
       .from(notifications)
-      .where(
+      .where(scoped(notifications, ctx, 
         and(
           isNull(notifications.emailedAt),
           inArray(notifications.severity, [...policy.emailSeverities]),
         ),
-      )
+      ))
       .orderBy(notifications.createdAt),
   )
 
@@ -231,7 +241,7 @@ export async function deliverDigest(
     tx
       .select()
       .from(notifications)
-      .where(
+      .where(scoped(notifications, ctx, 
         and(
           isNull(notifications.emailedAt),
           // Bound, not interpolated. These values come from Settings and are zod-validated,
@@ -241,7 +251,7 @@ export async function deliverDigest(
             ? notInArray(notifications.severity, [...policy.emailSeverities])
             : undefined,
         ),
-      )
+      ))
       .orderBy(notifications.createdAt),
   )
 
@@ -317,7 +327,7 @@ async function markEmailed(ctx: AnyCtx, ids: readonly string[], now: Date): Prom
     await tx
       .update(notifications)
       .set({ emailedAt: now })
-      .where(inArray(notifications.id, [...ids]))
+      .where(scoped(notifications, ctx, inArray(notifications.id, [...ids])))
   })
 }
 

@@ -210,6 +210,15 @@ export default tseslint.config(
       'src/modules/orders/jobs.ts',
       'src/modules/memory/jobs.ts',
       'src/modules/commercial/jobs.ts',
+      // Core's own query surface. Named file by file like every other module rather than by
+      // glob: `__tests__` legitimately queries unscoped — a fixture asserting cross-tenant
+      // isolation has to be able to look at both companies.
+      'src/modules/core/pending-changes.ts',
+      'src/modules/core/documents.ts',
+      'src/modules/core/notifications.ts',
+      'src/modules/core/delivery.ts',
+      'src/modules/core/offline-sync.ts',
+      'src/modules/core/job-runs.ts',
     ],
     rules: { 'fabricxai/require-tenant-predicate': 'error' },
   },

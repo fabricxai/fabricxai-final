@@ -22,6 +22,7 @@ import { getS3, getS3ForSigning } from '@/lib/s3'
 
 import type { AnyCtx } from './ctx'
 import { AppError, notFound } from './errors'
+import { scoped } from './scoped'
 import { withTenantRead, withTenantTx } from './tenancy'
 
 /**
@@ -143,7 +144,7 @@ export async function confirmUpload(
     const [row] = await tx
       .select()
       .from(documents)
-      .where(and(eq(documents.id, documentId), isNull(documents.deletedAt)))
+      .where(scoped(documents, ctx, and(eq(documents.id, documentId), isNull(documents.deletedAt))))
     return row
   })
 
@@ -158,7 +159,7 @@ export async function confirmUpload(
     // The row exists but the bytes do not — an abandoned or failed upload. Mark it so a
     // sweeper can find it, and tell the caller the truth.
     await withTenantTx(ctx, (tx) =>
-      tx.update(documents).set({ status: 'failed', updatedAt: new Date() }).where(eq(documents.id, documentId)),
+      tx.update(documents).set({ status: 'failed', updatedAt: new Date() }).where(scoped(documents, ctx, eq(documents.id, documentId))),
     )
     throw new AppError('validation_failed', 'errors.document_not_uploaded', { documentId })
   }
@@ -180,7 +181,7 @@ export async function confirmUpload(
         checksumSha256: head.ChecksumSHA256 ?? null,
         updatedAt: new Date(),
       })
-      .where(eq(documents.id, documentId)),
+      .where(scoped(documents, ctx, eq(documents.id, documentId))),
   )
 
   return { status: 'ready', sizeBytes: actualSize }
@@ -200,7 +201,7 @@ export async function createDownloadUrl(
     const [row] = await tx
       .select()
       .from(documents)
-      .where(and(eq(documents.id, documentId), isNull(documents.deletedAt)))
+      .where(scoped(documents, ctx, and(eq(documents.id, documentId), isNull(documents.deletedAt))))
     return row
   })
 
@@ -228,7 +229,7 @@ export async function softDelete(ctx: AnyCtx, documentId: string): Promise<void>
     tx
       .update(documents)
       .set({ deletedAt: new Date(), updatedAt: new Date() })
-      .where(and(eq(documents.id, documentId), isNull(documents.deletedAt)))
+      .where(scoped(documents, ctx, and(eq(documents.id, documentId), isNull(documents.deletedAt))))
       .returning({ id: documents.id }),
   )
 
