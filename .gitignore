@@ -37,3 +37,9 @@ test-results/
 # k6 run artefacts: live session tokens and the last summary. Never committed.
 k6/.sessions.json
 k6/.last-summary.json
+
+# Playwright saved sessions and run output.
+e2e/.auth/
+test-results/
+playwright-report/
+e2e-results.xml

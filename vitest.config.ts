@@ -6,7 +6,14 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   test: {
     include: ['src/**/__tests__/**/*.test.ts'],
-    exclude: ['src/**/__tests__/**/*.integration.test.ts'],
+    exclude: [
+      'src/**/__tests__/**/*.integration.test.ts',
+      // `__tests__/browser/` is the jsdom project (plan 7.2). Its files are `.ts` as well as
+      // `.tsx` — `use-offline-queue.ts` needs a DOM without being a component — so the split
+      // is by FOLDER, and this config would otherwise run them in node, where `indexedDB` is
+      // undefined and all twelve fail at once.
+      'src/**/__tests__/browser/**',
+    ],
     environment: 'node',
   },
   resolve: {

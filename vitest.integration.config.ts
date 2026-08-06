@@ -12,6 +12,8 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   test: {
     include: ['src/**/__tests__/**/*.integration.test.ts'],
+    // Belt and braces with the unit config's exclude: the jsdom project owns `browser/`.
+    exclude: ['src/**/__tests__/browser/**'],
     environment: 'node',
     testTimeout: 60_000,
     hookTimeout: 120_000,

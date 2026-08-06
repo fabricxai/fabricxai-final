@@ -1,0 +1,258 @@
+/**
+ * The approve inbox, rendered (plan 7.2, audit TEST-H8).
+ *
+ * The screen a reviewer signs from, and the last thing standing between a model's draft and a
+ * factory's order book. Until 7.2 no `.tsx` file was reachable by any test, so its keyboard
+ * handling — the part a merchandiser clearing forty drafts actually uses — had never been
+ * exercised.
+ *
+ * `j`/`k` to move, `a` to approve, `r` to reject, `x` to select. The dangerous key is `a`: it
+ * approves the FOCUSED row, and a focus that has drifted from what is highlighted means
+ * signing something you were not looking at.
+ */
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { ApproveInbox, type InboxRowView } from '../../inbox-client'
+
+const approveDraft = vi.fn()
+const rejectDraft = vi.fn()
+const draftFields = vi.fn()
+
+/*
+ * The server actions are mocked at the module boundary, not stubbed inside the component.
+ *
+ * A server action in a jsdom test would try to POST to a Next server that is not running; what
+ * this file is testing is the screen's own behaviour — which row is focused, what a key does,
+ * what the reviewer is told — and the actions themselves have integration coverage.
+ */
+vi.mock('@/modules/approvals/actions', () => ({
+  approveDraft: (...args: unknown[]) => approveDraft(...args),
+  rejectDraft: (...args: unknown[]) => rejectDraft(...args),
+  draftFields: (...args: unknown[]) => draftFields(...args),
+}))
+
+const row = (over: Partial<InboxRowView> = {}): InboxRowView => ({
+  id: 'pc-1',
+  moduleId: 'orders',
+  targetTable: 'orders',
+  operation: 'insert',
+  source: 'ai_extraction',
+  createdAt: '2026-08-01T09:00:00.000Z',
+  ageHours: 3,
+  weakestConfidence: 0.62,
+  requiredRoles: ['merchandiser'],
+  approvalsRequired: 1,
+  approvals: 0,
+  approvedByMe: false,
+  title: 'Order SHRT-4410',
+  reference: 'PO-1001',
+  fromModel: true,
+  aging: false,
+  ...over,
+})
+
+const rows = [
+  row({ id: 'pc-1', title: 'Order SHRT-4410' }),
+  row({ id: 'pc-2', title: 'Order TROU-2200' }),
+  row({ id: 'pc-3', title: 'Order JKT-9000' }),
+]
+
+beforeEach(() => {
+  approveDraft.mockReset().mockResolvedValue({ status: 'committed', approvals: 1, approvalsRequired: 1 })
+  rejectDraft.mockReset().mockResolvedValue(undefined)
+  draftFields.mockReset().mockResolvedValue([])
+})
+
+describe('the empty state says whose fault the emptiness is', () => {
+  it('1 · explains that drafts arrive by ROUTING, not by existing', () => {
+    /*
+     * A storekeeper with an empty inbox has not been forgotten — nothing has been routed to a
+     * role they hold. "No items" would read as a broken screen; this reads as a fact about
+     * how the queue works.
+     */
+    render(<ApproveInbox rows={[]} escalateAfterHours={24} />)
+
+    expect(screen.getByText(/Nothing routed to you/i)).toBeInTheDocument()
+    expect(screen.getByText(/stays in its own module/i)).toBeInTheDocument()
+  })
+})
+
+describe('the keyboard is the interface', () => {
+  it('2 · `a` approves the focused row, which starts at the first', async () => {
+    const user = userEvent.setup()
+    render(<ApproveInbox rows={rows} escalateAfterHours={24} />)
+
+    await user.keyboard('a')
+
+    await waitFor(() => expect(approveDraft).toHaveBeenCalledOnce())
+    expect(approveDraft).toHaveBeenCalledWith({ pendingChangeId: 'pc-1' })
+  })
+
+  it('3 · `j` moves down before `a` signs — the pairing that must not drift', async () => {
+    /*
+     * The dangerous case in this file. `a` approves whatever the component thinks is focused,
+     * and a reviewer clearing forty drafts is reading the highlight rather than counting
+     * keystrokes. Focus moving and the approval target disagreeing means signing a row you
+     * were not looking at, silently, with a valid signature on it.
+     */
+    const user = userEvent.setup()
+    render(<ApproveInbox rows={rows} escalateAfterHours={24} />)
+
+    await user.keyboard('jja')
+
+    await waitFor(() => expect(approveDraft).toHaveBeenCalledOnce())
+    expect(approveDraft).toHaveBeenCalledWith({ pendingChangeId: 'pc-3' })
+  })
+
+  it('4 · `k` moves back up', async () => {
+    const user = userEvent.setup()
+    render(<ApproveInbox rows={rows} escalateAfterHours={24} />)
+
+    await user.keyboard('jjka')
+
+    await waitFor(() => expect(approveDraft).toHaveBeenCalledOnce())
+    expect(approveDraft).toHaveBeenCalledWith({ pendingChangeId: 'pc-2' })
+  })
+
+  it('5 · focus stops at both ends rather than wrapping', async () => {
+    // Wrapping would put `a` on the FIRST row after somebody held `j` at the bottom, which is
+    // the same wrong-row signature as above arrived at from the other direction.
+    const user = userEvent.setup()
+    render(<ApproveInbox rows={rows} escalateAfterHours={24} />)
+
+    await user.keyboard('jjjjjj')
+    await user.keyboard('a')
+
+    await waitFor(() => expect(approveDraft).toHaveBeenCalledOnce())
+    expect(approveDraft).toHaveBeenCalledWith({ pendingChangeId: 'pc-3' })
+  })
+
+  it('6 · `r` opens the reject dialog instead of rejecting outright', async () => {
+    // Rejecting always asks for a reason: the draft goes back to whoever made it, and
+    // "rejected" with no reason is a dead end they cannot act on.
+    const user = userEvent.setup()
+    render(<ApproveInbox rows={rows} escalateAfterHours={24} />)
+
+    await user.keyboard('r')
+
+    expect(await screen.findByText(/Wrong figure read from the source/i)).toBeInTheDocument()
+    expect(rejectDraft).not.toHaveBeenCalled()
+  })
+
+  it('7 · keys do nothing while the reject dialog is open', async () => {
+    /*
+     * A reviewer typing a reason must not be signing rows with the letters in it. `a` appears
+     * in "capacity", `r` in "buyer", `x` in "duplicate of another" — this is not a hypothetical
+     * collision, it is most of the alphabet a person types into an open form.
+     */
+    const user = userEvent.setup()
+    render(<ApproveInbox rows={rows} escalateAfterHours={24} />)
+
+    await user.keyboard('r')
+    await screen.findByText(/Wrong figure read from the source/i)
+
+    await user.keyboard('aaa')
+
+    expect(approveDraft).not.toHaveBeenCalled()
+  })
+
+  it('8 · typing in a field never triggers a shortcut', async () => {
+    const user = userEvent.setup()
+    render(
+      <div>
+        <input aria-label="search" />
+        <ApproveInbox rows={rows} escalateAfterHours={24} />
+      </div>,
+    )
+
+    await user.click(screen.getByLabelText('search'))
+    await user.keyboard('a jacket')
+
+    expect(approveDraft).not.toHaveBeenCalled()
+  })
+})
+
+describe('selection', () => {
+  it('9 · `x` marks a row and the count says so', async () => {
+    const user = userEvent.setup()
+    render(<ApproveInbox rows={rows} escalateAfterHours={24} />)
+
+    expect(screen.getByText(/select rows to approve in one pass/i)).toBeInTheDocument()
+
+    await user.keyboard('x')
+
+    expect(await screen.findByText('1 selected')).toBeInTheDocument()
+  })
+
+  it('10 · `x` twice deselects, rather than selecting twice', async () => {
+    const user = userEvent.setup()
+    render(<ApproveInbox rows={rows} escalateAfterHours={24} />)
+
+    await user.keyboard('xx')
+
+    expect(screen.getByText(/select rows to approve in one pass/i)).toBeInTheDocument()
+  })
+
+  it('11 · select-all takes every row, and clearing it takes none', async () => {
+    const user = userEvent.setup()
+    render(<ApproveInbox rows={rows} escalateAfterHours={24} />)
+
+    const all = screen.getByRole('checkbox', { name: /select all/i })
+    await user.click(all)
+    expect(await screen.findByText('3 selected')).toBeInTheDocument()
+
+    await user.click(all)
+    expect(screen.getByText(/select rows to approve in one pass/i)).toBeInTheDocument()
+  })
+})
+
+describe('what the reviewer is told', () => {
+  it('12 · a failed approval says so instead of reporting success', async () => {
+    /*
+     * The worst possible outcome on this screen is a reviewer believing they signed something
+     * they did not. An illegal transition, a tightened schema, a draft somebody else already
+     * took — all reach here as a thrown action, and all must be visible.
+     */
+    /*
+     * Thrown in the shape a real server action produces — `code: messageKey`, which
+     * `actionErrorMessage` turns into the translated sentence. Asserting on a bare
+     * `new Error('nope')` would have tested the fallback branch instead, which is the branch
+     * a reviewer almost never sees.
+     */
+    approveDraft.mockRejectedValue(new Error('conflict: errors.illegal_transition'))
+    const user = userEvent.setup()
+    render(<ApproveInbox rows={rows} escalateAfterHours={24} />)
+
+    await user.keyboard('a')
+
+    // The typed refusal, in words, not a silent no-op and not a success.
+    expect(await screen.findByText(/cannot follow the current one/i)).toBeInTheDocument()
+    expect(screen.queryByText(/Approved and committed/i)).not.toBeInTheDocument()
+  })
+
+  it('12b · an unrecognised failure still says something', async () => {
+    // The fallback branch. A thrown string, a network blip, anything unkeyed — the reviewer
+    // must not be left looking at a row that appears to have been signed.
+    approveDraft.mockRejectedValue(new Error(''))
+    const user = userEvent.setup()
+    render(<ApproveInbox rows={rows} escalateAfterHours={24} />)
+
+    await user.keyboard('a')
+
+    expect(await screen.findByText(/did not go through/i)).toBeInTheDocument()
+  })
+
+  it('13 · a draft needing a second signature does not claim to be committed', async () => {
+    // "Approved and committed" over a row still waiting on a second approver is the same lie
+    // in a friendlier tone — the change has not happened and somebody will act as though it has.
+    approveDraft.mockResolvedValue({ status: 'pending', approvals: 1, approvalsRequired: 2 })
+    const user = userEvent.setup()
+    render(<ApproveInbox rows={rows} escalateAfterHours={24} />)
+
+    await user.keyboard('a')
+
+    expect(await screen.findByText(/waiting on 1 more signature/i)).toBeInTheDocument()
+  })
+})

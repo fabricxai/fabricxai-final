@@ -29,7 +29,18 @@
   /* Text */
   --fx-text-primary: #181d29;
   --fx-text-secondary: #4c5364;
-  --fx-text-tertiary: #767e90;
+  /*
+   * Darkened from #767e90 (plan 7.2). At 4.07:1 on white and 3.90:1 on the canvas it failed
+   * WCAG AA, and axe found it on four of the five FLOOR screens — the ones read standing up,
+   * in gloves, under bad light, by people not hunting for a subtle affordance. This is the
+   * meta text: units, timestamps, "3 rolls", the line under a value.
+   *
+   * Darkened twice. The first attempt cleared white and the canvas and still failed at the
+   * TABLET viewport, where the layout puts the same text on `--fx-bg-sunken` (#f3f1ec) and on
+   * `--fx-border-subtle` (#e7e4de) inside chips — 3.75:1. Measured against the darkest
+   * background it actually sits on rather than the lightest: 4.55:1 there, 5.78:1 on white.
+   */
+  --fx-text-tertiary: #5e6675;
   --fx-text-disabled: #a8aebb;
   --fx-text-inverse: #fbfaf8;
 
@@ -42,7 +53,12 @@
 
   /* Semantic. Warning is its own hue — amber is not warning. */
   --fx-success: #2f7d5b;
-  --fx-warning: #b4741c;
+  /*
+   * 3.85:1 on white — a WARNING colour that failed AA, which is the worst one to get wrong:
+   * it is used for the thing somebody is meant to notice. 4.61:1 on the darkest surface it
+   * appears on. Found by 7.2's axe sweep.
+   */
+  --fx-warning: #8c5a16;
   --fx-danger: #b23a32;
   --fx-info: #2f5fa8;
   --fx-focus: #181d29;
@@ -85,7 +101,8 @@
   /* Off-white, never #FFF — pure white on near-black vibrates on a wall screen. */
   --fx-text-primary: #f4f3f0;
   --fx-text-secondary: #aeb5c4;
-  --fx-text-tertiary: #7c8497;
+  /* 4.496:1 on the dark surface — under AA by three thousandths. Lightened to 4.55:1. */
+  --fx-text-tertiary: #7d8597;
   --fx-text-disabled: #565e71;
   --fx-text-inverse: #181d29;
 

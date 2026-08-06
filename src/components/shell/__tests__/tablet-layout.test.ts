@@ -201,3 +201,45 @@ describe('the measurement itself', () => {
     expect(minimumWidth('minmax(240px, 420px)')).toBe(240)
   })
 })
+
+describe('a scroller a keyboard can reach', () => {
+  it('every fx-scroll-x wrapper is focusable', () => {
+    /*
+     * `overflow-x: auto` makes a box scrollable with a finger or a trackpad and with nothing
+     * else. Without `tabIndex`, the only way to see the right-hand columns of an order book on
+     * a tablet is to touch it — so a keyboard user, or anybody on a device with a keyboard
+     * case, simply cannot read the end of the row. That is WCAG 2.1.1, and axe calls it
+     * `scrollable-region-focusable`.
+     *
+     * Found by 7.2's sweep at the tablet viewport, on a wrapper 4.4 had added for exactly the
+     * right reason and could not check — there was no browser in the environment. Seven sites
+     * fixed; this is what stops the eighth.
+     *
+     * A source scan rather than a rendered one, deliberately: the Playwright sweep covers five
+     * screens and this covers every file, so a wrapper added to a screen nobody load-tests is
+     * still caught, and caught in the fast suite.
+     */
+    const offenders: string[] = []
+
+    for (const file of sourceFiles('src')) {
+      const source = readFileSync(file, 'utf8')
+      let at = source.indexOf('className="fx-scroll-x"')
+
+      while (at !== -1) {
+        // The attribute block this class sits in, which is where a tabIndex would be.
+        const block = source.slice(at, at + 500)
+        if (!/tabIndex=\{?0/.test(block)) offenders.push(`${file}:${lineOf(source, at)}`)
+        at = source.indexOf('className="fx-scroll-x"', at + 1)
+      }
+    }
+
+    expect(
+      offenders,
+      `these scroll horizontally and cannot be focused, so a keyboard cannot scroll them. ` +
+        `Add tabIndex={0}:\n${offenders.join('\n')}`,
+    ).toEqual([])
+  })
+})
+
+const lineOf = (source: string, index: number): number =>
+  source.slice(0, index).split('\n').length

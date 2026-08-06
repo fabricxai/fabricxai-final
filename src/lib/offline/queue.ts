@@ -20,8 +20,9 @@
  *    no pill at all.
  */
 
-const DB_NAME = 'fabricxai-offline'
-const STORE = 'queue'
+/** Exported for `test-support.ts` only — see its header. */
+export const DB_NAME = 'fabricxai-offline'
+export const STORE = 'queue'
 const DB_VERSION = 1
 
 export interface QueuedWrite {

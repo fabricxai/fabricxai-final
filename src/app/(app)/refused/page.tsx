@@ -204,6 +204,10 @@ export default async function RefusedPage() {
                       {row.payload ? (
                         <pre
                           className="fx-scroll-x"
+                          // Focusable, or a keyboard cannot scroll it (WCAG 2.1.1). Found by 7.2's
+                          // axe sweep at the tablet viewport — the check 4.4 could not make when it
+                          // added this wrapper, because there was no browser to make it in.
+                          tabIndex={0}
                           style={{
                             margin: 0,
                             padding: '10px 12px',
