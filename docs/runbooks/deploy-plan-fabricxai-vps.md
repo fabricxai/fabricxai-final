@@ -486,3 +486,34 @@ Either:
 
 `kamrul`'s existing `gh` token has `repo, workflow, admin:public_key, gist, read:org` and
 **not** `read:packages`, so it cannot be reused for this as-is.
+
+### 2026-08-08 · §4 secrets — DONE, and a third trap found
+
+`/opt/fabricxai` is a real git clone at `70e6569`, `origin` pointing at
+`fabricxai-poc-baraka`. It was seeded from a **git bundle** over SSH rather than cloned:
+creating a deploy key needs `admin` on the repo and the available token has only `push`
+(`{"admin": false, "push": true}`). The clone has full history, so a `git pull` will work
+the moment a credential exists — no re-clone needed.
+
+Written, all generated **on the host** so no secret entered a transcript:
+
+| | |
+|---|---|
+| Generated | `BETTER_AUTH_SECRET`, `POSTGRES_PASSWORD`, `APP_DB_PASSWORD`, `PGBOUNCER_AUTH_PASSWORD`, `REDIS_PASSWORD`, `MINIO_ROOT_PASSWORD`, `HEALTH_TOKEN` |
+| Set | `APP_DOMAIN`/`APP_URL` = `baraka.fabricxai.com`, `TLS_EMAIL` = `fabricxai@gmail.com`, `IMAGE` = the published digest |
+| Left empty | `RESEND_API_KEY` (yours), `SENTRY_DSN`, the three model keys (`MARBIM_ENABLED=false`) |
+
+`.env.production` is `600`, `secrets/` is `700`, the pooler userlist is `600`, and both are
+gitignored. `docker compose config` renders clean, publishing **only** Caddy's 80/443.
+
+**Third trap, fixed in `.env.production.example`:** it shipped
+`EMAIL_FROM=FabricXAI <no-reply@example.com>`, but `env.ts` validates that field with
+`z.email()`, which **rejects** the display-name form — verified. Anyone copying the example
+and filling in their own domain in the format the file suggested would get "Invalid
+environment" at boot, on the one variable whose failure mode is otherwise "mail silently
+never arrives". Now a bare address, with the reason written down. The host's value is set to
+`no-reply@mail.fabricxai.com` — **change it if you verify a different sending domain.**
+
+Note this is the third defect of the same shape: `SMTP_HOST:?` vs `env.ts`, `scripts/`
+missing from the image, and now this. Each is a place where one file states a contract that
+another file contradicts, and none of them could be caught by a test of either file alone.
