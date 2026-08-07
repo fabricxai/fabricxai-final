@@ -47,9 +47,14 @@ x-app-env: &app-env
   S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:?}
   S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:?}
   S3_FORCE_PATH_STYLE: 'true'
-  SMTP_HOST: ${SMTP_HOST:?a real SMTP host — mailpit is dev-only}
+  # Mail: EITHER an SMTP host OR a Resend key — `lib/env.ts` requires at least one in
+  # production and names both in the failure. Neither is `:?` here, deliberately: this file
+  # used to demand SMTP_HOST, which meant a correct Resend-only deployment could not start
+  # and compose blamed a missing SMTP server on a deployment that does not use one. The
+  # check belongs in one place, and env.ts is the place that knows the rule.
+  SMTP_HOST: ${SMTP_HOST:-}
   SMTP_PORT: ${SMTP_PORT:-587}
-  EMAIL_FROM: ${EMAIL_FROM:?}
+  EMAIL_FROM: ${EMAIL_FROM:?the address mail is sent FROM — must be on a domain the provider has verified}
   RESEND_API_KEY: ${RESEND_API_KEY:-}
   # Optional. Set it and errors are aggregated and alertable; leave it and the app warns
   # at startup and logs to stdout only. Logs are structured JSON either way.

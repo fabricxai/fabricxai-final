@@ -179,6 +179,21 @@ jobs:
       DIRECT_DATABASE_URL: postgres://fabricxai_owner:owner-secret@localhost:5432/fabricxai
       DATABASE_URL: postgres://fabricxai_app_rw:app-secret@localhost:5432/fabricxai
       APP_DB_PASSWORD: app-secret
+      # `pnpm seed` loads lib/env.ts, which validates the WHOLE environment before it opens
+      # a connection — so the job died with "Invalid environment (7 problems)" after the
+      # roles it exists to test had already been provisioned correctly. The seven below are
+      # every field the schema requires and this job had not set.
+      #
+      # Placeholders on purpose: this job has no Redis and no MinIO, and needs neither. The
+      # seed writes document ROWS and uploads no objects (see seed/core-slice.ts), and
+      # nothing here enqueues a job. These exist to satisfy validation, not to be dialled.
+      APP_URL: http://localhost:3000
+      REDIS_URL: redis://localhost:6379
+      BETTER_AUTH_SECRET: ci-only-secret-0123456789abcdef0123456789
+      S3_ENDPOINT: http://localhost:9000
+      S3_ACCESS_KEY_ID: unused-in-this-job
+      S3_SECRET_ACCESS_KEY: unused-in-this-job
+      S3_BUCKET: unused-in-this-job
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -520,8 +535,11 @@ jobs:
       # The image is what actually runs in the factory, so it is what gets scanned —
       # `pnpm audit` cannot see the Debian base layer, and the base is where an
       # unpatched OpenSSL would live.
+      # Pinned to a tag that EXISTS. `0.28.0` never resolved — the action publishes `v`-
+      # prefixed tags — so this step failed to start on every run and the scan it looks
+      # like the repo performs was never performed.
       - name: Scan image for known vulnerabilities
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: fabricxai:ci
           severity: HIGH,CRITICAL

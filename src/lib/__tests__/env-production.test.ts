@@ -121,3 +121,47 @@ describe('production boot · the copilot cannot be half-configured', () => {
     expect(parsed.data.MARBIM_MODEL_EMBED).toBe('text-embedding-3-small')
   })
 })
+
+/**
+ * The mail path — now enforced HERE and nowhere else.
+ *
+ * `docker-compose.prod.yml` used to demand `SMTP_HOST` with `:?`, so a correct Resend-only
+ * deployment could not start: compose refused before the app validated anything, and blamed
+ * a missing SMTP server on a deployment that does not use one. Removing that made this rule
+ * the only thing standing between a deploy and a factory nobody can log into — verification
+ * email is required to sign in — so it is worth proving both routes and the gap.
+ */
+describe('production boot · mail, by either route', () => {
+  const RESEND_ONLY = { RESEND_API_KEY: 're_test', SMTP_HOST: undefined }
+  const SMTP_ONLY = { RESEND_API_KEY: undefined, SMTP_HOST: 'smtp.resend.com', SMTP_PORT: '587' }
+
+  it('9 · a Resend key alone is a working deployment', () => {
+    expect(problems(RESEND_ONLY)).toEqual([])
+  })
+
+  it('10 · an SMTP host alone is a working deployment', () => {
+    // The configuration the compose file describes. It was briefly the ONLY one that
+    // could start, which is the opposite of what env.ts has always said.
+    expect(problems(SMTP_ONLY)).toEqual([])
+  })
+
+  it('11 · neither is refused, and the message names both ways out', () => {
+    const result = envSchema.safeParse({
+      ...PRODUCTION,
+      RESEND_API_KEY: undefined,
+      SMTP_HOST: undefined,
+    })
+
+    expect(result.success).toBe(false)
+    if (result.success) return
+    const message = result.error.issues.map((i) => i.message).join(' ')
+    expect(message).toContain('SMTP_HOST')
+    expect(message).toContain('RESEND_API_KEY')
+  })
+
+  it('12 · outside production a deployment with no mail path still boots', () => {
+    // Dev sends to Mailpit over the SMTP defaults in mailer.ts; requiring a vendor account
+    // to run the app locally would be the INFRA-H8 mistake in another costume.
+    expect(problems({ NODE_ENV: 'development', RESEND_API_KEY: undefined })).toEqual([])
+  })
+})

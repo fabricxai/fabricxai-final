@@ -251,9 +251,9 @@ script refuses on production anyway.
 
 | # | Question | Blocking? |
 |---|---|---|
-| 1 | **Domain name**, and can you point an A record at `169.58.141.169`? | **Yes — still open** |
+| 1 | ~~Domain~~ | ✅ `baraka.fabricxai.com` → A record to `169.58.141.169` |
 | 2 | ~~Image strategy~~ | ✅ Option A, GHCR (§3) |
-| 3 | **SMTP** — host, port, from-address, credentials (or a Resend API key) | **Yes — still open** |
+| 3 | ~~Mail~~ | ✅ Resend (see §6a) |
 | 4 | ~~Which repo~~ | ✅ `fabricxai-poc-baraka` |
 | 5 | **Real factory data, or demo/pilot?** | No — changes §7 only |
 
@@ -262,7 +262,37 @@ port 80 to get its certificate, and a name that does not resolve yet fails that.
 can take minutes to hours, so start it early — it is the long pole.
 
 On **3**: there is no way around this. Email verification is mandatory to sign in, so
-without working SMTP the deployment comes up healthy and nobody can log in.
+without a working mail path the deployment comes up healthy and nobody can log in.
+
+### 6a · Mail: Resend, outbound only
+
+`src/lib/mailer.ts` sends three things — verification, password reset, notifications —
+through one `POST https://api.resend.com/emails`. There is no inbound route, no webhook and
+no reply parsing anywhere in `src/app/api/`. **Inbound/receiving does not need enabling.**
+
+- The **MX record Resend asks for is not an inbox.** It sits on `send.<domain>` and points
+  at `feedback-smtp.<region>.amazonses.com` — the bounce return-path, for SPF alignment.
+- **Replies go nowhere.** The mailer sets `from` and no `reply_to`, so use a `no-reply@`
+  address rather than one that invites an answer nobody reads.
+- Verify a dedicated sending subdomain (`mail.fabricxai.com`) so transactional reputation
+  stays separate from the main domain. It does not collide with `baraka.fabricxai.com`'s A
+  record.
+
+**Blocker found while checking this — `docker-compose.prod.yml:50`:**
+
+```yaml
+SMTP_HOST: ${SMTP_HOST:?a real SMTP host — mailpit is dev-only}
+```
+
+That `:?` makes compose refuse to start without `SMTP_HOST`. But `src/lib/env.ts:135`
+requires only *one* of `SMTP_HOST` or `RESEND_API_KEY`, and `mailer.ts:37` prefers Resend
+when set. So a **correct Resend-only `.env.production` cannot boot** — compose fails before
+the app validates anything, and the error blames a missing SMTP host on a deployment that
+does not need one. The compose file and the application disagree about what a valid mail
+configuration is.
+
+Fix: relax to `${SMTP_HOST:-}` and let `env.ts` be the single authority — it already
+enforces "at least one mail path" with a message that names both options.
 
 ---
 

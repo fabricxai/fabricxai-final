@@ -2,25 +2,34 @@ import { join } from 'node:path'
 
 import type { Page } from '@playwright/test'
 
+import { SEED_PASSWORD, seedEmail } from '@/db/seed/identity'
+
 /**
  * Shared sign-in for the e2e suite (plan 7.2).
  *
  * The seeded people, by role. `pnpm seed` gives every one of them the same password so a
  * walkthrough does not mean looking up eight of them — the same reason this can use them.
  */
-export const SEED_PASSWORD = 'FabricXai-seed-2026'
+export { SEED_PASSWORD }
 
 /**
  * Only the roles a test actually uses.
  *
  * Every entry costs a sign-in, and `LIMITS.signIn` allows ten per five minutes by IP. A
  * merchandiser sat here for a while, signed in on every run, used by nothing.
+ *
+ * Addresses are DERIVED, not written out. They were literals here until the seed started
+ * scoping them per tenant, at which point this file went on asking for
+ * `owner@seed-apparels.test` — an address that no longer existed — and every sign-in failed
+ * with "That email and password did not match". It passed locally on databases seeded
+ * before the change and failed on every fresh one, so `seedEmail` is now the only thing
+ * that decides what these are.
  */
 export const PEOPLE = {
-  owner: 'owner@seed-apparels.test',
-  store: 'store@seed-apparels.test',
-  production: 'production@seed-apparels.test',
-  quality: 'quality@seed-apparels.test',
+  owner: seedEmail('owner'),
+  store: seedEmail('store'),
+  production: seedEmail('production'),
+  quality: seedEmail('quality'),
 } as const
 
 /**

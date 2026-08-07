@@ -41,6 +41,7 @@ import { CUTTING_SLICE } from './cutting-slice'
 import { PLANNING_SLICE } from './planning-slice'
 import { MAINTENANCE_SLICE } from './maintenance-slice'
 import { PROCUREMENT_SLICE } from './procurement-slice'
+import { SEED_COMPANY_ID, SEED_COMPANY_SLUG } from './identity'
 import { PRODUCTION_SLICE } from './production-slice'
 import { QUALITY_SLICE } from './quality-slice'
 import { SHIPMENT_SLICE } from './shipment-slice'
@@ -96,12 +97,11 @@ function parseArgs(argv: readonly string[]): { scale: SeedScale; reset: boolean 
   return { scale: scaleArg as SeedScale, reset: argv.includes('--reset') }
 }
 
-/**
- * The seed's own company. A fixed uuid, so re-running updates the same tenant instead of
- * creating a new one every time — that is what makes the generator idempotent.
+/*
+ * The seed's own company — a fixed uuid, so re-running updates the same tenant instead of
+ * creating a new one every time, which is what makes the generator idempotent. Defined in
+ * ./identity because the sign-in addresses derive from it and the e2e suite needs both.
  */
-const SEED_COMPANY_ID = '00000000-0000-4000-8000-000000000001'
-const SEED_COMPANY_SLUG = 'seed-apparels'
 
 /**
  * Which tenant to fill.

@@ -11,10 +11,11 @@ import { hashPassword } from 'better-auth/crypto'
 import * as schema from '@/db/schema'
 import { env } from '@/lib/env'
 
+import { SEED_PASSWORD, seedEmail } from './identity'
 import type { SeedContext, SeedSlice } from './types'
 
-/**
- * The password every seeded person shares.
+/*
+ * `SEED_PASSWORD` and `seedEmail` come from ./identity, which the e2e suite imports too.
  *
  * Seeded users existed from the first day with roles, profiles and names — and no way to
  * sign in as any of them, because `pnpm seed` never wrote a credential. So the one thing
@@ -24,11 +25,7 @@ import type { SeedContext, SeedSlice } from './types'
  * Hashed with Better Auth's own hasher rather than a hand-rolled one: the verifier at
  * login is theirs, and a hash it cannot read is a login that fails for reasons nobody
  * enjoys tracing.
- *
- * Long enough for `minPasswordLength: 10`, and identical for everybody on purpose —
- * switching roles during a walkthrough should not mean looking up eight passwords.
  */
-const SEED_PASSWORD = 'FabricXai-seed-2026'
 
 /** Roles worth having a real person behind for a demo walkthrough. */
 const SEED_PEOPLE = [
@@ -83,7 +80,7 @@ async function seedPeople(ctx: SeedContext): Promise<number> {
     // Scoped to the tenant, like the id already was. `users.email` is unique across the
     // whole install, so a fixed address meant the seed could only ever fill ONE company —
     // filling a second died on a duplicate key halfway through, leaving it half-seeded.
-    const email = `${person.key}+${short}@seed-apparels.test`
+    const email = seedEmail(person.key, ctx.companyId)
 
     await ctx.db
       .insert(schema.users)
