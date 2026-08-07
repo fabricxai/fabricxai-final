@@ -25,6 +25,29 @@ import Anthropic from '@anthropic-ai/sdk'
 import { ProviderError, type TextMessage, type TextRequest, type TextResult } from '../provider'
 
 /**
+ * Tool names, across the one API that will not accept ours.
+ *
+ * Every tool in this platform is `module.name` — `orders.tna_status`, `store.grn_lines` — and
+ * the dot is load-bearing: it is how a reader, a log line and the scope check all tell which
+ * module a call belongs to. Anthropic requires `^[a-zA-Z0-9_-]{1,128}$`, so a request
+ * carrying 116 of them is rejected outright with
+ * `tools.0.custom.name: String should match pattern`.
+ *
+ * That 400 arrives BEFORE any token is generated, so the surface showed "I lost the
+ * connection halfway through" — a network story for what was a schema rejection. Every
+ * question failed identically, which is what made the copilot look unreachable rather than
+ * misconfigured.
+ *
+ * `.` ↔ `__` because it round-trips exactly: no tool name contains a double underscore
+ * (verified across all 116), so decoding cannot merge two distinct tools into one. The
+ * encoding is applied in all three places a name crosses the wire — the tool list, the
+ * replayed `tool_use` blocks of earlier turns, and the names that come BACK on a call — and
+ * the loop above this layer never sees the encoded form.
+ */
+export const encodeToolName = (name: string): string => name.replaceAll('.', '__')
+export const decodeToolName = (name: string): string => name.replaceAll('__', '.')
+
+/**
  * One of our messages as the Messages API wants it.
  *
  * A turn carrying tool calls or tool results becomes a CONTENT ARRAY; a plain turn stays a
@@ -48,7 +71,14 @@ function toAnthropicMessage(message: TextMessage): Anthropic.MessageParam {
   if (message.content) blocks.push({ type: 'text', text: message.content })
 
   for (const call of message.toolCalls ?? []) {
-    blocks.push({ type: 'tool_use', id: call.id, name: call.name, input: call.args })
+    // Encoded here too: a replayed turn must name the tool exactly as the request that
+    // introduced it did, or the API rejects the history as referring to an unknown tool.
+    blocks.push({
+      type: 'tool_use',
+      id: call.id,
+      name: encodeToolName(call.name),
+      input: call.args,
+    })
   }
 
   if (blocks.length === 0) {
@@ -105,7 +135,7 @@ export function anthropicReasoner({ apiKey, model }: AnthropicOptions) {
           ...(request.tools && request.tools.length > 0
             ? {
                 tools: request.tools.map((tool) => ({
-                  name: tool.name,
+                  name: encodeToolName(tool.name),
                   description: tool.description,
                   input_schema: (tool.schema as Anthropic.Tool['input_schema']) ?? {
                     type: 'object' as const,
@@ -129,7 +159,9 @@ export function anthropicReasoner({ apiKey, model }: AnthropicOptions) {
         .filter((block): block is Anthropic.ToolUseBlock => block.type === 'tool_use')
         .map((block) => ({
           id: block.id,
-          name: block.name,
+          // Back to the real name before it leaves this file: the loop, the scope check and
+          // every log line downstream key off `module.tool`.
+          name: decodeToolName(block.name),
           args: (block.input ?? {}) as Record<string, unknown>,
         }))
 
