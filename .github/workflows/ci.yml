@@ -576,7 +576,11 @@ jobs:
           # above it failed on every single build since this job was written, first on an
           # action tag that did not resolve and then on real findings. Assert on the log,
           # with a deadline.
-          timeout 90 docker run --rm fabricxai:ci next start > /tmp/boot.log 2>&1
+          # `|| true` because the deadline expiring is the EXPECTED outcome — the process
+          # never exits on its own, so `timeout` returns 124. GitHub runs this block with
+          # `bash -e`, which a `set` line here cannot undo, so without this the step aborts
+          # on 124 before reaching the assertion below.
+          timeout 90 docker run --rm fabricxai:ci next start > /tmp/boot.log 2>&1 || true
           if ! grep -q 'Invalid environment' /tmp/boot.log; then
             echo '::error::the app served with no environment — env validation is not running'
             cat /tmp/boot.log
