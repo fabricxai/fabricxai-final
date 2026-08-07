@@ -1,0 +1,27 @@
+-- ============================================================================
+-- The pooler can reach the function it was already allowed to execute.
+--
+-- Migration 0070 created `pgbouncer_auth` and granted it EXECUTE on
+-- `app.pgbouncer_get_auth(text)` — and stopped there. In PostgreSQL, calling a function
+-- requires USAGE on its SCHEMA as well as EXECUTE on the function itself, and nothing ever
+-- granted USAGE on `app`. So the pooler connected, ran its auth_query, and got:
+--
+--     ERROR: permission denied for schema app
+--
+-- PgBouncer reports that to the client as `bouncer config error`, which names neither the
+-- schema nor the grant. The app and worker then die in their instrumentation hook, because
+-- `assertAppRoleConnection` is the first thing either does — so the symptom is the whole
+-- deployment failing to start, and the message points at the pooler's configuration rather
+-- than at a missing GRANT.
+--
+-- This was not a latent risk. It meant NO deployment using the production pooler config
+-- could ever have served a request; it was found the first time the stack was brought up on
+-- a real host. `scripts/setup-db-roles.mjs` hid it by probing the auth_query over the
+-- OWNER's connection, which has USAGE on everything — it verified that the function returns
+-- the right rows, never that the role which actually calls it may do so. That check is
+-- fixed alongside this.
+--
+-- Idempotent, like every grant here: re-running is how a password rotation is done.
+-- ============================================================================
+
+GRANT USAGE ON SCHEMA app TO pgbouncer_auth;

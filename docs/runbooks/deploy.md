@@ -93,7 +93,15 @@ the application's password never leaves Postgres (migration 0070).
 mkdir -p secrets && chmod 700 secrets
 source .env.production
 printf '"pgbouncer_auth" "%s"\n' "$PGBOUNCER_AUTH_PASSWORD" > secrets/pgbouncer-userlist.txt
-chmod 600 secrets/pgbouncer-userlist.txt
+
+# 0640, group 70 — NOT 0600. PgBouncer runs as uid 70 inside its container and reads this
+# file through the bind mount, so a file owned 0600 by the deploy user is one the pooler
+# cannot open. It then authenticates with no password at all and Postgres rejects it, which
+# surfaces as `password authentication failed for user "pgbouncer_auth"` — a message that
+# sends you looking for a wrong password rather than an unreadable file. Owner stays the
+# deploy user so the file can still be regenerated on a rotation.
+sudo chown "$(id -u)":70 secrets/pgbouncer-userlist.txt
+chmod 640 secrets/pgbouncer-userlist.txt
 ```
 
 `secrets/` is gitignored. Back up `.env.production` and
@@ -172,6 +180,8 @@ Expected failures and what they mean:
 | `Invalid environment (N problems)` | A `.env.production` value is missing or malformed. The message lists every one. |
 | Caddy cannot get a certificate | DNS does not resolve to this host yet, or 80/tcp is blocked. |
 | App healthy, worker restarting | Check `PGBOUNCER_AUTH_PASSWORD` reached the userlist — the worker connects through the pooler too. |
+| `password authentication failed for user "pgbouncer_auth"` | Usually NOT a wrong password. Check the pooler can *read* the userlist: `docker exec fxai-pgbouncer head -c1 /etc/pgbouncer/userlist.txt`. Permission denied ⇒ see §2 — it needs group 70 and 0640. |
+| `bouncer config error`, and `permission denied for schema app` in the pooler's log | `pgbouncer_auth` is missing `USAGE ON SCHEMA app`. EXECUTE on the function is not sufficient. Migration 0080 grants it; a database migrated before that migration existed needs it applied. |
 | `/api/ready` 503 | Postgres or Redis unreachable from the app. The body says which; the reason is in the container logs, deliberately not in the response. |
 | `/api/health/jobs` 503, `health_token_not_configured` | `HEALTH_TOKEN` is unset in `.env.production`. The route refuses rather than publishing the schedule — set one (`openssl rand -hex 24`) and `compose up -d app`. |
 | Caddy 502s while the app container is healthy | Caddy routes on `/api/ready`, not `/api/health`. A 502 here means the app is alive but cannot reach Postgres or Redis — check those, not the app. |

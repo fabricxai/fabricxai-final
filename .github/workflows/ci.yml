@@ -179,6 +179,13 @@ jobs:
       DIRECT_DATABASE_URL: postgres://fabricxai_owner:owner-secret@localhost:5432/fabricxai
       DATABASE_URL: postgres://fabricxai_app_rw:app-secret@localhost:5432/fabricxai
       APP_DB_PASSWORD: app-secret
+      # Set so `setup-db-roles.mjs` runs its pooler probe instead of skipping it. Without
+      # this the job printed "PGBOUNCER_AUTH_PASSWORD unset — skipping" and the pooler's
+      # grants went unexercised by CI entirely, which is how a missing
+      # `USAGE ON SCHEMA app` reached a real host and stopped the whole stack booting
+      # (migration 0080). The probe connects AS pgbouncer_auth, so it fails here if either
+      # grant is missing.
+      PGBOUNCER_AUTH_PASSWORD: pooler-secret
       # `pnpm seed` loads lib/env.ts, which validates the WHOLE environment before it opens
       # a connection — so the job died with "Invalid environment (7 problems)" after the
       # roles it exists to test had already been provisioned correctly. The seven below are

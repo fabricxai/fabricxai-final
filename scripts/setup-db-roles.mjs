@@ -161,7 +161,51 @@ try {
       )
     }
 
-    console.log('[roles] pgbouncer_auth password set · auth_query verified (app yes, owner no)')
+    /*
+     * Now run it AS THE POOLER, which is the only version of this check that means
+     * anything.
+     *
+     * Both probes above run on the owner's connection. The owner has USAGE on every schema
+     * and EXECUTE on everything it owns, so they pass whatever `pgbouncer_auth` is actually
+     * permitted to do — and they did, while migration 0070 granted EXECUTE on the function
+     * and never granted USAGE on the schema holding it. Postgres requires both. The pooler
+     * therefore got `permission denied for schema app` on every lookup, PgBouncer relayed
+     * it as `bouncer config error`, and app and worker died in their instrumentation hook
+     * because asserting the app role is the first thing either does.
+     *
+     * This script printed "auth_query verified" throughout. A check performed with the
+     * wrong credentials is worse than no check: it is a claim.
+     */
+    const poolerSql = postgres(
+      Object.assign(new URL(ownerUrl), {
+        username: 'pgbouncer_auth',
+        password: encodeURIComponent(poolerPassword),
+      }).toString(),
+      { max: 1, connection: { application_name: 'setup-db-roles:pooler-probe' } },
+    )
+    try {
+      const [asPooler] = await poolerSql`SELECT username FROM app.pgbouncer_get_auth(${username})`
+      if (asPooler?.username !== username) {
+        throw new Error(
+          `app.pgbouncer_get_auth('${username}') answered the owner but not pgbouncer_auth — ` +
+            'PgBouncer would refuse every client with "bouncer config error".',
+        )
+      }
+    } catch (error) {
+      throw new Error(
+        'pgbouncer_auth cannot execute its own auth_query, so the pooler will refuse every\n' +
+          'client and the app will not start. Both grants are required — EXECUTE alone is\n' +
+          'not enough:\n' +
+          '  GRANT USAGE ON SCHEMA app TO pgbouncer_auth;\n' +
+          '  GRANT EXECUTE ON FUNCTION app.pgbouncer_get_auth(text) TO pgbouncer_auth;\n' +
+          `Underlying error: ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error },
+      )
+    } finally {
+      await poolerSql.end()
+    }
+
+    console.log('[roles] pgbouncer_auth password set · auth_query verified AS the pooler')
   } else {
     console.log('[roles] PGBOUNCER_AUTH_PASSWORD unset — skipping (dev uses a cleartext userlist)')
   }
