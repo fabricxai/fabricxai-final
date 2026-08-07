@@ -16,14 +16,29 @@
 
 	# ── Object storage ─────────────────────────────────────────────────────────
 	#
-	# Presigned URLs are generated for {$APP_DOMAIN}/s3 (S3_PUBLIC_ENDPOINT) and must
-	# arrive at MinIO with that path prefix intact: SigV4 signs the Host header AND the
-	# path, so stripping the prefix here invalidates every signature. `to` without a
-	# rewrite is deliberate.
+	# Routed on the BUCKET path, with no prefix. This route exists because a floor tablet
+	# cannot resolve `minio:9000`, which is what the server-side endpoint is (audit INFRA-H1).
 	#
-	# This route exists because a floor tablet cannot resolve `minio:9000`, which is
-	# what the server-side endpoint is — the audit's INFRA-H1.
-	handle_path /s3/* {
+	# It used to be `handle_path /s3/*`, whose own comment said the prefix "must arrive at
+	# MinIO intact… stripping it invalidates every signature" — while `handle_path` is
+	# precisely the directive that strips it. Every upload and download returned
+	# 403 SignatureDoesNotMatch.
+	#
+	# Not fixable by switching to `handle` either. SigV4 signs the path, so the path the
+	# client signs has to be the path MinIO serves, and MinIO reads the FIRST path segment as
+	# the bucket:
+	#
+	#   strip  /s3  →  signed /s3/bucket/key, served /bucket/key  →  403 SignatureDoesNotMatch
+	#   keep   /s3  →  signed /s3/bucket/key, served /s3/bucket/key → 404, bucket "s3"
+	#
+	# So the prefix goes. `S3_PUBLIC_ENDPOINT` is now the bare origin, presigned URLs are
+	# {$APP_DOMAIN}/{bucket}/{key}, and the bucket name becomes a reserved top-level path on
+	# this domain — which is why it is matched explicitly rather than with a wildcard: only
+	# that one path leaves the application.
+	#
+	# A dedicated `s3.` subdomain is the tidier long-term shape and needs a DNS record; this
+	# needs none.
+	handle /{$S3_BUCKET}/* {
 		reverse_proxy minio:9000 {
 			# Uploads are up to 25MB (core/documents.ts); do not buffer them in Caddy.
 			flush_interval -1

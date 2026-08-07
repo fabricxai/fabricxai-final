@@ -40,8 +40,13 @@ x-app-env: &app-env
   # Browser-facing endpoint for presigned upload/download URLs. WITHOUT THIS, every
   # upload from a floor tablet fails: SigV4 signs the Host header, so a URL signed for
   # `minio:9000` cannot be rewritten client-side and the tablet cannot resolve it
-  # anyway (audit INFRA-H1). Caddy proxies /s3/* to minio.
-  S3_PUBLIC_ENDPOINT: ${APP_URL}/s3
+  # anyway (audit INFRA-H1).
+  #
+  # The bare origin, with NO path prefix. It was `${APP_URL}/s3`, which made every presigned
+  # URL sign a path that Caddy then rewrote before MinIO saw it — 403 SignatureDoesNotMatch
+  # on every upload and download. SigV4 signs the path; the path the client signs must be the
+  # path MinIO serves. Caddy routes `/{S3_BUCKET}/*` to minio (see docker/caddy/Caddyfile).
+  S3_PUBLIC_ENDPOINT: ${APP_URL}
   S3_BUCKET: ${S3_BUCKET:-fabricxai}
   S3_REGION: ${S3_REGION:-us-east-1}
   S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:?}
@@ -116,6 +121,9 @@ services:
     environment:
       APP_DOMAIN: ${APP_DOMAIN:?the bare hostname, e.g. erp.example.com — Caddy gets its certificate for this}
       TLS_EMAIL: ${TLS_EMAIL:?an address Let's Encrypt can reach about expiry}
+      # The object-storage route matches this exact path. It must be the same bucket the app
+      # signs URLs for, or uploads 404 against the application instead of reaching MinIO.
+      S3_BUCKET: ${S3_BUCKET:-fabricxai}
     depends_on:
       app:
         condition: service_healthy
