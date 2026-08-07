@@ -20,6 +20,16 @@ export default defineConfig({
     environment: 'node',
 
     /*
+     * Placeholder env before any test file imports anything (see the setup file).
+     *
+     * Five files reach `db/client.ts` → `lib/env.ts`, which validates at module load. They
+     * passed locally off a gitignored `.env` that Vitest loads through Vite, and failed to
+     * import in CI where no `.env` exists — 72 tests silently not running on the one machine
+     * whose result anybody acts on.
+     */
+    setupFiles: ['./vitest.setup.node.ts'],
+
+    /*
      * JUnit alongside the readable reporter, in CI only (plan 7.3, audit TEST-M10).
      *
      * Nothing consumed a machine-readable result before, so a failing test was a line in a
