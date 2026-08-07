@@ -208,6 +208,19 @@ export const envSchema = baseSchema.superRefine((env, ctx) => {
 export type Env = z.infer<typeof baseSchema>
 
 /**
+ * Every variable the application reads, and each one's field schema — exported for the
+ * deploy-contract test.
+ *
+ * Five deployment defects in one week shared a single shape: a variable one file declares
+ * that another file does not honour. `MARBIM_MODEL_EXTRACT` was settable in .env.production
+ * and forwarded by nothing; `EMAIL_FROM`'s example value failed this file's own `z.email()`.
+ * None were visible to a test of either file alone — the contract lives BETWEEN files, and
+ * `deploy-contract.test.ts` is where it is now enforced. This export is what makes that test
+ * possible without duplicating the key list, which would itself drift.
+ */
+export const ENV_FIELDS: Readonly<Record<string, z.ZodType>> = baseSchema.shape
+
+/**
  * `.env` files spell "not configured yet" as `KEY=` — an empty string, not an absent
  * key. Strip those before parsing so `.optional()` and `.default()` behave the way the
  * file reads, instead of every blank placeholder failing as "too small".
