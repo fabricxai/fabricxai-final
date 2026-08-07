@@ -517,3 +517,35 @@ never arrives". Now a bare address, with the reason written down. The host's val
 Note this is the third defect of the same shape: `SMTP_HOST:?` vs `env.ts`, `scripts/`
 missing from the image, and now this. Each is a place where one file states a contract that
 another file contradicts, and none of them could be caught by a test of either file alone.
+
+### 2026-08-08 · LIVE
+
+`https://baraka.fabricxai.com` serves on TLS 1.3 / HTTP/2 with a Let's Encrypt certificate.
+`/api/ready` 200 (postgres 3ms, redis 2ms), worker running with 0 restarts, 27 schedules
+registered on Asia/Dhaka, full security-header set, `/api/health/jobs` 401 without its token.
+
+Two bugs stood between the stack and its first successful boot, both found by bringing it up
+rather than by any test:
+
+1. **The userlist was unreadable.** `deploy.md` said `chmod 600`; PgBouncer runs as uid 70
+   in its container, so it read no password at all and Postgres reported
+   `password authentication failed` — a message that sends you looking for a wrong password.
+   Now 0640, group 70.
+2. **`pgbouncer_auth` had EXECUTE on the auth_query function but no USAGE on its schema.**
+   Postgres needs both. No deployment using the production pooler config could ever have
+   served a request (migration 0080). `setup-db-roles.mjs` had printed "auth_query verified"
+   on every run because it probed as the OWNER, who has USAGE on everything.
+
+Fixing the probe to run **as the pooler**, and setting `PGBOUNCER_AUTH_PASSWORD` in the
+`owner-privileges` job so it stops skipping, then immediately surfaced a third — and the
+worst — problem: `app.pgbouncer_get_auth` filtered on `NOT rolsuper` but **not**
+`rolbypassrls`. On the hardened non-superuser-owner configuration this project recommends,
+the pooler could authenticate as a role that reads every tenant's rows (migration 0081). The
+assertion that caught it was written long ago, correct, and unreachable.
+
+**`EMAIL_FROM` must match a domain Resend has actually verified.** Set to
+`no-reply@mail.fabricxai.com` on an assumption; the verified domain was the apex,
+`fabricxai.com`, so every signup produced an account that could not sign in. Resend's 403
+names the domain, and `mailer.ts` surfaces the provider's reason rather than swallowing it,
+which is the only reason this was a one-log-read diagnosis. Now `no-reply@fabricxai.com`,
+confirmed `delivered`.
