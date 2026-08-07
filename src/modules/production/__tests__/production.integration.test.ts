@@ -32,7 +32,7 @@ import {
   recordHourlyOutputs,
   runRate,
 } from '@/modules/production/service'
-import { runRunRateAlerts } from '@/modules/production/jobs'
+import { ensureOutputPartitions, runRunRateAlerts } from '@/modules/production/jobs'
 import {
   dailyLinePlans,
   downtimes,
@@ -50,11 +50,31 @@ const USER = `prod-${randomUUID().slice(0, 8)}`
 const ctx: RequestCtx = { companyId: COMPANY, userId: USER, roles: ['production'] }
 const otherCtx: RequestCtx = { companyId: OTHER, userId: USER, roles: ['production'] }
 
+/*
+ * A fixed date, and the partition for it created explicitly below.
+ *
+ * It used to rely on migration 0019 having seeded this month, which seeds `-1..12` months
+ * around `now()` AT MIGRATION TIME. That was true while CI migrated a fresh database within
+ * a month of June 2026 and false from 1 July onward: the rows fell into the DEFAULT
+ * partition and two tests began failing for a reason that had nothing to do with the code.
+ *
+ * Wall-clock does not belong in an assertion about physical routing. So the date stays
+ * fixed and the partition is made to exist — through `ensure_hourly_output_partition`,
+ * which is the same function the nightly job calls, so the setup exercises the real
+ * mechanism rather than hand-rolling a CREATE TABLE.
+ *
+ * The separate question — does a running deployment keep a partition open for TODAY —
+ * is what this test was checking by accident. It is now checked on purpose, against the
+ * job that is responsible for it, in the '6.1 · partition roll-forward' block below.
+ */
 const DAY = '2026-06-15'
+const DAY_PARTITION = 'hourly_outputs_2026_06'
 let lineId: string
 let orderId: string
 
 beforeAll(async () => {
+  await db.execute(sql`select app.ensure_hourly_output_partition(${DAY}::date)`)
+
   await db.insert(companies).values([
     { id: COMPANY, name: 'Prod Co', slug: `prod-${COMPANY.slice(0, 8)}` },
     { id: OTHER, name: 'Other Co', slug: `oth-${OTHER.slice(0, 8)}` },
@@ -150,8 +170,9 @@ describe('6.1 ⚡ · burst writes', () => {
       group by 1`)
     const list = Array.isArray(rows) ? rows : ((rows as { rows?: unknown[] }).rows ?? [])
 
-    expect((list[0] as { partition: string }).partition).toBe('hourly_outputs_2026_06')
-    // Not the default partition — landing there would mean the window has run out.
+    expect((list[0] as { partition: string }).partition).toBe(DAY_PARTITION)
+    // Not the default. DEFAULT is a safety net for a month nobody created — data is safe
+    // there but stops being pruned, so a row in it means the machinery failed quietly.
     expect((list[0] as { partition: string }).partition).not.toContain('default')
   })
 
@@ -170,9 +191,40 @@ describe('6.1 ⚡ · burst writes', () => {
       (match) => match[1],
     )
 
-    expect(new Set(partitionsTouched)).toEqual(new Set(['2026_06']))
-    // The default partition holding rows would mean the monthly window has run out.
+    expect(new Set(partitionsTouched)).toEqual(new Set([DAY_PARTITION.replace('hourly_outputs_', '')]))
+    // Scanning DEFAULT too would mean the read had stopped being pruned.
     expect(text).not.toContain('hourly_outputs_default')
+  })
+
+  it('today has a partition of its own — the floor writes now, not in June', async () => {
+    /*
+     * The invariant the two tests above used to check by accident, and the one that
+     * actually protects a factory: a supervisor posts an hourly count for TODAY, and it
+     * must land in a real monthly partition rather than DEFAULT.
+     *
+     * Migration 0019 seeds a window around whenever it happened to run. Keeping that window
+     * open is `ensureOutputPartitions`, scheduled nightly — the job its own docblock calls
+     * "the one that matters most and is easiest to forget", and which had no test at all.
+     * Forgetting it does not break loudly: rows still land, because DEFAULT catches them,
+     * and the board read quietly stops being pruned.
+     */
+    const systemCtx: SystemCtx = { companyId: COMPANY, userId: null, roles: ['owner'], system: true }
+    const result = await ensureOutputPartitions(systemCtx, { monthsAhead: 2 })
+
+    expect(result.ensured).toBe(3)
+
+    const rows = await db.execute<{ name: string }>(sql`
+      select to_char(date_trunc('month', now()) + (i || ' month')::interval, '"hourly_outputs_"YYYY_MM') as name
+      from generate_series(0, 2) as i`)
+    const list = Array.isArray(rows) ? rows : ((rows as { rows?: unknown[] }).rows ?? [])
+
+    for (const row of list as { name: string }[]) {
+      const exists = await db.execute<{ ok: boolean }>(
+        sql`select to_regclass(${'public.' + row.name}) is not null as ok`,
+      )
+      const found = Array.isArray(exists) ? exists : ((exists as { rows?: unknown[] }).rows ?? [])
+      expect((found[0] as { ok: boolean }).ok, `${row.name} should exist`).toBe(true)
+    }
   })
 
   it('is invisible to another company', async () => {
