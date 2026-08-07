@@ -568,6 +568,13 @@
       "when": 1786029170225,
       "tag": "0080_pgbouncer_schema_usage",
       "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "7",
+      "when": 1786029171225,
+      "tag": "0081_pgbouncer_refuse_bypassrls",
+      "breakpoints": true
     }
   ]
 }
