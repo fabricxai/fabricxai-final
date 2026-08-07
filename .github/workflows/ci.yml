@@ -547,18 +547,41 @@ jobs:
           exit-code: '1'
 
       # Prove the image can actually start and answer, not merely that it compiled.
-      # A build that produces an image which exits on boot passed CI before this.
+      #
+      # No env supplied at all: lib/env.ts must reject it and name every problem. An image
+      # that starts happily with no configuration is one that will start happily with the
+      # WRONG configuration.
+      #
+      # Both commands docker-compose.prod.yml runs are checked, because they fail
+      # differently and only one of them can be asserted on an exit code.
       - name: Refuse to boot without a valid environment
         run: |
-          set -o pipefail
-          # No env supplied at all: lib/env.ts must reject it and name every problem.
-          # An image that starts happily with no configuration is one that will start
-          # happily with the wrong configuration.
-          if docker run --rm fabricxai:ci next start 2>&1 | tee /tmp/boot.log; then
-            echo '::error::the image started with no environment — env validation is not running'
+          set -uo pipefail
+
+          # The worker exits, so assert on its status — the strongest form available.
+          if docker run --rm fabricxai:ci tsx src/worker/index.ts > /tmp/worker.log 2>&1; then
+            echo '::error::the worker started with no environment — env validation is not running'
             exit 1
           fi
-          grep -q 'Invalid environment' /tmp/boot.log
+          if ! grep -q 'Invalid environment' /tmp/worker.log; then
+            echo '::error::the worker failed for some reason OTHER than env validation'
+            cat /tmp/worker.log
+            exit 1
+          fi
+
+          # `next start` does NOT exit. When the instrumentation hook throws it logs
+          # "Failed to prepare server" and lingers with a process that serves nothing, so
+          # `if docker run …` waited forever and took the whole job to its 25-minute
+          # ceiling. That went unnoticed because this step had never run: the Trivy scan
+          # above it failed on every single build since this job was written, first on an
+          # action tag that did not resolve and then on real findings. Assert on the log,
+          # with a deadline.
+          timeout 90 docker run --rm fabricxai:ci next start > /tmp/boot.log 2>&1
+          if ! grep -q 'Invalid environment' /tmp/boot.log; then
+            echo '::error::the app served with no environment — env validation is not running'
+            cat /tmp/boot.log
+            exit 1
+          fi
 
   # ── Publish ────────────────────────────────────────────────────────────────
   #
