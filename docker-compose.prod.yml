@@ -72,6 +72,18 @@ x-app-env: &app-env
   # Gemini-only deployment ships a copilot that renders perfectly and fails on every
   # question (plan 6.4).
   MARBIM_ENABLED: ${MARBIM_ENABLED:-false}
+  # Models by role. Absent from this file until now, which meant `MARBIM_MODEL_EXTRACT` in
+  # .env.production was read by NOTHING: compose never passed it, so `env.ts` fell through to
+  # its own default and the operator's choice was silently discarded. It surfaced the first
+  # time somebody needed to move document extraction off Gemini — the variable was set, the
+  # container had never heard of it, and the only symptom was extraction still failing
+  # against the vendor it was supposed to have stopped using.
+  #
+  # Empty is safe and means "use the default": `env.ts` strips blanks before parsing, so an
+  # unset variable here and an absent one are the same thing.
+  MARBIM_MODEL_EXTRACT: ${MARBIM_MODEL_EXTRACT:-}
+  MARBIM_MODEL_REASON: ${MARBIM_MODEL_REASON:-}
+  MARBIM_MODEL_EMBED: ${MARBIM_MODEL_EMBED:-}
   ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
   GEMINI_API_KEY: ${GEMINI_API_KEY:-}
   OPENAI_API_KEY: ${OPENAI_API_KEY:-}
