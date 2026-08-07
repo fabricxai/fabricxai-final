@@ -427,13 +427,62 @@ the worker's compose command is `tsx src/worker/index.ts` and `tsx` is itself a
 devDependency, so a naive `--prod` breaks the worker. Either compile the worker entry at
 build time or promote `tsx` and prune the rest.
 
-Still red, and each is a decision rather than a repair:
+### 2026-08-07 (later) · CI is green and the first image is published
 
-- **`static`** — coverage ~0.2pp under a floor committed above what the code delivers. Raise
-  coverage or lower the floor with a reason.
-- **`supply-chain`** — 7 high advisories in the *production* tree: `next→sharp` (libvips),
-  `next→postcss` (×2), `@sentry/nextjs→brace-expansion`. Bump or accept explicitly.
-- **`integration`** — 2 failures: `hourly_outputs` rows land in `hourly_outputs_default`
-  instead of `hourly_outputs_2026_06`. Floor-facing production data going to the fallback
-  partition. **A real bug, and a go-live question independent of CI.**
-- **`docker`** — the Trivy findings above.
+All nine jobs pass, `publish` included. Run `31202816089`, commit `af39d36`.
+
+First deployable image:
+
+```
+IMAGE=ghcr.io/fabricxai/fabricxai-poc-baraka@sha256:b450a525704440d628942b7619613014ef3cfd94f13cebe2a05a9d1de873fdc8
+```
+
+What the remaining four took, beyond the four mechanical ones above:
+
+- **`static`** — the floor was a symptom. Five test files were not running in CI at all:
+  they reach `db/client.ts` → `env.ts`, which validates at module load, and Vitest was
+  feeding them a **gitignored `.env`** that CI does not have. 72 tests silently absent from
+  the only machine whose result anybody acts on, and a fresh clone could not run the suite
+  either. Fixed with a setup file of unreachable placeholders; floor re-recorded with
+  `.env` absent, which is the condition CI runs in.
+- **`integration`** — the partition test hardcoded `2026-06-15` and relied on migration 0019
+  having seeded that month. It seeds `-1..12` around migration time, so it was true until
+  30 June and false after. The product was never at fault. The date stays fixed and the
+  partition is created through the same function the nightly job calls; separately,
+  `ensureOutputPartitions` — "the one that matters most and is easiest to forget", and
+  untested — is now asserted on purpose.
+- **`supply-chain`** — `next` 16.3.0 (postcss 8.5.23, sharp 0.35.3) plus a `brace-expansion@5`
+  override. `pnpm audit --prod` now reports nothing at all.
+- **`docker`** — see below; it also uncovered a deployment-blocker.
+
+### Two things this uncovered that would have broken the first deploy
+
+1. **`scripts/` was not in the image.** The runtime stage copies named paths and `scripts/`
+   was not one, but the migrate service runs `node scripts/setup-db-roles.mjs`. Migrate
+   would have exited non-zero on first bring-up, and app and worker `depend_on` it
+   completing — so **nothing would have started**. Now copied, and verified invokable.
+2. **The image carried its own toolchain.** devDependencies shipped to the factory, the base
+   image's bundled npm held the only CRITICAL (node-tar), and two stale `esbuild` binaries
+   arrived via `@esbuild-kit` and `better-auth → drizzle-kit`. Plus 280MB of Turbopack cache
+   the runtime masks with a tmpfs. Trivy HIGH/CRITICAL is now zero; image 1.62GB → 1.44GB.
+
+### ⚠ Before §5: the VPS cannot pull this image yet
+
+The package is **private**, inherited from the private repo — an anonymous `docker pull` of
+the digest above returns `unauthorized`. Nothing on the VPS can fetch it until it can
+authenticate, and this is the next thing that blocks bring-up.
+
+Either:
+
+- **Keep it private (recommended for an ERP)** — create a token with `read:packages`, then
+  on the box, as `deploy`:
+  `echo <TOKEN> | docker login ghcr.io -u <github-user> --password-stdin`.
+  The credential lands in `/home/deploy/.docker/config.json`, so `chmod 600` it and treat it
+  as a secret that needs rotating. A fine-grained PAT scoped to this one package is the
+  narrowest option.
+- **Make the package public** — no credential to manage or leak, but the image and every
+  layer of the application become world-readable. Reasonable for a throwaway demo, not for
+  anything a factory's data touches.
+
+`kamrul`'s existing `gh` token has `repo, workflow, admin:public_key, gist, read:org` and
+**not** `read:packages`, so it cannot be reused for this as-is.
