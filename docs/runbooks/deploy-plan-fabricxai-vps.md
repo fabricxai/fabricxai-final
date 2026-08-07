@@ -401,3 +401,39 @@ Notes worth keeping:
   `fabricxai-deploy` alias added alongside root's `fabricxai`.
 
 Root login remains enabled by design until the first deploy verifies green.
+
+### 2026-08-07 · CI was red before any of this started
+
+`publish` gates on all eight quality jobs, so the image path is blocked until they pass.
+Six were failing on `96fba08` — identically on both repos, before any change here. Four were
+mechanical and are fixed in `59c8f5b`:
+
+| Job | Was | Now |
+|---|---|---|
+| `e2e` | Every sign-in failed: seed moved to tenant-scoped addresses (`8bc307f`), suite kept using unscoped ones (`d6010fd`). Never passed in CI. | ✅ green in 3m22s |
+| `owner-privileges` | Provisioned roles correctly, then `pnpm seed` exited on 7 unset env vars | ✅ green |
+| compose vs `env.ts` | `SMTP_HOST:?` made a correct Resend-only deploy unable to start | ✅ fixed, 4 tests |
+| `docker` | `trivy-action@0.28.0` does not exist — scan never ran | ⚠️ see below |
+
+**The Trivy fix exposed rather than solved.** With a tag that resolves, the scan runs for the
+first time and fails on **15 findings (14 HIGH, 1 CRITICAL)** — the critical being `node-tar`
+CVE-2026-59873, a gzip-bomb DoS. This gate has never once executed, so "CI scans our images"
+was not true.
+
+A large part of that is image hygiene: `Dockerfile:16` installs with `pnpm install
+--frozen-lockfile` (no `--prod`) and `Dockerfile:57` copies that `node_modules` into the
+runtime stage, so all 24 devDependencies ship to the factory. **It is not a one-word fix** —
+the worker's compose command is `tsx src/worker/index.ts` and `tsx` is itself a
+devDependency, so a naive `--prod` breaks the worker. Either compile the worker entry at
+build time or promote `tsx` and prune the rest.
+
+Still red, and each is a decision rather than a repair:
+
+- **`static`** — coverage ~0.2pp under a floor committed above what the code delivers. Raise
+  coverage or lower the floor with a reason.
+- **`supply-chain`** — 7 high advisories in the *production* tree: `next→sharp` (libvips),
+  `next→postcss` (×2), `@sentry/nextjs→brace-expansion`. Bump or accept explicitly.
+- **`integration`** — 2 failures: `hourly_outputs` rows land in `hourly_outputs_default`
+  instead of `hourly_outputs_2026_06`. Floor-facing production data going to the fallback
+  partition. **A real bug, and a go-live question independent of CI.**
+- **`docker`** — the Trivy findings above.
