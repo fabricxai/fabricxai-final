@@ -15,6 +15,29 @@ COPY package.json pnpm-lock.yaml ./
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
     pnpm install --frozen-lockfile
 
+# ── prod-deps ────────────────────────────────────────────────────────────────
+#
+# The dependency tree the FACTORY runs, which is not the one that builds it.
+#
+# The runtime stage used to copy `deps` wholesale, so every devDependency — vitest,
+# playwright, eslint, typescript, the whole test and lint toolchain — shipped to the
+# factory. That is a larger image and, more to the point, a larger attack surface: Trivy
+# reports on what is in the image, not on what the app imports, and most of what it found
+# was tooling that has no business being there.
+#
+# `tsx` is deliberately a real dependency rather than an exception carved out here: the
+# worker's entrypoint IS `tsx src/worker/index.ts` and migrate runs `tsx src/db/migrate.ts`,
+# so it is a runtime dependency of this deployment however package.json used to classify it.
+FROM node:22-bookworm-slim AS prod-deps
+WORKDIR /app
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+RUN corepack enable
+
+COPY package.json pnpm-lock.yaml ./
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+    pnpm install --prod --frozen-lockfile
+
 # ── build ────────────────────────────────────────────────────────────────────
 FROM node:22-bookworm-slim AS build
 WORKDIR /app
@@ -29,7 +52,11 @@ COPY . .
 # and the worker entry), never at build time. An image that needs the production keys to
 # compile is an image that ends up carrying them.
 ENV NODE_ENV=production
-RUN pnpm build
+# `.next/cache` is Turbopack's build cache — 280MB of it, and the runtime never reads a
+# byte: docker-compose.prod.yml mounts a tmpfs over `/app/.next/cache` precisely because
+# nothing in the app writes to disk. Pruned HERE rather than in the runtime stage, because
+# deleting after the COPY leaves the bytes in the layer underneath and saves nothing.
+RUN pnpm build && rm -rf .next/cache
 
 # ── runtime ──────────────────────────────────────────────────────────────────
 FROM node:22-bookworm-slim AS runtime
@@ -52,13 +79,26 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends dumb-init \
  && rm -rf /var/lib/apt/lists/* \
  && groupadd --system --gid 1001 fabricxai \
- && useradd --system --uid 1001 --gid fabricxai --home-dir /app fabricxai
+ && useradd --system --uid 1001 --gid fabricxai --home-dir /app fabricxai \
+ # The base image bundles npm, and this stage says above that it deliberately runs no
+ # package manager — it executes binaries already in node_modules. Bundled npm was
+ # nonetheless the single largest source of vulnerabilities in the scan, including its
+ # only CRITICAL (node-tar CVE-2026-59873), none of it from a package this app imports.
+ # Removing it is the difference between a scan that reports on the FACTORY'S code and one
+ # that reports on a package manager nothing invokes.
+ && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
-COPY --from=deps  --chown=fabricxai:fabricxai /app/node_modules ./node_modules
-COPY --from=build --chown=fabricxai:fabricxai /app/.next        ./.next
-COPY --from=build --chown=fabricxai:fabricxai /app/public       ./public
-COPY --from=build --chown=fabricxai:fabricxai /app/src          ./src
-COPY --from=build --chown=fabricxai:fabricxai \
+COPY --from=prod-deps --chown=fabricxai:fabricxai /app/node_modules ./node_modules
+COPY --from=build     --chown=fabricxai:fabricxai /app/.next        ./.next
+COPY --from=build     --chown=fabricxai:fabricxai /app/public       ./public
+COPY --from=build     --chown=fabricxai:fabricxai /app/src          ./src
+# `scripts/` is not optional: docker-compose.prod.yml's migrate service runs
+# `tsx src/db/migrate.ts && node scripts/setup-db-roles.mjs`, and that second command was
+# reaching for a file no image contained. Migrate would have exited non-zero on the very
+# first deploy, and app and worker `depend_on` it completing — so nothing would have
+# started, on a stack whose ordering is otherwise carefully correct.
+COPY --from=build     --chown=fabricxai:fabricxai /app/scripts      ./scripts
+COPY --from=build     --chown=fabricxai:fabricxai \
      /app/package.json /app/next.config.ts /app/tsconfig.json /app/drizzle.config.ts ./
 
 USER fabricxai
