@@ -42,7 +42,7 @@ import {
 
 import { anthropicReasoner } from './anthropic'
 import { geminiExtractor } from './gemini'
-import { openAiEmbedder } from './openai'
+import { openAiEmbedder, openAiExtractor } from './openai'
 
 export interface ByRoleConfig {
   anthropicApiKey?: string | undefined
@@ -56,6 +56,45 @@ const KEY_FOR: Record<ModelRole, string> = {
   reason: 'ANTHROPIC_API_KEY',
   extract: 'GEMINI_API_KEY',
   embed: 'OPENAI_API_KEY',
+}
+
+/**
+ * Which vendor reads documents — decided by the model id, not by a fourth env var.
+ *
+ * `extract` was Gemini's alone because it was the only vendor returning per-token
+ * log-probabilities with a schema-constrained response. Both halves of that changed: OpenAI
+ * does return them, and no Gemini model on AI Studio currently does. Rather than pick a
+ * winner in code, the role follows `MARBIM_MODEL_EXTRACT` — the variable that already names
+ * the model, and therefore already names its vendor.
+ *
+ *   MARBIM_MODEL_EXTRACT=gemini-…   →  Gemini, needs GEMINI_API_KEY   (the default, unchanged)
+ *   MARBIM_MODEL_EXTRACT=gpt-… / o…  →  OpenAI, needs OPENAI_API_KEY
+ *
+ * Nothing about the confidence contract moves with it. Both extractors derive per-field
+ * scores through `field-confidence.ts`, and both refuse outright when the tokens are absent.
+ * Switching vendor changes who reads the document, not whether the number is real.
+ */
+const OPENAI_MODEL_RE = /^(gpt-|o\d)/i
+
+/**
+ * Who would read documents under this configuration, and with which key.
+ *
+ * Resolved without constructing anything, so `configuredRoles` — which answers "what can this
+ * deployment do" for a status surface — and the provider itself cannot disagree about whether
+ * extraction is available. Two places deciding that separately is how a screen offers a
+ * button the seam then refuses.
+ */
+function extractVendor(config: ByRoleConfig): {
+  vendor: 'openai' | 'gemini'
+  keyName: string
+  apiKey: string | undefined
+} {
+  if (OPENAI_MODEL_RE.test(config.models.extract)) {
+    // Named so a misconfiguration reports the variable actually missing, rather than sending
+    // somebody to add a Gemini key for an OpenAI model.
+    return { vendor: 'openai', keyName: 'OPENAI_API_KEY', apiKey: config.openAiApiKey }
+  }
+  return { vendor: 'gemini', keyName: KEY_FOR.extract, apiKey: config.geminiApiKey }
 }
 
 function missing(role: ModelRole): ProviderError {
@@ -73,9 +112,14 @@ function missing(role: ModelRole): ProviderError {
  * it refuses politely) and production (refuse to boot — see `assertProviderConfigured`).
  */
 export function byRoleProvider(config: ByRoleConfig): MarbimProvider | null {
-  const extractor = config.geminiApiKey
-    ? geminiExtractor({ apiKey: config.geminiApiKey, model: config.models.extract })
-    : null
+  const extract = extractVendor(config)
+  const model = config.models.extract
+  const extractor = !extract.apiKey
+    ? null
+    : extract.vendor === 'openai'
+      ? openAiExtractor({ apiKey: extract.apiKey, model })
+      : geminiExtractor({ apiKey: extract.apiKey, model })
+
   const reasoner = config.anthropicApiKey
     ? anthropicReasoner({ apiKey: config.anthropicApiKey, model: config.models.reason })
     : null
@@ -98,7 +142,13 @@ export function byRoleProvider(config: ByRoleConfig): MarbimProvider | null {
     models,
 
     async extract<T>(request: ExtractRequest<T>): Promise<ExtractResult<T>> {
-      if (!extractor) throw missing('extract')
+      if (!extractor) {
+        throw new ProviderError(
+          `MARBIM has no extract model configured — MARBIM_MODEL_EXTRACT is "${model}", ` +
+            `so set ${extract.keyName}, or this capability stays off`,
+          { retryable: false },
+        )
+      }
       return extractor.extract(request)
     },
 
@@ -117,7 +167,9 @@ export function byRoleProvider(config: ByRoleConfig): MarbimProvider | null {
 /** Which roles this configuration can actually serve. For the boot assertion and for tests. */
 export function configuredRoles(config: ByRoleConfig): ModelRole[] {
   const roles: ModelRole[] = []
-  if (config.geminiApiKey) roles.push('extract')
+  // Not `if (geminiApiKey)`: which key enables extraction depends on the model, so this asks
+  // the same resolver the provider does rather than assuming the vendor.
+  if (extractVendor(config).apiKey) roles.push('extract')
   if (config.anthropicApiKey) roles.push('reason')
   if (config.openAiApiKey) roles.push('embed')
   return roles

@@ -180,3 +180,109 @@ describe('extractorVersionFor · the correction rate can finally tell two extrac
     expect(extractorVersionFor({ promptVersion: '1.0.0', model: null })).toBe('1.0.0+unconfigured')
   })
 })
+
+/**
+ * The extract role is no longer Gemini's by definition.
+ *
+ * It was, and for a stated reason: Gemini was "the only one of the three vendors that returns
+ * per-token log-probabilities alongside a schema-constrained JSON response". Both halves of
+ * that stopped being true. OpenAI does return them, and as of August 2026 no Gemini model on
+ * AI Studio does — twenty-six were checked, thirteen answer "Logprobs is not enabled for this
+ * model" and the rest are retired, gated to new accounts, or lack JSON mode.
+ *
+ * So the role follows `MARBIM_MODEL_EXTRACT`, which already names the model and therefore
+ * already names the vendor. What must NOT move is the confidence contract: both extractors
+ * derive per-field scores from token logprobs through the same file, and both refuse outright
+ * when the tokens are absent. These tests pin the routing; `field-confidence.test.ts` pins the
+ * derivation they share.
+ */
+describe('byRoleProvider · which vendor reads documents', () => {
+  const withExtract = (extract: string, keys: Partial<ByRoleConfig>): ByRoleConfig => ({
+    models: { ...MODELS, extract },
+    ...keys,
+  })
+
+  it('7 · a gemini-* model still goes to Gemini, and still asks for GEMINI_API_KEY', () => {
+    // The default, and the regression that matters: an existing deployment must not change
+    // behaviour because this routing was added.
+    const config = withExtract('gemini-2.5-flash', { openAiApiKey: 'sk-test' })
+
+    expect(configuredRoles(config)).not.toContain('extract')
+
+    return expect(
+      byRoleProvider(config)!.extract({
+        role: 'extract',
+        schema: { safeParse: () => ({ success: true, data: {} }) } as never,
+        input: 'x',
+        instruction: 'x',
+      }),
+    ).rejects.toThrow(/GEMINI_API_KEY/)
+  })
+
+  it('8 · a gpt-* model goes to OpenAI, and names OPENAI_API_KEY when the key is absent', () => {
+    /*
+     * The misconfiguration this exists to make legible: an operator who set
+     * MARBIM_MODEL_EXTRACT=gpt-4o-mini and no OpenAI key used to be told to set
+     * GEMINI_API_KEY — advice that would not have fixed it, for a vendor they had chosen not
+     * to use.
+     */
+    // Anthropic is present so the provider exists at all: a config whose ONLY key is a Gemini
+    // one, pointed at a gpt model, can serve nothing and is correctly null. The realistic
+    // shape of this mistake is a working copilot with extraction misconfigured beside it.
+    const config = withExtract('gpt-4o-mini', {
+      anthropicApiKey: 'sk-ant-test',
+      geminiApiKey: 'gem-test',
+    })
+
+    expect(configuredRoles(config)).not.toContain('extract')
+
+    return byRoleProvider(config)!
+      .extract({
+        role: 'extract',
+        schema: { safeParse: () => ({ success: true, data: {} }) } as never,
+        input: 'x',
+        instruction: 'x',
+      })
+      .then(
+        () => expect.unreachable('an OpenAI extract model with no OpenAI key must refuse'),
+        (error: unknown) => {
+          expect(error).toBeInstanceOf(ProviderError)
+          expect((error as ProviderError).message).toMatch(/OPENAI_API_KEY/)
+          expect((error as ProviderError).message).toMatch(/gpt-4o-mini/)
+          // A missing key is missing on the next attempt too.
+          expect((error as ProviderError).retryable).toBe(false)
+        },
+      )
+  })
+
+  it('9 · an OpenAI key plus a gpt-* model makes extraction available', () => {
+    // The configuration this whole change exists to permit: a factory with no usable Gemini
+    // model can still read documents, without the confidence rule being touched.
+    const config = withExtract('gpt-4o-mini', { openAiApiKey: 'sk-test' })
+
+    expect(configuredRoles(config)).toContain('extract')
+    expect(byRoleProvider(config)!.models?.extract).toBe('gpt-4o-mini')
+  })
+
+  it('10 · o-series ids route to OpenAI too', () => {
+    expect(configuredRoles(withExtract('o4-mini', { openAiApiKey: 'sk-test' }))).toContain('extract')
+    expect(configuredRoles(withExtract('o4-mini', { geminiApiKey: 'gem' }))).not.toContain('extract')
+  })
+
+  it('11 · configuredRoles and the provider cannot disagree about extraction', () => {
+    /*
+     * They are read by different surfaces — one captions what the deployment can do, the
+     * other refuses at the point of use — and the failure of them drifting is a screen
+     * offering a button the seam then rejects. One resolver answers both.
+     */
+    for (const model of ['gemini-2.5-flash', 'gpt-4o-mini', 'o4-mini']) {
+      for (const keys of [{ geminiApiKey: 'g' }, { openAiApiKey: 'o' }, { geminiApiKey: 'g', openAiApiKey: 'o' }]) {
+        const config = withExtract(model, keys)
+        const claimed = configuredRoles(config).includes('extract')
+        const provider = byRoleProvider(config)
+        const served = provider !== null && provider.models?.extract !== undefined
+        expect(served, `${model} with ${JSON.stringify(keys)}`).toBe(claimed)
+      }
+    }
+  })
+})

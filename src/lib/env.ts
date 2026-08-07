@@ -66,10 +66,19 @@ const baseSchema = z.object({
    *
    * The defaults are the intended production mix, one vendor per role for a reason:
    *
-   *  - **extract → Gemini**, because it is the only one of the three that returns per-token
-   *    log-probabilities with a schema-constrained response, and without those an extraction
-   *    has no measured per-field confidence to carry (rule 3, plan 6.3). A model here that
-   *    does not support `responseLogprobs` makes every extraction fail, loudly, by design.
+   *  - **extract → whichever vendor this model id names.** `gemini-*` routes to Gemini,
+   *    `gpt-*` / `o*` to OpenAI; `providers/by-role.ts` resolves it, and the matching key is
+   *    the one it will ask for. The requirement is unchanged and non-negotiable: the model
+   *    must return per-token log-probabilities, because without them an extraction has no
+   *    measured per-field confidence to carry (rule 3, plan 6.3) and it fails loudly.
+   *
+   *    **The default below is known-dead for new Google accounts.** As of August 2026 no
+   *    Gemini model on AI Studio returns logprobs — twenty-six were checked; thirteen answer
+   *    "Logprobs is not enabled for this model" and the rest are retired, gated to new users,
+   *    or lack JSON mode. A new deployment wanting document intake should set
+   *    `MARBIM_MODEL_EXTRACT=gpt-4o-mini` and an `OPENAI_API_KEY`. The default is left alone
+   *    so an existing deployment that still has Gemini access is not silently moved to
+   *    another vendor's bill.
    *  - **reason → Anthropic**, because the department primers are the product and this is the
    *    model that reads nineteen of them to answer a merchandiser.
    *  - **embed → OpenAI**, into the `vector(1536)` column 1.6 searches. `text-embedding-3-small`

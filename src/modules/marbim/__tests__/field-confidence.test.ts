@@ -14,6 +14,7 @@ import {
   topLevelValueSpans,
   type ChosenToken,
 } from '../providers/field-confidence'
+import { chosenTokensFromOpenAi } from '../providers/openai'
 
 /** Tokens at a given certainty. `p` is the probability, converted to the logprob Gemini sends. */
 const tok = (text: string, p: number): ChosenToken => ({
@@ -248,5 +249,72 @@ describe('fieldConfidenceFromTokens · the score is the model’s own doubt', ()
 
     const scores = Object.values(fieldConfidenceFromTokens(tokens).fieldConfidence)
     expect(new Set(scores).size).toBe(3)
+  })
+})
+
+/**
+ * The OpenAI adapter, which is the whole of the vendor difference.
+ *
+ * `extract` stopped being Gemini's alone when no Gemini model on AI Studio would return
+ * logprobs any more. The replacement is only safe if confidence is derived identically — a
+ * second extractor that scored differently would make two drafts in one inbox mean two
+ * different things while looking the same.
+ *
+ * So the claim under test is narrow and total: OpenAI's token stream, once renamed, produces
+ * exactly the numbers Gemini's would. Nothing else about the derivation is vendor-aware.
+ */
+describe('chosenTokensFromOpenAi · the only thing that differs between vendors', () => {
+  it('renames logprob → logProbability and changes nothing else', () => {
+    const openAi = [
+      { token: '{"', logprob: Math.log(1) },
+      { token: 'code', logprob: Math.log(1) },
+      { token: '":"', logprob: Math.log(1) },
+      { token: 'ST-', logprob: Math.log(0.9) },
+      { token: '100', logprob: Math.log(0.4) },
+      { token: '"}', logprob: Math.log(1) },
+    ]
+
+    expect(chosenTokensFromOpenAi(openAi)).toEqual([
+      { token: '{"', logProbability: Math.log(1) },
+      { token: 'code', logProbability: Math.log(1) },
+      { token: '":"', logProbability: Math.log(1) },
+      { token: 'ST-', logProbability: Math.log(0.9) },
+      { token: '100', logProbability: Math.log(0.4) },
+      { token: '"}', logProbability: Math.log(1) },
+    ])
+  })
+
+  it('scores a field identically whichever vendor emitted it', () => {
+    /*
+     * The property that lets a factory switch vendor without its inbox changing meaning. The
+     * same tokens at the same certainties must yield the same confidence — including the
+     * geometric mean's behaviour on a mixed field, where one doubtful token has to drag the
+     * value down rather than being averaged away.
+     */
+    const gemini: ChosenToken[] = [
+      sure('{"'), sure('code'), sure('":"'), tok('ST-', 0.9), tok('100', 0.4), sure('"}'),
+    ]
+    const openAi = chosenTokensFromOpenAi([
+      { token: '{"', logprob: Math.log(1) },
+      { token: 'code', logprob: Math.log(1) },
+      { token: '":"', logprob: Math.log(1) },
+      { token: 'ST-', logprob: Math.log(0.9) },
+      { token: '100', logprob: Math.log(0.4) },
+      { token: '"}', logprob: Math.log(1) },
+    ])
+
+    const fromGemini = fieldConfidenceFromTokens(gemini)
+    const fromOpenAi = fieldConfidenceFromTokens(openAi)
+
+    expect(fromOpenAi.text).toBe(fromGemini.text)
+    expect(fromOpenAi.fieldConfidence).toEqual(fromGemini.fieldConfidence)
+    // And the doubt is actually carried, rather than both being trivially 1.
+    expect(fromOpenAi.fieldConfidence.code).toBeLessThan(0.8)
+  })
+
+  it('an empty token list still refuses, for either vendor', () => {
+    // The fail-closed path. A provider that stops measuring must not look like one that is
+    // working — this is what makes "no logprobs" a failed job rather than a confident draft.
+    expect(() => fieldConfidenceFromTokens(chosenTokensFromOpenAi([]))).toThrow(ConfidenceError)
   })
 })
