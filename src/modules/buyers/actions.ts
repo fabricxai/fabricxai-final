@@ -10,12 +10,14 @@ import { getPolicy } from '@/modules/settings/service'
 
 import {
   convertLead,
+  createLead,
   detectDuplicates,
   logActivity,
   setLeadStage,
   type BuyerDeskPolicy,
   type DuplicateCandidate,
 } from './service'
+import { leadPayload } from './zod'
 
 /**
  * 1.1 Buyer & Lead Desk writes.
@@ -36,6 +38,33 @@ const stageInput = z
     message: 'a lost lead needs a reason',
     path: ['lostReason'],
   })
+
+/**
+ * Put a lead on the board.
+ *
+ * The desk had no way to do this. `createLead` was written with 1.1 and its only callers
+ * were the integration tests and `scripts/demo.ts`, so on a real factory's first day the
+ * pipeline was empty and stayed empty: there is no `createBuyer` anywhere in this codebase —
+ * a buyer is made by converting a lead — so with no way to enter a lead there was no way to
+ * enter a BUYER either, and every screen downstream of one (orders, LCs, shipments, every
+ * scorecard) had nothing to hang off.
+ *
+ * That is what "the buyers desk is read-only" cost. It was not a missing convenience on one
+ * screen; it was the first step of the chain the rest of the product is built on.
+ *
+ * Thin, per architecture rule 1: auth, zod, service. `leadPayload` is the module's own
+ * schema and `createLead` parses it again on the way in — validated at both ends on purpose,
+ * because the service is also called by the demo script and by MARBIM's commit path, and a
+ * check that only exists in the action is a check those callers do not get.
+ */
+export async function addLead(input: z.input<typeof leadPayload>): Promise<{ leadId: string }> {
+  const ctx = await requireRole(await headers(), 'merchandiser', 'commercial')
+  const parsed = leadPayload.parse(input)
+
+  const result = await createLead(ctx, parsed)
+  revalidatePath('/buyers')
+  return result
+}
 
 export async function moveLeadStage(input: z.input<typeof stageInput>): Promise<void> {
   const ctx = await requireRole(await headers(), 'merchandiser', 'commercial')

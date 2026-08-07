@@ -13,6 +13,7 @@ import type { BuyerDeskPolicy } from '@/modules/buyers/service'
 import { getPolicy } from '@/modules/settings/service'
 
 import { LeadOpener } from './pipeline-client'
+import { NewLead } from './new-lead'
 import type { DrawerLead } from './lead-drawer'
 
 /**
@@ -64,7 +65,13 @@ export default async function BuyersPage() {
         eyebrow="Buyer & lead desk"
         title={open === 0 ? 'No open leads' : `${open} leads in play`}
         meta={board.quiet.length > 0 ? `${board.quiet.length} gone quiet` : undefined}
-        ownsAmber
+        {...(mayWrite ? { actions: <NewLead /> } : {})}
+        /*
+         * The button is this screen's amber moment when it is there, so the header's rule
+         * goes muted — `ownsAmber`'s own contract: one primary action or one accent, never
+         * both. For a read-only role there is no button, and the header takes it back.
+         */
+        ownsAmber={!mayWrite}
       />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 36 }}>

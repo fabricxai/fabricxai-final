@@ -365,6 +365,26 @@ export const UI_MESSAGES: Catalogue = {
     'ui.buyers.buyer_code': 'Buyer code',
     'ui.buyers.buyer_code_hint':
       'Short and permanent — every document downstream keys off it.',
+    'ui.buyers.new_lead': 'Add a lead',
+    'ui.buyers.new_lead_title': 'A new lead',
+    'ui.buyers.new_lead_body':
+      'Every buyer starts here. A buyer is made by converting a lead, so this is the first step of the chain orders, LCs and shipments all hang off.',
+    'ui.buyers.lead_company': 'Company name',
+    'ui.buyers.lead_company_hint': 'As they write it themselves — the duplicate check reads this.',
+    'ui.buyers.lead_source': 'Where they came from',
+    'ui.buyers.source_fair': 'Trade fair',
+    'ui.buyers.source_referral': 'Referral',
+    'ui.buyers.source_buying_house': 'Buying house',
+    'ui.buyers.source_inbound': 'They approached us',
+    'ui.buyers.source_other': 'Other',
+    'ui.buyers.lead_country': 'Country',
+    'ui.buyers.lead_website': 'Website',
+    'ui.buyers.lead_website_hint':
+      'Optional, and worth the ten seconds: a shared website beats any name score when this company turns up again under a slightly different spelling.',
+    'ui.buyers.lead_notes': 'Notes',
+    'ui.buyers.create_lead': 'Add it',
+    'ui.buyers.lead_created': '{name} is on the board.',
+    'ui.buyers.lead_failed': 'The lead was not added.',
 
     // ── rfq · the quotation write surface (plan 5.3) ──
     'ui.rfq.action_failed': 'That did not go through.',
@@ -1457,6 +1477,26 @@ export const UI_MESSAGES: Catalogue = {
     'ui.buyers.same_website': 'একই ওয়েবসাইট',
     'ui.buyers.buyer_code': 'বায়ার কোড',
     'ui.buyers.buyer_code_hint': 'ছোট আর স্থায়ী — পরের সব ডকুমেন্ট এটি ধরেই চলে।',
+    'ui.buyers.new_lead': 'লিড যোগ করুন',
+    'ui.buyers.new_lead_title': 'নতুন লিড',
+    'ui.buyers.new_lead_body':
+      'প্রতিটি বায়ার এখান থেকেই শুরু। লিড কনভার্ট করেই বায়ার তৈরি হয়, তাই অর্ডার, এলসি ও শিপমেন্ট — সবের শুরু এই ধাপে।',
+    'ui.buyers.lead_company': 'কোম্পানির নাম',
+    'ui.buyers.lead_company_hint': 'তারা নিজে যেভাবে লেখে — ডুপ্লিকেট চেক এটিই পড়ে।',
+    'ui.buyers.lead_source': 'কোথা থেকে এসেছে',
+    'ui.buyers.source_fair': 'ট্রেড ফেয়ার',
+    'ui.buyers.source_referral': 'রেফারেল',
+    'ui.buyers.source_buying_house': 'বায়িং হাউস',
+    'ui.buyers.source_inbound': 'তারা নিজেরাই যোগাযোগ করেছে',
+    'ui.buyers.source_other': 'অন্যান্য',
+    'ui.buyers.lead_country': 'দেশ',
+    'ui.buyers.lead_website': 'ওয়েবসাইট',
+    'ui.buyers.lead_website_hint':
+      'ঐচ্ছিক, তবে দশ সেকেন্ড দেওয়ার মতো: নামের বানান একটু বদলে এই কোম্পানি আবার এলে একই ওয়েবসাইট যেকোনো নাম-মিলের চেয়ে বেশি কাজে দেয়।',
+    'ui.buyers.lead_notes': 'নোট',
+    'ui.buyers.create_lead': 'যোগ করুন',
+    'ui.buyers.lead_created': '{name} বোর্ডে যোগ হয়েছে।',
+    'ui.buyers.lead_failed': 'লিড যোগ হয়নি।',
 
     // ── rfq ──
     'ui.rfq.action_failed': 'এটি হয়নি।',
