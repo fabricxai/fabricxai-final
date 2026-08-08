@@ -14,6 +14,8 @@ import { readAuditTrail } from '@/modules/settings/actions'
 interface AuditRow {
   id: string
   actorUserId: string | null
+  /** Resolved server-side. Null when the actor has left, or when there was no person at all. */
+  actorName: string | null
   actorRole: string | null
   action: string
   targetTable: string
@@ -167,6 +169,22 @@ export function AuditViewer({
                 <Eyebrow>{row.actorRole ?? 'system'}</Eyebrow>
                 <span
                   style={{
+                    font: "500 12.5px/1.4 var(--fx-font-sans)",
+                    color: 'var(--fx-text-primary)',
+                  }}
+                >
+                  {/*
+                    * The WHO, at last. `actor_user_id` was written on every one of these
+                    * rows and rendered nowhere — the trail said an admin did it and withheld
+                    * which one, which on a screen titled "who changed what" was the one
+                    * omission that mattered. A row with an id but no surviving user is a
+                    * departed colleague, not a system actor; the distinction is real.
+                    */}
+                  {row.actorName ??
+                    (row.actorUserId ? 'someone who has left' : 'the system itself')}
+                </span>
+                <span
+                  style={{
                     font: "400 12px/1.4 var(--fx-font-mono)",
                     color: 'var(--fx-text-secondary)',
                   }}
@@ -174,11 +192,15 @@ export function AuditViewer({
                   {/*
                     * Field NAMES. The row holds before/after images and this deliberately
                     * shows neither — the trail covers payroll, and a wage read off an audit
-                    * screen is a wage copied out from under the rules that protect it.
+                    * screen is a wage copied out from under the rules that protect it. An
+                    * insert names no fields: the whole row is new, and saying so beats a
+                    * dash that reads as "nothing recorded".
                     */}
                   {row.changedFields && row.changedFields.length > 0
                     ? row.changedFields.join(', ')
-                    : '—'}
+                    : row.action === 'insert'
+                      ? 'new row'
+                      : '—'}
                 </span>
               </span>
             </div>

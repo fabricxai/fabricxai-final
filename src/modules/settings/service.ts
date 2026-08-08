@@ -15,7 +15,7 @@
  * anything under it, which makes editing policy the same privilege as the controls it
  * governs — and that is the one privilege that cannot be delegated to the role it governs.
  */
-import { and, asc, desc, eq, gte, inArray, isNull, lte, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, getTableColumns, gte, inArray, isNull, lte, sql } from 'drizzle-orm'
 
 import { auditLog, companies, roles, users } from '@/db/schema/core'
 
@@ -600,11 +600,19 @@ export interface AuditQuery {
 export async function auditTrail(
   ctx: AnyCtx,
   query: AuditQuery = {},
-): Promise<(typeof auditLog.$inferSelect)[]> {
+): Promise<(typeof auditLog.$inferSelect & { actorName: string | null })[]> {
   return withTenantRead(ctx, async (tx) =>
     tx
-      .select()
+      /*
+       * The actor's NAME rides along. The screen's whole reason to exist is "who changed
+       * that", and until now it answered with a role and a dash — `actor_user_id` was on
+       * every row and rendered nowhere, so the trail showed that AN admin did it while
+       * withholding which one. A left join because the id can outlive the person: a
+       * departed user's actions still happened.
+       */
+      .select({ ...getTableColumns(auditLog), actorName: users.name })
       .from(auditLog)
+      .leftJoin(users, eq(auditLog.actorUserId, users.id))
       .where(
         and(
           query.targetTable ? eq(auditLog.targetTable, query.targetTable) : undefined,

@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState, useTransition, type ReactNode } from 'react'
+import { useEffect, useState, useTransition, type ReactNode } from 'react'
 
 import { InlineAlert, Modal, Toast } from '@/components/fx/feedback'
 import { TextInput } from '@/components/fx/forms'
@@ -10,6 +10,8 @@ import { Badge, Button } from '@/components/fx/primitives'
 import { Eyebrow } from '@/components/fx/signature'
 import { actionErrorMessage } from '@/lib/action-error'
 import { factoryToday } from '@/lib/dates'
+import { committedTrail } from '@/modules/approvals/actions'
+import type { RecordTrail } from '@/modules/approvals/queries'
 import {
   askClarification,
   draftQuote,
@@ -310,6 +312,8 @@ export function RfqDrawer({
           ) : null}
 
           {!live ? <InlineAlert tone="info">{t('ui.rfq.settled')}</InlineAlert> : null}
+
+          <Trail rfqId={rfq.id} />
         </div>
       </Modal>
 
@@ -319,6 +323,93 @@ export function RfqDrawer({
         </div>
       ) : null}
     </>
+  )
+}
+
+/** "08 Aug 14:22" — the trail is a sequence, and a date without a time hides the order. */
+function trailWhen(value: Date | string): string {
+  const at = typeof value === 'string' ? new Date(value) : value
+  if (Number.isNaN(at.getTime())) return ''
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  return `${String(at.getDate()).padStart(2, '0')} ${months[at.getMonth()]} ${String(
+    at.getHours(),
+  ).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`
+}
+
+/**
+ * Whose hands this RFQ passed through, on the record's own screen.
+ *
+ * The approve inbox shows the trail while the draft is PENDING — and the moment it is
+ * signed, the draft leaves the inbox and its provenance was reachable only from Settings,
+ * behind owner/admin. This is the other half: after commit, the record itself says who
+ * drafted it and who signed it, from the same `pending_changes` chain via
+ * `committed_row_id`.
+ *
+ * Fetched on open, not with the board — most drawer opens are about quoting, and the trail
+ * must never make the board slower. Renders nothing at all for a record with no draft
+ * behind it (typed straight into a form) and for roles the action refuses — a viewer's
+ * drawer looks exactly as it always did.
+ */
+function Trail({ rfqId }: { rfqId: string }) {
+  const t = useT()
+  const [trail, setTrail] = useState<RecordTrail | null>(null)
+
+  useEffect(() => {
+    let alive = true
+    committedTrail({ targetTable: 'rfqs', targetId: rfqId })
+      .then((result) => {
+        if (alive) setTrail(result)
+      })
+      // A refused role or a transient failure both mean the same thing here: no section.
+      .catch(() => undefined)
+    return () => {
+      alive = false
+    }
+  }, [rfqId])
+
+  if (!trail) return null
+
+  // Three honest states: a name, a person who has left, or genuinely nobody (an import).
+  const drafter = trail.draftedBy
+    ? (trail.draftedBy.name ?? t('ui.rfq.trail_departed'))
+    : t('ui.rfq.trail_no_author')
+
+  const rowStyle: React.CSSProperties = {
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: 12,
+    font: "400 12px/1.7 var(--fx-font-mono)",
+    color: 'var(--fx-text-tertiary)',
+  }
+
+  return (
+    <Section title={t('ui.rfq.trail')}>
+      <ol style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+        <li style={rowStyle}>
+          <span style={{ color: 'var(--fx-text-secondary)' }}>
+            {t('ui.rfq.trail_drafted', { name: drafter })}
+          </span>
+          <span>{trailWhen(trail.draftedAt)}</span>
+        </li>
+        {trail.approvals.map((signature, index) => (
+          <li key={index} style={rowStyle}>
+            <span style={{ color: 'var(--fx-text-secondary)' }}>
+              {t('ui.rfq.trail_approved', {
+                name: signature.name ?? t('ui.rfq.trail_departed'),
+                role: signature.role,
+              })}
+            </span>
+            <span>{trailWhen(signature.at)}</span>
+          </li>
+        ))}
+        {trail.committedAt ? (
+          <li style={rowStyle}>
+            <span>{t('ui.rfq.trail_committed')}</span>
+            <span>{trailWhen(trail.committedAt)}</span>
+          </li>
+        ) : null}
+      </ol>
+    </Section>
   )
 }
 

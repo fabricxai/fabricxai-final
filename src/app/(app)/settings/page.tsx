@@ -255,6 +255,7 @@ export default async function SettingsPage() {
               initial={trail.map((row) => ({
                 id: String(row.id),
                 actorUserId: row.actorUserId,
+                actorName: row.actorName,
                 actorRole: row.actorRole,
                 action: row.action,
                 targetTable: row.targetTable,

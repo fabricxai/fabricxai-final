@@ -12,7 +12,7 @@ import {
 } from '@/modules/core/pending-changes'
 import { requireRole } from '@/modules/core/session'
 
-import { draftDetail, draftTarget, type DraftDetail } from './queries'
+import { draftDetail, draftTarget, recordTrail, type DraftDetail, type RecordTrail } from './queries'
 
 /**
  * The Approve Inbox's two write paths.
@@ -119,4 +119,25 @@ export async function draftFields(input: { pendingChangeId: string }): Promise<D
   const before = await currentRow(ctx, draft.targetTable, draft.targetId)
 
   return draftDetail(ctx, pendingChangeId, before)
+}
+
+const trailInput = z.object({
+  /** An identifier, not free text — the same character set the audit interceptor enforces. */
+  targetTable: z.string().regex(/^[a-z][a-z0-9_]{0,62}$/),
+  targetId: z.string().uuid(),
+})
+
+/**
+ * The trail behind a committed record, for the record's own screen.
+ *
+ * Same audience as the inbox: anyone whose role can approve could always have watched the
+ * draft pass through, so showing them afterwards who drafted and who signed discloses
+ * nothing new. Roles outside that set get the usual 403 and the screen simply shows no
+ * trail — a viewer's drawer looks exactly as it did before this existed.
+ */
+export async function committedTrail(input: z.input<typeof trailInput>): Promise<RecordTrail | null> {
+  const ctx = await requireRole(await headers(), ...APPROVER_ROLES)
+  const { targetTable, targetId } = trailInput.parse(input)
+
+  return recordTrail(ctx, { targetTable, targetId })
 }

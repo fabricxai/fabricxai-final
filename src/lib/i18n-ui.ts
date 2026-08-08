@@ -422,6 +422,12 @@ export const UI_MESSAGES: Catalogue = {
     'ui.rfq.asked': 'Asked. The clock on it starts today.',
     'ui.rfq.settled':
       'This enquiry is settled. Nothing more happens to it here.',
+    'ui.rfq.trail': 'The trail',
+    'ui.rfq.trail_drafted': 'drafted by {name}',
+    'ui.rfq.trail_approved': 'approved by {name} ({role})',
+    'ui.rfq.trail_committed': 'committed to the board',
+    'ui.rfq.trail_departed': 'someone who has left',
+    'ui.rfq.trail_no_author': 'no named author',
 
     // ── planning · the board write surface (plan 5.4) ──
     'ui.planning.move': 'Move',
@@ -1535,6 +1541,12 @@ export const UI_MESSAGES: Catalogue = {
     'ui.rfq.asked': 'জিজ্ঞাসা করা হয়েছে। এর হিসাব আজ থেকে শুরু।',
     'ui.rfq.settled':
       'এই এনকোয়ারির নিষ্পত্তি হয়ে গেছে। এখানে আর কিছু হবে না।',
+    'ui.rfq.trail': 'যাত্রাপথ',
+    'ui.rfq.trail_drafted': 'খসড়া করেছেন {name}',
+    'ui.rfq.trail_approved': 'অনুমোদন করেছেন {name} ({role})',
+    'ui.rfq.trail_committed': 'বোর্ডে উঠেছে',
+    'ui.rfq.trail_departed': 'যিনি চলে গেছেন',
+    'ui.rfq.trail_no_author': 'নামহীন খসড়া',
 
     // ── planning ──
     'ui.planning.move': 'সরান',

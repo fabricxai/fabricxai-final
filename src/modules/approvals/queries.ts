@@ -8,7 +8,7 @@
  *
  * Nothing here writes. The screen's two write paths are in `actions.ts`.
  */
-import { and, eq, gte, inArray } from 'drizzle-orm'
+import { and, desc, eq, gte, inArray } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { pendingChangeApprovals, pendingChanges, users } from '@/db/schema/core'
@@ -373,5 +373,81 @@ export async function draftTarget(
       .where(scoped(pendingChanges, ctx, and(eq(pendingChanges.id, pendingChangeId), eq(pendingChanges.status, 'pending'))))
 
     return row ?? null
+  })
+}
+
+/**
+ * The trail behind a COMMITTED record, keyed the way its own screen knows it.
+ *
+ * The approve inbox shows provenance while a draft is pending; the moment it is approved it
+ * leaves the inbox, and the record's own screen — the RFQ drawer, an order page — is the
+ * only place a reader would think to look. `pending_changes.committed_row_id` is the link:
+ * written at commit, indexed since day one, and until now followed by nothing a screen
+ * could reach.
+ *
+ * Returns null for a record with no draft behind it — one typed straight into a form is a
+ * legitimate shape, and the drawer simply shows no trail rather than an empty ceremony.
+ */
+export interface RecordTrail {
+  /** Null: no person behind the draft at all. `{name: null}`: a person who has since left. */
+  draftedBy: { name: string | null } | null
+  source: string
+  draftedAt: Date
+  approvals: { name: string | null; role: string; at: Date }[]
+  committedAt: Date | null
+}
+
+export async function recordTrail(
+  ctx: AnyCtx,
+  input: { targetTable: string; targetId: string },
+): Promise<RecordTrail | null> {
+  return withTenantRead(ctx, async (tx) => {
+    // Newest first: a record re-drafted after a rejection has several chains behind it, and
+    // the one that produced the row as it stands is the one the reader is asking about.
+    const [draft] = await tx
+      .select({
+        id: pendingChanges.id,
+        source: pendingChanges.source,
+        createdAt: pendingChanges.createdAt,
+        committedAt: pendingChanges.committedAt,
+        drafterName: users.name,
+        drafterId: pendingChanges.createdBy,
+      })
+      .from(pendingChanges)
+      .leftJoin(users, eq(pendingChanges.createdBy, users.id))
+      .where(
+        scoped(
+          pendingChanges,
+          ctx,
+          and(
+            eq(pendingChanges.targetTable, input.targetTable),
+            eq(pendingChanges.committedRowId, input.targetId),
+            eq(pendingChanges.status, 'committed'),
+          ),
+        ),
+      )
+      .orderBy(desc(pendingChanges.committedAt))
+      .limit(1)
+
+    if (!draft) return null
+
+    const signed = await tx
+      .select({
+        name: users.name,
+        role: pendingChangeApprovals.approvedAsRole,
+        at: pendingChangeApprovals.createdAt,
+      })
+      .from(pendingChangeApprovals)
+      .leftJoin(users, eq(pendingChangeApprovals.approverUserId, users.id))
+      .where(scoped(pendingChangeApprovals, ctx, eq(pendingChangeApprovals.pendingChangeId, draft.id)))
+      .orderBy(pendingChangeApprovals.createdAt)
+
+    return {
+      draftedBy: draft.drafterId ? { name: draft.drafterName ?? null } : null,
+      source: draft.source,
+      draftedAt: draft.createdAt,
+      approvals: signed.map((s) => ({ name: s.name, role: String(s.role), at: s.at })),
+      committedAt: draft.committedAt,
+    }
   })
 }
