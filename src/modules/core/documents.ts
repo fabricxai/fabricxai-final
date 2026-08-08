@@ -223,6 +223,69 @@ export async function createDownloadUrl(
   return { url, filename: doc.filename, expiresIn: ttlSeconds }
 }
 
+/**
+ * The bytes themselves, for a server-side reader — today that is MARBIM handing a PDF or
+ * scan to a vision-capable extract model.
+ *
+ * Same wall as `createDownloadUrl`: the row is fetched tenant-scoped first, so bytes are
+ * only ever returned for a document the caller's company owns, and a quarantined document
+ * stays unreadable by machine exactly as it is by person. The 25 MB upload cap bounds what
+ * this can pull into memory.
+ */
+export async function readDocumentBytes(
+  ctx: AnyCtx,
+  documentId: string,
+): Promise<{ bytes: Uint8Array; mimeType: string; filename: string }> {
+  const doc = await withTenantRead(ctx, async (tx) => {
+    const [row] = await tx
+      .select()
+      .from(documents)
+      .where(scoped(documents, ctx, and(eq(documents.id, documentId), isNull(documents.deletedAt))))
+    return row
+  })
+
+  if (!doc) throw notFound('errors.document_not_found', { documentId })
+  if (doc.status === 'quarantined') {
+    throw new AppError('forbidden', 'errors.document_quarantined', { documentId })
+  }
+
+  const object = await getS3().send(
+    new GetObjectCommand({ Bucket: doc.bucket, Key: doc.objectKey }),
+  )
+  if (!object.Body) throw notFound('errors.document_not_found', { documentId })
+
+  return {
+    bytes: await object.Body.transformToByteArray(),
+    mimeType: doc.mimeType,
+    filename: doc.filename,
+  }
+}
+
+/**
+ * The row's facts without the bytes — for a caller deciding whether a fetch is worth it
+ * (is this a type the model can read?) before paying for the object.
+ */
+export async function documentMeta(
+  ctx: AnyCtx,
+  documentId: string,
+): Promise<{ mimeType: string; filename: string; sizeBytes: number; status: string }> {
+  const doc = await withTenantRead(ctx, async (tx) => {
+    const [row] = await tx
+      .select({
+        mimeType: documents.mimeType,
+        filename: documents.filename,
+        sizeBytes: documents.sizeBytes,
+        status: documents.status,
+      })
+      .from(documents)
+      .where(scoped(documents, ctx, and(eq(documents.id, documentId), isNull(documents.deletedAt))))
+    return row
+  })
+
+  if (!doc) throw notFound('errors.document_not_found', { documentId })
+  return doc
+}
+
 /** Soft delete. The object is swept separately so a mistaken delete stays recoverable. */
 export async function softDelete(ctx: AnyCtx, documentId: string): Promise<void> {
   const updated = await withTenantTx(ctx, (tx) =>
