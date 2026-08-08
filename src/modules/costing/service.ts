@@ -100,9 +100,22 @@ export async function buildFromBom(
     const lines = await tx.select().from(bomLines).where(scoped(bomLines, ctx, eq(bomLines.bomId, input.bomId)))
     const base = costSheetSections.parse(input.sections)
 
+    /*
+     * Fabric keeps its section; EVERYTHING else prices as a trim.
+     *
+     * The sheet's sections are fabric / trims / embellishment, but its embellishment rows
+     * carry a flat cost-per-piece with no consumption — a BOM line cannot become one
+     * without inventing the number this screen exists to make somebody type. A poly bag or
+     * a print placement is a per-piece material like any trim, so it lands there, priced
+     * at zero until a human rates it. The alternative was what actually happened: the
+     * first seeded sheet silently dropped the packing line, and a cost sheet that loses a
+     * BOM line quietly is underquoting by exactly that line.
+     */
     const material = (group: 'fabric' | 'trims') =>
       lines
-        .filter((line) => line.lineGroup === group)
+        .filter((line) =>
+          group === 'fabric' ? line.lineGroup === 'fabric' : line.lineGroup !== 'fabric',
+        )
         .map((line) => ({
           ref: line.itemRef ?? line.spec ?? line.id,
           consumption: line.consumption,

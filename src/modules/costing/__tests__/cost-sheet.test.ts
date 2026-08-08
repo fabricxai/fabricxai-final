@@ -66,6 +66,21 @@ describe('computeCostSheet · materials', () => {
     expect(computeCostSheet(SHEET).sections.embellishment.total).toBe('0.18')
   })
 
+  it("4b · a BOM's four-decimal consumption computes — quantities are not money", () => {
+    /*
+     * Found live: the first sheet seeded from a real bill of materials carried the
+     * column's own "0.2550", and the engine — which built money(consumption) — refused
+     * it. Consumption is a quantity; the rounding belongs where the number BECOMES
+     * money, once, at the per-piece cost.
+     */
+    const sheet = computeCostSheet({
+      ...SHEET,
+      fabric: [{ ref: 'pique', consumption: '0.2550', uom: 'kg', ratePerUom: '10', wastagePct: '1.00' }],
+    })
+    // 0.2550 × 1.01 × 10 = 2.5755 → 2.58, exactly once.
+    expect(sheet.sections.fabric.total).toBe('2.58')
+  })
+
   it('4 · refuses a negative consumption or rate', () => {
     expect(() =>
       computeCostSheet({

@@ -33,6 +33,7 @@ import {
 import {
   compareDecimalStrings,
   multiplyDecimalStrings,
+  roundToScale,
   subtractDecimalStrings,
 } from '@/lib/quantity'
 
@@ -161,10 +162,23 @@ function materialSection(lines: readonly MaterialLine[], currency: string): Sect
     assertNonNegative(line.consumption, 'consumption')
     assertNonNegative(line.ratePerUom, 'rate')
 
-    // Wastage and rate folded into ONE factor, so the rounding happens once at the end.
-    // Costing the cloth you actually buy, not the cloth that ends up in the garment.
-    const factor = multiplyDecimalStrings(wastageFactor(line.wastagePct), line.ratePerUom)
-    const amount = multiply(money(line.consumption, currency), factor)
+    /*
+     * The WHOLE product computed exact, then rounded ONCE into money.
+     *
+     * This used to build `money(consumption)` and multiply by rate×wastage — which quietly
+     * required consumption to fit money's two decimals. Hand-typed sheets always did
+     * ("1.42"); the first BOM-seeded sheet arrived with the column's own "0.2550" and the
+     * Money constructor refused it, correctly: consumption is a QUANTITY, and it was only
+     * ever in a Money because something had to carry the multiplication. Exact decimal
+     * arithmetic carries it now, and the single half-up rounding happens where the number
+     * BECOMES money — the per-piece cost.
+     * Costing the cloth you actually buy, not the cloth that ends up in the garment.
+     */
+    const perPiece = multiplyDecimalStrings(
+      line.consumption,
+      multiplyDecimalStrings(wastageFactor(line.wastagePct), line.ratePerUom),
+    )
+    const amount = money(roundToScale(perPiece, 2), currency)
 
     return { ref: line.ref, amount: amount.amount, money: amount }
   })
