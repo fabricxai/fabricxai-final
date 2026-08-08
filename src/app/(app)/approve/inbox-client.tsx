@@ -52,6 +52,8 @@ const REASONS = [
   'Duplicate of another pending item',
 ] as const
 
+const EMPTY_CORRECTIONS: Record<string, unknown> = {}
+
 export function ApproveInbox({
   rows,
   escalateAfterHours,
@@ -77,12 +79,31 @@ export function ApproveInbox({
     }, 4400)
   }, [])
 
+  /**
+   * Corrections per row, held by the LIST rather than each row.
+   *
+   * Both ways to approve live up here — the Approve button and the keyboard `a`, which
+   * signs the FOCUSED row — so corrections kept inside a row would be invisible to the
+   * keyboard. A reviewer who fixed a ship date and pressed `a` would have signed the
+   * uncorrected draft and been told it went through, which is worse than not offering the
+   * edit at all.
+   */
+  const [corrections, setCorrections] = useState<Record<string, Record<string, unknown>>>({})
+
   const onApprove = useCallback(
     (row: InboxRowView) => {
+      const rowCorrections = corrections[row.id]
       setMark('thinking')
       startTransition(async () => {
         try {
-          const result = await approveDraft({ pendingChangeId: row.id })
+          const result = await approveDraft({
+            pendingChangeId: row.id,
+            // Omitted rather than sent empty: `{}` and "nothing was corrected" are the same
+            // fact, and the telemetry should not record an edit that did not happen.
+            ...(rowCorrections && Object.keys(rowCorrections).length > 0
+              ? { corrections: rowCorrections }
+              : {}),
+          })
           flash(
             result.status === 'committed'
               ? `Approved and committed · ${row.title}`
@@ -94,7 +115,10 @@ export function ApproveInbox({
         }
       })
     },
-    [flash],
+    // `corrections` is read inside, so it MUST be here: without it the callback closes over
+    // whatever the map held when it was created, and `a` would sign a draft with the edits
+    // the reviewer made two keystrokes ago — or none. The lint rule caught this.
+    [flash, corrections],
   )
 
   // j/k to move, a to approve, r to reject, x to select. Desk screens are
@@ -249,6 +273,19 @@ export function ApproveInbox({
                 s.includes(row.id) ? s.filter((x) => x !== row.id) : [...s, row.id],
               )
             }
+            corrections={corrections[row.id] ?? EMPTY_CORRECTIONS}
+            onCorrect={(field, value) =>
+              setCorrections((prev) => {
+                const forRow = { ...(prev[row.id] ?? {}) }
+                // Restoring the drafted value REMOVES the correction rather than recording
+                // an edit to the same value — otherwise a field a reviewer merely clicked
+                // into would count as one they had fixed, and the extractor would be
+                // scored for a mistake it did not make.
+                if (value === undefined) delete forRow[field]
+                else forRow[field] = value
+                return { ...prev, [row.id]: forRow }
+              })
+            }
             onApprove={() => onApprove(row)}
             onReject={() => setRejecting(row)}
           />
@@ -380,6 +417,8 @@ function InboxRowItem({
   onFocus,
   onCheck,
   onApprove,
+  corrections,
+  onCorrect,
   onReject,
 }: {
   row: InboxRowView
@@ -391,6 +430,9 @@ function InboxRowItem({
   onFocus: () => void
   onCheck: () => void
   onApprove: () => void
+  /** field → the reviewer's replacement, owned by the list so `a` can see it too. */
+  corrections: Record<string, unknown>
+  onCorrect: (field: string, value: unknown) => void
   onReject: () => void
 }) {
   /**
@@ -403,6 +445,7 @@ function InboxRowItem({
   const [fields, setFields] = useState<DraftDetail | null | undefined>(undefined)
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
+
 
   function toggle() {
     const next = !open
@@ -545,7 +588,14 @@ function InboxRowItem({
       </div>
     </div>
 
-      {open ? <DraftFields detail={fields} loading={loading} source={row.source} /> : null}
+      {open ? (
+        <DraftFields
+          detail={fields}
+          loading={loading}
+          corrections={corrections}
+          onCorrect={onCorrect}
+        />
+      ) : null}
     </div>
   )
 }
@@ -564,7 +614,8 @@ function InboxRowItem({
 function DraftFields({
   detail,
   loading,
-  source,
+  corrections,
+  onCorrect,
 }: {
   detail: DraftDetail | null | undefined
   loading: boolean
@@ -577,7 +628,10 @@ function DraftFields({
    * both as "typed by a person" credited a machine's transcription to a human — on a screen
    * that named the source `ai_chat` two inches above it.
    */
-  source: string
+  /** field → the reviewer's replacement. Absent means "as drafted". */
+  corrections: Record<string, unknown>
+  /** `undefined` clears a correction, restoring the drafted value. */
+  onCorrect: (field: string, value: unknown) => void
 }) {
   if (loading || detail === undefined) {
     return <div style={panelStyle}>Reading the draft…</div>
@@ -656,7 +710,12 @@ function DraftFields({
                   becomes
                 </span>
               ) : null}
-              <FieldValue value={field.after} />
+              <EditableValue
+                field={field.field}
+                drafted={field.after}
+                corrected={corrections[field.field]}
+                onCorrect={onCorrect}
+              />
             </span>
 
             {/* A field the draft leaves exactly as it is. Shown greyed rather than hidden:
@@ -677,7 +736,9 @@ function DraftFields({
             {field.confidence === null ? (
               <span style={{ font: "400 12px/1.3 var(--fx-font-mono)", color: 'var(--fx-text-tertiary)' }}>
                 {/* Absence, not a fake 1.0 — but say WHICH absence. */}
-                {modelComposed(source) ? 'model wrote this · unscored' : 'typed by a person'}
+                {modelComposed(detail.source)
+                  ? 'model wrote this · unscored'
+                  : 'typed by a person'}
               </span>
             ) : (
               <ConfidenceTicks confidence={field.confidence} />
@@ -701,6 +762,109 @@ function DraftFields({
         {detail.sourceDocumentId ? ' · from an attached document' : ''}
       </div>
     </div>
+  )
+}
+
+
+/**
+ * One field's value, correctable in place.
+ *
+ * The runbook's Phase 1 asks a merchandiser to "correct the ship date, then approve", and
+ * until now she could do neither half: the panel rendered values as text, so a wrong field
+ * meant rejecting the whole draft and asking for it again. `approveDraft` had taken a
+ * `corrections` map the entire time — the extractor's own scoring depends on it — and
+ * nothing ever sent one.
+ *
+ * ## Only scalars are editable
+ *
+ * A string, number, boolean or date gets an input. A grid of breakdown cells, a BOM's line
+ * array, a requirements list — those stay read-only, because a text box holding JSON is a
+ * way to corrupt a payload with a misplaced brace, and the reviewer's remedy for a wrong
+ * grid is to reject it and say why. `FieldValue` already renders those readably; editing
+ * them is a structured-editor problem, not an input.
+ *
+ * ## Typing is preserved
+ *
+ * A quantity edited to "36000" must go back as the NUMBER 36000, not the string. The
+ * drafted value's type is the guide, because zod re-validates the payload at approve and a
+ * string where a number belongs is refused there — correctly, and confusingly, three layers
+ * from the box that was typed in.
+ */
+function EditableValue({
+  field,
+  drafted,
+  corrected,
+  onCorrect,
+}: {
+  field: string
+  drafted: unknown
+  corrected: unknown
+  onCorrect: (field: string, value: unknown) => void
+}) {
+  const editable =
+    drafted === null ||
+    drafted === undefined ||
+    ['string', 'number', 'boolean'].includes(typeof drafted)
+
+  if (!editable) return <FieldValue value={drafted} />
+
+  const shown = corrected !== undefined ? corrected : drafted
+  const text = shown === null || shown === undefined ? '' : String(shown)
+  const dirty = corrected !== undefined
+
+  /** Back to the drafted TYPE, so zod sees what it expects at approve. */
+  const retype = (raw: string): unknown => {
+    if (raw === '') return null
+    if (typeof drafted === 'number') {
+      const n = Number(raw)
+      return Number.isFinite(n) ? n : raw
+    }
+    if (typeof drafted === 'boolean') return raw === 'true'
+    return raw
+  }
+
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+      <input
+        aria-label={field}
+        value={text}
+        onChange={(e) => {
+          const next = retype(e.target.value)
+          // Typing it back to the drafted value is not a correction. Without this, a
+          // reviewer who clicked in and out would be recorded as having fixed the field,
+          // and the extractor scored for a mistake it did not make.
+          onCorrect(field, String(next) === String(drafted) ? undefined : next)
+        }}
+        style={{
+          font: "400 13px/1.4 var(--fx-font-mono)",
+          padding: '4px 8px',
+          minWidth: 200,
+          maxWidth: '100%',
+          borderRadius: 'var(--fx-radius-sm)',
+          border: `1px solid ${dirty ? 'var(--fx-accent)' : 'var(--fx-border-default)'}`,
+          background: 'var(--fx-bg-surface)',
+          color: 'var(--fx-text-primary)',
+        }}
+      />
+      {dirty ? (
+        <button
+          type="button"
+          onClick={() => onCorrect(field, undefined)}
+          style={{
+            font: "400 11px/1.3 var(--fx-font-mono)",
+            textTransform: 'uppercase',
+            letterSpacing: '.06em',
+            color: 'var(--fx-text-tertiary)',
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            padding: 0,
+          }}
+        >
+          corrected · undo
+        </button>
+      ) : null}
+    </span>
   )
 }
 

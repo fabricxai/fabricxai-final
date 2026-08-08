@@ -256,3 +256,133 @@ describe('what the reviewer is told', () => {
     expect(await screen.findByText(/waiting on 1 more signature/i)).toBeInTheDocument()
   })
 })
+
+/**
+ * Correcting a field before signing it.
+ *
+ * The runbook asks a merchandiser to "correct the ship date, then approve". She could do
+ * neither half: the panel rendered values as text, so a wrong field meant rejecting the
+ * whole draft and asking for it again. `approveDraft` had accepted a `corrections` map since
+ * the inbox was written — its own comment calls it "the correction telemetry the extractor is
+ * scored on" — and nothing ever sent one.
+ *
+ * The keyboard case is the one worth the most care. `a` signs the FOCUSED row from a handler
+ * that lives on the list, so corrections held inside a row would be invisible to it: a
+ * reviewer who fixed a date and pressed `a` would have signed the ORIGINAL and been told it
+ * went through.
+ */
+describe('a reviewer can correct a field before signing', () => {
+  const draft = {
+    id: 'pc-1',
+    moduleId: 'rfq',
+    targetTable: 'rfqs',
+    targetId: null,
+    operation: 'insert',
+    source: 'ai_chat',
+    sourceDocumentId: null,
+    extractorVersion: null,
+    model: 'claude-sonnet-5',
+    createdAt: new Date('2026-08-01T09:00:00Z'),
+    payload: {},
+    fields: [
+      { field: 'requestedShipDate', before: undefined, after: '2026-11-15', confidence: null, changed: true },
+      { field: 'quantity', before: undefined, after: 36000, confidence: null, changed: true },
+    ],
+  }
+
+  beforeEach(() => draftFields.mockResolvedValue(draft))
+
+  async function openRow(user: ReturnType<typeof userEvent.setup>) {
+    render(<ApproveInbox rows={[row({ id: 'pc-1' })]} escalateAfterHours={24} />)
+    await user.click(screen.getByRole('button', { name: /Order SHRT-4410/i }))
+    await waitFor(() => expect(screen.getByLabelText('requestedShipDate')).toBeInTheDocument())
+  }
+
+  it('sends the corrected value, not the drafted one', async () => {
+    const user = userEvent.setup()
+    await openRow(user)
+
+    const date = screen.getByLabelText('requestedShipDate')
+    await user.clear(date)
+    await user.type(date, '2026-11-19')
+    await user.click(screen.getByRole('button', { name: /^approve$/i }))
+
+    await waitFor(() => expect(approveDraft).toHaveBeenCalledOnce())
+    expect(approveDraft).toHaveBeenCalledWith({
+      pendingChangeId: 'pc-1',
+      corrections: { requestedShipDate: '2026-11-19' },
+    })
+  })
+
+  it('the KEYBOARD path sees the correction too', async () => {
+    // The dangerous one. `a` approves the focused row from a list-level handler; a
+    // correction it could not see would be a signature on something else.
+    const user = userEvent.setup()
+    await openRow(user)
+
+    const date = screen.getByLabelText('requestedShipDate')
+    await user.clear(date)
+    await user.type(date, '2026-11-19')
+    // Click away first: `a` is deliberately ignored while a field has focus, or typing the
+    // letter "a" into a date would sign the draft. Leaving the field is what a reviewer
+    // does anyway before reaching for the keyboard.
+    await user.click(screen.getByText(/Order SHRT-4410/i))
+    await user.keyboard('a')
+
+    await waitFor(() => expect(approveDraft).toHaveBeenCalledOnce())
+    expect(approveDraft.mock.calls[0]?.[0]).toMatchObject({
+      corrections: { requestedShipDate: '2026-11-19' },
+    })
+  })
+
+  it('keeps a number a number, because zod re-validates at approve', async () => {
+    const user = userEvent.setup()
+    await openRow(user)
+
+    const qty = screen.getByLabelText('quantity')
+    await user.clear(qty)
+    await user.type(qty, '35000')
+    await user.click(screen.getByRole('button', { name: /^approve$/i }))
+
+    await waitFor(() => expect(approveDraft).toHaveBeenCalledOnce())
+    expect(approveDraft.mock.calls[0]?.[0]?.corrections).toEqual({ quantity: 35000 })
+  })
+
+  it('sends NO corrections when nothing was changed', async () => {
+    /*
+     * `{}` and "nothing was corrected" are the same fact, and the telemetry must not record
+     * an edit that did not happen — the extractor's score depends on the difference.
+     */
+    const user = userEvent.setup()
+    await openRow(user)
+    await user.click(screen.getByRole('button', { name: /^approve$/i }))
+
+    await waitFor(() => expect(approveDraft).toHaveBeenCalledOnce())
+    expect(approveDraft).toHaveBeenCalledWith({ pendingChangeId: 'pc-1' })
+  })
+
+  it('typing a field back to its drafted value is not a correction', async () => {
+    // Otherwise a reviewer who clicked in, edited, and thought better of it would be
+    // recorded as having fixed the field, and the extractor scored for a mistake it did
+    // not make.
+    const user = userEvent.setup()
+    await openRow(user)
+
+    const date = screen.getByLabelText('requestedShipDate')
+    await user.clear(date)
+    await user.type(date, '2026-11-15')
+    await user.click(screen.getByRole('button', { name: /^approve$/i }))
+
+    await waitFor(() => expect(approveDraft).toHaveBeenCalledOnce())
+    expect(approveDraft).toHaveBeenCalledWith({ pendingChangeId: 'pc-1' })
+  })
+
+  it('an ai_chat draft is labelled as the model writing it, not a person typing', async () => {
+    // The screen named the source `ai_chat` and then credited every field to a human.
+    const user = userEvent.setup()
+    await openRow(user)
+
+    expect(screen.getAllByText(/model wrote this/i).length).toBeGreaterThan(0)
+    expect(screen.queryByText(/typed by a person/i)).not.toBeInTheDocument()
+  })
+})
