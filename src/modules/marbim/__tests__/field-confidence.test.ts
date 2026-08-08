@@ -95,7 +95,7 @@ describe('fieldConfidenceFromTokens · the score is the model’s own doubt', ()
     expect(fieldConfidence.styleCode).toBe(0.99)
     // exp(mean(log .55, log .9)) = sqrt(.495) ≈ 0.70 — and crucially NOT the .725 an
     // arithmetic mean would give, because the doubt is in the number as a whole.
-    expect(fieldConfidence.quantity).toBe(0.7)
+    expect(fieldConfidence.quantity).toBe(0.7036)
   })
 
   it('2 · does not let the KEY inflate the value', () => {
@@ -129,8 +129,9 @@ describe('fieldConfidenceFromTokens · the score is the model’s own doubt', ()
 
     const { fieldConfidence } = fieldConfidenceFromTokens(tokens)
 
-    // sqrt(.95 × .3) ≈ 0.53 — the two elements, and nothing else.
-    expect(fieldConfidence.lines).toBe(0.53)
+    // sqrt(.95 × .3) ≈ 0.5339 — the two elements, and nothing else, at the four
+    // decimals that keep a confident extraction from rounding uniform (see round()).
+    expect(fieldConfidence.lines).toBe(0.5339)
   })
 
   it('4 · reconstructs the JSON exactly, because the tokens ARE the response', () => {

@@ -67,7 +67,17 @@ export class ConfidenceError extends Error {
 const clamp = (value: number): number => Math.min(1, Math.max(0, value))
 
 /** Two decimals. The inbox shows a bar and a number; more precision is false precision. */
-const round = (value: number): number => Number(value.toFixed(2))
+/**
+ * Four decimals, and the precision is load-bearing.
+ *
+ * At two, a model transcribing an easy document at temperature 0 — per-token probability
+ * 0.995 and up — rounded EVERY field to exactly 1.00, and `assertExtractionConfidence`
+ * then correctly refused the result as "a constant, not a measurement": the rounding had
+ * destroyed precisely the variation the guard exists to check for. Found live, on a clean
+ * tech pack whose extraction deserved to land. Four decimals keeps 0.9987 and 0.9992
+ * distinct; screens are free to FORMAT coarser than the measurement they render.
+ */
+const round = (value: number): number => Number(value.toFixed(4))
 
 /**
  * A slice the schema forced: JSON punctuation and whitespace, nothing else.
