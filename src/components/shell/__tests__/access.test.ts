@@ -294,3 +294,51 @@ describe('roles are named', () => {
     expect(describeRoles([])).toBe('No role')
   })
 })
+
+/**
+ * The read-only banner, and the screens it must stay off.
+ *
+ * It says "YOUR ROLE can read this but not change it. Ask an owner or admin if you need to."
+ * — a statement about the caller, true only when somebody else could write here.
+ *
+ * Five screens have no write surface at all (`writeRoles: []`): MARBIM, the owner dashboard,
+ * refused writes, the factory tree, settings. On those, nobody can write, so the banner told
+ * every merchandiser and planner their role was deficient and sent them to ask an owner for
+ * a permission that does not exist. On MARBIM it contradicted the composer directly beneath
+ * it, which says "proposes drafts · never writes" — the screen made two claims at once and
+ * the wrong one was on top. Owners and admins never saw it, because ALL_ACCESS
+ * short-circuits `canWrite`, which is how it survived to a live test.
+ */
+describe('the read-only banner distinguishes "you may not" from "nobody does"', () => {
+  it('stays off MARBIM for every role, including the ones that draft through it', () => {
+    for (const roles of [['owner'], ['admin'], ['merchandiser'], ['commercial'], ['viewer']] as const) {
+      expect(
+        resolveAccess('/marbim', roles as never, 'knit-composite').readOnly,
+        `${roles[0]} should not be told their role cannot change MARBIM`,
+      ).toBe(false)
+    }
+  })
+
+  it('stays off every other screen with no write surface', () => {
+    for (const href of ['/dashboard', '/refused', '/factory']) {
+      const seen = resolveAccess(href, ['owner'], 'knit-composite')
+      if (!seen.allowed) continue
+      expect(resolveAccess(href, ['merchandiser'], 'knit-composite').readOnly, href).toBe(false)
+    }
+  })
+
+  it('STILL fires where a role genuinely lacks a write others have', () => {
+    // The regression that would make this change a silent removal of a real signal. Orders
+    // is writable by merchandisers and not by viewers, so the banner is exactly right there.
+    expect(resolveAccess('/orders', ['viewer'], 'knit-composite').readOnly).toBe(true)
+    expect(resolveAccess('/orders', ['production'], 'knit-composite').readOnly).toBe(true)
+    expect(resolveAccess('/orders', ['merchandiser'], 'knit-composite').readOnly).toBe(false)
+  })
+
+  it('never claims read-only on a screen the caller cannot open at all', () => {
+    // Two contradictory statements about one permission. `allowed` false must win.
+    const hidden = resolveAccess('/hr/payroll', ['viewer'], 'knit-composite')
+    expect(hidden.allowed).toBe(false)
+    expect(hidden.readOnly).toBe(false)
+  })
+})

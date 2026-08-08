@@ -555,12 +555,29 @@ export function resolveAccess(
   }
 
   const allowed = canSee(item, roles, factoryType)
+
+  /*
+   * The banner says "YOUR ROLE can read this but not change it. Ask an owner or admin if
+   * you need to." That is a statement about the caller, and it is only true when somebody
+   * else could write here.
+   *
+   * On a screen with no write surface at all — MARBIM, the owner dashboard, refused writes,
+   * the factory tree — `writeRoles` is empty and nobody can write, so the banner told every
+   * merchandiser, planner and storekeeper that their role was deficient and sent them to ask
+   * an owner for a permission that does not exist. On MARBIM it was worse than noise: the
+   * composer beneath it correctly says "proposes drafts · never writes", so the screen made
+   * two claims at once and the wrong one was on top. Owners and admins never saw it, because
+   * ALL_ACCESS short-circuits `canWrite` — which is why it survived.
+   *
+   * An empty `writeRoles` is therefore a property of the SCREEN, not a fact about the
+   * caller, and there is nothing to tell them.
+   */
   return {
     item,
     allowed,
     // Never both: a "read only" banner on a screen the caller cannot open would be two
     // contradictory statements about the same permission.
-    readOnly: allowed && !canWrite(item, roles, factoryType),
+    readOnly: allowed && item.writeRoles.length > 0 && !canWrite(item, roles, factoryType),
     subject: lockedSubject(item, words),
   }
 }
