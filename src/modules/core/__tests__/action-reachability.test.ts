@@ -57,9 +57,9 @@ const NO_SCREEN_YET: Record<string, string> = {
   // The action and its service gate are done; the screen renders policies read-only.
   'settings/saveModulePolicy': 'the policy override editor is still a read-only panel',
 
-  // Written in 5.1 for a surface that does not exist yet.
-  'orders/generateOrderTna':
-    'the desk can create an order but not yet ask for its schedule — needs a template picker',
+  // `orders/generateOrderTna` lived here from 5.1 until the live test: the TNA tab's
+  // generate control (template picker + ship date) now calls it, so the entry is gone —
+  // exactly the shrink this list exists to force.
 }
 
 const MODULES_ROOT = 'src/modules'
