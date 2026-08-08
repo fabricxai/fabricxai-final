@@ -40,7 +40,13 @@ import {
   MAX_TOOL_ITERATIONS,
   type ExecutedCall,
 } from './loop'
-import { getProvider, ProviderError, type MarbimProvider, type TextMessage } from './provider'
+import {
+  getProvider,
+  ProviderError,
+  type ExtractFile,
+  type MarbimProvider,
+  type TextMessage,
+} from './provider'
 import { chatTurns, extractionJobs, marbimCallLog } from './schema'
 import {
   collectTools,
@@ -420,11 +426,31 @@ export async function runExtraction(
     const schema = resolvePendingSchema(job.moduleId, job.targetTable, job.zodSchemaKey)
     const source = job.sourceText ?? ''
 
+    /*
+     * No text means the file IS the document (plan: file-native intake). The bytes are
+     * fetched tenant-scoped at run time rather than stored on the job — the job row stays
+     * small, and a document quarantined between queue and run is refused here exactly as
+     * it would be for a person. When text exists it is what gets read, file or no file:
+     * a human transcription was deliberate, and silently preferring the file would make
+     * the paste box a decoration.
+     */
+    let file: ExtractFile | undefined
+    if (!source.trim() && job.sourceDocumentId) {
+      const { readDocumentBytes } = await import('@/modules/core/documents')
+      const original = await readDocumentBytes(ctx, job.sourceDocumentId)
+      file = {
+        base64: Buffer.from(original.bytes).toString('base64'),
+        mimeType: original.mimeType,
+        filename: original.filename,
+      }
+    }
+
     const result = await getProvider().extract({
       role: 'extract',
       schema,
       input: source,
       instruction: `Extract a ${job.targetTable} record for the ${job.moduleId} module.`,
+      ...(file ? { file } : {}),
     })
 
     /**

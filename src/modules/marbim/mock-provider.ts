@@ -213,6 +213,15 @@ export const mockProvider: MarbimProvider = {
   id: 'mock/deterministic-v1',
 
   async extract<T>(request: ExtractRequest<T>): Promise<ExtractResult<T>> {
+    if (request.file && !request.input.trim()) {
+      // The deterministic provider reads labelled lines; it has no eyes. Pretending to
+      // read a PDF would produce an empty draft that looks like the document was blank.
+      throw new ProviderError(
+        'the mock provider cannot read files — paste the text, or run with a real ' +
+          'extract model (MARBIM_MOCK off)',
+        { retryable: false },
+      )
+    }
     if (!request.input.trim()) {
       // Not retryable: an empty document will be empty next time too, and a queue that
       // keeps retrying one is a queue that never drains.

@@ -16,7 +16,7 @@ import { recentAudits } from '@/modules/compliance/queries'
 import { intakeKind } from './intake'
 import { extractorVersionFor } from './marbim'
 import { EXTRACTOR_PROMPT_VERSION } from './providers/gemini'
-import { hasProvider, modelForRole } from './provider'
+import { hasProvider, MODEL_READABLE_MIME, modelForRole } from './provider'
 import { primerModulesForRoles, toolsForRoles } from './scope'
 import { chat, queueExtraction, type ChatResult, type MarbimPolicy } from './service'
 import type { ToolPack } from './tools'
@@ -210,17 +210,17 @@ export async function intakeContext(
  * returns a queued job rather than a result — a reader who expects a draft immediately would
  * be surprised, and the screen says so.
  *
- * **The TEXT is what gets read; the document is provenance.** `runExtraction` passes
- * `sourceText` to the provider and nothing in this system turns a scan into text — there is
- * no OCR and no PDF parser. Queueing a job with only a `documentId` would extract from an
- * empty string, and the mock provider would then find nothing while the row still said
- * `succeeded`. So text is required and the file is optional, which is the true shape of the
- * capability rather than the one the canvas draws. The document id still travels into
- * `propose`, so an approver can open the original the text was taken from.
+ * **Text or a readable file — one of them must actually be readable.** Pasted text is what
+ * gets read when it exists. Without it, a PDF/JPEG/PNG/WebP attachment is handed to the
+ * extract model directly (`runExtraction` fetches the bytes) — the model's own reader sees
+ * the pages, and per-field confidence measures the whole journey from pixels to value. A
+ * type the model cannot read (HEIC, spreadsheets, Word) with no pasted text is refused at
+ * this door, not queued into a job that would fail in the worker. The document id still
+ * travels into `propose` either way, so an approver can check the original.
  */
 export async function readDocument(input: {
   kindId: string
-  sourceText: string
+  sourceText?: string
   documentId?: string
   contextValues?: Record<string, string>
 }): Promise<{ jobId: string; label: string }> {
@@ -250,6 +250,28 @@ export async function readDocument(input: {
   const policy = await getPolicy<MarbimPolicy>(ctx, 'marbim')
 
   const kind = intakeKind(input.kindId)
+
+  /*
+   * The one-of-them-is-readable gate, checked before any work is queued.
+   *
+   * A file-only submission is only accepted when the extract model can actually read the
+   * type — checked against the document row, not the client's word, because the mime the
+   * server stored at upload is the one the worker will fetch. Refusing here beats a job
+   * that queues, runs, and fails where only the status list would ever say why.
+   */
+  const sourceText = input.sourceText?.trim() ? input.sourceText : undefined
+  if (!sourceText) {
+    if (!input.documentId) {
+      throw new AppError('validation_failed', 'marbim.errors.nothing_to_read', {})
+    }
+    const { documentMeta } = await import('@/modules/core/documents')
+    const meta = await documentMeta(ctx, input.documentId)
+    if (!MODEL_READABLE_MIME.has(meta.mimeType)) {
+      throw new AppError('validation_failed', 'marbim.errors.file_unreadable', {
+        mimeType: meta.mimeType,
+      })
+    }
+  }
 
   /**
    * Context ids are checked against the caller's OWN options, not merely parsed.
@@ -290,10 +312,13 @@ export async function readDocument(input: {
       // until plan 6.4, which made the correction-rate report one lifetime average across
       // every prompt and every model the system had ever run.
       extractorVersion: extractorVersionFor({
-        promptVersion: EXTRACTOR_PROMPT_VERSION,
+        // A file read is a different population from a text read for the correction-rate
+        // report: it includes the model's own reading of the pages, not just of somebody's
+        // transcription. The suffix keeps the two from pooling.
+        promptVersion: sourceText ? EXTRACTOR_PROMPT_VERSION : `${EXTRACTOR_PROMPT_VERSION}f`,
         model: modelForRole('extract'),
       }),
-      sourceText: input.sourceText,
+      sourceText,
       sourceDocumentId: input.documentId,
       contextValues: Object.keys(contextValues).length > 0 ? contextValues : undefined,
     },

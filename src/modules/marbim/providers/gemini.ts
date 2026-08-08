@@ -104,6 +104,16 @@ export function geminiExtractor({ apiKey, model }: GeminiOptions) {
     model,
 
     async extract<T>(request: ExtractRequest<T>): Promise<ExtractResult<T>> {
+      if (request.file) {
+        // Gemini can read inline PDFs, but this path's logprobs are dead (see the header) —
+        // a file read here would produce a value with no measured confidence. The OpenAI
+        // extract model is the one that serves files; refusing beats extracting nothing.
+        throw new ProviderError(
+          'the gemini extract path reads text only — set MARBIM_MODEL_EXTRACT to an OpenAI ' +
+            'model (e.g. gpt-4o-mini) for direct PDF/image reading, or paste the text',
+          { retryable: false },
+        )
+      }
       if (!request.input.trim()) {
         // Not retryable: an empty document will still be empty next time, and a job that
         // retries one forever is a queue that never drains.

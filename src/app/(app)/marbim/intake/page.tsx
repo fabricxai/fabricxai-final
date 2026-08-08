@@ -26,10 +26,10 @@ import { IntakeClient } from './intake-client'
  * draft in an approve inbox that looks exactly like a right one. The person holding the paper
  * already knows what it is. A classifier would have saved them one tap.
  *
- * **The text is what gets read, and the file is provenance.** `runExtraction` hands
- * `sourceText` to the provider, and nothing here converts a scan into text — no OCR, no PDF
- * parser. A drop-a-PDF-and-wait screen would queue jobs that read an empty string and still
- * report them queued, so the screen asks for the text and says why.
+ * **Text or a readable file.** Pasted text is what gets read when it exists; without it, a
+ * PDF or photo is handed to the extract model directly and its own reader sees the pages.
+ * Types the model cannot read still require the paste, and the screen says which is which
+ * so nobody drops a spreadsheet and waits for a draft that cannot come.
  *
  * **Nothing reaches a table from here.** Every extraction lands in `pending_changes` with
  * per-field confidence and waits for a human (CLAUDE.md rule 3). That is what makes reading

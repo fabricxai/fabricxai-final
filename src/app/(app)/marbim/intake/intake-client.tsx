@@ -29,11 +29,18 @@ interface ContextField {
 type Attachment =
   | { state: 'none' }
   | { state: 'uploading'; filename: string }
-  | { state: 'attached'; documentId: string; filename: string }
+  | { state: 'attached'; documentId: string; filename: string; modelReadable: boolean }
   | { state: 'failed'; message: string }
 
 /** Text-bearing types the browser can read without anything parsing them. */
 const READABLE = /\.(txt|csv|md|eml|json)$/i
+
+/**
+ * Types the extract model reads natively — the server's MODEL_READABLE_MIME, mirrored here
+ * so the button can enable before a round-trip. The server re-checks against the stored
+ * mime, so a spoofed type gets refused at the door, not queued.
+ */
+const MODEL_READABLE = /^(application\/pdf|image\/(jpeg|png|webp))$/
 
 /**
  * Say what it is, give MARBIM the text, optionally attach the original.
@@ -43,13 +50,12 @@ const READABLE = /\.(txt|csv|md|eml|json)$/i
  * approve inbox" is the sentence that lets them notice they picked wrong, and it is useless
  * afterwards.
  *
- * **Text is required, the file is not, and that ordering is the honest one.** The extractor
- * reads `sourceText`. Nothing in this system converts a scan to text yet — no OCR, no PDF
- * parser — so a screen that accepted only a PDF would queue a job that reads an empty string
- * and report it as queued. Pasting from the PDF viewer or the buyer's email is what a
- * merchandiser does today anyway; attaching the original is what lets an approver check it.
- * Plan 6.6 decided how scans will be read (Gemini reads a PDF natively, no OCR library) —
- * when that lands, the file becomes sufficient on its own and this ordering relaxes.
+ * **Text or a readable file — either is enough.** Pasted text is read when it exists.
+ * Without it, a PDF or photo (JPEG/PNG/WebP) is handed to the extract model directly — the
+ * vendor's own reader sees the pages, and per-field confidence measures the whole journey
+ * from pixels to value. Types the model cannot read (spreadsheets, Word, HEIC) still need
+ * their text pasted, and the copy under the box says which is which so nobody drops a scan
+ * and waits for a draft that cannot come.
  *
  * **Queued, not done.** The queue is now immediate rather than a five-minute tick (plan 6.6:
  * `marbim.extraction.queued` routes to the derive queue), but the confirmation still says
@@ -101,7 +107,12 @@ export function IntakeClient({ kinds }: { kinds: readonly Kind[] }) {
       // The document is filed under the module it will be drafted into, not under MARBIM.
       // A UD scan belongs to commercial whether or not a model ever read it.
       const uploaded = await uploadDocument(file, { kind: kind.id, moduleId: kind.moduleId })
-      setAttachment({ state: 'attached', documentId: uploaded.documentId, filename: file.name })
+      setAttachment({
+        state: 'attached',
+        documentId: uploaded.documentId,
+        filename: file.name,
+        modelReadable: MODEL_READABLE.test(file.type),
+      })
 
       // A text file can fill the box itself. A PDF cannot, and pretending otherwise by
       // silently leaving the box empty is how somebody submits nothing to read.
@@ -116,15 +127,19 @@ export function IntakeClient({ kinds }: { kinds: readonly Kind[] }) {
     }
   }
 
+  // The file can carry the submission by itself only when the model can read it.
+  const fileCarries = attachment.state === 'attached' && attachment.modelReadable
+  const readable = text.trim() !== '' || fileCarries
+
   function send() {
-    if (!kind || text.trim() === '' || !contextComplete) return
+    if (!kind || !readable || !contextComplete) return
     setFailure(null)
 
     startTransition(async () => {
       try {
         const result = await readDocument({
           kindId: kind.id,
-          sourceText: text,
+          sourceText: text.trim() === '' ? undefined : text,
           documentId: attachment.state === 'attached' ? attachment.documentId : undefined,
           contextValues,
         })
@@ -297,11 +312,12 @@ export function IntakeClient({ kinds }: { kinds: readonly Kind[] }) {
               color: 'var(--fx-text-tertiary)',
             }}
           >
-            {/* Said plainly rather than discovered. Somebody who drags a scan in and waits
-                for a draft that never comes learns to distrust the whole surface. */}
-            MARBIM reads text. Nothing here reads a scan — there is no OCR — so a photographed
-            UD needs its numbers typed or pasted. A .txt or .csv attachment fills this box on
-            its own.
+            {/* Said plainly rather than discovered — which types the model reads by itself,
+                and which still need a person's paste. */}
+            Paste the text, or skip it: a PDF or photo (JPEG, PNG, WebP) attached below is
+            read by the model directly, pages and all. Spreadsheets, Word files and HEIC
+            still need their text pasted here. When you paste AND attach, the paste is what
+            gets read. A .txt or .csv attachment fills this box on its own.
           </p>
         </section>
       ) : null}
@@ -342,6 +358,9 @@ export function IntakeClient({ kinds }: { kinds: readonly Kind[] }) {
                 }}
               >
                 {attachment.filename} attached
+                {attachment.modelReadable && text.trim() === ''
+                  ? ' — the model will read it directly'
+                  : ''}
               </span>
             ) : null}
           </div>
@@ -354,12 +373,7 @@ export function IntakeClient({ kinds }: { kinds: readonly Kind[] }) {
           <div>
             <Button
               variant="primary"
-              disabled={
-                pending ||
-                text.trim() === '' ||
-                !contextComplete ||
-                attachment.state === 'uploading'
-              }
+              disabled={pending || !readable || !contextComplete || attachment.state === 'uploading'}
               onClick={send}
             >
               {pending ? 'Sending…' : 'Ask MARBIM to read it'}

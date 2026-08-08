@@ -23,9 +23,11 @@ import { z } from 'zod'
 
 import { DOCUMENT_GUARD, fenceDocument } from '../marbim'
 import {
+  MODEL_READABLE_MIME,
   ProviderError,
   type EmbedRequest,
   type EmbedResult,
+  type ExtractFile,
   type ExtractRequest,
   type ExtractResult,
 } from '../provider'
@@ -178,6 +180,52 @@ export function chosenTokensFromOpenAi(
   return content.map((entry) => ({ token: entry.token, logProbability: entry.logprob }))
 }
 
+type UserContentPart = OpenAI.Chat.Completions.ChatCompletionContentPart
+
+/**
+ * The user message for an extraction, exported so the file/image branch is testable
+ * without a network call.
+ *
+ * The text part always carries the instruction, and the fenced document text when there is
+ * any — a paste alongside a file is a human transcription worth showing the model. The file
+ * rides as its own part, verbatim base64: nothing here parses it, which is the entire
+ * point — the vendor's own reader sees the same pages a human approver will.
+ */
+export function extractUserContent<T>(request: ExtractRequest<T>): string | UserContentPart[] {
+  const text = `${request.instruction}\n\n${
+    request.input.trim()
+      ? fenceDocument(request.input)
+      : 'Read the attached document. Transcribe exactly what it states.'
+  }`
+
+  if (!request.file) return text
+
+  return [{ type: 'text', text }, filePart(request.file)]
+}
+
+function filePart(file: ExtractFile): UserContentPart {
+  if (file.mimeType === 'application/pdf') {
+    return {
+      type: 'file',
+      file: {
+        filename: file.filename,
+        file_data: `data:application/pdf;base64,${file.base64}`,
+      },
+    }
+  }
+  if (MODEL_READABLE_MIME.has(file.mimeType)) {
+    return {
+      type: 'image_url',
+      image_url: { url: `data:${file.mimeType};base64,${file.base64}` },
+    }
+  }
+  throw new ProviderError(
+    `the extract model cannot read ${file.mimeType} — readable types are PDF, JPEG, PNG ` +
+      'and WebP. Convert it, or paste its text.',
+    { retryable: false },
+  )
+}
+
 /**
  * OpenAI as the document reader.
  *
@@ -212,7 +260,7 @@ export function openAiExtractor({ apiKey, model }: OpenAiOptions) {
     model,
 
     async extract<T>(request: ExtractRequest<T>): Promise<ExtractResult<T>> {
-      if (!request.input.trim()) {
+      if (!request.input.trim() && !request.file) {
         throw new ProviderError('nothing to extract from', { retryable: false })
       }
 
@@ -224,9 +272,10 @@ export function openAiExtractor({ apiKey, model }: OpenAiOptions) {
             { role: 'system', content: EXTRACT_SYSTEM },
             {
               role: 'user',
-              // Fenced for the same reason as Gemini's: a buyer's amendment sheet is full of
-              // `---`, so a plain separator is one a document can forge by accident.
-              content: `${request.instruction}\n\n${fenceDocument(request.input)}`,
+              // Text is fenced for the same reason as Gemini's: a buyer's amendment sheet
+              // is full of `---`, so a plain separator is one a document can forge by
+              // accident. A file rides as its own content part — see extractUserContent.
+              content: extractUserContent(request),
             },
           ],
           response_format: {
@@ -300,10 +349,37 @@ export function openAiExtractor({ apiKey, model }: OpenAiOptions) {
         )
       }
 
+      /*
+       * A genuinely uniform measurement, explained rather than refused.
+       *
+       * `assertExtractionConfidence` treats an all-identical map as a constant, because a
+       * constant is what an invented confidence looks like. But a clean digital PDF read at
+       * temperature 0 really does emit every token at logprob −0.0, and geometric means of
+       * certainty are certainty — the first file-native extraction of this repo's own test
+       * kit scored exactly 1 on every field and was rejected for being too obviously right.
+       * The scores here come from the token stream a few lines up, so when they happen to
+       * agree the honest move is to say why, not to fuzz one so the map looks measured.
+       */
+      const scores = Object.values(fieldConfidence)
+      const uniform = scores.length > 0 && scores.every((score) => score === scores[0])
+
       return {
         value: validated.data,
         fieldConfidence,
-        method: `openai/token-logprobs@${OPENAI_EXTRACTOR_PROMPT_VERSION}`,
+        // A file read and a text read are different populations for the correction-rate
+        // report — the first includes the model's own reading of the pixels, the second
+        // measures only its reading of somebody's transcription.
+        method: request.file
+          ? `openai/file-logprobs@${OPENAI_EXTRACTOR_PROMPT_VERSION}`
+          : `openai/token-logprobs@${OPENAI_EXTRACTOR_PROMPT_VERSION}`,
+        ...(uniform
+          ? {
+              uniformConfidenceJustification:
+                `every field's geometric-mean token log-probability came out ${scores[0]} — ` +
+                'measured from the same token stream as the values, not assigned; the model ' +
+                'read the whole document at uniform certainty',
+            }
+          : {}),
         model,
       }
     },

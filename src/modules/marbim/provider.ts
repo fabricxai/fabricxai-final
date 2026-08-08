@@ -36,11 +36,41 @@ export type ModelRole = 'extract' | 'reason' | 'embed'
 export interface ExtractRequest<T> {
   role: ModelRole
   schema: ZodType<T>
-  /** The document text or message being read. Already redacted. */
+  /** The document text or message being read. Already redacted. May be empty when `file` is set. */
   input: string
   /** What the extractor is for — becomes part of the prompt. */
   instruction: string
+  /**
+   * The original file, for a provider whose extract model can read it natively — a PDF's
+   * pages or a scan's pixels instead of pasted text. Confidence still comes from the output
+   * tokens' log-probabilities, so uncertainty about a blurry digit is finally *measured*
+   * rather than laundered through somebody's transcription. A provider that cannot read
+   * files refuses (ProviderError, not retryable) instead of quietly extracting from the
+   * empty `input`.
+   */
+  file?: ExtractFile
 }
+
+/** PDF or image bytes on their way to a vision-capable extract model. */
+export interface ExtractFile {
+  base64: string
+  mimeType: string
+  filename: string
+}
+
+/**
+ * What an extract model may be handed directly. PDFs go as file parts (the vendor renders
+ * text and page images server-side, so scans inside PDFs read too); JPEG/PNG/WebP go as
+ * image parts. HEIC is uploadable to us but not readable by the API, and CSV/XLSX/DOCX
+ * have text a person or a converter should produce — all of those are refusals at the
+ * intake door, not silent empties in the worker.
+ */
+export const MODEL_READABLE_MIME: ReadonlySet<string> = new Set([
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+])
 
 export interface ExtractResult<T> {
   value: T

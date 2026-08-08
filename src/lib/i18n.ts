@@ -394,6 +394,10 @@ export const MESSAGES: Catalogue = {
     'marbim.errors.context_unknown':
       'That choice is not one of yours. Pick from the list rather than an id.',
     'marbim.errors.invalid': 'That does not fit what MARBIM accepts here.',
+    'marbim.errors.nothing_to_read':
+      'There is nothing to read — paste the text, or attach a PDF or photo the model can read on its own.',
+    'marbim.errors.file_unreadable':
+      'The model cannot read this file type directly. It reads PDF, JPEG, PNG and WebP — for anything else, paste the text.',
     'marbim.errors.job_not_found': 'That extraction no longer exists.',
     'marbim.errors.job_rejected':
       'That extraction was rejected and will not be retried — what it read did not fit the target.',
@@ -881,6 +885,10 @@ export const MESSAGES: Catalogue = {
       'স্যাম্পলের ধাপ শুধু সামনে এগোয়। প্যাটার্নে ফিরে যাওয়া মানে আবার নতুন করে বানানো, সেটা নতুন রিকোয়েস্ট।',
     'marbim.errors.unavailable':
       'এই ফ্যাক্টরিতে MARBIM নেই, তাই আপনার ডকুমেন্ট পড়ার কেউ নেই। কিছু জমা হয়নি — আপনি যা লিখেছেন তা এখানেই আছে।',
+    'marbim.errors.nothing_to_read':
+      'পড়ার মতো কিছু নেই — টেক্সট পেস্ট করুন, অথবা এমন PDF বা ছবি যুক্ত করুন যা model নিজে পড়তে পারে।',
+    'marbim.errors.file_unreadable':
+      'এই ধরনের ফাইল model সরাসরি পড়তে পারে না। PDF, JPEG, PNG আর WebP পড়তে পারে — অন্য কিছু হলে টেক্সট পেস্ট করুন।',
     'marbim.errors.token_ceiling':
       'এই ফ্যাক্টরির আজকের model বাজেট শেষ হয়ে গেছে। গত ২৪ ঘণ্টার হিসাব শেষ হলে MARBIM আবার উত্তর দেবে, অথবা owner চাইলে Settings-এ দৈনিক সীমা বাড়াতে পারেন।',
     'marbim.notifications.extraction_succeeded.title':
