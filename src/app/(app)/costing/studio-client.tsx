@@ -453,7 +453,7 @@ function MaterialSection({
           key={i}
           style={{
             display: 'grid',
-            gridTemplateColumns: '1.6fr .7fr .5fr .8fr .6fr',
+            gridTemplateColumns: '1.6fr .7fr .5fr .8fr .6fr auto',
             gap: 10,
             padding: '10px 22px',
             borderTop: '1px solid var(--fx-border-subtle)',
@@ -465,8 +465,48 @@ function MaterialSection({
           <Cell value={row.uom} onChange={(v) => set(i, 'uom', v)} text />
           <Cell value={row.ratePerUom} onChange={(v) => set(i, 'ratePerUom', v)} />
           <Cell value={row.wastagePct} onChange={(v) => set(i, 'wastagePct', v)} />
+          <button
+            type="button"
+            aria-label={`remove ${row.ref || 'this line'}`}
+            onClick={() => onChange(rows.filter((_, idx) => idx !== i))}
+            style={{
+              border: 'none',
+              background: 'none',
+              cursor: 'pointer',
+              color: 'var(--fx-text-tertiary)',
+              font: "400 14px/1 var(--fx-font-mono)",
+              padding: '4px 2px',
+            }}
+          >
+            ×
+          </button>
         </div>
       ))}
+
+      {/*
+        * The hand this section never had. A seeded sheet arrives with the BOM's lines and
+        * nothing else — and the first live tech pack proved a BOM can be missing a line
+        * the document priced by omission (the sew thread, stated with no consumption).
+        * A sheet that cannot grow a row makes that omission permanent.
+        */}
+      <div style={{ padding: '10px 22px', borderTop: '1px solid var(--fx-border-subtle)' }}>
+        <button
+          type="button"
+          onClick={() =>
+            onChange([...rows, { ref: '', consumption: '0', uom: 'pcs', ratePerUom: '0', wastagePct: '0' }])
+          }
+          style={{
+            border: 'none',
+            background: 'none',
+            cursor: 'pointer',
+            color: 'var(--fx-accent)',
+            font: "500 13px/1 var(--fx-font-sans)",
+            padding: 0,
+          }}
+        >
+          ＋ add a line
+        </button>
+      </div>
     </Card>
   )
 }
