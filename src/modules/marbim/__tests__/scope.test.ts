@@ -15,6 +15,9 @@ import { z } from 'zod'
 import { describe, expect, it } from 'vitest'
 
 import { NAV } from '@/components/shell/nav'
+import '@/modules/registry'
+import { listModules } from '@/modules/core/registry'
+import type { Role } from '@/modules/core/ctx'
 
 import { moduleOfTool, primerModulesForRoles, toolsForRoles } from '../scope'
 import type { ModuleTool, ToolPack } from '../tools'
@@ -163,5 +166,51 @@ describe('moduleOfTool', () => {
     // invariant rather than a guess at one.
     expect(moduleOfTool('store.propose_stock_adjustment')).toBe('store')
     expect(moduleOfTool('orders.book')).toBe('orders')
+  })
+})
+
+/**
+ * The enquiry draft tool, and who may reach it.
+ *
+ * A merchandiser pasted a buyer's enquiry into MARBIM and watched it read the buyer, the RFQ
+ * board and the margin floor correctly — and then say it could not log the enquiry. Nothing
+ * was missing underneath: `rfqs` has been a registered pending target since 1.2, `commitRfq`
+ * waits behind it, and `rfqPayload` describes itself as "what MARBIM drafts from a buyer's
+ * enquiry email or PDF". Only the tool was absent.
+ *
+ * `toolsForRoles` gates a draft tool on write access to the tool's OWN module — not to
+ * MARBIM — so these pin who now gets it. The viewer case is the one that matters: an enquiry
+ * logged by somebody with no write anywhere would be this seam failing open.
+ */
+describe('rfq.propose_enquiry · reachable by the desk that owns enquiries', () => {
+  const packOf = (moduleId: string) => {
+    const found = listModules().find((m) => m.id === moduleId)?.toolPack
+    expect(found, `${moduleId} registers a tool pack`).toBeTruthy()
+    return found as ToolPack
+  }
+
+  const namesFor = (roles: readonly Role[]): string[] =>
+    toolsForRoles({ packs: [packOf('rfq')], roles, factoryType: 'knit-composite' }).map(
+      (t) => t.name,
+    )
+
+  it('a merchandiser gets it', () => {
+    expect(namesFor(['merchandiser'])).toContain('rfq.propose_enquiry')
+  })
+
+  it('commercial gets it — they work the same board', () => {
+    expect(namesFor(['commercial'])).toContain('rfq.propose_enquiry')
+  })
+
+  it('a viewer gets the reads and NOT the draft', () => {
+    // The whole point of the read/draft split. A viewer may ask what the board holds; an
+    // enquiry they logged would be a write by somebody the product says cannot write.
+    const viewer = namesFor(['viewer'])
+
+    expect(viewer).not.toContain('rfq.propose_enquiry')
+  })
+
+  it('production gets nothing from this pack at all — it is not their board', () => {
+    expect(namesFor(['production'])).toEqual([])
   })
 })
