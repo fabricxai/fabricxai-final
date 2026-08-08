@@ -54,10 +54,28 @@ export const decodeToolName = (name: string): string => name.replaceAll('__', '.
  * string. Both are valid, and keeping the simple case simple means the overwhelming majority
  * of turns — a question and an answer — read as what they are on the wire.
  */
-function toAnthropicMessage(message: TextMessage): Anthropic.MessageParam {
+export function toAnthropicMessage(message: TextMessage): Anthropic.MessageParam {
   const blocks: Anthropic.ContentBlockParam[] = []
 
-  // Results first. Anthropic requires every `tool_result` at the START of the user turn that
+  /*
+   * Reasoning first, byte-for-byte as it arrived.
+   *
+   * Claude Sonnet 5 thinks on every turn whether or not we ask it to, and the thinking block it
+   * returns is SIGNED. The API's rule is that an assistant turn must be replayed with its own
+   * thinking intact; this file used to read only `text` and `tool_use`, so every turn after the
+   * first was handed back to the model with its reasoning amputated. It answered by stopping
+   * dead — `end_turn`, no text, no tool call — which the loop above reported as "I lost the
+   * connection halfway through". Nothing was lost: we had removed the model's own words from
+   * its mouth and asked it to continue the sentence.
+   *
+   * Position matters as much as presence: thinking precedes the tool_use blocks it reasoned
+   * toward. Never edit these — the signature is over the original bytes.
+   */
+  for (const block of message.reasoning ?? []) {
+    blocks.push(block as Anthropic.ContentBlockParam)
+  }
+
+  // Results next. Anthropic requires every `tool_result` at the START of the user turn that
   // follows the `tool_use`, before any other content.
   for (const result of message.toolResults ?? []) {
     blocks.push({
@@ -165,6 +183,13 @@ export function anthropicReasoner({ apiKey, model }: AnthropicOptions) {
           args: (block.input ?? {}) as Record<string, unknown>,
         }))
 
+      // Kept whole and unread — see toAnthropicMessage. `redacted_thinking` carries no readable
+      // text at all and must still be replayed, so this selects by what a block ISN'T rather
+      // than naming the two kinds we happen to know about today.
+      const reasoning = response.content.filter(
+        (block) => block.type !== 'text' && block.type !== 'tool_use',
+      )
+
       if (!text && toolCalls.length === 0) {
         // An empty turn with nothing asked for is a failure the surface cannot render, and
         // showing a blank answer bubble reads as "MARBIM has nothing to say about your
@@ -177,6 +202,7 @@ export function anthropicReasoner({ apiKey, model }: AnthropicOptions) {
       return {
         text,
         toolCalls,
+        reasoning,
         model: response.model,
         usage: {
           inputTokens: response.usage.input_tokens,

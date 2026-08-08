@@ -288,6 +288,10 @@ describe('a reviewer can correct a field before signing', () => {
       { field: 'requestedShipDate', before: undefined, after: '2026-11-15', confidence: null, changed: true },
       { field: 'quantity', before: undefined, after: 36000, confidence: null, changed: true },
     ],
+    provenance: {
+      draftedBy: { id: 'day0-x-rashida', name: 'Rashida Akter' },
+      approvals: [],
+    },
   }
 
   beforeEach(() => draftFields.mockResolvedValue(draft))
@@ -297,6 +301,17 @@ describe('a reviewer can correct a field before signing', () => {
     await user.click(screen.getByRole('button', { name: /Order SHRT-4410/i }))
     await waitFor(() => expect(screen.getByLabelText('requestedShipDate')).toBeInTheDocument())
   }
+
+  it('shows whose hands the draft has passed through — the trail a countersignature is for', async () => {
+    // The data was always complete (created_by, pending_change_approvals, audit_log) and
+    // reached only Settings → audit viewer, behind owner/admin. The reviewer signing the
+    // draft is the one person who needs it, on the screen where they sign.
+    const user = userEvent.setup()
+    await openRow(user)
+
+    expect(screen.getByText(/drafted by Rashida Akter/i)).toBeInTheDocument()
+    expect(screen.getByText(/awaiting a first signature/i)).toBeInTheDocument()
+  })
 
   it('sends the corrected value, not the drafted one', async () => {
     const user = userEvent.setup()

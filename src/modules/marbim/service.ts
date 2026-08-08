@@ -933,9 +933,16 @@ export async function chat(
     executed.push(...round.executed)
     pendingChangeIds.push(...round.pendingChangeIds)
 
-    // The model's own request replayed alongside the answers. Anything else rewrites the
-    // conversation underneath it, and the vendors reject that.
-    messages.push({ role: 'assistant', content: result.text, toolCalls: result.toolCalls })
+    // The model's own request replayed alongside the answers — INCLUDING the reasoning that
+    // led to it. Anything else rewrites the conversation underneath it, and the vendors reject
+    // that: Anthropic signs its thinking blocks, and a turn replayed without them came back
+    // empty every time (the "lost the connection" report from the first live test).
+    messages.push({
+      role: 'assistant',
+      content: result.text,
+      toolCalls: result.toolCalls,
+      ...(result.reasoning ? { reasoning: result.reasoning } : {}),
+    })
     messages.push({ role: 'user', content: '', toolResults: round.results })
   }
 

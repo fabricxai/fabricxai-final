@@ -11,7 +11,7 @@
 import { and, eq, gte, inArray } from 'drizzle-orm'
 import { z } from 'zod'
 
-import { pendingChanges } from '@/db/schema/core'
+import { pendingChangeApprovals, pendingChanges, users } from '@/db/schema/core'
 import type { AnyCtx } from '@/modules/core/ctx'
 import { readJsonbObject } from '@/modules/core/jsonb'
 import { scoped } from '@/modules/core/scoped'
@@ -140,6 +140,26 @@ export interface DraftDetail {
   createdAt: Date
   payload: Record<string, unknown>
   fields: FieldDiff[]
+  /** Who put this draft here, and who has signed it so far. */
+  provenance: DraftProvenance
+}
+
+/**
+ * The chain of hands a draft has passed through.
+ *
+ * `pending_changes.created_by` and `pending_change_approvals` have carried this since the
+ * table was written, and `auditChain()` has assembled it since the module landed — but the
+ * only caller was MARBIM's own `approvals.provenance` tool, so the one screen where a
+ * reviewer signs their name to somebody else's work could not show whose work it was.
+ * A signature nobody can trace is a countersignature in name only.
+ *
+ * `name` is nullable because the users join can miss: a person removed from the company
+ * still has drafts in the inbox, and "someone who has left" is the honest rendering of that
+ * — an id in their place would read as a system actor.
+ */
+export interface DraftProvenance {
+  draftedBy: { id: string; name: string | null } | null
+  approvals: { name: string | null; role: string; at: Date }[]
 }
 
 /**
@@ -163,6 +183,51 @@ export async function draftDetail(
   })
 
   if (!row) return null
+
+  /*
+   * Same read, same tenant scope: who drafted it, and who has countersigned.
+   *
+   * A left join on both sides — a draft whose author has since left the company must still
+   * render, and a first reviewer looking at an unsigned draft must not be told the query
+   * failed. Ordered by signing time so the panel reads as a sequence of events.
+   */
+  const provenance = await withTenantRead(ctx, async (tx): Promise<DraftProvenance> => {
+    /*
+     * The drafter's name is reached THROUGH the draft, not looked up beside it.
+     *
+     * `users` is global — it has no company_id to name — so selecting from it by id would be
+     * a query with no tenant predicate, and the lint rule that says so is right to. Joining
+     * from the already-scoped pending_changes row means the only name this can return is the
+     * one belonging to a draft this caller may already read.
+     */
+    const drafter = await tx
+      .select({ name: users.name })
+      .from(pendingChanges)
+      .leftJoin(users, eq(pendingChanges.createdBy, users.id))
+      .where(scoped(pendingChanges, ctx, eq(pendingChanges.id, pendingChangeId)))
+
+    const signed = await tx
+      .select({
+        name: users.name,
+        role: pendingChangeApprovals.approvedAsRole,
+        at: pendingChangeApprovals.createdAt,
+      })
+      .from(pendingChangeApprovals)
+      .leftJoin(users, eq(pendingChangeApprovals.approverUserId, users.id))
+      .where(
+        scoped(
+          pendingChangeApprovals,
+          ctx,
+          eq(pendingChangeApprovals.pendingChangeId, pendingChangeId),
+        ),
+      )
+      .orderBy(pendingChangeApprovals.createdAt)
+
+    return {
+      draftedBy: row.createdBy ? { id: row.createdBy, name: drafter[0]?.name ?? null } : null,
+      approvals: signed.map((s) => ({ name: s.name, role: String(s.role), at: s.at })),
+    }
+  })
 
   // null here means the stored map was malformed, which is NOT the same as a
   // human draft's empty map — so every field reports "no confidence" rather
@@ -199,6 +264,7 @@ export async function draftDetail(
     createdAt: row.createdAt,
     payload: row.payload,
     fields,
+    provenance,
   }
 }
 

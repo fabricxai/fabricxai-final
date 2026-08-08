@@ -107,6 +107,16 @@ export interface TextMessage {
   toolCalls?: readonly ToolCall[]
   /** User turns only: answers to the previous assistant turn's calls, in any order. */
   toolResults?: readonly ToolResult[]
+  /**
+   * Assistant turns only: the model's own reasoning blocks, VERBATIM, to be replayed unedited.
+   *
+   * Opaque on purpose — the shape belongs to whichever vendor produced it, and this layer must
+   * not be tempted to read, trim or reformat it. Anthropic's thinking blocks are signed, and a
+   * turn replayed without the block that preceded its tool calls is a turn the model no longer
+   * recognises as its own: it answers with nothing at all. Providers that have no such concept
+   * simply never set this.
+   */
+  reasoning?: readonly unknown[]
 }
 
 export interface TextRequest {
@@ -137,6 +147,8 @@ export interface TextResult {
   usage?: TokenUsage
   /** Why the model stopped. `max_tokens` means the answer is cut off, and it is worth saying. */
   stopReason?: string
+  /** The turn's reasoning blocks, to be handed straight back on the next turn. See TextMessage. */
+  reasoning?: readonly unknown[]
 }
 
 export interface MarbimProvider {

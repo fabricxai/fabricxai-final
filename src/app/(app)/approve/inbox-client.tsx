@@ -747,6 +747,8 @@ function DraftFields({
         </div>
       ))}
 
+      <AuditTrail detail={detail} />
+
       <div
         style={{
           marginTop: 8,
@@ -765,6 +767,70 @@ function DraftFields({
   )
 }
 
+
+/** "14:22" — the audit trail is a sequence of events, and a date without a time is not one. */
+function clockTime(value: Date | string): string {
+  const at = typeof value === 'string' ? new Date(value) : value
+  if (Number.isNaN(at.getTime())) return ''
+  return `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`
+}
+
+/**
+ * Whose hands this draft has passed through, on the screen where it is signed.
+ *
+ * The data has been complete since the module landed — `pending_changes.created_by`, the
+ * `pending_change_approvals` rows, the `audit_log` interceptor — and none of it reached this
+ * panel. A reviewer countersigning a colleague's work could not see whose work it was, which
+ * is the one fact a countersignature is for. It surfaced only in Settings → audit viewer,
+ * behind owner/admin, minutes of scrolling away from the decision it belongs to.
+ *
+ * Rendered as a sequence rather than a table: a trail reads as "she drafted it, then he
+ * approved it", and the gap where the next signature goes is itself information.
+ */
+function AuditTrail({ detail }: { detail: DraftDetail }) {
+  const { draftedBy, approvals } = detail.provenance
+
+  // A draft with no recorded author is a real state — imports and integrations have no person
+  // behind them — and inventing "system" for it would be a claim the row does not make.
+  const drafter = draftedBy ? (draftedBy.name ?? 'someone who has left') : 'no named author'
+
+  return (
+    <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid var(--fx-border-subtle)' }}>
+      <Eyebrow>Trail</Eyebrow>
+      <ol style={{ margin: '6px 0 0', padding: 0, listStyle: 'none' }}>
+        <li style={TRAIL_ROW}>
+          <span style={{ color: 'var(--fx-text-secondary)' }}>drafted by {drafter}</span>
+          <span>{clockTime(detail.createdAt)}</span>
+        </li>
+
+        {approvals.map((signature, index) => (
+          <li key={`${signature.name ?? 'gone'}-${index}`} style={TRAIL_ROW}>
+            <span style={{ color: 'var(--fx-text-secondary)' }}>
+              approved by {signature.name ?? 'someone who has left'} ({signature.role})
+            </span>
+            <span>{clockTime(signature.at)}</span>
+          </li>
+        ))}
+
+        {approvals.length === 0 ? (
+          // The absent signature, said out loud. An empty list here would read as "no trail
+          // recorded" — the opposite of the truth, which is that nobody has signed yet.
+          <li style={{ ...TRAIL_ROW, color: 'var(--fx-text-tertiary)' }}>
+            <span>awaiting a first signature</span>
+          </li>
+        ) : null}
+      </ol>
+    </div>
+  )
+}
+
+const TRAIL_ROW: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  gap: 12,
+  font: "400 12px/1.7 var(--fx-font-mono)",
+  color: 'var(--fx-text-tertiary)',
+}
 
 /**
  * One field's value, correctable in place.
