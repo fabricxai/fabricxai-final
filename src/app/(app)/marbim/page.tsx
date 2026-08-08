@@ -1,4 +1,5 @@
 import { headers } from 'next/headers'
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { randomUUID } from 'node:crypto'
 
@@ -55,6 +56,24 @@ export default async function MarbimPage() {
         // The send button owns the amber on this screen.
         ownsAmber={false}
       />
+
+      {/*
+        * The door intake never had. The whole extraction pipeline — kinds, queue,
+        * per-field confidence, the approve-inbox landing — was reachable only by typing
+        * /marbim/intake into the address bar: no nav entry, no link, nothing. A tester
+        * followed the instruction "use intake", found only this chat, and typed their
+        * tech pack INTO the conversation — where the model, seeing words about intake,
+        * politely narrated an extraction that was never queued.
+        */}
+      <div style={{ margin: '0 0 12px' }}>
+        <Link
+          href="/marbim/intake"
+          style={{ font: "500 13.5px/1.4 var(--fx-font-sans)", color: 'var(--fx-accent)' }}
+        >
+          Have a document to read? Intake — pick its kind, paste its text →
+        </Link>
+      </div>
+
       <MarbimSurface
         conversationId={randomUUID()}
         suggestions={entry.suggestions}

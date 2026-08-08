@@ -36,9 +36,13 @@ payroll in the nav, prices masked. Start there.
 
 1. **"Drop the PDF → draft appears" is really "intake: say what it is, paste the text".**
    There is no OCR and no PDF parser — by design today, `readDocument` requires the text
-   and keeps the file as provenance. So for every document step: MARBIM → intake → pick
-   the kind → **paste the document's text** (open the PDF, select-all, copy) → attach the
-   file → queue. The extraction pipeline behind it is real: per-field confidence is
+   and keeps the file as provenance. Intake is its own screen at
+   `https://baraka.fabricxai.com/marbim/intake` — the **"Have a document to read?"** link
+   at the top of the MARBIM chat. It is NOT the chat's ＋attach button (that attaches to
+   the conversation), and typing about a document in chat queues nothing — the trace
+   saying "no tools run" is the tell. So for every document step: MARBIM → the intake
+   link → pick the kind → **paste the document's text** (open the PDF, select-all, copy)
+   → attach the file → queue. The extraction pipeline behind it is real: per-field confidence is
    measured (OpenAI logprobs), the low-confidence field shows orange, and the draft lands
    in the Approve inbox on the five-minute cycle — allow up to 5 minutes, it is a
    schedule, not a click. Photo steps (challan JPG, hourly-report photo, measurement
