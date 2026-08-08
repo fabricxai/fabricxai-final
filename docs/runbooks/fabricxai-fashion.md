@@ -113,5 +113,8 @@ other tenant may appear in any list.
   nothing, the flag defaults to off. With no `GEMINI_API_KEY`, document intake also needs
   `MARBIM_MODEL_EXTRACT=gpt-4o-mini` (the Gemini default no longer returns the logprobs
   confidence requires). Without any of that, fall back to `MARBIM_MOCK=true`.
+- Intake reads PDFs and photos (JPEG/PNG/WebP) directly on the OpenAI extract path —
+  attach the file, paste nothing. The Gemini extract path and the mock provider are
+  text-only and refuse file-only submissions with a typed error.
 - The tenant shares the dev database with other fixture companies — that is a feature: it
   is what makes the RLS checks in §3 meaningful.

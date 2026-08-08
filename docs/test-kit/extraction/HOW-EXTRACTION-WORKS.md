@@ -1,27 +1,36 @@
 # How document extraction works in FabricXAI
 
-Read this before testing intake — the single most important fact changes how you test:
+Read this before testing intake — the reading rules decide how you test:
 
-> **FabricXAI has no built-in OCR and no PDF parser. The extractor reads TEXT that you
-> paste.** The uploaded file (PDF/image) is stored in MinIO as *provenance* — the original
-> the approver can refer to — but it is never parsed, OCR'd, or sent to the model.
-> Getting text out of a PDF or scan is *your* step, and `GETTING-TEXT-OUT.md` covers the
-> methods. Every PDF in this kit ships with a ready `.paste.txt` companion.
+> **A PDF or photo (JPEG/PNG/WebP) attached to intake is read by the extract model
+> directly** — its own reader sees the pages, scans included, and per-field confidence
+> measures the whole journey from pixels to value. **Pasted text, when present, is what
+> gets read instead** (a human transcription is deliberate). Types the model cannot read —
+> spreadsheets, Word files, HEIC — still need their text pasted, and
+> `GETTING-TEXT-OUT.md` covers getting it out faithfully. Every kit PDF ships with a
+> `.paste.txt` companion so BOTH paths can be tested against the same ground truth.
 
 ## The pipeline
 
 ```
 /marbim/intake screen
   → choose intake kind  → pickers for context (e.g. which buyer, which audit)
-  → PASTE the document text (mandatory, ≤200,000 chars)
-  → optionally attach the original file (provenance only)
+  → paste the text, OR attach a PDF/JPEG/PNG/WebP and paste nothing
   → "Ask MARBIM to read it"  → job queued (worker processes it — keep pnpm worker:dev running)
-  → gpt-4o-mini extracts to the module's zod schema, with token log-probabilities
+  → gpt-4o-mini reads the text — or the file itself — into the module's zod schema,
+    with token log-probabilities
   → per-field confidence = geometric mean of the tokens that produced each value
   → draft lands in the APPROVE INBOX as a pending change
   → a human reviews field-by-field (can correct values inline), approves or rejects
   → approval writes the real row through the module's own validation
 ```
+
+The two paths measure different things, and both are worth testing per document:
+text-path confidence scores the model's read of *your transcription*; file-path
+confidence scores its read of *the pages themselves* — on the kit's scan the blur is
+visible in the numbers (a field at 0.998 instead of 1.0). A perfectly clean digital PDF
+can come out uniformly certain; the draft then carries the provider's justification for
+the uniform map instead of being refused as an invented constant.
 
 ## The six intake kinds and this kit's document for each
 
@@ -66,9 +75,12 @@ ground truth. **The test is a field-by-field diff between the approve-inbox draf
 - **Rate limit**: extraction is rate-limited per company per hour (policy
   `extractionsPerHour`); a burst of submissions should eventually queue-refuse politely.
 
-## File upload rules (the provenance attachment)
+## File upload rules
 
-- Accepted: PDF, JPEG, PNG, WebP, HEIC, CSV, XLS(X), DOC(X) · max **25 MB**.
+- Uploadable: PDF, JPEG, PNG, WebP, HEIC, CSV, XLS(X), DOC(X) · max **25 MB**.
+- **Model-readable on their own**: PDF, JPEG, PNG, WebP — attach one of these and the
+  paste box may stay empty. Everything else uploads as provenance only and needs pasted
+  text; submitting a file-only spreadsheet is refused at the door, not queued to fail.
 - `.txt` / `.md` / `.eml` are offered by the file picker and **refused by the server** —
   their mime types are not on the allow-list. Known sharp edge; paste their content
   instead. Choosing a `.txt`/`.csv`/`.md`/`.eml`/`.json` file DOES auto-fill the paste box

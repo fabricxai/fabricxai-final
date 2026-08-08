@@ -1,9 +1,17 @@
 # Getting the actual text out of PDFs, scans and spreadsheets
 
-FabricXAI's intake reads pasted text (see `HOW-EXTRACTION-WORKS.md`). This guide is the
-step before: turning whatever a buyer or customs office sent — digital PDF, phone photo,
-scan, spreadsheet — into faithful text. Every command below was run against this kit's own
-documents on a stock Linux box.
+FabricXAI's intake now reads PDFs and photos (JPEG/PNG/WebP) directly — attach the file
+and paste nothing (see `HOW-EXTRACTION-WORKS.md`). This guide is for everything else, and
+for keeping the direct path honest:
+
+- **spreadsheets, Word files and HEIC** — the model cannot read them; their text must be
+  pasted, and these methods produce it;
+- **verification** — extracting the text yourself and diffing it against the draft is how
+  you audit what the model's reader saw;
+- **the text path** — pasting remains first-class (a paste is read in preference to the
+  file), and a faithful paste needs faithful extraction.
+
+Every command below was run against this kit's own documents on a stock Linux box.
 
 ## Decision table
 
