@@ -516,7 +516,7 @@ function InboxRowItem({
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
           <Eyebrow>Confidence</Eyebrow>
-          <ConfidenceTicks confidence={row.weakestConfidence} />
+          <ConfidenceTicks confidence={row.weakestConfidence} source={row.source} />
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -545,7 +545,7 @@ function InboxRowItem({
       </div>
     </div>
 
-      {open ? <DraftFields detail={fields} loading={loading} /> : null}
+      {open ? <DraftFields detail={fields} loading={loading} source={row.source} /> : null}
     </div>
   )
 }
@@ -564,9 +564,20 @@ function InboxRowItem({
 function DraftFields({
   detail,
   loading,
+  source,
 }: {
   detail: DraftDetail | null | undefined
   loading: boolean
+  /**
+   * WHY this draft has no confidence, which "no confidence" alone cannot say.
+   *
+   * A null score has two causes and they are opposites. `user_draft` means a person typed
+   * the value. `ai_chat` means a model composed it in conversation, where there is no
+   * extractor to ask and inventing a number is refused (`validateConfidence`). Rendering
+   * both as "typed by a person" credited a machine's transcription to a human — on a screen
+   * that named the source `ai_chat` two inches above it.
+   */
+  source: string
 }) {
   if (loading || detail === undefined) {
     return <div style={panelStyle}>Reading the draft…</div>
@@ -665,8 +676,8 @@ function DraftFields({
           <span style={{ display: 'flex', justifyContent: 'flex-end' }}>
             {field.confidence === null ? (
               <span style={{ font: "400 12px/1.3 var(--fx-font-mono)", color: 'var(--fx-text-tertiary)' }}>
-                {/* Absence, not a fake 1.0 — a person typed this one. */}
-                typed by a person
+                {/* Absence, not a fake 1.0 — but say WHICH absence. */}
+                {modelComposed(source) ? 'model wrote this · unscored' : 'typed by a person'}
               </span>
             ) : (
               <ConfidenceTicks confidence={field.confidence} />
@@ -757,15 +768,37 @@ const panelStyle: React.CSSProperties = {
 }
 
 /**
+ * Sources whose drafts a MODEL composed and which therefore carry no measurement.
+ *
+ * `ai_chat` is the one that exists today: a model chose tool arguments in conversation, so
+ * there is no extractor, no second pass, and nothing that could produce a per-field number —
+ * `validateConfidence` refuses one outright rather than accept an invented figure. That
+ * refusal is right, and it left the inbox unable to distinguish "nobody measured this
+ * because a person typed it" from "nobody measured this because a machine wrote it".
+ *
+ * `ai_extraction` is deliberately absent: it always carries real scores, so it never reaches
+ * the null branch.
+ */
+const MODEL_COMPOSED = new Set(['ai_chat'])
+const modelComposed = (source: string): boolean => MODEL_COMPOSED.has(source)
+
+/**
  * Ten slashes at the mark's 34°. Below 0.90 the fill turns warning — the one
  * field the extractor was least sure about is the field to read first.
  * A human draft has NO confidence, which is absence, not a fake 1.0.
  */
-function ConfidenceTicks({ confidence }: { confidence: number | null }) {
+function ConfidenceTicks({
+  confidence,
+  source,
+}: {
+  confidence: number | null
+  /** Optional: the row summary knows it, a per-field tick already resolved it. */
+  source?: string
+}) {
   if (confidence === null) {
     return (
       <span style={{ font: "400 12.5px/1.3 var(--fx-font-mono)", color: 'var(--fx-text-tertiary)' }}>
-        human edit
+        {source !== undefined && modelComposed(source) ? 'unscored' : 'human edit'}
       </span>
     )
   }

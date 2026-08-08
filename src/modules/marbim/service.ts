@@ -40,7 +40,7 @@ import {
   MAX_TOOL_ITERATIONS,
   type ExecutedCall,
 } from './loop'
-import { getProvider, ProviderError, type TextMessage } from './provider'
+import { getProvider, ProviderError, type MarbimProvider, type TextMessage } from './provider'
 import { chatTurns, extractionJobs, marbimCallLog } from './schema'
 import {
   collectTools,
@@ -753,6 +753,37 @@ async function logCall(
  * question is redacted before it is stored or sent — a connection string pasted into a chat
  * box is the realistic accident, and it would otherwise live in the database forever.
  */
+
+/**
+ * One retry for a failure the provider has already told us is transient.
+ *
+ * `ProviderError` carries `retryable`, and until now only the queued-extraction path read
+ * it — a chat asking the same question got the raw error. The one that actually happened:
+ * Anthropic returns a turn with no text and no tool calls (`end_turn`), the provider throws
+ * because an empty turn is unrenderable, and the surface says "I lost the connection halfway
+ * through". Asking again worked every time, which means the user was doing the retry by
+ * hand and being told a network story to explain why they had to.
+ *
+ * Bounded at one extra attempt, deliberately. A retryable error here is a coin-flip, not a
+ * queue: the caller is a person watching a spinner that already ran for thirty seconds, and
+ * a second failure is worth showing rather than hiding behind a third try. Overload (429,
+ * 529) is also flagged retryable and a short pause is exactly right for it; anything the
+ * provider marked NOT retryable — a bad request, a missing key, a model with no logprobs —
+ * is rethrown untouched, because it will fail identically the next time.
+ */
+async function generateWithRetry(request: Parameters<MarbimProvider['generate']>[0]) {
+  try {
+    return await getProvider().generate(request)
+  } catch (error) {
+    if (!(error instanceof ProviderError) || !error.retryable) throw error
+
+    // Long enough to clear a rate-limit window's edge, short enough that a person waiting
+    // does not read it as a hang.
+    await new Promise((resolve) => setTimeout(resolve, 750))
+    return getProvider().generate(request)
+  }
+}
+
 export async function chat(
   ctx: RequestCtx,
   input: {
@@ -834,22 +865,24 @@ export async function chat(
     const finalPass = iteration >= MAX_TOOL_ITERATIONS
     const callStartedAt = Date.now()
 
+    const request = {
+      role: 'reason' as const,
+      system: prompt.text,
+      messages,
+      ...(finalPass || tools.length === 0
+        ? {}
+        : {
+            tools: tools.map((tool) => ({
+              name: tool.name,
+              description: tool.description,
+              schema: toJsonSchema(tool),
+            })),
+          }),
+    }
+
     let result
     try {
-      result = await getProvider().generate({
-        role: 'reason',
-        system: prompt.text,
-        messages,
-        ...(finalPass || tools.length === 0
-          ? {}
-          : {
-              tools: tools.map((tool) => ({
-                name: tool.name,
-                description: tool.description,
-                schema: toJsonSchema(tool),
-              })),
-            }),
-      })
+      result = await generateWithRetry(request)
     } catch (error) {
       await logCall(ctx, {
         role: 'reason',
