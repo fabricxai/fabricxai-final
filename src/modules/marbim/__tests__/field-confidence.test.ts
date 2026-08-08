@@ -318,3 +318,26 @@ describe('chosenTokensFromOpenAi · the only thing that differs between vendors'
     expect(() => fieldConfidenceFromTokens(chosenTokensFromOpenAi([]))).toThrow(ConfidenceError)
   })
 })
+
+describe('the schema echo, unwrapped', () => {
+  /**
+   * gpt-4o-mini, handed a JSON Schema as response_format, sometimes returns the ENVELOPE
+   * with the answer inside: {"type":"object","properties":{...}}. Found live — the same
+   * tech pack extracted clean from pdftotext text and came back wrapped from a browser's
+   * flattened copy, so the first real tester hit what the rehearsal could not.
+   */
+  it('scores the fields INSIDE properties and returns the inner text', () => {
+    const echo = `{"type":"object","properties":{"styleCode":"ST-2610","lines":[{"uom":"kg"}]}}`
+    const result = fieldConfidenceFromTokens([...echo].map((c) => tok(c, 0.9)))
+
+    expect(Object.keys(result.fieldConfidence).sort()).toEqual(['lines', 'styleCode'])
+    expect(JSON.parse(result.text)).toEqual({ styleCode: 'ST-2610', lines: [{ uom: 'kg' }] })
+  })
+
+  it('a payload that legitimately has other fields alongside is NOT an echo', () => {
+    const notEcho = `{"type":"object","properties":{"a":1},"name":"x"}`
+    const result = fieldConfidenceFromTokens([...notEcho].map((c) => tok(c, 0.9)))
+
+    expect(Object.keys(result.fieldConfidence).sort()).toEqual(['name', 'properties', 'type'])
+  })
+})

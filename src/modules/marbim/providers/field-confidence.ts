@@ -239,7 +239,42 @@ export function fieldConfidenceFromTokens(
   }
 
   const { text, placed } = placeTokens(tokens)
-  const spans = topLevelValueSpans(text)
+  let spans = topLevelValueSpans(text)
+  let valueText = text
+
+  /*
+   * The schema-echo unwrap.
+   *
+   * Handed a JSON Schema as `response_format`, gpt-4o-mini sometimes returns the ENVELOPE
+   * with the answer inside it: `{"type":"object","properties":{...the real fields...}}`.
+   * Whether it does depends on the document's text shape — the same tech pack extracted
+   * clean from pdftotext output and came back wrapped from a browser's flattened copy, so
+   * the first live tester hit it and the rehearsal did not.
+   *
+   * Detected by the signature, not guessed: a top level of exactly `type`/`properties`
+   * (`required` tolerated) where `type` is the literal string "object" is the envelope —
+   * no draft schema in this system names those fields. The spans are re-derived INSIDE the
+   * `properties` object and shifted to absolute offsets, so every score is still computed
+   * from the tokens that produced the actual value, not the wrapper punctuation.
+   */
+  const echoKeys = Object.keys(spans)
+  const isEcho =
+    echoKeys.includes('type') &&
+    echoKeys.includes('properties') &&
+    echoKeys.every((k) => k === 'type' || k === 'properties' || k === 'required') &&
+    text.slice(spans.type!.start, spans.type!.end).trim() === '"object"'
+
+  if (isEcho) {
+    const outer = spans.properties!
+    valueText = text.slice(outer.start, outer.end)
+    const inner = topLevelValueSpans(valueText)
+    spans = Object.fromEntries(
+      Object.entries(inner).map(([field, span]) => [
+        field,
+        { start: span.start + outer.start, end: span.end + outer.start },
+      ]),
+    )
+  }
 
   const fieldConfidence: Record<string, number> = {}
 
@@ -273,5 +308,7 @@ export function fieldConfidenceFromTokens(
     throw new ConfidenceError('the extraction returned an empty object')
   }
 
-  return { fieldConfidence, text }
+  // The text the caller parses is the text the spans were scored against — after an
+  // unwrap, that is the inner object, so value and confidence cannot disagree.
+  return { fieldConfidence, text: valueText }
 }
