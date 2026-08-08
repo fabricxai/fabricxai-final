@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest'
 import {
   QuantityError,
   compareDecimalStrings,
+  fitToScale,
   ratioAsPercent,
   subtractDecimalStrings,
   toMinor,
@@ -123,5 +124,33 @@ describe('toMinorAtScale · a consumption is not a stock figure', () => {
   it('reads a whole number at any scale', () => {
     expect(toMinorAtScale('12', 4)).toBe(120_000n)
     expect(toMinorAtScale('12', 0)).toBe(12n)
+  })
+})
+
+describe('fitToScale', () => {
+  it('trims trailing zeros into the narrower scale — same number, different formatting', () => {
+    // The first live win: quotes carry numeric(14,4), the order book numeric(14,2).
+    expect(fitToScale('6.9500', 2)).toBe('6.95')
+    expect(fitToScale('4.9800', 2)).toBe('4.98')
+    expect(fitToScale('7', 2)).toBe('7.00')
+    expect(fitToScale('7.0000', 2)).toBe('7.00')
+  })
+
+  it('refuses a digit it would have to drop, rather than rounding money at a seam', () => {
+    // "6.9525" into two places is a DIFFERENT price — an order that does not match the
+    // quote the buyer holds is worse than no order.
+    expect(() => fitToScale('6.9525', 2)).toThrow(QuantityError)
+    expect(() => fitToScale('6.9525', 2, 'the won quote price')).toThrow(/won quote price/)
+  })
+
+  it('keeps the sign and survives scale 0', () => {
+    expect(fitToScale('-1.50', 1)).toBe('-1.5')
+    expect(fitToScale('12.000', 0)).toBe('12')
+    expect(() => fitToScale('12.5', 0)).toThrow(QuantityError)
+  })
+
+  it('refuses a string that is not a decimal at all', () => {
+    expect(() => fitToScale('6,95', 2)).toThrow(QuantityError)
+    expect(() => fitToScale('', 2)).toThrow(QuantityError)
   })
 })

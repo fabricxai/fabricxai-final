@@ -359,7 +359,11 @@ describe('1.2 → 1.3 · a won RFQ becomes an order', () => {
     unit: 'pcs',
     sizeRatio: { S: 1, M: 2, L: 2, XL: 1 },
     sizeBreakdown: { S: 2000, M: 4000, L: 4000, XL: 2000 },
-    fobPrice: '4.98',
+    // Four decimal places, because that is what a real win carries: `quotes.fob_price`
+    // is numeric(14,4), so the live payload says "4.9800" even when the price is $4.98.
+    // The first live win failed for exactly this — the fixture said '4.98' and never
+    // exercised the seam.
+    fobPrice: '4.9800',
     currency: 'USD',
     requestedShipDate: '2026-11-15',
     ...over,
@@ -399,6 +403,9 @@ describe('1.2 → 1.3 · a won RFQ becomes an order', () => {
     expect(styles).toHaveLength(1)
     expect(styles[0]!.styleCode).toBe('ST-100')
     expect(styles[0]!.contractedQty).toBe(12000)
+    // "4.9800" from the quote lands as "4.98" in the order book — same number, the
+    // formatting trimmed at the seam rather than refused by orders' 2-place zod.
+    expect(styles[0]!.unitPrice).toBe('4.98')
   })
 
   it('creates NO breakdown — the colours come with the buyer’s PO', async () => {

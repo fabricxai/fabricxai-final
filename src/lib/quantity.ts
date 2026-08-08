@@ -274,6 +274,32 @@ export function roundToScale(value: string, scale = QUANTITY_SCALE): string {
   return `${negative ? '-' : ''}${digits.slice(0, -scale)}.${digits.slice(-scale)}`
 }
 
+/**
+ * Fit a decimal string into `scale` places WITHOUT changing its value, or refuse.
+ *
+ * "6.9500" and "6.95" are the same number wearing different formatting — quotes carry four
+ * decimal places because margins are computed finely, while the order book stores unit
+ * prices at two. Trailing zeros are trimmed freely; a digit that would actually be lost
+ * ("6.9525" into two places) is a refusal, not a rounding — rounding money silently at a
+ * module seam is exactly how a booked order stops matching the quote the buyer holds.
+ */
+export function fitToScale(value: string, scale: number, what = 'amount'): string {
+  if (!DECIMAL.test(value)) throw new QuantityError(`"${value}" is not a decimal`)
+
+  const negative = value.startsWith('-')
+  const [whole = '0', fraction = ''] = value.replace('-', '').split('.')
+  const trimmed = fraction.replace(/0+$/, '')
+
+  if (trimmed.length > scale) {
+    throw new QuantityError(
+      `${what} "${value}" carries ${trimmed.length} meaningful decimal places and cannot fit ${scale} without changing its value`,
+    )
+  }
+
+  if (scale === 0) return `${negative ? '-' : ''}${whole}`
+  return `${negative ? '-' : ''}${whole}.${trimmed.padEnd(scale, '0')}`
+}
+
 export function compareQty(a: Quantity, b: Quantity): -1 | 0 | 1 {
   assertSameUnit(a, b)
   const left = toMinor(a.value)

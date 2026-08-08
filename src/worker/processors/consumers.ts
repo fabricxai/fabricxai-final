@@ -35,6 +35,7 @@ import { getPolicy } from '@/modules/settings/service'
 
 import { QUEUE } from '../queues'
 import { factoryToday } from '@/lib/dates'
+import { fitToScale } from '@/lib/quantity'
 
 export interface EventJobData {
   eventId: string
@@ -322,7 +323,11 @@ const onRfqWon: Handler = async (ctx, payload) => {
       {
         styleCode: String(payload.styleCode),
         contractedQty: quantity,
-        unitPrice: String(payload.fobPrice),
+        // Quotes carry four decimal places ("6.9500"); the order book stores two. Same
+        // number, different formatting — `fitToScale` trims the zeros and REFUSES a price
+        // that would actually lose a digit, because an order that does not match the quote
+        // the buyer holds is worse than no order.
+        unitPrice: fitToScale(String(payload.fobPrice), 2, 'the won quote price'),
         currency: String(payload.currency ?? 'USD'),
       },
     ],
