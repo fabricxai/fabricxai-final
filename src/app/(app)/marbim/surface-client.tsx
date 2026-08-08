@@ -15,6 +15,7 @@ import { MarbimMark, type MarkState } from '@/components/fx/mark'
 import { ask } from '@/modules/marbim/actions'
 
 import { AttachControl, type Attachment } from './attach-client'
+import { MODEL_READABLE, ReadDocumentFlow } from './read-document-client'
 
 interface Turn {
   id: string
@@ -346,6 +347,14 @@ export function MarbimSurface({
             font: "400 15px/1.5 var(--fx-font-sans)",
           }}
         />
+        {/* The bridge from "attached" to "drafted": one flow per file the model can read.
+            Hidden for read-only roles — their submit would 403, and chips that refuse are
+            worse than no chips. Keyed by document id so a second attach gets its own flow. */}
+        {!readOnly
+          ? attachments
+              .filter((a) => MODEL_READABLE.test(a.mimeType))
+              .map((a) => <ReadDocumentFlow key={a.documentId} attachment={a} />)
+          : null}
         <AttachControl
           attachments={attachments}
           onAttach={(a) => setAttachments((list) => [...list, a])}

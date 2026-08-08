@@ -13,12 +13,18 @@ import type { AnyCtx } from '@/modules/core/ctx'
 import { buyerAccounts } from '@/modules/buyers/queries'
 import { recentAudits } from '@/modules/compliance/queries'
 
-import { intakeKind } from './intake'
+import { INTAKE_KINDS, intakeKind } from './intake'
 import { extractorVersionFor } from './marbim'
 import { EXTRACTOR_PROMPT_VERSION } from './providers/gemini'
 import { hasProvider, MODEL_READABLE_MIME, modelForRole } from './provider'
 import { primerModulesForRoles, toolsForRoles } from './scope'
-import { chat, queueExtraction, type ChatResult, type MarbimPolicy } from './service'
+import {
+  chat,
+  extractionStatus,
+  queueExtraction,
+  type ChatResult,
+  type MarbimPolicy,
+} from './service'
 import type { ToolPack } from './tools'
 
 /**
@@ -328,4 +334,44 @@ export async function readDocument(input: {
   revalidatePath('/approve')
 
   return { jobId, label: kind.label }
+}
+
+/**
+ * The intake kinds, as the composer's "read this document" flow needs them.
+ *
+ * The intake PAGE gets this list server-rendered; the composer discovers it after an
+ * attach, client-side. Same source (`INTAKE_KINDS`), same role wall as the submission it
+ * leads to — a viewer's drawer must not offer chips whose submit would 403.
+ */
+export async function listIntakeKinds(): Promise<
+  { id: string; label: string; hint: string; targetTable: string; needsContext: boolean }[]
+> {
+  await requireRole(await headers(), ...INTAKE_ROLES)
+  return INTAKE_KINDS.map((kind) => ({
+    id: kind.id,
+    label: kind.label,
+    hint: kind.hint,
+    targetTable: kind.targetTable,
+    needsContext: (kind.context ?? []).length > 0,
+  }))
+}
+
+/**
+ * One extraction's fate, for the surface that queued it to follow. Read-only and
+ * tenant-scoped; the poller stops the moment the status is terminal.
+ */
+export async function extractionJobStatus(input: { jobId: string }): Promise<{
+  status: string
+  error: string | null
+  pendingChangeId: string | null
+  targetTable: string
+}> {
+  const ctx = await requireRole(await headers(), ...INTAKE_ROLES)
+  const job = await extractionStatus(ctx, { jobId: input.jobId })
+  return {
+    status: job.status,
+    error: job.error,
+    pendingChangeId: job.pendingChangeId,
+    targetTable: job.targetTable,
+  }
 }

@@ -34,6 +34,8 @@ export interface Attachment {
   documentId: string
   filename: string
   sizeBytes: number
+  /** As the browser reported it at upload — what decides whether the model can read it. */
+  mimeType: string
 }
 
 type Phase =

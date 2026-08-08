@@ -1045,4 +1045,49 @@ export async function recentJobs(
   )
 }
 
+/**
+ * One job's fate, for a surface following it — the composer's "read this document" flow
+ * polls this until the job resolves. The error is flattened to its message: the raw jsonb
+ * carries attempts and retryability, which are the worker's business, not the person's.
+ */
+export async function extractionStatus(
+  ctx: AnyCtx,
+  input: { jobId: string },
+): Promise<{
+  status: string
+  error: string | null
+  pendingChangeId: string | null
+  moduleId: string
+  targetTable: string
+}> {
+  const job = await withTenantRead(ctx, async (tx) => {
+    const [row] = await tx
+      .select({
+        status: extractionJobs.status,
+        error: extractionJobs.error,
+        pendingChangeId: extractionJobs.pendingChangeId,
+        moduleId: extractionJobs.moduleId,
+        targetTable: extractionJobs.targetTable,
+      })
+      .from(extractionJobs)
+      .where(eq(extractionJobs.id, input.jobId))
+    return row
+  })
+
+  if (!job) throw notFound('marbim.errors.job_not_found', { jobId: input.jobId })
+
+  const error =
+    job.error && typeof job.error === 'object' && 'message' in job.error
+      ? String((job.error as { message: unknown }).message)
+      : null
+
+  return {
+    status: job.status,
+    error,
+    pendingChangeId: job.pendingChangeId,
+    moduleId: job.moduleId,
+    targetTable: job.targetTable,
+  }
+}
+
 export { and, conflict, MARBIM_EVENTS }
