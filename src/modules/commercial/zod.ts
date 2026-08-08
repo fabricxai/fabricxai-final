@@ -37,7 +37,11 @@ export const createUdPayload = z.object({
   issueDate: calendarDate.optional(),
   validUntil: calendarDate.optional(),
   authorizedItems: udAuthorizedItems,
-  documentId: z.uuid().optional(),
+  // `.catch(undefined)`, same reasoning as costing's sourceDocumentId: offered a uuid
+  // field, the extract model fills it with whatever id-shaped string the scan has
+  // ("UD-131", the bond licence) — no paper carries a UUID. An invalid value becomes
+  // absence; the manual path's picker always supplies a real id.
+  documentId: z.uuid().optional().catch(undefined),
 })
 
 /** What MARBIM extracts from a scanned UD. Every field is uncertain, hence the review. */
