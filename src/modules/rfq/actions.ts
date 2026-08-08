@@ -3,6 +3,8 @@
 import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
 
+import type { ActionFailure } from '@/lib/action-failure'
+import { AppError } from '@/modules/core/errors'
 import { requireRole } from '@/modules/core/session'
 import { getPolicy } from '@/modules/settings/service'
 
@@ -44,6 +46,34 @@ function refresh(): void {
   revalidatePath('/rfq')
 }
 
+/**
+ * A refusal crosses the boundary as a VALUE, because production masks anything thrown.
+ *
+ * Every gate in this module — the margin floor, "no live quote", "an order needs a
+ * requested ship date" — reached the screen as "Minified React error #441" in production,
+ * which taught three testers in a row that the system had crashed when it had in fact
+ * refused, correctly, with a sentence attached. Services keep throwing `AppError`; this is
+ * the boundary translation the framework's own guidance asks for ("action returns are
+ * serialized to the client"). Anything that is NOT an AppError is a genuine bug and stays
+ * thrown — its masking is correct.
+ */
+async function surfaced<T>(work: () => Promise<T>): Promise<T | ActionFailure> {
+  try {
+    return await work()
+  } catch (error) {
+    if (error instanceof AppError) {
+      const reason = error.details.reason
+      return {
+        failed: true,
+        code: error.code,
+        messageKey: error.messageKey,
+        ...(typeof reason === 'string' ? { reason } : {}),
+      }
+    }
+    throw error
+  }
+}
+
 /** Record an enquiry that arrived by email or on a call. */
 export async function createRfq(input: {
   buyerId: string
@@ -58,12 +88,13 @@ export async function createRfq(input: {
   currency?: string
   deadline?: string
   requestedShipDate?: string
-}): Promise<{ rfqId: string }> {
+}): Promise<{ rfqId: string } | ActionFailure> {
   const ctx = await requireRole(await headers(), ...WRITERS)
-  const result = await createRfqIn(ctx, { ...input, source: 'manual' })
-
-  refresh()
-  return result
+  return surfaced(async () => {
+    const result = await createRfqIn(ctx, { ...input, source: 'manual' })
+    refresh()
+    return result
+  })
 }
 
 /**
@@ -81,14 +112,15 @@ export async function draftQuote(input: {
   rfqId: string
   styleCode: string
   validityDate?: string
-}): Promise<DraftQuoteResult> {
+}): Promise<DraftQuoteResult | ActionFailure> {
   const ctx = await requireRole(await headers(), ...WRITERS)
   const policy = await getPolicy<RfqPolicy>(ctx, 'rfq')
 
-  const result = await draftQuoteIn(ctx, input, policy)
-
-  refresh()
-  return result
+  return surfaced(async () => {
+    const result = await draftQuoteIn(ctx, input, policy)
+    refresh()
+    return result
+  })
 }
 
 /**
@@ -104,14 +136,15 @@ export async function sendQuote(input: {
   quoteId: string
   sentAt?: string
   belowFloorReason?: string
-}): Promise<{ quoteId: string; belowFloor: boolean }> {
+}): Promise<{ quoteId: string; belowFloor: boolean } | ActionFailure> {
   const ctx = await requireRole(await headers(), ...WRITERS)
   const policy = await getPolicy<RfqPolicy>(ctx, 'rfq')
 
-  const result = await sendQuoteIn(ctx, input, policy)
-
-  refresh()
-  return result
+  return surfaced(async () => {
+    const result = await sendQuoteIn(ctx, input, policy)
+    refresh()
+    return result
+  })
 }
 
 /**
@@ -121,14 +154,21 @@ export async function sendQuote(input: {
  * its TNA. The quote it wins on is the latest non-superseded one, resolved server-side — a
  * caller naming a quote id could win on a version the buyer never saw.
  */
-export async function markRfqWon(input: { rfqId: string }): Promise<{ rfqId: string }> {
+export async function markRfqWon(input: {
+  rfqId: string
+  /** Winning terms — what the acceptance fixed that the enquiry never stated. */
+  requestedShipDate?: string
+  sizeRatio?: Record<string, number>
+}): Promise<{ rfqId: string } | ActionFailure> {
   const ctx = await requireRole(await headers(), ...WRITERS)
-  const result = await markWonIn(ctx, input)
+  return surfaced(async () => {
+    const result = await markWonIn(ctx, input)
 
-  refresh()
-  // The order desk is where this lands moments later, through the `rfq.won` consumer.
-  revalidatePath('/orders')
-  return { rfqId: result.rfqId }
+    refresh()
+    // The order desk is where this lands moments later, through the `rfq.won` consumer.
+    revalidatePath('/orders')
+    return { rfqId: result.rfqId }
+  })
 }
 
 /**
@@ -142,11 +182,13 @@ export async function markRfqLost(input: {
   rfqId: string
   lossReasonCode: string
   note?: string
-}): Promise<void> {
+}): Promise<{ done: true } | ActionFailure> {
   const ctx = await requireRole(await headers(), ...WRITERS)
-  await markLostIn(ctx, input)
-
-  refresh()
+  return surfaced(async () => {
+    await markLostIn(ctx, input)
+    refresh()
+    return { done: true as const }
+  })
 }
 
 /** A question put to the buyer. The clock on it drives the stale-clarification alert. */
@@ -154,12 +196,13 @@ export async function askClarification(input: {
   rfqId: string
   question: string
   askedAt: string
-}): Promise<{ clarificationId: string }> {
+}): Promise<{ clarificationId: string } | ActionFailure> {
   const ctx = await requireRole(await headers(), ...WRITERS)
-  const result = await askClarificationIn(ctx, input)
-
-  refresh()
-  return result
+  return surfaced(async () => {
+    const result = await askClarificationIn(ctx, input)
+    refresh()
+    return result
+  })
 }
 
 /** What they said. Answering once is the rule — a rewritten answer is a different question. */
@@ -167,9 +210,11 @@ export async function answerClarification(input: {
   clarificationId: string
   answer: string
   answeredAt: string
-}): Promise<void> {
+}): Promise<{ done: true } | ActionFailure> {
   const ctx = await requireRole(await headers(), ...WRITERS)
-  await answerClarificationIn(ctx, input)
-
-  refresh()
+  return surfaced(async () => {
+    await answerClarificationIn(ctx, input)
+    refresh()
+    return { done: true as const }
+  })
 }

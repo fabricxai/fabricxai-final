@@ -91,6 +91,16 @@ payroll in the nav, prices masked. Start there.
     the amendment text into MARBIM chat (it drafts `Navy/L +600, White/S −600` via
     `orders.propose_breakdown_revision`), or use the order page's Breakdown → "buyer
     amendment" path. Both produce the Rev 2 + history the runbook checks.
+12. **Phase 2, Mark won asks for winning terms.** The enquiry email deliberately states
+    no firm ship date ("mid-November window") and no size ratio — those arrive with the
+    PO. But the win is what creates the order and its TNA, so `markWon` refuses without
+    them. The drawer now asks for whichever is missing right in the "Won or lost"
+    section: a ship date picker and a ratio field (`S:1 M:2 L:2 XL:1`). Before this, the
+    refusal existed with no way to satisfy it — and surfaced as "Minified React error
+    #441", because production masks anything a server action THROWS. RFQ actions now
+    return refusals as values (`lib/action-failure.ts`), so the floor gate, "no live
+    quote" and the winning-terms refusal all read as sentences. Other modules still
+    throw — expect #441 there until the pattern is adopted module by module.
 
 ## Honest status of the traps
 

@@ -131,6 +131,29 @@ export function isQuoteExpired(input: { validityDate: string | null; today: stri
 // Winning
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * "S:1 M:2 L:2 XL:1" → { S: 1, M: 2, L: 2, XL: 1 }.
+ *
+ * How a merchandiser records the agreed ratio at the moment of winning, when the enquiry
+ * never stated one — an enquiry genuinely arrives as "36,000 pcs" and the ratio gets fixed
+ * in the acceptance. Tokens are `size:parts` or `size=parts`, separated by spaces or
+ * commas; sizes are uppercased so "s:1" and "S:1" are the same size. Null for anything
+ * unparseable — the caller keeps the button disabled rather than guessing.
+ */
+export function parseSizeRatio(text: string): Record<string, number> | null {
+  const ratio: Record<string, number> = {}
+
+  for (const token of text.trim().split(/[,\s]+/).filter(Boolean)) {
+    const match = /^([A-Za-z0-9/+-]+)[:=](\d{1,5})$/.exec(token)
+    if (!match?.[1] || !match[2]) return null
+    const parts = Number(match[2])
+    if (parts <= 0) return null
+    ratio[match[1].toUpperCase()] = parts
+  }
+
+  return Object.keys(ratio).length > 0 ? ratio : null
+}
+
 export interface WonInput {
   rfqId: string
   buyerId: string

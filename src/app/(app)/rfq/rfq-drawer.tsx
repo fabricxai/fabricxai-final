@@ -9,9 +9,11 @@ import { useLocale, useT } from '@/components/fx/locale'
 import { Badge, Button } from '@/components/fx/primitives'
 import { Eyebrow } from '@/components/fx/signature'
 import { actionErrorMessage } from '@/lib/action-error'
+import { unwrap } from '@/lib/action-failure'
 import { factoryToday } from '@/lib/dates'
 import { committedTrail } from '@/modules/approvals/actions'
 import type { RecordTrail } from '@/modules/approvals/queries'
+import { parseSizeRatio } from '@/modules/rfq/rfq'
 import {
   askClarification,
   draftQuote,
@@ -33,6 +35,9 @@ export interface DrawerRfq {
   targetPrice: string | null
   quote: { id: string; version: number; fobPrice: string; currency: string; status: string } | null
   openClarifications: number
+  /** Null / empty when the enquiry never stated them — the win asks for them. */
+  requestedShipDate: string | null
+  sizeRatio: Record<string, number>
 }
 
 /**
@@ -78,6 +83,8 @@ export function RfqDrawer({
   const [lossCode, setLossCode] = useState('')
   const [lossNote, setLossNote] = useState('')
   const [question, setQuestion] = useState('')
+  const [wonShipDate, setWonShipDate] = useState('')
+  const [wonRatioText, setWonRatioText] = useState('')
 
   if (!rfq) return null
 
@@ -85,6 +92,15 @@ export function RfqDrawer({
   const draftable = live
   const sendable = rfq.quote?.status === 'draft'
   const decidable = rfq.status === 'quoted'
+
+  // What the win still needs. An enquiry arrives as "36,000 pcs, mid-November window";
+  // the acceptance is where a date and a ratio become firm, so the drawer asks for them
+  // HERE rather than letting `markWon` refuse an order it cannot schedule or cut.
+  const needsShipDate = decidable && !rfq.requestedShipDate
+  const needsRatio =
+    decidable && Object.values(rfq.sizeRatio ?? {}).filter((parts) => parts > 0).length === 0
+  const wonRatio = parseSizeRatio(wonRatioText)
+  const winReady = (!needsShipDate || wonShipDate !== '') && (!needsRatio || wonRatio !== null)
 
   function flash(message: string) {
     setToast(message)
@@ -161,11 +177,13 @@ export function RfqDrawer({
                   disabled={pending || (styleCode || rfq.styleCode || '') === ''}
                   onClick={() =>
                     run(async () => {
-                      const result = await draftQuote({
-                        rfqId: rfq.id,
-                        styleCode: styleCode || rfq.styleCode || '',
-                        ...(validity ? { validityDate: validity } : {}),
-                      })
+                      const result = unwrap(
+                        await draftQuote({
+                          rfqId: rfq.id,
+                          styleCode: styleCode || rfq.styleCode || '',
+                          ...(validity ? { validityDate: validity } : {}),
+                        }),
+                      )
                       return result.supersededCount > 0
                         ? t('ui.rfq.quote_drafted_superseding', {
                             version: result.version,
@@ -201,13 +219,15 @@ export function RfqDrawer({
                   disabled={pending}
                   onClick={() =>
                     run(async () => {
-                      const result = await sendQuote({
-                        quoteId: rfq.quote!.id,
-                        sentAt: factoryToday(),
-                        ...(belowFloorReason.trim()
-                          ? { belowFloorReason: belowFloorReason.trim() }
-                          : {}),
-                      })
+                      const result = unwrap(
+                        await sendQuote({
+                          quoteId: rfq.quote!.id,
+                          sentAt: factoryToday(),
+                          ...(belowFloorReason.trim()
+                            ? { belowFloorReason: belowFloorReason.trim() }
+                            : {}),
+                        }),
+                      )
                       // What was SENT, not what was expected: the server decided whether
                       // this crossed the floor, and it is the answer worth reporting.
                       return result.belowFloor
@@ -228,6 +248,39 @@ export function RfqDrawer({
               <span style={{ font: "400 13px/1.5 var(--fx-font-sans)", color: 'var(--fx-text-secondary)' }}>
                 {t('ui.rfq.decide_body')}
               </span>
+
+              {needsShipDate || needsRatio ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <span
+                    style={{ font: "400 12.5px/1.5 var(--fx-font-sans)", color: 'var(--fx-text-secondary)' }}
+                  >
+                    {t('ui.rfq.winning_terms_body')}
+                  </span>
+                  {needsShipDate ? (
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <span style={{ font: "500 13px/1.3 var(--fx-font-sans)" }}>
+                        {t('ui.rfq.won_ship_date')}
+                      </span>
+                      <input
+                        type="date"
+                        value={wonShipDate}
+                        onChange={(e) => setWonShipDate(e.target.value)}
+                        style={dateStyle}
+                      />
+                    </label>
+                  ) : null}
+                  {needsRatio ? (
+                    <TextInput
+                      label={t('ui.rfq.won_size_ratio')}
+                      hint={t('ui.rfq.won_size_ratio_hint')}
+                      mono
+                      placeholder="S:1 M:2 L:2 XL:1"
+                      value={wonRatioText}
+                      onChange={(e) => setWonRatioText(e.target.value)}
+                    />
+                  ) : null}
+                </div>
+              ) : null}
 
               <select value={lossCode} onChange={(e) => setLossCode(e.target.value)} style={dateStyle}>
                 <option value="">{t('ui.rfq.choose_loss_reason')}</option>
@@ -254,11 +307,13 @@ export function RfqDrawer({
                   disabled={pending || lossCode === ''}
                   onClick={() =>
                     run(async () => {
-                      await markRfqLost({
-                        rfqId: rfq.id,
-                        lossReasonCode: lossCode,
-                        ...(lossNote.trim() ? { note: lossNote.trim() } : {}),
-                      })
+                      unwrap(
+                        await markRfqLost({
+                          rfqId: rfq.id,
+                          lossReasonCode: lossCode,
+                          ...(lossNote.trim() ? { note: lossNote.trim() } : {}),
+                        }),
+                      )
                       return t('ui.rfq.marked_lost')
                     })
                   }
@@ -267,10 +322,18 @@ export function RfqDrawer({
                 </Button>
                 <Button
                   variant="primary"
-                  disabled={pending}
+                  disabled={pending || !winReady}
                   onClick={() =>
                     run(async () => {
-                      await markRfqWon({ rfqId: rfq.id })
+                      unwrap(
+                        await markRfqWon({
+                          rfqId: rfq.id,
+                          ...(needsShipDate && wonShipDate
+                            ? { requestedShipDate: wonShipDate }
+                            : {}),
+                          ...(needsRatio && wonRatio ? { sizeRatio: wonRatio } : {}),
+                        }),
+                      )
                       return t('ui.rfq.marked_won')
                     })
                   }
@@ -296,11 +359,13 @@ export function RfqDrawer({
                   disabled={pending || question.trim() === ''}
                   onClick={() =>
                     run(async () => {
-                      await askClarification({
-                        rfqId: rfq.id,
-                        question: question.trim(),
-                        askedAt: factoryToday(),
-                      })
+                      unwrap(
+                        await askClarification({
+                          rfqId: rfq.id,
+                          question: question.trim(),
+                          askedAt: factoryToday(),
+                        }),
+                      )
                       return t('ui.rfq.asked')
                     })
                   }

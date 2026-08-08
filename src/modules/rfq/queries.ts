@@ -41,6 +41,13 @@ export interface RfqRow {
   deadline: string | null
   /** Negative means the deadline has passed. Null when there is no deadline. */
   daysToDeadline: number | null
+  /**
+   * What a win still needs. The drawer asks for whichever of these is missing at the
+   * moment of marking won — an enquiry genuinely arrives without them, and `markWon`
+   * refuses an order it cannot schedule or cut.
+   */
+  requestedShipDate: string | null
+  sizeRatio: Record<string, number>
   status: RfqStatus
   source: string
   lossReasonCode: string | null
@@ -83,6 +90,8 @@ export async function board(
         targetCurrency: rfqs.targetCurrency,
         currency: rfqs.currency,
         deadline: rfqs.deadline,
+        requestedShipDate: rfqs.requestedShipDate,
+        sizeRatio: rfqs.sizeRatio,
         status: rfqs.status,
         source: rfqs.source,
         lossReasonCode: rfqs.lossReasonCode,

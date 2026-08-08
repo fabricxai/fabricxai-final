@@ -416,6 +416,12 @@ export const UI_MESSAGES: Catalogue = {
     'ui.rfq.decide': 'Won or lost',
     'ui.rfq.decide_body':
       'Winning hands the latest live quote to the order desk, which turns it into an order, its styles and its schedule.',
+    'ui.rfq.winning_terms_body':
+      'The enquiry never stated these — the acceptance is where they became firm, so record them with the win. The TNA is built backwards from the ship date, and cutting needs pieces per size.',
+    'ui.rfq.won_ship_date': 'Requested ship date',
+    'ui.rfq.won_size_ratio': 'Size ratio',
+    'ui.rfq.won_size_ratio_hint':
+      'Parts per size, like S:1 M:2 L:2 XL:1 — the order quantity is split by these parts.',
     'ui.rfq.choose_loss_reason': 'Why it was lost',
     'ui.rfq.no_loss_reasons':
       'No loss reasons are configured, so a loss cannot be recorded. They are seeded per company.',
@@ -1543,6 +1549,12 @@ export const UI_MESSAGES: Catalogue = {
     'ui.rfq.decide': 'পাওয়া না হারানো',
     'ui.rfq.decide_body':
       'জিতলে সর্বশেষ চালু কোটটি অর্ডার ডেস্কে যায়, আর সেখান থেকে অর্ডার, স্টাইল ও শিডিউল তৈরি হয়।',
+    'ui.rfq.winning_terms_body':
+      'এনকোয়ারিতে এগুলো ছিল না — গ্রহণের সময়ই এগুলো চূড়ান্ত হয়েছে, তাই জেতার সাথে রেকর্ড করুন। শিপ ডেট থেকে পেছন দিকে TNA তৈরি হয়, আর কাটিংয়ের জন্য সাইজপ্রতি পিস লাগে।',
+    'ui.rfq.won_ship_date': 'অনুরোধকৃত শিপ ডেট',
+    'ui.rfq.won_size_ratio': 'সাইজ রেশিও',
+    'ui.rfq.won_size_ratio_hint':
+      'সাইজপ্রতি ভাগ, যেমন S:1 M:2 L:2 XL:1 — অর্ডারের পরিমাণ এই ভাগে ভাগ হয়।',
     'ui.rfq.choose_loss_reason': 'কেন হারানো গেল',
     'ui.rfq.no_loss_reasons':
       'কোনো লস রিজন সেট করা নেই, তাই হারানো রেকর্ড করা যাচ্ছে না। এগুলো প্রতি কোম্পানিতে সিড হয়।',

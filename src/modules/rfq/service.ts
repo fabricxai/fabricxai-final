@@ -38,7 +38,7 @@ import {
   type RfqStatus,
 } from './rfq'
 import { lossReasons, quotes, rfqClarifications, rfqs } from './schema'
-import { clarificationPayload, rfqPayload, type RfqPayload } from './zod'
+import { clarificationPayload, rfqPayload, wonInput, type RfqPayload } from './zod'
 
 /** ⚖ — a quote is the price a year of work gets booked at. */
 registerAuditedTables('quotes')
@@ -514,11 +514,13 @@ export async function sendQuote(
  */
 export async function markWon(
   ctx: RequestCtx,
-  input: { rfqId: string },
+  input: { rfqId: string; requestedShipDate?: string; sizeRatio?: Record<string, number> },
 ): Promise<{ rfqId: string; payload: Record<string, unknown> }> {
+  const terms = wonInput.parse(input)
+
   return withTenantTx(ctx, async (tx) => {
-    const [rfq] = await tx.select().from(rfqs).where(scoped(rfqs, ctx, eq(rfqs.id, input.rfqId))).for('update')
-    if (!rfq) throw notFound('rfq.errors.not_found', { rfqId: input.rfqId })
+    const [rfq] = await tx.select().from(rfqs).where(scoped(rfqs, ctx, eq(rfqs.id, terms.rfqId))).for('update')
+    if (!rfq) throw notFound('rfq.errors.not_found', { rfqId: terms.rfqId })
 
     rfqStatusMachine.assert(rfq.status as RfqStatus, 'won')
 
@@ -533,6 +535,12 @@ export async function markWon(
       throw new AppError('validation_failed', 'rfq.errors.no_live_quote', { rfqId: rfq.id })
     }
 
+    // The acceptance is where a vague enquiry becomes concrete: a ship window becomes a
+    // date, "36,000 pcs" becomes a ratio. Terms recorded with the win fill what the RFQ
+    // never had; `wonPayload` still refuses if either is missing from both places.
+    const requestedShipDate = terms.requestedShipDate ?? rfq.requestedShipDate
+    const sizeRatio = terms.sizeRatio ?? rfq.sizeRatio
+
     const payload = wrapRfqError(() =>
       wonPayload({
         rfqId: rfq.id,
@@ -540,21 +548,30 @@ export async function markWon(
         styleCode: rfq.styleCode ?? rfq.title,
         quantity: rfq.quantity,
         unit: rfq.unit,
-        sizeRatio: rfq.sizeRatio,
+        sizeRatio,
         fobPrice: quote.fobPrice,
         currency: quote.currency,
-        requestedShipDate: rfq.requestedShipDate,
+        requestedShipDate,
       }),
     )
 
-    await tx.update(rfqs).set({ status: 'won', updatedAt: new Date() }).where(scoped(rfqs, ctx, eq(rfqs.id, rfq.id)))
+    await tx
+      .update(rfqs)
+      .set({ status: 'won', requestedShipDate, sizeRatio, updatedAt: new Date() })
+      .where(scoped(rfqs, ctx, eq(rfqs.id, rfq.id)))
 
     await recordChange(ctx, tx, {
       action: 'update',
       targetTable: 'quotes',
       targetId: quote.id,
       before: { rfqStatus: rfq.status },
-      after: { rfqStatus: 'won', fobPrice: quote.fobPrice, quantity: rfq.quantity },
+      after: {
+        rfqStatus: 'won',
+        fobPrice: quote.fobPrice,
+        quantity: rfq.quantity,
+        requestedShipDate,
+        sizeRatio,
+      },
     })
 
     // 1.3 creates the order off this.

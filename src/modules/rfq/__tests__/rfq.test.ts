@@ -18,6 +18,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildFobBreakdown,
   isQuoteExpired,
+  parseSizeRatio,
   RfqError,
   rfqStatusMachine,
   wonPayload,
@@ -173,6 +174,27 @@ describe('wonPayload · what becomes an order', () => {
 
     expect(total).toBe(10001)
     expect(payload.sizeBreakdown.M!).toBeGreaterThan(payload.sizeBreakdown.S!)
+  })
+})
+
+describe('parseSizeRatio · how the ratio is typed at the moment of winning', () => {
+  it('22 · reads "S:1 M:2 L:2 XL:1" into parts per size', () => {
+    expect(parseSizeRatio('S:1 M:2 L:2 XL:1')).toEqual({ S: 1, M: 2, L: 2, XL: 1 })
+  })
+
+  it('23 · commas, equals signs and lowercase sizes all mean the same thing', () => {
+    expect(parseSizeRatio('s=1, m=2, l=2, xl=1')).toEqual({ S: 1, M: 2, L: 2, XL: 1 })
+  })
+
+  it('24 · refuses rather than guesses on anything unparseable', () => {
+    expect(parseSizeRatio('')).toBeNull()
+    expect(parseSizeRatio('S M L')).toBeNull()
+    expect(parseSizeRatio('S:0')).toBeNull() // zero parts is not a size in the order
+    expect(parseSizeRatio('S:one')).toBeNull()
+  })
+
+  it('25 · numeric and slashed size names survive — kids sizes are "6/7"', () => {
+    expect(parseSizeRatio('6/7:1 8/9:2')).toEqual({ '6/7': 1, '8/9': 2 })
   })
 })
 

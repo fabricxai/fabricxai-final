@@ -31,6 +31,19 @@ export const rfqPayload = z.object({
   ownerUserId: z.string().optional(),
 })
 
+/**
+ * What `markWon` may be handed: the id, plus whichever winning terms the buyer's acceptance
+ * fixed. An enquiry genuinely arrives without a firm ship date ("mid-November window") or a
+ * size ratio — those get agreed in the acceptance, and the moment of winning is the last
+ * honest place to record them. Absent here means "the RFQ already has it"; `wonPayload`
+ * still refuses a win that ends up with neither.
+ */
+export const wonInput = z.object({
+  rfqId: z.string().uuid(),
+  requestedShipDate: isoDate.optional(),
+  sizeRatio: z.record(z.string().min(1), z.number().int().min(1)).optional(),
+})
+
 export const clarificationPayload = z.object({
   rfqId: z.string().uuid(),
   question: z.string().min(1).max(2000),

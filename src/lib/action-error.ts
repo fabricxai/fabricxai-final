@@ -18,6 +18,7 @@
  * Naming the value needs the action to return a typed failure instead of throwing, which is
  * a larger change than this file.
  */
+import { ActionRefused } from './action-failure'
 import { DEFAULT_LOCALE, MESSAGES, t, type Locale } from './i18n'
 
 /** `conflict: maintenance.errors.serial_exists` → `maintenance.errors.serial_exists`. */
@@ -36,6 +37,17 @@ export function actionErrorMessage(
   locale: Locale = DEFAULT_LOCALE,
 ): string {
   if (!(error instanceof Error)) return fallback
+
+  // A refusal that crossed the boundary as a VALUE (see action-failure.ts) — the only path
+  // that still carries real copy in production, where thrown messages are masked.
+  if (error instanceof ActionRefused) {
+    // The service's own sentence wins over catalogue copy filed under the key — "an order
+    // needs a requested ship date" beats "That does not fit what an RFQ accepts."
+    if (error.failure.reason) return error.failure.reason
+    const copy = t(locale, error.failure.messageKey)
+    if (copy !== error.failure.messageKey) return copy
+    return MESSAGES[DEFAULT_LOCALE][error.failure.messageKey] ?? fallback
+  }
 
   const key = KEYED.exec(error.message)?.[1]
   if (!key) return error.message || fallback

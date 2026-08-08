@@ -350,6 +350,26 @@ describe('1.2 · winning and losing', () => {
     })
   })
 
+  it('winning terms fill what the enquiry never stated, and stick to the RFQ', async () => {
+    // "36,000 pcs, mid-November window" — no date, no ratio. The acceptance fixes both,
+    // and the win is the last honest place to record them.
+    const rfqId = await quotedRfq({ sizeRatio: {}, requestedShipDate: undefined })
+
+    const result = await markWon(ctx, {
+      rfqId,
+      requestedShipDate: '2026-11-15',
+      sizeRatio: { S: 1, M: 2, L: 2, XL: 1 },
+    })
+
+    expect(result.payload.requestedShipDate).toBe('2026-11-15')
+    expect(result.payload.sizeBreakdown).toEqual({ S: 2000, M: 4000, L: 4000, XL: 2000 })
+
+    // Recorded onto the RFQ itself — the order desk and the audit read it from there.
+    const [rfq] = await db.select().from(rfqs).where(eq(rfqs.id, rfqId))
+    expect(rfq!.requestedShipDate).toBe('2026-11-15')
+    expect(rfq!.sizeRatio).toEqual({ S: 1, M: 2, L: 2, XL: 1 })
+  })
+
   it('cannot win an RFQ that was never quoted', async () => {
     await reset()
     const { rfqId } = await newRfq()

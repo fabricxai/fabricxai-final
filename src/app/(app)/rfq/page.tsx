@@ -56,6 +56,8 @@ export default async function RfqPage() {
     targetPrice: r.targetPrice,
     quote: r.quote,
     openClarifications: r.openClarifications,
+    requestedShipDate: r.requestedShipDate,
+    sizeRatio: r.sizeRatio,
   })
 
   const live = groups
