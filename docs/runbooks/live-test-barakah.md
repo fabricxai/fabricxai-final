@@ -78,7 +78,11 @@ payroll in the nav, prices masked. Start there.
 9. **Phase 2, TNA: generated from a button, not automatically.** A PO-born order opens
    with an empty schedule and a "Generate the schedule" control on the Time-and-action
    tab: pick the template and the 15 Nov ship date, every milestone plans backward from
-   it. (An RFQ-won order still gets its TNA automatically.)
+   it. An RFQ-won order gets its TNA automatically ONLY when the enquiry's product type
+   matches a template's (`knit`, `woven`, …) — the Bestseller enquiry says "Men's polo
+   shirt, short sleeve, 3-button placket", which matches nothing, so the order arrives
+   without a schedule and the same button covers it (pick "Knit — 90 day"; a polo is
+   knit).
 10. **Tables want their layout.** A browser's select-all flattens a POM chart into one
     line, and the extractor can then pair a size with its neighbour's column — the first
     live chart came out shifted one size with XXL dropped, at high confidence, and was
