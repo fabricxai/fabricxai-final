@@ -39,7 +39,10 @@ export const gazetteUpload = z.object({
   version: z.string().min(1).max(64),
   effectiveFrom: calendarDate,
   grades: z.array(gazetteGrade).min(1, 'a gazette needs at least one grade'),
-  documentId: z.uuid().optional(),
+  // `.catch(undefined)`, same reasoning as costing's sourceDocumentId: the extract model
+  // fills a uuid field with the id-shaped string the gazette prints (an SRO number) — no
+  // paper carries a UUID. Invalid becomes absent; the manual upload supplies a real id.
+  documentId: z.uuid().optional().catch(undefined),
   notes: z.string().max(2000).optional(),
 })
 
