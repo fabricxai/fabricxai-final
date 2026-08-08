@@ -20,7 +20,7 @@
  * The PP gate is not bypassed here: the sampling slice approves this style first, and these
  * lays are what a floor that was allowed to cut would have produced.
  */
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 
 import { addQty, multiplyQty, quantity, subtractQty, zeroQty } from '@/lib/quantity'
 
@@ -78,10 +78,13 @@ export const CUTTING_SLICE: SeedSlice = {
       .onConflictDoNothing()
     counts.markers = 1
 
+    // Scoped to the company: every tenant seeds a MK-SH4471-A of its own, and an unscoped
+    // match here handed a second tenant the FIRST tenant's marker id — lays pointing across
+    // the tenancy wall.
     const [marker] = await ctx.db
       .select({ id: markers.id })
       .from(markers)
-      .where(eq(markers.code, MARKER_CODE))
+      .where(and(eq(markers.companyId, ctx.companyId), eq(markers.code, MARKER_CODE)))
     if (!marker) return counts
 
     // Rolls the store issued against this order. A lay may draw nothing else — the
@@ -108,10 +111,12 @@ export const CUTTING_SLICE: SeedSlice = {
     let rollCursor = 0
 
     for (const spec of LAYS) {
+      // Also company-scoped: lay numbers repeat across tenants by design (each gets the
+      // same three), and a global match meant the second tenant seeded zero lays.
       const existing = await ctx.db
         .select({ id: lays.id })
         .from(lays)
-        .where(eq(lays.layNo, spec.no))
+        .where(and(eq(lays.companyId, ctx.companyId), eq(lays.layNo, spec.no)))
       if (existing.length > 0) continue
 
       // What the marker says this spread consumes, and what the floor actually drew. The
@@ -185,7 +190,9 @@ export const CUTTING_SLICE: SeedSlice = {
 
       // Bundles of 30 — the tie size a bundle boy can actually carry.
       for (const [cell, qty] of Object.entries(cells)) {
-        const size = cell.split('/')[1]!
+        // '|' — the separator the cells above are written with. '/' here produced bundles
+        // sized "undefined" the one time the loop got this far.
+        const size = cell.split('|')[1]!
         const full = Math.floor(qty / 30)
         const remainder = qty % 30
         const sizes = [...Array<number>(full).fill(30), ...(remainder > 0 ? [remainder] : [])]
