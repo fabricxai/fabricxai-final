@@ -1,0 +1,18 @@
+CUSTOMS BOND COMMISSIONERATE, DHAKA
+UTILIZATION DECLARATION (UD)
+
+UD Number      : UD-131
+Bond licence   : BL-2024-1107
+Licensee       : FabricXAI Fashion Ltd., Ashulia, Savar, Dhaka
+Issue date     : 2026-08-03
+Valid until    : 2027-02-03
+Export ref     : Master LC LC-2026-517 / PO-88203
+
+Authorized duty-free import items:
+
+  Item ref       Quantity      Unit   Description
+  FAB-POP-40S    41500.000     m      40s poplin, navy - shell fabric
+  FAB-INT-45     3600.000      m      fusible interlining 45 gsm - collar/cuff
+
+All bonded receipts and issues against this declaration must be recorded.
+Overdrawing an authorized quantity is a violation of the bond licence.

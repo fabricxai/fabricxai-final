@@ -1,0 +1,6 @@
+# Style: SH-4471 - unit: cm
+POM,Tol plus,Tol minus,S,M,L,XL,XXL
+A Chest 1cm below armhole,1.0,1.0,55.0,58.0,61.0,64.0,67.0
+B Center back length,1.0,1.0,74.0,76.0,78.0,80.0,82.0
+C Sleeve length from shoulder,0.5,0.5,62.0,63.5,65.0,66.5,68.0
+D Collar circumference,0.5,0.5,39.0,40.5,42.0,43.5,45.0

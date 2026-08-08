@@ -1,0 +1,127 @@
+{
+  "_intakeKind": "measurement_chart",
+  "styleCode": "SH-4471",
+  "unit": "cm",
+  "points": [
+    {
+      "name": "A Chest 1cm below armhole — size S",
+      "spec": "55.0",
+      "tolPlus": "1.0",
+      "tolMinus": "1.0"
+    },
+    {
+      "name": "A Chest 1cm below armhole — size M",
+      "spec": "58.0",
+      "tolPlus": "1.0",
+      "tolMinus": "1.0"
+    },
+    {
+      "name": "A Chest 1cm below armhole — size L",
+      "spec": "61.0",
+      "tolPlus": "1.0",
+      "tolMinus": "1.0"
+    },
+    {
+      "name": "A Chest 1cm below armhole — size XL",
+      "spec": "64.0",
+      "tolPlus": "1.0",
+      "tolMinus": "1.0"
+    },
+    {
+      "name": "A Chest 1cm below armhole — size XXL",
+      "spec": "67.0",
+      "tolPlus": "1.0",
+      "tolMinus": "1.0"
+    },
+    {
+      "name": "B Center back length — size S",
+      "spec": "74.0",
+      "tolPlus": "1.0",
+      "tolMinus": "1.0"
+    },
+    {
+      "name": "B Center back length — size M",
+      "spec": "76.0",
+      "tolPlus": "1.0",
+      "tolMinus": "1.0"
+    },
+    {
+      "name": "B Center back length — size L",
+      "spec": "78.0",
+      "tolPlus": "1.0",
+      "tolMinus": "1.0"
+    },
+    {
+      "name": "B Center back length — size XL",
+      "spec": "80.0",
+      "tolPlus": "1.0",
+      "tolMinus": "1.0"
+    },
+    {
+      "name": "B Center back length — size XXL",
+      "spec": "82.0",
+      "tolPlus": "1.0",
+      "tolMinus": "1.0"
+    },
+    {
+      "name": "C Sleeve length from shoulder — size S",
+      "spec": "62.0",
+      "tolPlus": "0.5",
+      "tolMinus": "0.5"
+    },
+    {
+      "name": "C Sleeve length from shoulder — size M",
+      "spec": "63.5",
+      "tolPlus": "0.5",
+      "tolMinus": "0.5"
+    },
+    {
+      "name": "C Sleeve length from shoulder — size L",
+      "spec": "65.0",
+      "tolPlus": "0.5",
+      "tolMinus": "0.5"
+    },
+    {
+      "name": "C Sleeve length from shoulder — size XL",
+      "spec": "66.5",
+      "tolPlus": "0.5",
+      "tolMinus": "0.5"
+    },
+    {
+      "name": "C Sleeve length from shoulder — size XXL",
+      "spec": "68.0",
+      "tolPlus": "0.5",
+      "tolMinus": "0.5"
+    },
+    {
+      "name": "D Collar circumference — size S",
+      "spec": "39.0",
+      "tolPlus": "0.5",
+      "tolMinus": "0.5"
+    },
+    {
+      "name": "D Collar circumference — size M",
+      "spec": "40.5",
+      "tolPlus": "0.5",
+      "tolMinus": "0.5"
+    },
+    {
+      "name": "D Collar circumference — size L",
+      "spec": "42.0",
+      "tolPlus": "0.5",
+      "tolMinus": "0.5"
+    },
+    {
+      "name": "D Collar circumference — size XL",
+      "spec": "43.5",
+      "tolPlus": "0.5",
+      "tolMinus": "0.5"
+    },
+    {
+      "name": "D Collar circumference — size XXL",
+      "spec": "45.0",
+      "tolPlus": "0.5",
+      "tolMinus": "0.5"
+    }
+  ]
+}

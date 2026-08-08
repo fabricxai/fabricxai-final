@@ -1,0 +1,28 @@
+{
+  "_intakeKind": "audit_report",
+  "_context": {
+    "auditId": "picked from the Audit dropdown — BSCI · Bureau Veritas · 2026-07-21; never in the document"
+  },
+  "findings": [
+    {
+      "severity": "critical",
+      "text": "Fire exit on ground floor (Unit 1) blocked by fabric rolls at time of walkthrough.",
+      "sourcePage": 3
+    },
+    {
+      "severity": "major",
+      "text": "Six first-aid boxes on Floor 2 contained expired supplies; last refill log entry 2025-11.",
+      "sourcePage": 5
+    },
+    {
+      "severity": "minor",
+      "text": "Broken-needle log for lines L4 and L5 missing entries for four production days in June.",
+      "sourcePage": 7
+    },
+    {
+      "severity": "observation",
+      "text": "PPE signage in the cutting section is in English only; Bangla signage recommended.",
+      "sourcePage": 8
+    }
+  ]
+}

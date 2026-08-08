@@ -1,0 +1,18 @@
+{
+  "_intakeKind": "ud_scan",
+  "number": "UD-131",
+  "issueDate": "2026-08-03",
+  "validUntil": "2027-02-03",
+  "authorizedItems": [
+    {
+      "itemRef": "FAB-POP-40S",
+      "qty": "41500.000",
+      "unit": "m"
+    },
+    {
+      "itemRef": "FAB-INT-45",
+      "qty": "3600.000",
+      "unit": "m"
+    }
+  ]
+}

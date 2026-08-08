@@ -1,0 +1,60 @@
+{
+  "_intakeKind": "tech_pack",
+  "styleCode": "SH-4471",
+  "lines": [
+    {
+      "lineGroup": "fabric",
+      "itemRef": "FAB-POP-40S",
+      "spec": "40s x 40s poplin 110x70, navy — shell",
+      "consumption": "1.62",
+      "uom": "m",
+      "wastagePct": "3.00",
+      "sourcePage": 4
+    },
+    {
+      "lineGroup": "fabric",
+      "itemRef": "FAB-INT-45",
+      "spec": "fusible interlining 45 gsm — collar and cuff",
+      "consumption": "0.12",
+      "uom": "m",
+      "wastagePct": "2.00",
+      "sourcePage": 4
+    },
+    {
+      "lineGroup": "trims",
+      "itemRef": "TRM-BTN-18L",
+      "spec": "polyester button 18L, navy — front placket + cuff",
+      "consumption": "12",
+      "uom": "pcs",
+      "wastagePct": "2.00",
+      "sourcePage": 4
+    },
+    {
+      "lineGroup": "trims",
+      "itemRef": "TRM-THR-40",
+      "spec": "sewing thread 40/2, navy",
+      "consumption": "0.08",
+      "uom": "cone",
+      "wastagePct": "1.50",
+      "sourcePage": 4
+    },
+    {
+      "lineGroup": "trims",
+      "itemRef": "TRM-LBL-MAIN",
+      "spec": "main label, woven — center back",
+      "consumption": "1",
+      "uom": "pcs",
+      "wastagePct": "1.00",
+      "sourcePage": 4
+    },
+    {
+      "lineGroup": "packing",
+      "itemRef": "ACC-POLY-1",
+      "spec": "poly bag 10x14, self-seal",
+      "consumption": "1",
+      "uom": "pcs",
+      "wastagePct": "0.50",
+      "sourcePage": 4
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+H & M — GARMENT PURCHASE ORDER
+
+Supplier          : FabricXAI Fashion Ltd., Plot 7, DEPZ Extension Area, Ashulia, Savar, Dhaka
+PO Number         : PO-88410
+Order date        : 2026-08-05
+Currency          : USD
+
+Style / Art no    : SH-4522
+Description       : men's shirt, long sleeve · 40s poplin, single needle
+Quantity          : 18000 pcs
+Unit price (FOB)  : 5.60
+Total value       : 100800.00
+Ex-factory date   : 2026-11-20
+
+Colourways        : Navy / White (breakdown to follow with size set S-XXL)
+Payment terms     : LC at sight, 100% against on-board BL
+Remarks           : PP sample approval required before cutting. Quantity tolerance 0%.

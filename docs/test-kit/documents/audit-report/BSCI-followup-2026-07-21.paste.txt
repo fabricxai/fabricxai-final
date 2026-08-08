@@ -1,0 +1,22 @@
+SOCIAL COMPLIANCE AUDIT REPORT — FOLLOW-UP
+Auditor        : Bureau Veritas · Dhaka
+Audit regime   : BSCI
+Audit date     : 2026-07-21
+Factory        : FabricXAI Fashion Ltd., Ashulia, Savar, Dhaka
+Overall score  : 68.5 / 100
+
+FINDINGS
+
+1. Severity: critical  (page 3)
+   Fire exit on ground floor (Unit 1) blocked by fabric rolls at time of walkthrough.
+
+2. Severity: major  (page 5)
+   Six first-aid boxes on Floor 2 contained expired supplies; last refill log entry 2025-11.
+
+3. Severity: minor  (page 7)
+   Broken-needle log for lines L4 and L5 missing entries for four production days in June.
+
+4. Severity: observation  (page 8)
+   PPE signage in the cutting section is in English only; Bangla signage recommended.
+
+Corrective action plans to be agreed with factory management within 14 days.

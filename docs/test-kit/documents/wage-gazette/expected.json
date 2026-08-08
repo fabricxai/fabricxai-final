@@ -1,0 +1,64 @@
+{
+  "_intakeKind": "wage_gazette",
+  "version": "SRO-2026-07",
+  "effectiveFrom": "2026-12-01",
+  "notes": "Overtime at 2x basic hourly rate (basic / 208). Two festival bonuses per year, pro-rated by service length.",
+  "grades": [
+    {
+      "grade": "1",
+      "basic": "11500.00",
+      "houseRent": "5750.00",
+      "medical": "750.00",
+      "transport": "450.00",
+      "food": "1250.00"
+    },
+    {
+      "grade": "2",
+      "basic": "10750.00",
+      "houseRent": "5375.00",
+      "medical": "750.00",
+      "transport": "450.00",
+      "food": "1250.00"
+    },
+    {
+      "grade": "3",
+      "basic": "10000.00",
+      "houseRent": "5000.00",
+      "medical": "750.00",
+      "transport": "450.00",
+      "food": "1250.00"
+    },
+    {
+      "grade": "4",
+      "basic": "9250.00",
+      "houseRent": "4625.00",
+      "medical": "750.00",
+      "transport": "450.00",
+      "food": "1250.00"
+    },
+    {
+      "grade": "5",
+      "basic": "8600.00",
+      "houseRent": "4300.00",
+      "medical": "750.00",
+      "transport": "450.00",
+      "food": "1250.00"
+    },
+    {
+      "grade": "6",
+      "basic": "7350.00",
+      "houseRent": "3675.00",
+      "medical": "750.00",
+      "transport": "450.00",
+      "food": "1250.00"
+    },
+    {
+      "grade": "7",
+      "basic": "7050.00",
+      "houseRent": "3525.00",
+      "medical": "750.00",
+      "transport": "450.00",
+      "food": "1250.00"
+    }
+  ]
+}

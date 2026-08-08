@@ -1,0 +1,18 @@
+TECH PACK — BILL OF MATERIALS                              Page 4 of 12
+
+Style          : SH-4471
+Product        : men's shirt · 40s poplin, single needle
+Buyer          : H&M    Order: PO-88203
+Season         : Autumn 2026
+
+BILL OF MATERIALS (per garment)
+
+  Group    Item ref       Specification                                    Consumption   UoM    Wastage %
+  fabric   FAB-POP-40S    40s x 40s poplin 110x70, navy - shell            1.62          m      3.00
+  fabric   FAB-INT-45     fusible interlining 45 gsm - collar and cuff     0.12          m      2.00
+  trims    TRM-BTN-18L    polyester button 18L, navy - placket + cuff      12            pcs    2.00
+  trims    TRM-THR-40     sewing thread 40/2, navy                         0.08          cone   1.50
+  trims    TRM-LBL-MAIN   main label, woven - center back                  1             pcs    1.00
+  packing  ACC-POLY-1     poly bag 10x14, self-seal                        1             pcs    0.50
+
+Note: consumptions are per garment before wastage. Wastage per line as shown.

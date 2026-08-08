@@ -1,0 +1,21 @@
+{
+  "_intakeKind": "buyer_po",
+  "_context": {
+    "buyerId": "picked from the Buyer dropdown — H&M (HM); never in the document"
+  },
+  "poNumbers": [
+    "PO-88410"
+  ],
+  "styles": [
+    {
+      "styleCode": "SH-4522",
+      "description": "men's shirt, long sleeve · 40s poplin, single needle",
+      "contractedQty": 18000,
+      "unitPrice": "5.60",
+      "currency": "USD"
+    }
+  ],
+  "totalValue": "100800.00",
+  "currency": "USD",
+  "plannedExFactoryDate": "2026-11-20"
+}
