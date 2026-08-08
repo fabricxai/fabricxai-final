@@ -49,18 +49,59 @@ export const fabricInspectionPayload = z.object({
   widthInches: decimal(6),
 })
 
+/**
+ * A measurement as a buyer's chart writes it — tolerated on the way in, strict underneath.
+ *
+ * Charts write tolerances signed ("+1.0 / −1.0") and the extraction instruction says
+ * transcribe exactly; the strict `decimal` above then rejected the minus sign it had just
+ * demanded. The magnitude is the value — the sign is the column's job (`tolPlus` versus
+ * `tolMinus`), and the QC comparison applies it itself.
+ */
+const chartDecimal = (max = 12) =>
+  z.preprocess((raw) => {
+    // "−1.0" arrives as a JSON number as often as a string — same transcription, different
+    // type. The magnitude is the value either way.
+    const value = typeof raw === 'number' && Number.isFinite(raw) ? String(raw) : raw
+    if (typeof value !== 'string') return value
+    const match = value.replace(/,/g, '').match(/\d+(?:\.\d+)?/)
+    return match ? match[0] : value
+  }, decimal(max))
+
 export const measurementSpecPayload = z.object({
   styleCode: z.string().min(1),
   unit: z.string().min(1).max(10).default('cm'),
   points: z
     .array(
-      z.object({
-        name: z.string().min(1),
-        spec: decimal(8),
-        /** Separate, because garment tolerances are asymmetric by nature. */
-        tolPlus: decimal(6),
-        tolMinus: decimal(6),
-      }),
+      z.preprocess(
+        // Most charts write ONE "Tol +/-" column: a single symmetric magnitude. A point
+        // carrying only one of the pair means the chart stated one number for both — fold
+        // it across rather than failing thirty points over a column the document does not
+        // have. A chart that genuinely writes both still gets both.
+        (raw) => {
+          if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return raw
+          const point = { ...(raw as Record<string, unknown>) }
+          const blank = (v: unknown) => v === '' || v === null || v === undefined
+          if (blank(point.tolMinus) && !blank(point.tolPlus)) point.tolMinus = point.tolPlus
+          if (blank(point.tolPlus) && !blank(point.tolMinus)) point.tolPlus = point.tolMinus
+          return point
+        },
+        z.object({
+          name: z
+            .string()
+            .min(1)
+            .describe(
+              'The point of measure INCLUDING the size when the chart grades by size — one ' +
+                'entry per point per size, named like "A Chest — size M". A graded row ' +
+                'becomes several points, never one point with several values.',
+            ),
+          spec: chartDecimal(8).describe(
+            'The measurement itself, one number for one size. Never the POM letter, never a list.',
+          ),
+          /** Separate, because garment tolerances are asymmetric by nature. */
+          tolPlus: chartDecimal(6),
+          tolMinus: chartDecimal(6).describe('Magnitude only — the direction is this field.'),
+        }),
+      ),
     )
     .min(1, 'a measurement spec with no points checks nothing'),
 })

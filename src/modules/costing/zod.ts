@@ -23,6 +23,39 @@ export const decimal = (max = 12, frac = 4) =>
 
 export const pct = z.string().regex(/^\d{1,3}(\.\d{1,2})?$/, 'expected a percentage')
 
+/**
+ * A decimal as a DOCUMENT states it, tolerated only in extraction draft schemas.
+ *
+ * The extraction instruction says "transcribe exactly as written, do not tidy" — and the
+ * strict `decimal()` above demands exactly the tidying the instruction forbids. The two
+ * contradicted each other from the day the OpenAI path landed, and the model obeyed the
+ * prompt: `"0.255 kg*"`, `"3 pcs"`, `""` — every tech-pack extraction failed validation on
+ * values that were transcribed CORRECTLY.
+ *
+ * The cleanup is deterministic code, not model tidying: the first decimal number in the
+ * string is the value; the unit noise around it was already captured by `uom`. A field with
+ * no number at all becomes the fallback — for consumption that is '0', which renders loudly
+ * as zero in the studio (same philosophy as buildFromBom's zero rates) rather than sinking
+ * the whole draft over the one line the tech pack itself marks "supplier to confirm".
+ *
+ * Manual payloads keep the strict `decimal()`: a person typing into a form gets told about
+ * their typo; a document gets read as documents are written.
+ */
+export const transcribedDecimal = (fallback?: string, max = 12, frac = 4) =>
+  z.preprocess((raw) => {
+    // The schema says string; a non-strict vendor still sends -1.0 as a NUMBER when the
+    // page looks numeric. Same transcription, different JSON type — read it, don't reject it.
+    const value = typeof raw === 'number' && Number.isFinite(raw) ? String(raw) : raw
+    if (typeof value !== 'string') return value
+    const match = value.replace(/,/g, '').match(/\d+(?:\.\d+)?/)
+    if (match) {
+      const [whole, fracPart] = match[0].split('.')
+      // Trim to the column's precision rather than failing on a document's extra digit.
+      return fracPart ? `${whole}.${fracPart.slice(0, frac)}` : whole
+    }
+    return fallback ?? value
+  }, decimal(max, frac))
+
 export const materialLine = z.object({
   ref: z.string().min(1),
   consumption: decimal(),
@@ -85,16 +118,30 @@ export const scenarioOverrides = z.object({
 /** What MARBIM extracts from a tech pack: the bill of materials, never the prices. */
 export const bomFromTechPackDraft = z.object({
   styleCode: z.string().min(1),
-  sourceDocumentId: z.uuid().optional(),
+  /**
+   * `.catch(undefined)`, because the model fills this with whatever id-shaped string the
+   * page offers ("JJ-CORE-PL-26") — no document contains a UUID. An invalid value becomes
+   * absence, and the extraction pipeline then writes the REAL document id over it; the
+   * provenance this field exists for never depended on the model getting it right.
+   */
+  sourceDocumentId: z.uuid().optional().catch(undefined),
   lines: z
     .array(
       z.object({
         lineGroup: z.enum(['fabric', 'trims', 'packing', 'embellishment']),
         itemRef: z.string().optional(),
         spec: z.string().optional(),
-        consumption: decimal(),
-        uom: z.string().min(1),
-        wastagePct: pct.default('0'),
+        // "0.255 kg*" is a correct transcription; the number in it is the value. A line
+        // the document leaves blank costs zero, loudly, in the studio.
+        consumption: transcribedDecimal('0'),
+        // "—" when the document states none (the sew-thread line): a unit was not read, and
+        // the dash says so on every screen that shows it. Paired with zero consumption the
+        // line prices at nothing until a human supplies both.
+        uom: z.preprocess((v) => (v === '' ? undefined : v), z.string().min(1).default('—')),
+        wastagePct: z.preprocess(
+          (v) => (v === '' ? undefined : v),
+          transcribedDecimal(undefined, 3, 2).default('0'),
+        ),
         sourcePage: z.number().int().positive().optional(),
       }),
     )

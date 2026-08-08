@@ -441,9 +441,19 @@ export async function runExtraction(
      * a context-only draft cannot slip through wearing certainty it did not earn.
      */
     const context = job.contextValues ?? {}
-    const payload = { ...(result.value as Record<string, unknown>), ...context }
+    const payload = {
+      ...(result.value as Record<string, unknown>),
+      ...context,
+      // The pipeline's own knowledge outranks the model's reading, same as the person's
+      // context does. The model, offered a uuid field, fills it with whatever id-shaped
+      // string the page has — the job KNOWS which document it is reading. Schemas without
+      // the field are unaffected: propose stores the parsed payload, and parsing strips
+      // keys a schema does not name.
+      ...(job.sourceDocumentId ? { sourceDocumentId: job.sourceDocumentId } : {}),
+    }
     const fieldConfidence = { ...result.fieldConfidence }
     for (const field of Object.keys(context)) fieldConfidence[field] = 1
+    if (job.sourceDocumentId) fieldConfidence.sourceDocumentId = 1
 
     // The check the whole module exists for. A constant is refused before it becomes a
     // draft that looks reviewed.
