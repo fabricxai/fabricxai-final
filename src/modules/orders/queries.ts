@@ -15,7 +15,7 @@ import { readJsonbArray } from '@/modules/core/jsonb'
 import { scoped } from '@/modules/core/scoped'
 import { withTenantRead } from '@/modules/core/tenancy'
 
-import { orderBreakdowns, orderStyles, orders, tnaMilestones } from './schema'
+import { orderBreakdowns, orderStyles, orders, tnaMilestones, tnaTemplates } from './schema'
 import { milestoneDependency } from './zod'
 
 /** How a row reads on the desk: the worst thing true about the order. */
@@ -410,4 +410,24 @@ export async function searchOrders(
     }
     return hits
   })
+}
+
+/**
+ * The active TNA templates, as a picker's option list.
+ *
+ * For the desk's "generate the schedule" control. An order booked from a PO drop has no
+ * TNA until somebody asks for one — `generateOrderTna` existed for exactly that ask and no
+ * screen ever offered it, so a PO-born order's schedule tab was permanently empty while
+ * the action that fills it sat unreachable.
+ */
+export async function tnaTemplateChoices(
+  ctx: AnyCtx,
+): Promise<{ id: string; name: string; productType: string }[]> {
+  return withTenantRead(ctx, (tx) =>
+    tx
+      .select({ id: tnaTemplates.id, name: tnaTemplates.name, productType: tnaTemplates.productType })
+      .from(tnaTemplates)
+      .where(scoped(tnaTemplates, ctx, eq(tnaTemplates.isActive, true)))
+      .orderBy(asc(tnaTemplates.name)),
+  )
 }

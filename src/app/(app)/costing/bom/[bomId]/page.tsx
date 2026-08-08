@@ -1,4 +1,5 @@
 import { headers } from 'next/headers'
+import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 
 import { InlineAlert } from '@/components/fx/feedback'
@@ -56,6 +57,21 @@ export default async function BomDetailPage({
       />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+        {/*
+          * The click this screen ended one short of. A tech pack lands here as an approved
+          * BOM, and the studio — one navigation away — opened on a hardcoded shirt, so
+          * costing the style meant reading these lines and retyping them. The seed carries
+          * consumption and wastage; rates are the studio's job.
+          */}
+        <div>
+          <Link
+            href={`/costing?bomId=${bom.id}`}
+            style={{ font: "500 13.5px/1.4 var(--fx-font-sans)", color: 'var(--fx-accent)' }}
+          >
+            Cost this style — open the studio seeded from these lines →
+          </Link>
+        </div>
+
         {bom.usedByApprovedSheet ? (
           <InlineAlert tone="info">
             An approved cost sheet is priced against this bill of materials. It cannot be

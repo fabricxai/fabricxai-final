@@ -11,9 +11,11 @@ import { actionErrorMessage } from '@/lib/action-error'
 import { factoryToday } from '@/lib/dates'
 import {
   actualizeMilestone,
+  generateOrderTna,
   previewMilestoneRipple,
   type RippleView,
 } from '@/modules/orders/actions'
+import { Select } from '@/components/fx/forms'
 
 /**
  * The TNA, moved rather than read (plan 5.1, audit FE-B2).
@@ -36,12 +38,19 @@ import {
  * expected rather than what happened.
  */
 export function OrderTna({
+  orderId,
   milestones,
   canWrite,
+  templates = [],
+  defaultExFactory = null,
 }: {
+  orderId: string
   milestones: readonly Milestone[]
   /** False for a role that may read the schedule but not move it — the prop simply goes. */
   canWrite: boolean
+  /** Active templates, for the generate control. Passed only when the schedule is empty. */
+  templates?: readonly { id: string; name: string; productType: string }[]
+  defaultExFactory?: string | null
 }) {
   const t = useT()
   const locale = useLocale()
@@ -110,6 +119,14 @@ export function OrderTna({
 
   return (
     <>
+      {milestones.length === 0 && canWrite ? (
+        <GenerateSchedule
+          orderId={orderId}
+          templates={templates}
+          defaultExFactory={defaultExFactory ?? null}
+        />
+      ) : null}
+
       <MilestoneTimeline
         milestones={milestones}
         locale={locale}
@@ -240,6 +257,110 @@ function RippleSummary({ preview }: { preview: RippleView }) {
           ))}
         </ul>
       ) : null}
+    </div>
+  )
+}
+
+/**
+ * The hand that fills an empty schedule.
+ *
+ * `generateOrderTna` has existed since the desk was built — its docblock even says it is
+ * "available from the desk" — and no screen ever called it. An order booked from a PO drop
+ * therefore had a permanently empty schedule tab, while an RFQ-won order got its TNA from
+ * the consumer. The control renders ONLY when the schedule is empty and the caller can
+ * write: once milestones exist, regenerating belongs to a deliberate decision, not a
+ * button next to real dates.
+ */
+function GenerateSchedule({
+  orderId,
+  templates,
+  defaultExFactory,
+}: {
+  orderId: string
+  templates: readonly { id: string; name: string; productType: string }[]
+  defaultExFactory: string | null
+}) {
+  const t = useT()
+  const router = useRouter()
+  const [pending, startTransition] = useTransition()
+  const [templateId, setTemplateId] = useState(templates[0]?.id ?? '')
+  const [exFactory, setExFactory] = useState(defaultExFactory ?? '')
+  const [failure, setFailure] = useState<string | null>(null)
+
+  if (templates.length === 0) {
+    // No active templates is a Settings problem, and saying so beats a disabled control.
+    return <InlineAlert tone="info">{t('ui.orders.tna_no_templates')}</InlineAlert>
+  }
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 12,
+        padding: 16,
+        border: '1px solid var(--fx-border-subtle)',
+        borderRadius: 'var(--fx-radius-md)',
+        background: 'var(--fx-bg-surface)',
+      }}
+    >
+      <span style={{ font: "400 13.5px/1.5 var(--fx-font-sans)", color: 'var(--fx-text-secondary)' }}>
+        {t('ui.orders.tna_generate_body')}
+      </span>
+
+      <div className="fx-stack-tablet" style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr auto', gap: 12, alignItems: 'end' }}>
+        <Select
+          label={t('ui.orders.tna_template')}
+          value={templateId}
+          onChange={(e) => setTemplateId(e.target.value)}
+        >
+          {templates.map((tpl) => (
+            <option key={tpl.id} value={tpl.id}>
+              {tpl.name} · {tpl.productType}
+            </option>
+          ))}
+        </Select>
+
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <span style={{ font: "500 12px/1 var(--fx-font-mono)", letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--fx-text-tertiary)' }}>
+            {t('ui.orders.tna_ex_factory')}
+          </span>
+          <input
+            type="date"
+            value={exFactory}
+            onChange={(e) => setExFactory(e.target.value)}
+            style={{
+              font: "400 14px/1.2 var(--fx-font-sans)",
+              padding: '10px 12px',
+              minHeight: 'var(--fx-tap-min)',
+              border: '1px solid var(--fx-border-default)',
+              borderRadius: 'var(--fx-radius-md)',
+              background: 'var(--fx-bg-surface)',
+              color: 'var(--fx-text-primary)',
+            }}
+          />
+        </label>
+
+        <Button
+          variant="primary"
+          disabled={pending || !templateId || !exFactory}
+          onClick={() =>
+            startTransition(async () => {
+              try {
+                await generateOrderTna({ orderId, templateId, exFactoryDate: exFactory })
+                setFailure(null)
+                router.refresh()
+              } catch (error) {
+                setFailure(actionErrorMessage(error, t('ui.orders.tna_generate_failed')))
+              }
+            })
+          }
+        >
+          {t('ui.orders.tna_generate')}
+        </Button>
+      </div>
+
+      {failure ? <InlineAlert tone="danger">{failure}</InlineAlert> : null}
     </div>
   )
 }

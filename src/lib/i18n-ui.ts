@@ -300,6 +300,14 @@ export const UI_MESSAGES: Catalogue = {
       'An order needs at least one style — nothing can be cut, costed or planned against one without it.',
     'ui.orders.contracted_qty': 'Contracted pieces',
     'ui.orders.unit_price': 'Unit price',
+    'ui.orders.tna_generate': 'Generate the schedule',
+    'ui.orders.tna_generate_body':
+      'This order has no schedule yet. Pick a template and the ship date — every milestone is planned backward from it.',
+    'ui.orders.tna_template': 'Template',
+    'ui.orders.tna_ex_factory': 'Ex-factory date',
+    'ui.orders.tna_generate_failed': 'The schedule was not generated',
+    'ui.orders.tna_no_templates':
+      'No active TNA templates. Settings owns the template list — activate one there first.',
     'ui.orders.actualize_title': 'Mark this milestone done',
     'ui.orders.actual_date': 'The date it actually happened',
     'ui.orders.actualize_confirm': 'Record it',
@@ -1421,6 +1429,14 @@ export const UI_MESSAGES: Catalogue = {
       'অর্ডারে অন্তত একটি স্টাইল লাগে — সেটি ছাড়া কাটা, কস্টিং বা প্ল্যান কিছুই করা যায় না।',
     'ui.orders.contracted_qty': 'চুক্তির পিস',
     'ui.orders.unit_price': 'ইউনিট প্রাইস',
+    'ui.orders.tna_generate': 'সময়সূচি তৈরি করুন',
+    'ui.orders.tna_generate_body':
+      'এই অর্ডারের এখনো কোনো সময়সূচি নেই। একটি টেমপ্লেট আর জাহাজীকরণের তারিখ বেছে নিন — প্রতিটি ধাপ সেই তারিখ থেকে পেছন দিকে সাজানো হয়।',
+    'ui.orders.tna_template': 'টেমপ্লেট',
+    'ui.orders.tna_ex_factory': 'এক্স-ফ্যাক্টরি তারিখ',
+    'ui.orders.tna_generate_failed': 'সময়সূচি তৈরি হয়নি',
+    'ui.orders.tna_no_templates':
+      'কোনো সক্রিয় TNA টেমপ্লেট নেই। টেমপ্লেটের তালিকা সেটিংসের — আগে সেখানে একটি চালু করুন।',
     'ui.orders.actualize_title': 'এই ধাপটি হয়ে গেছে বলে চিহ্নিত করুন',
     'ui.orders.actual_date': 'আসলে যেদিন হয়েছে',
     'ui.orders.actualize_confirm': 'রেকর্ড করুন',

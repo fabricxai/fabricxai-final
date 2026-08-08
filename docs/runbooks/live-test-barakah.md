@@ -60,6 +60,26 @@ payroll in the nav, prices masked. Start there.
    yarn/greige yet; the truth is kept in the item's spec). Receiving against them works.
 6. **MARBIM answers only from tools.** Barakah's order book is empty until Phase 2 books
    one — the copilot refusing to invent an order is correct behaviour, not a failure.
+7. **Phase 2, tech pack: two intake passes, then a seeded studio.** Run the tech pack
+   through intake TWICE — "a tech pack" (pages 1–2, the BOM) and "a measurement chart"
+   (page 3). Pasting it into MARBIM *chat* is refused by design: chat drafts carry no
+   measured confidence, and the model now says so and points at intake. After the BOM
+   draft is approved, open it under Costing → bills of materials and click **"Cost this
+   style — open the studio seeded from these lines"**: consumption and wastage arrive
+   from the BOM, rates start at zero for Rashida to price.
+8. **Phase 2, PO drop: the breakdown grid is typed, not extracted.** The PO intake drafts
+   the order header and styles (total 36,000); the colour×size grid is entered on the
+   order page afterwards (Breakdown → correction). The runbook's "grid sums 36,000" check
+   applies there.
+9. **Phase 2, TNA: generated from a button, not automatically.** A PO-born order opens
+   with an empty schedule and a "Generate the schedule" control on the Time-and-action
+   tab: pick the template and the 15 Nov ship date, every milestone plans backward from
+   it. (An RFQ-won order still gets its TNA automatically.)
+10. **Phase 2, PO revision: not an intake kind.** Drop-the-revision-PDF has no intake
+    tile. The diff draft exists and routes through the inbox all the same — either paste
+    the amendment text into MARBIM chat (it drafts `Navy/L +600, White/S −600` via
+    `orders.propose_breakdown_revision`), or use the order page's Breakdown → "buyer
+    amendment" path. Both produce the Rev 2 + history the runbook checks.
 
 ## Honest status of the traps
 

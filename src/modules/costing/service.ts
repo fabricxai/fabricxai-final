@@ -92,7 +92,7 @@ function wrapCostingError<T>(run: () => T): T {
 export async function buildFromBom(
   ctx: RequestCtx,
   input: { bomId: string; rates: Record<string, string>; sections: unknown },
-): Promise<{ sections: CostSheetInput }> {
+): Promise<{ styleCode: string; sections: CostSheetInput }> {
   return withTenantRead(ctx, async (tx) => {
     const [bom] = await tx.select().from(boms).where(scoped(boms, ctx, eq(boms.id, input.bomId)))
     if (!bom) throw notFound('costing.errors.bom_not_found', { bomId: input.bomId })
@@ -114,6 +114,7 @@ export async function buildFromBom(
         }))
 
     return {
+      styleCode: bom.styleCode,
       sections: {
         ...base,
         fabric: material('fabric'),

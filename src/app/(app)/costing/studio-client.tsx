@@ -39,16 +39,34 @@ const INITIAL_TRIMS: MaterialRow[] = [
   { ref: 'Main and care labels', consumption: '3', uom: 'pcs', ratePerUom: '0.021', wastagePct: '1' },
 ]
 
-export function CostingStudio({ marginFloorPct }: { marginFloorPct: string | null }) {
-  const [fabric, setFabric] = useState(INITIAL_FABRIC)
-  const [trims, setTrims] = useState(INITIAL_TRIMS)
+/**
+ * The studio pre-filled from a bill of materials — consumption, wastage and refs from the
+ * BOM, rates at zero for the merchandiser to price. `bomId` rides through to the save so
+ * the sheet pins which BOM it was costed against.
+ */
+export interface StudioSeed {
+  bomId: string
+  styleCode: string
+  fabric: MaterialRow[]
+  trims: MaterialRow[]
+}
+
+export function CostingStudio({
+  marginFloorPct,
+  seed = null,
+}: {
+  marginFloorPct: string | null
+  seed?: StudioSeed | null
+}) {
+  const [fabric, setFabric] = useState(seed?.fabric ?? INITIAL_FABRIC)
+  const [trims, setTrims] = useState(seed?.trims ?? INITIAL_TRIMS)
   const [smv, setSmv] = useState('18.4')
   const [efficiencyPct, setEfficiencyPct] = useState('62')
   const [labourRate, setLabourRate] = useState('3.10')
   const [marginPct, setMarginPct] = useState('12')
   const [fx, setFx] = useState('0.00837')
 
-  const [styleCode, setStyleCode] = useState('SH-4471')
+  const [styleCode, setStyleCode] = useState(seed?.styleCode ?? 'SH-4471')
   const [saved, setSaved] = useState<{ sheetId: string; version: number } | null>(null)
   const [noted, setNoted] = useState<string | null>(null)
 
@@ -96,6 +114,13 @@ export function CostingStudio({ marginFloorPct }: { marginFloorPct: string | nul
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1.35fr .85fr', gap: 20, alignItems: 'start' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {seed ? (
+          <InlineAlert tone="info">
+            Seeded from the bill of materials for {seed.styleCode} — consumption and wastage
+            are the BOM&apos;s, rates start at zero. Price each line; a zero rate is a line
+            nobody has priced, not a free material.
+          </InlineAlert>
+        ) : null}
         <MaterialSection title="Fabric" rows={fabric} onChange={setFabric} />
         <MaterialSection title="Trims" rows={trims} onChange={setTrims} />
 
@@ -256,7 +281,13 @@ export function CostingStudio({ marginFloorPct }: { marginFloorPct: string | nul
                   onClick={() =>
                     startTransition(async () => {
                       try {
-                        const r = await saveCostSheet({ styleCode: styleCode.trim(), sections })
+                        const r = await saveCostSheet({
+                          styleCode: styleCode.trim(),
+                          sections,
+                          // The sheet pins the BOM it was costed against. Only when the
+                          // studio was opened FROM one — a hand-built sheet pins nothing.
+                          ...(seed ? { bomId: seed.bomId } : {}),
+                        })
                         setSaved({ sheetId: r.sheetId, version: r.version })
                         setNoted(
                           `Saved as v${r.version} — FOB ${r.computed.fobPrice}, margin ${r.computed.achievedMarginPct}%.`,

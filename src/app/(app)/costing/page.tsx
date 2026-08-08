@@ -12,9 +12,9 @@ import { getCtx } from '@/modules/core/session'
 import { withTenantRead } from '@/modules/core/tenancy'
 import { costSheets } from '@/modules/costing/schema'
 import { getPolicy } from '@/modules/settings/service'
-import type { CostingPolicy } from '@/modules/costing/service'
+import { buildFromBom, type CostingPolicy } from '@/modules/costing/service'
 
-import { CostingStudio } from './studio-client'
+import { CostingStudio, type StudioSeed } from './studio-client'
 
 /**
  * 1.5 Costing Studio.
@@ -26,11 +26,50 @@ import { CostingStudio } from './studio-client'
  */
 export const dynamic = 'force-dynamic'
 
-export default async function CostingPage() {
+export default async function CostingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ bomId?: string }>
+}) {
   const ctx = await getCtx(await headers())
   if (!ctx) redirect('/login')
 
   const policy = await getPolicy<CostingPolicy>(ctx, 'costing')
+
+  /*
+   * `?bomId=` seeds the studio from an approved bill of materials.
+   *
+   * `buildFromBom` had existed, tested and documented, since the module landed — and
+   * nothing called it. The studio opened on a hardcoded men's shirt, so "cost the style
+   * whose BOM you just approved" meant reading consumption figures off one screen and
+   * retyping them into another. The tech-pack intake path ended one click short of the
+   * screen it feeds.
+   *
+   * Rates deliberately start at zero: the BOM knows what the garment is made of, not what
+   * the material costs today. A zero renders loudly in the preview, which is the prompt to
+   * price each line — quietly guessing a rate would put an invented number one approval
+   * away from a quote.
+   */
+  const { bomId } = await searchParams
+  let seed: StudioSeed | null = null
+  if (bomId) {
+    const built = await buildFromBom(ctx, {
+      bomId,
+      rates: {},
+      sections: {
+        fxRateLocalToBase: '0.00837',
+        cm: { method: 'smv', smv: '18.4', efficiencyPct: '62', labourRatePerMinuteLocal: '3.10' },
+        marginPct: '12',
+        marginBasis: 'price',
+      },
+    })
+    seed = {
+      bomId,
+      styleCode: built.styleCode,
+      fabric: built.sections.fabric.map((line) => ({ ...line })),
+      trims: built.sections.trims.map((line) => ({ ...line })),
+    }
+  }
 
   const sheets = await withTenantRead(ctx, (tx) =>
     tx
@@ -61,7 +100,7 @@ export default async function CostingPage() {
       />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 36 }}>
-        <CostingStudio marginFloorPct={policy.marginFloorPct ?? null} />
+        <CostingStudio marginFloorPct={policy.marginFloorPct ?? null} seed={seed} />
 
         {/* The bill of materials is where consumption comes from; the studio prices it.
             Keeping them on separate screens is what stops a rate being buried in a BOM. */}

@@ -10,7 +10,7 @@ import { PageHeader } from '@/components/shell/page-shell'
 import { canWrite, NAV } from '@/components/shell/nav'
 import { getCtx } from '@/modules/core/session'
 import { companyProfile } from '@/modules/settings/service'
-import { orderDetail } from '@/modules/orders/queries'
+import { orderDetail, tnaTemplateChoices } from '@/modules/orders/queries'
 import { orderRunRate } from '@/modules/production/queries'
 import { factoryToday } from '@/lib/dates'
 
@@ -123,7 +123,16 @@ export default async function OrderDetailPage({
           <SectionHeading eyebrow={late > 0 ? `${late} late` : undefined}>
             Time and action
           </SectionHeading>
-          <OrderTna milestones={order.milestones} canWrite={mayWrite} />
+          <OrderTna
+            orderId={order.id}
+            milestones={order.milestones}
+            canWrite={mayWrite}
+            /* Only fetched when the schedule is empty — the generate control is for the
+               order that has none, and the picker's options are the same active templates
+               the rfq.won consumer chooses from. */
+            templates={order.milestones.length === 0 ? await tnaTemplateChoices(ctx) : []}
+            defaultExFactory={order.plannedExFactoryDate}
+          />
         </section>
 
         <section>
