@@ -79,7 +79,14 @@ payroll in the nav, prices masked. Start there.
    with an empty schedule and a "Generate the schedule" control on the Time-and-action
    tab: pick the template and the 15 Nov ship date, every milestone plans backward from
    it. (An RFQ-won order still gets its TNA automatically.)
-10. **Phase 2, PO revision: not an intake kind.** Drop-the-revision-PDF has no intake
+10. **Tables want their layout.** A browser's select-all flattens a POM chart into one
+    line, and the extractor can then pair a size with its neighbour's column — the first
+    live chart came out shifted one size with XXL dropped, at high confidence, and was
+    approved before anyone compared it to the page. Confidence is per FIELD, and the whole
+    grid is one field — it measures how sure the model was of what it wrote, not whether
+    the columns line up. For any tabular document: compare a few drafted values against
+    the page before signing. That comparison is what the approve step is.
+11. **Phase 2, PO revision: not an intake kind.** Drop-the-revision-PDF has no intake
     tile. The diff draft exists and routes through the inbox all the same — either paste
     the amendment text into MARBIM chat (it drafts `Navy/L +600, White/S −600` via
     `orders.propose_breakdown_revision`), or use the order page's Breakdown → "buyer
