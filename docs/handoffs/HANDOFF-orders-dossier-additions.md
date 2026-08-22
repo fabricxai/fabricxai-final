@@ -96,4 +96,8 @@ empty state must render.
 
 ## §8 · Open questions
 
-(empty — this is a prospective contract; questions land here as the build finds them)
+- The variant column is settled in the schema and displayed nowhere yet: the breakdown
+  editor does not expose it and `saveBreakdown`'s duplicate check still keys on
+  (colour, size) alone. Nothing can create a variant today, so the check cannot
+  false-positive — but the editor work and the widened duplicate key must land
+  together, before the first factory that orders by leg length.
