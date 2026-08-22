@@ -7,7 +7,9 @@ import { Badge } from '@/components/fx/primitives'
 import { SectionHeading } from '@/components/fx/signature'
 import { FactPair } from '@/components/fx/tna'
 import { RouteHeader } from '@/components/shell/route-header'
+import { bomDetail, getBomForStyle } from '@/modules/costing/queries'
 import { documentsFor, type AttachedDocument } from '@/modules/core/documents'
+import { measurementSubjects } from '@/modules/quality/queries'
 import { getCtx } from '@/modules/core/session'
 import { orderDetail } from '@/modules/orders/queries'
 import { FACTORY_TIMEZONE } from '@/lib/dates'
@@ -73,6 +75,21 @@ export default async function OrderDocumentsPage({
   const docs = await documentsFor(ctx, { entityTable: 'orders', entityId: order.id })
   const po = order.poNumbers[0] ?? order.id.slice(0, 8)
 
+  /*
+   * The style's material truth and its measurement spec, read through the owners'
+   * queries (rule 11): the BOM behind the approved cost sheet, and the spec QC
+   * measures against. Both are optional facts — an order can be real before either
+   * exists, and this page says "none yet" rather than inventing a placeholder.
+   */
+  const bom = order.style
+    ? await getBomForStyle(ctx, order.style.styleCode)
+        .then((ref) => bomDetail(ctx, ref.bomId))
+        .catch(() => null)
+    : null
+  const spec = order.style
+    ? (await measurementSubjects(ctx)).find((subject) => subject.orderId === order.id) ?? null
+    : null
+
   return (
     <>
       <RouteHeader
@@ -101,6 +118,154 @@ export default async function OrderDocumentsPage({
             <FactPair label="Ex-factory">{order.plannedExFactoryDate ?? '—'}</FactPair>
           </div>
         </Card>
+
+        {bom ? (
+          <section>
+            <SectionHeading
+              eyebrow={`from the bill of materials behind the approved cost sheet · ${bom.lines.length} lines`}
+            >
+              Fabric and trims
+            </SectionHeading>
+            <div
+              style={{
+                background: 'var(--fx-bg-surface)',
+                border: '1px solid var(--fx-border-subtle)',
+                borderRadius: 'var(--fx-radius-md)',
+                overflow: 'hidden',
+              }}
+            >
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '110px 1.2fr 1.6fr .9fr',
+                  gap: 16,
+                  padding: '10px 22px',
+                  background: 'var(--fx-bg-sunken)',
+                  font: '500 11px/1 var(--fx-font-mono)',
+                  letterSpacing: '.06em',
+                  textTransform: 'uppercase',
+                  color: 'var(--fx-text-tertiary)',
+                }}
+              >
+                <span>Group</span>
+                <span>Item</span>
+                <span>Spec</span>
+                <span style={{ textAlign: 'right' }}>Consumption</span>
+              </div>
+              {bom.lines.map((line, i) => (
+                <div
+                  key={line.id}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '110px 1.2fr 1.6fr .9fr',
+                    gap: 16,
+                    alignItems: 'center',
+                    padding: '11px 22px',
+                    borderTop: i === 0 ? undefined : '1px solid var(--fx-border-subtle)',
+                    font: '400 13.5px/1.4 var(--fx-font-sans)',
+                  }}
+                >
+                  <span
+                    style={{
+                      font: '500 11px/1 var(--fx-font-mono)',
+                      letterSpacing: '.05em',
+                      textTransform: 'uppercase',
+                      color: 'var(--fx-text-tertiary)',
+                    }}
+                  >
+                    {line.lineGroup}
+                  </span>
+                  <span style={{ font: '400 13px/1.4 var(--fx-font-mono)' }}>{line.itemRef}</span>
+                  <span style={{ color: 'var(--fx-text-secondary)', minWidth: 0 }}>
+                    {line.spec ?? '—'}
+                  </span>
+                  <span
+                    data-numeric
+                    data-mono
+                    style={{ textAlign: 'right', font: '400 13px/1.3 var(--fx-font-mono)' }}
+                  >
+                    {line.consumption ? `${line.consumption} ${line.uom}` : '—'}
+                    {line.wastagePct && line.wastagePct !== '0' ? ` · +${line.wastagePct}%` : ''}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {spec && spec.points.length > 0 ? (
+          <section>
+            <SectionHeading
+              eyebrow={`spec v${spec.specVersion} · ${spec.unit} · what QC measures against`}
+            >
+              Measurement spec
+            </SectionHeading>
+            <div
+              style={{
+                background: 'var(--fx-bg-surface)',
+                border: '1px solid var(--fx-border-subtle)',
+                borderRadius: 'var(--fx-radius-md)',
+                overflow: 'hidden',
+              }}
+            >
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '2fr .8fr .8fr',
+                  gap: 16,
+                  padding: '10px 22px',
+                  background: 'var(--fx-bg-sunken)',
+                  font: '500 11px/1 var(--fx-font-mono)',
+                  letterSpacing: '.06em',
+                  textTransform: 'uppercase',
+                  color: 'var(--fx-text-tertiary)',
+                }}
+              >
+                <span>Point</span>
+                <span style={{ textAlign: 'right' }}>Spec</span>
+                <span style={{ textAlign: 'right' }}>Tolerance</span>
+              </div>
+              {spec.points.slice(0, 6).map((point, i) => (
+                <div
+                  key={point.name}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '2fr .8fr .8fr',
+                    gap: 16,
+                    padding: '10px 22px',
+                    borderTop: i === 0 ? undefined : '1px solid var(--fx-border-subtle)',
+                    font: '400 13.5px/1.4 var(--fx-font-sans)',
+                  }}
+                >
+                  <span>{point.name}</span>
+                  <span data-numeric data-mono style={{ textAlign: 'right' }}>
+                    {point.spec}
+                  </span>
+                  <span
+                    data-numeric
+                    data-mono
+                    style={{ textAlign: 'right', color: 'var(--fx-text-tertiary)' }}
+                  >
+                    +{point.tolPlus} / −{point.tolMinus}
+                  </span>
+                </div>
+              ))}
+              {spec.points.length > 6 ? (
+                <div
+                  style={{
+                    padding: '10px 22px',
+                    borderTop: '1px solid var(--fx-border-subtle)',
+                    font: '400 12px/1.4 var(--fx-font-mono)',
+                    color: 'var(--fx-text-tertiary)',
+                  }}
+                >
+                  {spec.points.length - 6} more points — the full chart lives in Quality ·
+                  Measurements
+                </div>
+              ) : null}
+            </div>
+          </section>
+        ) : null}
 
         <section>
           <SectionHeading eyebrow="what the buyer sent, and what we filed">
