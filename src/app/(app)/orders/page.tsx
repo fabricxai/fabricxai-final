@@ -22,6 +22,7 @@ import { factoryToday } from '@/lib/dates'
 import { money, sum } from '@/lib/money'
 import { requestLocale } from '@/lib/ui-locale'
 
+import { OrderBookKeys } from './book-keys'
 import { NewOrderButton } from './new-order'
 import { buildWeek, WeekStrip } from './week-strip'
 
@@ -318,6 +319,7 @@ export default async function OrdersPage() {
               key={row.id}
               href={`/orders/${row.id}`}
               className="fx-selvage"
+              data-book-row
               data-status={SELVAGE[row.health]}
               data-critical={row.health === 'late' || undefined}
               style={{
@@ -471,6 +473,7 @@ export default async function OrdersPage() {
           ))}
         </div>
       )}
+      <OrderBookKeys orderIds={rows.map((r) => r.id)} />
       {/* The Desk skin's pocket bar — never for the viewer, whose only capability is this
           page and whose tabs would point at locked doors. */}
       {ctx.roles.some((r) => ['merchandiser', 'commercial', 'owner', 'admin'].includes(r)) ? (
