@@ -14,6 +14,7 @@ import { PageHeader } from '@/components/shell/page-shell'
 import { env } from '@/lib/env'
 import { getCtx } from '@/modules/core/session'
 import { NOTE_EDIT_WINDOW_DAYS, noteWindowOpen } from '@/modules/memory/memory'
+import { getBomForStyle } from '@/modules/costing/queries'
 import { outcomes, type Pair } from '@/modules/memory/queries'
 
 /**
@@ -40,6 +41,27 @@ export default async function MemoryPage() {
 
   const now = new Date()
   const cards = await outcomes(ctx)
+
+  /*
+   * The repeat bridge (design: repeat-order drift). A closed outcome next to its own
+   * quoted-vs-actual margin is exactly the moment to price the style again — and the
+   * costing studio already seeds from a BOM. This resolves each card's BOM through
+   * costing's query; a style with no approved sheet simply gets no button, because a
+   * repeat with no bill of materials is a blank form wearing a shortcut.
+   */
+  const bomByStyle = new Map<string, string>()
+  await Promise.all(
+    [...new Set(cards.map((c) => c.styleCode).filter((code): code is string => !!code))].map(
+      async (code) => {
+        try {
+          const ref = await getBomForStyle(ctx, code)
+          bomByStyle.set(code, ref.bomId)
+        } catch {
+          // No approved sheet behind the style — no bridge, honestly.
+        }
+      },
+    ),
+  )
 
   return (
     <>
@@ -77,6 +99,21 @@ export default async function MemoryPage() {
                 >
                   {card.poNumber ? <Ident>{card.poNumber}</Ident> : null}
                   {card.styleCode ? <Badge>{card.styleCode}</Badge> : null}
+                  {card.styleCode && bomByStyle.has(card.styleCode) ? (
+                    <a
+                      href={`/costing?bomId=${bomByStyle.get(card.styleCode)}`}
+                      style={{
+                        font: '500 13px/1 var(--fx-font-sans)',
+                        color: 'var(--fx-text-primary)',
+                        textDecoration: 'none',
+                        border: '1px solid var(--fx-border-default)',
+                        borderRadius: 'var(--fx-radius-md)',
+                        padding: '7px 12px',
+                      }}
+                    >
+                      Price this again →
+                    </a>
+                  ) : null}
                   {card.buyerName ? (
                     <span style={{ font: "500 14px/1.3 var(--fx-font-sans)" }}>{card.buyerName}</span>
                   ) : null}

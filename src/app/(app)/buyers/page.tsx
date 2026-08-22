@@ -88,6 +88,22 @@ export default async function BuyersPage() {
             >
               Waiting on the buyer
             </a>
+            <a
+              href="/buyers/scorecard"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                minHeight: 'var(--fx-tap-min)',
+                padding: '10px 18px',
+                borderRadius: 'var(--fx-radius-md)',
+                border: '1px solid var(--fx-border-default)',
+                font: '600 14px/1 var(--fx-font-sans)',
+                color: 'var(--fx-text-primary)',
+                textDecoration: 'none',
+              }}
+            >
+              Scorecard
+            </a>
             {mayWrite ? <NewLead /> : null}
           </span>
         }

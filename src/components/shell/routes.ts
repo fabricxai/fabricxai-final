@@ -74,6 +74,7 @@ export const ROUTES: readonly RouteDef[] = [
   // ── Commercial ──
   { pattern: '/buyers', label: 'Buyer & lead desk' },
   { pattern: '/buyers/waiting', label: 'Waiting on the buyer' },
+  { pattern: '/buyers/scorecard', label: 'Buyer scorecard' },
   { pattern: '/rfq', label: 'RFQ & quotation' },
   { pattern: '/costing', label: 'Costing studio' },
   { pattern: '/costing/bom', label: 'Bills of materials' },

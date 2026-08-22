@@ -404,6 +404,7 @@ export const UI_MESSAGES: Catalogue = {
     // ── route · sub-page names, for the trail and the way back (components/shell/routes.ts) ──
     // A module's own page has no key here: the trail borrows `ui.nav.<id>` so the sidebar
     // and the breadcrumb cannot end up calling one screen two different things.
+    'ui.route.buyers_scorecard': 'Buyer scorecard',
     'ui.route.buyers_waiting': 'Waiting on the buyer',
     'ui.route.costing_bom': 'Bills of materials',
     'ui.route.cutting_lay': 'Lay planning',
@@ -1775,6 +1776,7 @@ export const UI_MESSAGES: Catalogue = {
     'ui.nav.search_placeholder': 'মডিউল, অর্ডার, বায়ার খুঁজুন…',
 
     // ── route ──
+    'ui.route.buyers_scorecard': 'বায়ার স্কোরকার্ড',
     'ui.route.buyers_waiting': 'বায়ারের উত্তরের অপেক্ষায়',
     'ui.route.costing_bom': 'বিল অব মেটেরিয়ালস',
     'ui.route.cutting_lay': 'লে প্ল্যানিং',
