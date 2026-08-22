@@ -738,6 +738,76 @@ async function main(): Promise<void> {
     await productionPhase(ctx, byPo('POLO-2244'), lineRows)
     await shippingPhase(ctx, byPo('DENIM-2251'), lineRows)
 
+    // ── the in-house checklist, at the same three depths (HANDOFF §10: edge rows) ──
+    //
+    // JKT is early: mostly booked, one thing landed, a note-carrying problem cell.
+    // POLO is mid-flight: everything in except the two finishing trims. DENIM has
+    // shipped a part: everything in, one n/a. This gives /orders/inputs all four
+    // states, a late cell, a note, and a roll-up at each stage of honesty.
+    {
+      const { setInputCell } = await import('@/modules/orders/service')
+      const inputPlan: Record<string, Record<string, {
+        state: 'pending' | 'booked' | 'in_house' | 'not_applicable'
+        plan?: number
+        actual?: number
+        note?: string
+      }>> = {
+        'JKT-2210': {
+          pp: { state: 'pending', plan: 12, note: 'round 1 with the buyer — comment sheet awaited' },
+          fabric: { state: 'booked', plan: 18 },
+          thread: { state: 'in_house', plan: -4, actual: -2 },
+          zipper: { state: 'booked', plan: 14, note: 'coming by air, supplier confirmed on the phone' },
+          labels: { state: 'pending', plan: 20 },
+          pocketing: { state: 'not_applicable' },
+        },
+        'POLO-2244': {
+          pp: { state: 'in_house', plan: -30, actual: -28 },
+          fabric: { state: 'in_house', plan: -21, actual: -18 },
+          thread: { state: 'in_house', plan: -20, actual: -20 },
+          labels: { state: 'in_house', plan: -14, actual: -12 },
+          buttons: { state: 'in_house', plan: -14, actual: -14 },
+          hangtag: { state: 'booked', plan: -2, note: 'printer promises Thursday — chase if quiet' },
+          poly_carton: { state: 'booked', plan: 4 },
+          zipper: { state: 'not_applicable' },
+          hook_bar: { state: 'not_applicable' },
+          elastic: { state: 'not_applicable' },
+          pocketing: { state: 'not_applicable' },
+          barcode: { state: 'in_house', plan: -7, actual: -7 },
+        },
+        'DENIM-2251': {
+          pp: { state: 'in_house', plan: -60, actual: -58 },
+          fabric: { state: 'in_house', plan: -45, actual: -44 },
+          pocketing: { state: 'in_house', plan: -40, actual: -40 },
+          thread: { state: 'in_house', plan: -40, actual: -38 },
+          labels: { state: 'in_house', plan: -30, actual: -30 },
+          elastic: { state: 'not_applicable' },
+          hook_bar: { state: 'in_house', plan: -28, actual: -26 },
+          zipper: { state: 'in_house', plan: -28, actual: -28 },
+          buttons: { state: 'in_house', plan: -28, actual: -28 },
+          hangtag: { state: 'in_house', plan: -14, actual: -13 },
+          barcode: { state: 'in_house', plan: -14, actual: -14 },
+          poly_carton: { state: 'in_house', plan: -10, actual: -9 },
+        },
+      }
+
+      let cells = 0
+      for (const [po, categories] of Object.entries(inputPlan)) {
+        const order = byPo(po)
+        for (const [category, cell] of Object.entries(categories)) {
+          await setInputCell(ctx, {
+            orderId: order.id,
+            category,
+            state: cell.state,
+            planDate: cell.plan !== undefined ? day(cell.plan) : null,
+            actualDate: cell.actual !== undefined ? day(cell.actual) : null,
+            note: cell.note ?? null,
+          })
+          cells += 1
+        }
+      }
+      console.log(`[running] ${cells} checklist cells filled`)
+    }
+
     console.log('\n[running] done.')
   } finally {
     await client.end()

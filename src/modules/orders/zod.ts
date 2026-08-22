@@ -273,3 +273,59 @@ export type SaveBreakdownPayload = z.infer<typeof saveBreakdownPayload>
 export type GenerateTnaPayload = z.infer<typeof generateTnaPayload>
 export type ActualizeMilestonePayload = z.infer<typeof actualizeMilestonePayload>
 export type TnaTemplatePayload = z.infer<typeof tnaTemplatePayload>
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Inputs readiness — the In-House Check List
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * The canonical categories, in the order the factory's own sheet columns them.
+ * `pp` is first because the sheet's first banner is PP Status, and the room
+ * reads left to right the way the work happens.
+ */
+export const INPUT_CATEGORIES = [
+  'pp',
+  'fabric',
+  'pocketing',
+  'thread',
+  'labels',
+  'elastic',
+  'hook_bar',
+  'zipper',
+  'buttons',
+  'hangtag',
+  'barcode',
+  'poly_carton',
+] as const
+
+export type InputCategory = (typeof INPUT_CATEGORIES)[number]
+
+export const inputCategory = z.enum(INPUT_CATEGORIES)
+
+export const inputState = z.enum(['pending', 'booked', 'in_house', 'not_applicable'])
+
+/**
+ * One cell edit. The sheet's cell holds a date OR a word OR a note; the patch
+ * carries whichever the person has, and the service refuses only the combination
+ * the schema also refuses — an actual date on a cell that is not in-house.
+ */
+export const setInputCellPayload = z
+  .object({
+    orderId: z.string().uuid(),
+    category: inputCategory,
+    state: inputState,
+    planDate: calendarDate.nullable().optional(),
+    actualDate: calendarDate.nullable().optional(),
+    note: z.string().trim().max(280).nullable().optional(),
+  })
+  .superRefine((cell, issues) => {
+    if (cell.actualDate && cell.state !== 'in_house') {
+      issues.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'an actual date belongs to an in-house cell',
+        path: ['actualDate'],
+      })
+    }
+  })
+
+export type SetInputCellPayload = z.infer<typeof setInputCellPayload>

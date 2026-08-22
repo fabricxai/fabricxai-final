@@ -60,6 +60,7 @@ export const ROUTES: readonly RouteDef[] = [
   { pattern: '/marbim/intake', label: 'Read a document' },
 
   { pattern: '/orders', label: 'Order desk & TNA' },
+  { pattern: '/orders/inputs', label: 'Inputs readiness' },
   { pattern: '/orders/[orderId]', label: 'Order' },
   { pattern: '/orders/[orderId]/documents', label: 'Style and documents' },
 

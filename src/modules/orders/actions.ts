@@ -13,6 +13,7 @@ import {
   generateTna,
   previewRipple,
   saveBreakdown,
+  setInputCell,
   setOrderStatus as setOrderStatusIn,
   type OrderStatus,
 } from './service'
@@ -278,6 +279,31 @@ export async function setOrderStatus(input: {
     const ctx = await requireRole(await headers(), ...WRITERS)
     const result = await setOrderStatusIn(ctx, input)
 
+    refresh(input.orderId)
+    return result
+  })
+}
+
+/**
+ * One cell of the In-House Check List.
+ *
+ * The write surface for `/orders/inputs`. Whole-cell semantics — see the service —
+ * and the same writers as every other order fact: the checklist is the merchandiser's
+ * sheet, but a planner chasing trims writes the truth they just heard on the phone.
+ */
+export async function setOrderInputCell(input: {
+  orderId: string
+  category: string
+  state: string
+  planDate?: string | null
+  actualDate?: string | null
+  note?: string | null
+}): Promise<{ orderId: string; category: string; state: string } | ActionFailure> {
+  return surfaced(async () => {
+    const ctx = await requireRole(await headers(), ...WRITERS)
+    const result = await setInputCell(ctx, input)
+
+    revalidatePath('/orders/inputs')
     refresh(input.orderId)
     return result
   })

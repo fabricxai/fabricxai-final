@@ -17,6 +17,7 @@ import { fromMinor, roundToScale, toMinor } from '@/lib/quantity'
 
 import {
   orderBreakdowns,
+  orderInputs,
   orderRevisions,
   orderStyles,
   orders,
@@ -50,6 +51,7 @@ import {
   orderFromPoDraft,
   orderRevisionDraft,
   orderStylePayload,
+  setInputCellPayload,
   tnaTemplatePayload,
   type SaveBreakdownPayload,
 } from './zod'
@@ -1045,5 +1047,72 @@ export async function findTemplateForProductType(
       if (row) return row
     }
     return null
+  })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Inputs readiness — writing one cell of the In-House Check List
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Set one (order, category) cell: state, plan date, actual date, note.
+ *
+ * An upsert, because the sheet's habit is to touch a cell the first time anything is
+ * known about it — there is no "create the row first" step on paper and there is none
+ * here. Whole-cell semantics: the payload is the cell as it should now stand, exactly
+ * like a breakdown revision, so a cleared note is a cleared note rather than a merge
+ * question.
+ *
+ * Two rules the database also enforces, refused here with words instead of a constraint
+ * error: an actual date belongs only to an in-house cell, and the order must exist and
+ * be this company's. Moving a cell OUT of in_house clears its actual date — a landed
+ * date on a cell that says "booked" is the sheet lying about the store.
+ */
+export async function setInputCell(
+  ctx: RequestCtx,
+  input: unknown,
+): Promise<{ orderId: string; category: string; state: string }> {
+  const cell = setInputCellPayload.parse(input)
+
+  return withTenantTx(ctx, async (tx) => {
+    const [order] = await tx
+      .select({ id: orders.id, status: orders.status })
+      .from(orders)
+      .where(scoped(orders, ctx, eq(orders.id, cell.orderId)))
+    if (!order) throw notFound('orders.errors.order_not_found', { id: cell.orderId })
+
+    // A settled order's checklist is history; editing history is how a claim
+    // argument loses its evidence.
+    if (order.status === 'closed' || order.status === 'cancelled') {
+      throw conflict('orders.errors.inputs_order_settled', { status: order.status })
+    }
+
+    const actualDate = cell.state === 'in_house' ? (cell.actualDate ?? null) : null
+
+    await tx
+      .insert(orderInputs)
+      .values({
+        companyId: ctx.companyId,
+        orderId: cell.orderId,
+        category: cell.category,
+        state: cell.state,
+        planDate: cell.planDate ?? null,
+        actualDate,
+        note: cell.note ?? null,
+        updatedBy: ctx.userId,
+      })
+      .onConflictDoUpdate({
+        target: [orderInputs.orderId, orderInputs.category],
+        set: {
+          state: cell.state,
+          planDate: cell.planDate ?? null,
+          actualDate,
+          note: cell.note ?? null,
+          updatedBy: ctx.userId,
+          updatedAt: new Date(),
+        },
+      })
+
+    return { orderId: cell.orderId, category: cell.category, state: cell.state }
   })
 }

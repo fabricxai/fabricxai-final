@@ -202,6 +202,8 @@ export const MESSAGES: Catalogue = {
     'orders.errors.no_styles':
       'An order needs at least one style — one with none is an order nobody can cost, cut or ship.',
     'orders.errors.order_not_found': 'That order no longer exists.',
+    'orders.errors.inputs_order_settled':
+      'This order is settled — its checklist is history now, and history does not get edited.',
     'orders.errors.po_draft_insert_only':
       'An order drafted from a PO is created, not edited. Amending a confirmed order is a revision with its own trail.',
     'orders.errors.style_not_found': 'That style is not on this order.',
@@ -742,6 +744,8 @@ export const MESSAGES: Catalogue = {
     // ── 1.3 ──
     // The floor says these terms in English anyway (PP, QA, ex-factory), so the
     // Bangla keeps them rather than inventing translations nobody uses out loud.
+    'orders.errors.inputs_order_settled':
+      'অর্ডারটি বন্ধ হয়ে গেছে — এর চেকলিস্ট এখন ইতিহাস, আর ইতিহাস বদলানো যায় না।',
     'orders.milestones.order_confirmed': 'পিও গৃহীত',
     'orders.milestones.yarn_booking': 'সুতা বুকিং',
     'orders.milestones.yarn_in_house': 'সুতা ইন-হাউস',

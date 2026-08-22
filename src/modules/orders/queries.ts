@@ -19,12 +19,14 @@ import { users } from '@/db/schema/core'
 
 import {
   orderBreakdowns,
+  orderInputs,
   orderRevisions,
   orderStyles,
   orders,
   tnaMilestones,
   tnaTemplates,
 } from './schema'
+import { fillCategories, rollupInputs, type InputCell, type InputsRollup } from './inputs'
 import { milestoneDependency } from './zod'
 
 /** How a row reads on the desk: the worst thing true about the order. */
@@ -646,5 +648,90 @@ export async function milestonesInWindow(
       critical: row.critical,
       overdue: row.plannedDate < input.from,
     }))
+  })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Inputs readiness — reading the In-House Check List
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface OrderInputsRow {
+  orderId: string
+  poNumber: string | null
+  buyerName: string | null
+  styleCode: string | null
+  plannedExFactoryDate: string | null
+  cells: InputCell[]
+  rollup: InputsRollup
+}
+
+/**
+ * The matrix: every open order's twelve cells and its roll-up, ex-factory soonest first.
+ *
+ * Missing rows render as `pending` — an untouched order is twelve open questions, not a
+ * blank that reads as done — and the roll-up counts only the categories the style uses
+ * (`inputs.ts` carries that rule, with its reasons).
+ */
+export async function inputsMatrix(
+  ctx: AnyCtx,
+  input: { today: string },
+): Promise<OrderInputsRow[]> {
+  return withTenantRead(ctx, async (tx) => {
+    const open = await tx
+      .select({
+        id: orders.id,
+        poNumbers: orders.poNumbers,
+        buyerName: buyers.name,
+        plannedExFactoryDate: orders.plannedExFactoryDate,
+      })
+      .from(orders)
+      .leftJoin(buyers, eq(buyers.id, orders.buyerId))
+      .where(scoped(orders, ctx, sql`${orders.status} NOT IN ('closed','cancelled')`))
+      .orderBy(sql`${orders.plannedExFactoryDate} ASC NULLS LAST`)
+
+    if (open.length === 0) return []
+    const orderIds = open.map((o) => o.id)
+
+    const [styles, cells] = await Promise.all([
+      tx
+        .select({ orderId: orderStyles.orderId, styleCode: orderStyles.styleCode })
+        .from(orderStyles)
+        .where(scoped(orderStyles, ctx, inArray(orderStyles.orderId, orderIds))),
+      tx
+        .select({
+          orderId: orderInputs.orderId,
+          category: orderInputs.category,
+          state: orderInputs.state,
+          planDate: orderInputs.planDate,
+          actualDate: orderInputs.actualDate,
+          note: orderInputs.note,
+        })
+        .from(orderInputs)
+        .where(scoped(orderInputs, ctx, inArray(orderInputs.orderId, orderIds))),
+    ])
+
+    const styleByOrder = new Map(styles.map((s) => [s.orderId, s.styleCode]))
+    const cellsByOrder = new Map<string, InputCell[]>()
+    for (const cell of cells) {
+      const held = cellsByOrder.get(cell.orderId) ?? []
+      // A category outside the registered set (an older vocabulary, a bad import)
+      // is dropped from the matrix rather than crashing it; the row still exists
+      // in the table and a schema change can rename it.
+      held.push(cell as InputCell)
+      cellsByOrder.set(cell.orderId, held)
+    }
+
+    return open.map((order) => {
+      const filled = fillCategories(cellsByOrder.get(order.id) ?? [])
+      return {
+        orderId: order.id,
+        poNumber: order.poNumbers[0] ?? null,
+        buyerName: order.buyerName,
+        styleCode: styleByOrder.get(order.id) ?? null,
+        plannedExFactoryDate: order.plannedExFactoryDate,
+        cells: filled,
+        rollup: rollupInputs(filled, input.today),
+      }
+    })
   })
 }
