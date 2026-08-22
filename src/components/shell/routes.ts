@@ -63,6 +63,7 @@ export const ROUTES: readonly RouteDef[] = [
   { pattern: '/orders/inputs', label: 'Inputs readiness' },
   { pattern: '/orders/[orderId]', label: 'Order' },
   { pattern: '/orders/[orderId]/documents', label: 'Style and documents' },
+  { pattern: '/orders/[orderId]/pack', label: 'Buyer status pack' },
 
   { pattern: '/memory', label: 'Order memory' },
 
