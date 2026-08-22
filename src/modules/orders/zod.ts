@@ -363,3 +363,76 @@ export const recordShipDatePayload = z
   })
 
 export type RecordShipDatePayload = z.infer<typeof recordShipDatePayload>
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Dossier additions — fabric legs, drops, colour approvals
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** The fabric's journey, in transit order — the confirmation sheet's columns as a vocabulary. */
+export const FABRIC_LEGS = [
+  'booking_placed',
+  'pi_received',
+  'ex_mill',
+  'on_vessel',
+  'at_port',
+  'customs_cleared',
+  'in_house',
+] as const
+
+export type FabricLeg = (typeof FABRIC_LEGS)[number]
+
+export const setFabricLegPayload = z.object({
+  orderId: z.string().uuid(),
+  leg: z.enum(FABRIC_LEGS),
+  planDate: calendarDate.nullable().optional(),
+  actualDate: calendarDate.nullable().optional(),
+  note: z.string().trim().max(280).nullable().optional(),
+})
+
+export type SetFabricLegPayload = z.infer<typeof setFabricLegPayload>
+
+export const saveDropsPayload = z
+  .object({
+    orderId: z.string().uuid(),
+    drops: z
+      .array(
+        z.object({
+          dropNo: z.number().int().min(1).max(20),
+          qty: z.number().int().positive(),
+          shipDate: calendarDate,
+          note: z.string().trim().max(280).nullable().optional(),
+        }),
+      )
+      .min(1)
+      .max(20),
+  })
+  .superRefine((payload, issues) => {
+    const seen = new Set<number>()
+    for (const drop of payload.drops) {
+      if (seen.has(drop.dropNo)) {
+        issues.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `drop ${drop.dropNo} appears twice`,
+          path: ['drops'],
+        })
+      }
+      seen.add(drop.dropNo)
+    }
+  })
+
+export type SaveDropsPayload = z.infer<typeof saveDropsPayload>
+
+export const COLOUR_STAGES = ['lab_dip', 'bulk_lot', 'shade_band'] as const
+
+export type ColourStage = (typeof COLOUR_STAGES)[number]
+
+export const setColourApprovalPayload = z.object({
+  orderId: z.string().uuid(),
+  color: z.string().trim().min(1).max(60),
+  stage: z.enum(COLOUR_STAGES),
+  status: z.enum(['pending', 'sent', 'approved', 'rejected']),
+  decidedOn: calendarDate.nullable().optional(),
+  note: z.string().trim().max(280).nullable().optional(),
+})
+
+export type SetColourApprovalPayload = z.infer<typeof setColourApprovalPayload>

@@ -834,6 +834,82 @@ async function main(): Promise<void> {
       }
     }
 
+    // ── the dossier additions, per their HANDOFF §10 ──────────────────────────
+    //
+    // DENIM: the fabric's full journey with the slip growing on the way — ex-mill
+    // late by four days, in-house by seven. POLO: two drops (the second carrying the
+    // balance) and three colours with one stalled at shade band. JKT stays untouched:
+    // the empty states must render.
+    {
+      const { setFabricLeg, saveDrops, setColourApproval } = await import('@/modules/orders/service')
+      const { orderFabricLegs, orderDrops } = await import('@/modules/orders/schema')
+
+      const denim = byPo('DENIM-2251')
+      const [legsExist] = await withTenantRead(ctx, (tx) =>
+        tx
+          .select({ id: orderFabricLegs.id })
+          .from(orderFabricLegs)
+          .where(scoped(orderFabricLegs, ctx, eq(orderFabricLegs.orderId, denim.id)))
+          .limit(1),
+      )
+      if (!legsExist) {
+        const legs: [string, number, number | null, string | null][] = [
+          ['booking_placed', -78, -78, null],
+          ['pi_received', -72, -71, null],
+          ['ex_mill', -50, -46, 'mill lost four days at dyeing — claim window noted'],
+          ['on_vessel', -46, -42, null],
+          ['at_port', -26, -22, null],
+          ['customs_cleared', -24, -18, 'UD endorsement queued two extra days'],
+          ['in_house', -22, -15, null],
+        ]
+        for (const [leg, plan, actual, note] of legs) {
+          await setFabricLeg(ctx, {
+            orderId: denim.id,
+            leg,
+            planDate: day(plan),
+            actualDate: actual === null ? null : day(actual),
+            note,
+          })
+        }
+        console.log('[running] DENIM-2251 · fabric journey recorded, slip and all')
+      }
+
+      const polo = byPo('POLO-2244')
+      const [dropsExist] = await withTenantRead(ctx, (tx) =>
+        tx
+          .select({ id: orderDrops.id })
+          .from(orderDrops)
+          .where(scoped(orderDrops, ctx, eq(orderDrops.orderId, polo.id)))
+          .limit(1),
+      )
+      if (!dropsExist) {
+        await saveDrops(ctx, {
+          orderId: polo.id,
+          drops: [
+            { dropNo: 1, qty: 14000, shipDate: day(17), note: 'white first — the retail window' },
+            { dropNo: 2, qty: 10000, shipDate: day(24) },
+          ],
+        })
+        for (const [color, stage, status, decided] of [
+          ['White', 'lab_dip', 'approved', -60],
+          ['White', 'bulk_lot', 'approved', -20],
+          ['White', 'shade_band', 'approved', -12],
+          ['Navy', 'lab_dip', 'approved', -58],
+          ['Navy', 'bulk_lot', 'approved', -18],
+          ['Navy', 'shade_band', 'sent', null],
+        ] as const) {
+          await setColourApproval(ctx, {
+            orderId: polo.id,
+            color,
+            stage,
+            status,
+            decidedOn: decided === null ? null : day(decided),
+          })
+        }
+        console.log('[running] POLO-2244 · two drops, colour chain with Navy stalled at shade band')
+      }
+    }
+
     console.log('\n[running] done.')
   } finally {
     await client.end()

@@ -14,6 +14,9 @@ import {
   previewRipple,
   recordShipDate as recordShipDateIn,
   saveBreakdown,
+  saveDrops as saveDropsIn,
+  setColourApproval as setColourApprovalIn,
+  setFabricLeg as setFabricLegIn,
   setInputCell,
   setOrderStatus as setOrderStatusIn,
   type OrderStatus,
@@ -326,6 +329,55 @@ export async function recordOrderShipDate(input: {
     const ctx = await requireRole(await headers(), ...WRITERS)
     const result = await recordShipDateIn(ctx, input)
 
+    refresh(input.orderId)
+    return result
+  })
+}
+
+/** One cell of the fabric's journey — plan, actual, note (HANDOFF: dossier additions). */
+export async function setOrderFabricLeg(input: {
+  orderId: string
+  leg: string
+  planDate?: string | null
+  actualDate?: string | null
+  note?: string | null
+}): Promise<{ orderId: string; leg: string } | ActionFailure> {
+  return surfaced(async () => {
+    const ctx = await requireRole(await headers(), ...WRITERS)
+    const result = await setFabricLegIn(ctx, input)
+    revalidatePath(`/orders/${input.orderId}/fabric`)
+    refresh(input.orderId)
+    return result
+  })
+}
+
+/** Replace the order's drop plan wholesale — Σqty gated against tolerance server-side. */
+export async function saveOrderDrops(input: {
+  orderId: string
+  drops: { dropNo: number; qty: number; shipDate: string; note?: string | null }[]
+}): Promise<{ orderId: string; drops: number; exFactoryDate: string } | ActionFailure> {
+  return surfaced(async () => {
+    const ctx = await requireRole(await headers(), ...WRITERS)
+    const result = await saveDropsIn(ctx, input)
+    revalidatePath(`/orders/${input.orderId}/drops`)
+    refresh(input.orderId)
+    return result
+  })
+}
+
+/** One (order, colour, stage) row of the approval chain. */
+export async function setOrderColourApproval(input: {
+  orderId: string
+  color: string
+  stage: string
+  status: string
+  decidedOn?: string | null
+  note?: string | null
+}): Promise<{ orderId: string; color: string; stage: string; status: string } | ActionFailure> {
+  return surfaced(async () => {
+    const ctx = await requireRole(await headers(), ...WRITERS)
+    const result = await setColourApprovalIn(ctx, input)
+    revalidatePath(`/orders/${input.orderId}/drops`)
     refresh(input.orderId)
     return result
   })

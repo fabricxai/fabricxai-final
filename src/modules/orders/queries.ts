@@ -19,6 +19,9 @@ import { users } from '@/db/schema/core'
 
 import {
   orderBreakdowns,
+  orderColourApprovals,
+  orderDrops,
+  orderFabricLegs,
   orderInputs,
   orderShipDates,
   orderRevisions,
@@ -770,4 +773,83 @@ export async function shipDateTrail(ctx: AnyCtx, orderId: string): Promise<ShipD
       .orderBy(asc(orderShipDates.createdAt))
     return rows
   })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Dossier additions — reads
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface FabricLegCell {
+  leg: string
+  planDate: string | null
+  actualDate: string | null
+  note: string | null
+}
+
+/** The journey, every leg present (missing rows render as untouched), transit order. */
+export async function fabricLegs(ctx: AnyCtx, orderId: string): Promise<FabricLegCell[]> {
+  const { FABRIC_LEGS } = await import('./zod')
+
+  return withTenantRead(ctx, async (tx) => {
+    const rows = await tx
+      .select({
+        leg: orderFabricLegs.leg,
+        planDate: orderFabricLegs.planDate,
+        actualDate: orderFabricLegs.actualDate,
+        note: orderFabricLegs.note,
+      })
+      .from(orderFabricLegs)
+      .where(scoped(orderFabricLegs, ctx, eq(orderFabricLegs.orderId, orderId)))
+
+    const byLeg = new Map(rows.map((row) => [row.leg, row]))
+    return FABRIC_LEGS.map(
+      (leg) => byLeg.get(leg) ?? { leg, planDate: null, actualDate: null, note: null },
+    )
+  })
+}
+
+export interface DropRow {
+  dropNo: number
+  qty: number
+  shipDate: string
+  note: string | null
+}
+
+export async function dropsForOrder(ctx: AnyCtx, orderId: string): Promise<DropRow[]> {
+  return withTenantRead(ctx, (tx) =>
+    tx
+      .select({
+        dropNo: orderDrops.dropNo,
+        qty: orderDrops.qty,
+        shipDate: orderDrops.shipDate,
+        note: orderDrops.note,
+      })
+      .from(orderDrops)
+      .where(scoped(orderDrops, ctx, eq(orderDrops.orderId, orderId)))
+      .orderBy(asc(orderDrops.dropNo)),
+  )
+}
+
+export interface ColourApprovalRow {
+  color: string
+  stage: string
+  status: string
+  decidedOn: string | null
+  note: string | null
+}
+
+export async function colourApprovals(ctx: AnyCtx, orderId: string): Promise<ColourApprovalRow[]> {
+  return withTenantRead(ctx, (tx) =>
+    tx
+      .select({
+        color: orderColourApprovals.color,
+        stage: orderColourApprovals.stage,
+        status: orderColourApprovals.status,
+        decidedOn: orderColourApprovals.decidedOn,
+        note: orderColourApprovals.note,
+      })
+      .from(orderColourApprovals)
+      .where(scoped(orderColourApprovals, ctx, eq(orderColourApprovals.orderId, orderId)))
+      .orderBy(asc(orderColourApprovals.color), asc(orderColourApprovals.stage)),
+  )
 }

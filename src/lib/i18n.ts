@@ -204,6 +204,8 @@ export const MESSAGES: Catalogue = {
     'orders.errors.order_not_found': 'That order no longer exists.',
     'orders.errors.inputs_order_settled':
       'This order is settled — its checklist is history now, and history does not get edited.',
+    'orders.errors.drops_outside_tolerance':
+      'The drops add up to more or less than the buyer contracted, beyond the agreed tolerance.',
     'orders.errors.po_draft_insert_only':
       'An order drafted from a PO is created, not edited. Amending a confirmed order is a revision with its own trail.',
     'orders.errors.style_not_found': 'That style is not on this order.',
@@ -746,6 +748,8 @@ export const MESSAGES: Catalogue = {
     // Bangla keeps them rather than inventing translations nobody uses out loud.
     'orders.errors.inputs_order_settled':
       'অর্ডারটি বন্ধ হয়ে গেছে — এর চেকলিস্ট এখন ইতিহাস, আর ইতিহাস বদলানো যায় না।',
+    'orders.errors.drops_outside_tolerance':
+      'ড্রপগুলোর যোগফল বায়ারের চুক্তির চেয়ে সহনসীমার বাইরে বেশি বা কম।',
     'orders.milestones.order_confirmed': 'পিও গৃহীত',
     'orders.milestones.yarn_booking': 'সুতা বুকিং',
     'orders.milestones.yarn_in_house': 'সুতা ইন-হাউস',

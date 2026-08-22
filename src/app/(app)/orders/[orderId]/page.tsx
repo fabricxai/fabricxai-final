@@ -125,6 +125,38 @@ export default async function OrderDetailPage({
         actions={
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
           <a
+            href={`/orders/${orderId}/fabric`}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              minHeight: 'var(--fx-tap-min)',
+              padding: '10px 18px',
+              borderRadius: 'var(--fx-radius-md)',
+              border: '1px solid var(--fx-border-default)',
+              font: '600 14px/1 var(--fx-font-sans)',
+              color: 'var(--fx-text-primary)',
+              textDecoration: 'none',
+            }}
+          >
+            Fabric
+          </a>
+          <a
+            href={`/orders/${orderId}/drops`}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              minHeight: 'var(--fx-tap-min)',
+              padding: '10px 18px',
+              borderRadius: 'var(--fx-radius-md)',
+              border: '1px solid var(--fx-border-default)',
+              font: '600 14px/1 var(--fx-font-sans)',
+              color: 'var(--fx-text-primary)',
+              textDecoration: 'none',
+            }}
+          >
+            Drops &amp; colours
+          </a>
+          <a
             href={`/orders/${orderId}/pack`}
             style={{
               display: 'inline-flex',
