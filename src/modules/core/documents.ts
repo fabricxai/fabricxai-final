@@ -13,7 +13,7 @@
  */
 import { HeadObjectCommand, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
-import { and, eq, isNull } from 'drizzle-orm'
+import { and, desc, eq, isNull } from 'drizzle-orm'
 
 import { documents } from '@/db/schema/core'
 import { env } from '@/lib/env'
@@ -284,6 +284,65 @@ export async function documentMeta(
 
   if (!doc) throw notFound('errors.document_not_found', { documentId })
   return doc
+}
+
+export interface AttachedDocument {
+  readonly id: string
+  readonly filename: string
+  readonly mimeType: string
+  readonly sizeBytes: number
+  /** Domain kind — the module's own vocabulary (`buyer_po`, `tech_pack`, …), or null. */
+  readonly kind: string | null
+  /** Which module claimed the file. Null before the classifier has run. */
+  readonly moduleId: string | null
+  readonly status: string
+  readonly uploadedAt: Date
+}
+
+/**
+ * Every live file hanging off one business row, newest first.
+ *
+ * Files have been landing against `entityTable`/`entityId` since intake shipped — a buyer
+ * PO files itself onto the order it drafted — and nothing read them back. The order they
+ * belong to could not show them, so a merchandiser who wanted the PO they had just dropped
+ * on MARBIM had to go and find it in their own mail again.
+ *
+ * The pair is a loose link, not an FK: the target table varies by module and a file often
+ * arrives before the row it describes exists. That means this can return files for a row
+ * that has since been deleted, which is the right trade — an orphaned document is still
+ * evidence, and losing sight of it is worse than showing it.
+ */
+export async function documentsFor(
+  ctx: AnyCtx,
+  target: { entityTable: string; entityId: string },
+): Promise<AttachedDocument[]> {
+  return withTenantRead(ctx, async (tx) => {
+    const rows = await tx
+      .select({
+        id: documents.id,
+        filename: documents.filename,
+        mimeType: documents.mimeType,
+        sizeBytes: documents.sizeBytes,
+        kind: documents.kind,
+        moduleId: documents.moduleId,
+        status: documents.status,
+        uploadedAt: documents.createdAt,
+      })
+      .from(documents)
+      .where(
+        scoped(
+          documents,
+          ctx,
+          and(
+            eq(documents.entityTable, target.entityTable),
+            eq(documents.entityId, target.entityId),
+            isNull(documents.deletedAt),
+          ),
+        ),
+      )
+      .orderBy(desc(documents.createdAt))
+    return rows
+  })
 }
 
 /** Soft delete. The object is swept separately so a mistaken delete stays recoverable. */
