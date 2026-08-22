@@ -1565,4 +1565,198 @@ export async function extractionStatus(
   }
 }
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Mail intake — HANDOFF-marbim-mail-intake §5
+// ─────────────────────────────────────────────────────────────────────────────
+
+const mailAttachment = z.object({
+  filename: z.string().trim().min(1).max(200),
+  mimeType: z.string().trim().min(1).max(120),
+  contentBase64: z.string().min(1),
+})
+
+export const mailPayload = z.object({
+  from: z.string().trim().min(1).max(320),
+  subject: z.string().trim().min(1).max(500),
+  threadRef: z.string().trim().max(200).optional(),
+  attachments: z.array(mailAttachment).min(1).max(10),
+})
+
+export type MailPayload = z.infer<typeof mailPayload>
+
+/** Per-file ceiling for mail. Below the pipeline's own 25 MB — a mail bigger than this is a mistake or an attack. */
+const MAIL_MAX_FILE_BYTES = 15 * 1024 * 1024
+
+/**
+ * One mail in: every attachment becomes a documents row through the same storage
+ * path a dragged file takes, carrying the mail's own facts in `meta` so the thread
+ * ("part 3 of 3") stays reconstructable. Nothing is linked to an order here — a
+ * file naming no order lands unfiled and WAITS; guessing a linkage is exactly the
+ * mistake a person then cannot see to correct.
+ *
+ * Idempotent per (threadRef|subject, filename, sha256): a re-delivered mail files
+ * nothing twice, and the caller is told which files were already there.
+ */
+export async function ingestMail(
+  ctx: AnyCtx,
+  input: unknown,
+): Promise<{ files: { filename: string; documentId: string; alreadyFiled: boolean }[] }> {
+  const mail = mailPayload.parse(input)
+  const { createHash } = await import('node:crypto')
+  const { documents } = await import('@/db/schema/core')
+  const { storeDocumentBytes } = await import('../core/documents')
+  const { scoped } = await import('../core/scoped')
+
+  const threadKey = mail.threadRef ?? mail.subject
+  const files: { filename: string; documentId: string; alreadyFiled: boolean }[] = []
+
+  for (const attachment of mail.attachments) {
+    const bytes = Buffer.from(attachment.contentBase64, 'base64')
+    if (bytes.byteLength === 0 || bytes.byteLength > MAIL_MAX_FILE_BYTES) {
+      throw new AppError('validation_failed', 'errors.document_size_invalid', {
+        sizeBytes: bytes.byteLength,
+      })
+    }
+    const sha256 = createHash('sha256').update(bytes).digest('hex')
+
+    const existing = await withTenantRead(ctx, async (tx) => {
+      const [row] = await tx
+        .select({ id: documents.id })
+        .from(documents)
+        .where(
+          scoped(
+            documents,
+            ctx,
+            and(
+              eq(documents.filename, attachment.filename),
+              eq(documents.checksumSha256, sha256),
+              sql`${documents.meta} ->> 'threadRef' = ${threadKey}`,
+              sql`${documents.deletedAt} IS NULL`,
+            ),
+          ),
+        )
+        .limit(1)
+      return row ?? null
+    })
+
+    if (existing) {
+      files.push({ filename: attachment.filename, documentId: existing.id, alreadyFiled: true })
+      continue
+    }
+
+    const stored = await storeDocumentBytes(ctx, {
+      filename: attachment.filename,
+      mimeType: attachment.mimeType,
+      bytes,
+      checksumSha256: sha256,
+      moduleId: 'marbim',
+      meta: { mailFrom: mail.from, mailSubject: mail.subject, threadRef: threadKey },
+    })
+    files.push({ filename: attachment.filename, documentId: stored.documentId, alreadyFiled: false })
+  }
+
+  return { files }
+}
+
+export interface UnfiledDocument {
+  id: string
+  filename: string
+  mimeType: string
+  status: string
+  mailFrom: string | null
+  mailSubject: string | null
+  threadRef: string | null
+  createdAt: Date
+}
+
+/**
+ * The tray: live documents with no entity linkage, newest first, with their mail
+ * meta — grouped by the screen on threadRef so "part 3 of 3" reads as one enquiry.
+ * A file here was NOT guessed onto an order, which is the tray's whole promise.
+ */
+export async function unfiledDocuments(ctx: AnyCtx, limit = 50): Promise<UnfiledDocument[]> {
+  const { documents } = await import('@/db/schema/core')
+  const { scoped } = await import('../core/scoped')
+
+  return withTenantRead(ctx, async (tx) => {
+    const rows = await tx
+      .select({
+        id: documents.id,
+        filename: documents.filename,
+        mimeType: documents.mimeType,
+        status: documents.status,
+        meta: documents.meta,
+        createdAt: documents.createdAt,
+      })
+      .from(documents)
+      .where(
+        scoped(
+          documents,
+          ctx,
+          and(sql`${documents.entityTable} IS NULL`, sql`${documents.deletedAt} IS NULL`),
+        ),
+      )
+      .orderBy(desc(documents.createdAt))
+      .limit(limit)
+
+    return rows.map((row) => {
+      const meta = (row.meta ?? {}) as Record<string, unknown>
+      return {
+        id: row.id,
+        filename: row.filename,
+        mimeType: row.mimeType,
+        status: row.status,
+        mailFrom: typeof meta.mailFrom === 'string' ? meta.mailFrom : null,
+        mailSubject: typeof meta.mailSubject === 'string' ? meta.mailSubject : null,
+        threadRef: typeof meta.threadRef === 'string' ? meta.threadRef : null,
+        createdAt: row.createdAt,
+      }
+    })
+  })
+}
+
+/**
+ * A person files one tray item against an order. The one write a human does here —
+ * MARBIM never claims a file itself, because a wrong guess buried on the right
+ * order is invisible in a way an unfiled file is not.
+ */
+export async function claimUnfiledDocument(
+  ctx: RequestCtx,
+  input: { documentId: string; orderId: string },
+): Promise<{ documentId: string; orderId: string }> {
+  const { documents } = await import('@/db/schema/core')
+  const { orders } = await import('@/modules/orders/schema')
+  const { scoped } = await import('../core/scoped')
+
+  return withTenantTx(ctx, async (tx) => {
+    const [order] = await tx
+      .select({ id: orders.id })
+      .from(orders)
+      .where(scoped(orders, ctx, eq(orders.id, input.orderId)))
+    if (!order) throw notFound('orders.errors.order_not_found', { id: input.orderId })
+
+    const updated = await tx
+      .update(documents)
+      .set({ entityTable: 'orders', entityId: input.orderId, updatedAt: new Date() })
+      .where(
+        scoped(
+          documents,
+          ctx,
+          and(
+            eq(documents.id, input.documentId),
+            sql`${documents.entityTable} IS NULL`,
+            sql`${documents.deletedAt} IS NULL`,
+          ),
+        ),
+      )
+      .returning({ id: documents.id })
+
+    if (updated.length === 0) {
+      throw notFound('errors.document_not_found', { documentId: input.documentId })
+    }
+    return { documentId: input.documentId, orderId: input.orderId }
+  })
+}
+
 export { and, conflict, MARBIM_EVENTS }

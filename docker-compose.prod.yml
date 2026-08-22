@@ -94,6 +94,12 @@ x-app-env: &app-env
   # Web push (mobile contract 4.1) — all three or none; absent = push disabled.
   VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
   VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+
+  # Mail intake (HANDOFF-marbim-mail-intake): the adapter's bearer token and the one
+  # tenant its mail belongs to. Both default empty, which keeps the endpoint dead —
+  # fail closed is the correct state for a deployment with no mailbox pointed at it.
+  INTAKE_MAIL_TOKEN: ${INTAKE_MAIL_TOKEN:-}
+  INTAKE_MAIL_COMPANY_ID: ${INTAKE_MAIL_COMPANY_ID:-}
   VAPID_SUBJECT: ${VAPID_SUBJECT:-}
   MARBIM_ENABLED: ${MARBIM_ENABLED:-false}
   # Models by role. Absent from this file until now, which meant `MARBIM_MODEL_EXTRACT` in

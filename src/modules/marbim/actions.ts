@@ -33,6 +33,7 @@ import {
   type ChatResult,
   type ConversationSummary,
   type MarbimPolicy,
+  claimUnfiledDocument,
 } from './service'
 import type { ToolPack } from './tools'
 
@@ -643,5 +644,35 @@ function normalizeStoredToolCalls(
         ...(typeof row.error === 'string' ? { error: row.error } : {}),
       },
     ]
+  })
+}
+
+/**
+ * File one unfiled tray item against an order, by the PO the person reads on the
+ * screen — the code travels, not the uuid. Ambiguity (two orders sharing a PO)
+ * resolves to a refusal, never to the first row.
+ */
+export async function claimUnfiled(input: {
+  documentId: string
+  poNumber: string
+}): Promise<{ documentId: string; orderId: string } | ActionFailure> {
+  return surfaced(async () => {
+    const ctx = await requireRole(
+      await headers(),
+      'merchandiser',
+      'commercial',
+      'planner',
+    )
+    const { orderIdByPoNumber } = await import('@/modules/orders/queries')
+    const orderId = await orderIdByPoNumber(ctx, input.poNumber.trim())
+    if (!orderId) {
+      throw new AppError('validation_failed', 'orders.errors.order_not_found', {
+        poNumber: input.poNumber,
+      })
+    }
+    const result = await claimUnfiledDocument(ctx, { documentId: input.documentId, orderId })
+    revalidatePath('/marbim/intake')
+    revalidatePath(`/orders/${orderId}/documents`)
+    return result
   })
 }

@@ -6,6 +6,9 @@ import { Badge } from '@/components/fx/primitives'
 import { SectionHeading } from '@/components/fx/signature'
 import { LockedState } from '@/components/fx/feedback'
 import { RouteHeader } from '@/components/shell/route-header'
+import { unfiledDocuments } from '@/modules/marbim/service'
+
+import { UnfiledTray } from './unfiled-tray'
 import { env } from '@/lib/env'
 import { FloorTabs } from '@/components/shell/floor-tabs'
 import { getCtx } from '@/modules/core/session'
@@ -57,6 +60,8 @@ export default async function IntakePage() {
    * should be told the copilot is not available rather than shown one that does not work.
    */
   if (!env.MARBIM_ENABLED) return <LockedState what="document intake" />
+
+  const unfiled = await unfiledDocuments(ctx)
 
   /*
    * The same rule as the wall, never the raw list. This page offered all of `INTAKE_KINDS`,
@@ -176,6 +181,18 @@ export default async function IntakePage() {
           </section>
         ) : null}
       </div>
+
+      {unfiled.length > 0 ? (
+        <section style={{ marginTop: 36 }}>
+          <SectionHeading
+            eyebrow={`${unfiled.length} file${unfiled.length === 1 ? '' : 's'} waiting for a person — never guessed onto an order`}
+          >
+            Unfiled
+          </SectionHeading>
+          <UnfiledTray docs={unfiled} />
+        </section>
+      ) : null}
+
       {ctx.roles.some((r) => r === 'merchandiser' || r === 'commercial') ? (
         <FloorTabs
           tabs={[
