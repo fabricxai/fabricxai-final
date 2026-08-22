@@ -6,7 +6,7 @@ import { InlineAlert } from '@/components/fx/feedback'
 import { Ident } from '@/components/fx/format'
 import { Badge } from '@/components/fx/primitives'
 import { SectionHeading } from '@/components/fx/signature'
-import { PageHeader } from '@/components/shell/page-shell'
+import { RouteHeader } from '@/components/shell/route-header'
 import { getCtx } from '@/modules/core/session'
 import { bomDetail } from '@/modules/costing/queries'
 
@@ -48,8 +48,9 @@ export default async function BomDetailPage({
 
   return (
     <>
-      <PageHeader
-        back={{ href: '/costing/bom', label: 'Bills of materials' }}
+      <RouteHeader
+        path={`/costing/bom/${bomId}`}
+        labels={{ bomId: bom.styleCode }}
         eyebrow={`Bill of materials · ${SOURCE_LABEL[bom.source] ?? bom.source}`}
         title={bom.styleCode}
         meta={`${lines.length} ${lines.length === 1 ? 'line' : 'lines'}`}

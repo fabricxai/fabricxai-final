@@ -5,7 +5,7 @@ import { asc, eq } from 'drizzle-orm'
 import { EmptyState } from '@/components/fx/feedback'
 import { FloorScreen } from '@/components/fx/floor'
 import { FloorTabs } from '@/components/shell/floor-tabs'
-import { PageHeader } from '@/components/shell/page-shell'
+import { RouteHeader } from '@/components/shell/route-header'
 import { tui } from '@/lib/i18n-ui'
 import { requestLocale } from '@/lib/ui-locale'
 import { getCtx } from '@/modules/core/session'
@@ -63,8 +63,8 @@ export default async function FinalInspectionPage() {
   if (lots.length === 0) {
     return (
       <FloorScreen>
-        <PageHeader
-        back={{ href: '/quality', label: 'Quality' }}
+        <RouteHeader
+        path="/quality/final"
           eyebrow={tui(locale, 'ui.quality.final_eyebrow')}
           title={tui(locale, 'ui.quality.final_empty_page_title')}
           ownsAmber
@@ -88,8 +88,8 @@ export default async function FinalInspectionPage() {
 
   return (
     <FloorScreen>
-      <PageHeader
-        back={{ href: '/quality', label: 'Quality' }}
+      <RouteHeader
+        path="/quality/final"
         eyebrow={tui(locale, 'ui.quality.final_eyebrow_full', { standard: policy.aqlStandard })}
         title={tui(
           locale,

@@ -1,7 +1,7 @@
 import { headers } from 'next/headers'
 import { notFound, redirect } from 'next/navigation'
 
-import { PageHeader } from '@/components/shell/page-shell'
+import { RouteHeader } from '@/components/shell/route-header'
 import { getCtx } from '@/modules/core/session'
 import { sampleTimeline } from '@/modules/sampling/service'
 
@@ -38,8 +38,9 @@ export default async function SampleDetailPage({
 
   return (
     <>
-      <PageHeader
-        back={{ href: '/sampling', label: 'Sampling room' }}
+      <RouteHeader
+        path={`/sampling/${sampleId}`}
+        labels={{ sampleId: request.requestNo }}
         eyebrow={`Sampling · ${request.type.toUpperCase()} · ${request.styleCode}`}
         title={request.requestNo}
         meta={request.dueDate ? `due ${request.dueDate}` : undefined}

@@ -1,7 +1,7 @@
 import { headers } from 'next/headers'
 import { notFound, redirect } from 'next/navigation'
 
-import { PageHeader } from '@/components/shell/page-shell'
+import { RouteHeader } from '@/components/shell/route-header'
 import { lcDetail } from '@/modules/commercial/queries'
 import type { BankDocsPolicy } from '@/modules/commercial/service'
 import { getCtx } from '@/modules/core/session'
@@ -47,8 +47,9 @@ export default async function LcDetailPage({ params }: { params: Promise<{ lcId:
 
   return (
     <>
-      <PageHeader
-        back={{ href: '/lcs', label: 'LC register' }}
+      <RouteHeader
+        path={`/lcs/${lcId}`}
+        labels={{ lcId: lc.number }}
         eyebrow={`Commercial · letters of credit · ${lc.buyerName ?? 'buyer'}`}
         title={lc.number}
         meta={`${lc.value} ${lc.currency} · ${lc.status}`}

@@ -2,11 +2,10 @@ import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { desc } from 'drizzle-orm'
 
-import { Breadcrumbs } from '@/components/fx/data'
 import { Badge } from '@/components/fx/primitives'
 import { SectionHeading } from '@/components/fx/signature'
 import { LockedState } from '@/components/fx/feedback'
-import { PageHeader } from '@/components/shell/page-shell'
+import { RouteHeader } from '@/components/shell/route-header'
 import { env } from '@/lib/env'
 import { FloorTabs } from '@/components/shell/floor-tabs'
 import { getCtx } from '@/modules/core/session'
@@ -88,12 +87,8 @@ export default async function IntakePage() {
 
   return (
     <>
-      <div style={{ marginBottom: 18 }}>
-        <Breadcrumbs trail={[{ label: 'MARBIM', href: '/marbim' }, { label: 'Read a document' }]} />
-      </div>
-
-      <PageHeader
-        back={{ href: '/marbim', label: 'MARBIM' }}
+      <RouteHeader
+        path="/marbim/intake"
         eyebrow="MARBIM · document intake"
         title="Give MARBIM something to read"
         meta={`${kinds.length} kinds it knows how to file`}

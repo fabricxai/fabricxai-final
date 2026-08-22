@@ -4,7 +4,7 @@ import { desc, eq } from 'drizzle-orm'
 
 import { compareDecimalStrings } from '@/lib/quantity'
 
-import { PageHeader } from '@/components/shell/page-shell'
+import { RouteHeader } from '@/components/shell/route-header'
 import { getCtx } from '@/modules/core/session'
 import { withTenantRead } from '@/modules/core/tenancy'
 import { udReconciliations } from '@/modules/commercial/schema'
@@ -59,8 +59,9 @@ export default async function UdDetailPage({
 
   return (
     <>
-      <PageHeader
-        back={{ href: '/ud', label: 'UD workbench' }}
+      <RouteHeader
+        path={`/ud/${udId}`}
+        labels={{ udId: balance.udNumber }}
         eyebrow="Commercial · bonded warehouse"
         title={balance.udNumber}
         meta={

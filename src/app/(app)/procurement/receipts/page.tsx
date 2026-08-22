@@ -1,11 +1,11 @@
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 
-import { Breadcrumbs, StatTile } from '@/components/fx/data'
+import { StatTile } from '@/components/fx/data'
 import { InlineAlert } from '@/components/fx/feedback'
 import { Figure } from '@/components/fx/format'
 import { SectionHeading } from '@/components/fx/signature'
-import { PageHeader } from '@/components/shell/page-shell'
+import { RouteHeader } from '@/components/shell/route-header'
 import { getCtx } from '@/modules/core/session'
 import { awaitingReceipt } from '@/modules/procurement/queries'
 import { getPolicy } from '@/modules/settings/service'
@@ -52,14 +52,8 @@ export default async function ReceiptsPage() {
 
   return (
     <>
-      <div style={{ marginBottom: 18 }}>
-        <Breadcrumbs
-          trail={[{ label: 'Procurement', href: '/procurement' }, { label: 'Goods in' }]}
-        />
-      </div>
-
-      <PageHeader
-        back={{ href: '/procurement', label: 'Procurement' }}
+      <RouteHeader
+        path="/procurement/receipts"
         eyebrow="Procurement · goods in"
         title={
           lines.length === 0

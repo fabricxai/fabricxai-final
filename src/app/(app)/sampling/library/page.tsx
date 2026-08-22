@@ -2,12 +2,12 @@ import Link from 'next/link'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 
-import { Breadcrumbs, StatTile } from '@/components/fx/data'
+import { StatTile } from '@/components/fx/data'
 import { EmptyState, InlineAlert } from '@/components/fx/feedback'
 import { Figure, Ident } from '@/components/fx/format'
 import { Badge } from '@/components/fx/primitives'
 import { SectionHeading } from '@/components/fx/signature'
-import { PageHeader } from '@/components/shell/page-shell'
+import { RouteHeader } from '@/components/shell/route-header'
 import { getCtx } from '@/modules/core/session'
 import { sampleLibrary, type LibraryFilter, type SampleType } from '@/modules/sampling/queries'
 
@@ -65,14 +65,8 @@ export default async function SampleLibraryPage({
 
   return (
     <>
-      <div style={{ marginBottom: 18 }}>
-        <Breadcrumbs
-          trail={[{ label: 'Sampling room', href: '/sampling' }, { label: 'Library' }]}
-        />
-      </div>
-
-      <PageHeader
-        back={{ href: '/sampling', label: 'Sampling' }}
+      <RouteHeader
+        path="/sampling/library"
         eyebrow="Sampling · library"
         title={
           searched
