@@ -11,7 +11,7 @@ import { RouteHeader } from '@/components/shell/route-header'
 import { canWrite, NAV } from '@/components/shell/nav'
 import { getCtx } from '@/modules/core/session'
 import { companyProfile } from '@/modules/settings/service'
-import { orderDetail, tnaTemplateChoices } from '@/modules/orders/queries'
+import { orderDetail, shipDateTrail, tnaTemplateChoices } from '@/modules/orders/queries'
 import { orderStatusMachine, type OrderStatus } from '@/modules/orders/service'
 import { orderRunRate } from '@/modules/production/queries'
 import { preFinalReadiness, type QualityPolicy } from '@/modules/quality/service'
@@ -24,6 +24,7 @@ import type { BankDocsPolicy } from '@/modules/commercial/service'
 
 import { OrderBreakdown } from './breakdown-client'
 import { OrderLcCard } from './lc-card'
+import { ShipDateTrail } from './ship-dates'
 import { OrderStatusControl } from './status-control'
 import { OrderTna } from './tna-client'
 
@@ -109,6 +110,8 @@ export default async function OrderDetailPage({
   const lc = worstLc
     ? await lcDetail(ctx, worstLc.lcId, commercialPolicy.btbLimitPct ?? 75)
     : null
+
+  const dates = await shipDateTrail(ctx, order.id)
 
   return (
     <>
@@ -204,6 +207,18 @@ export default async function OrderDetailPage({
             <RunRateCard forecast={forecast} />
           </section>
         ) : null}
+
+        <section>
+          <SectionHeading eyebrow="a trail, not a column — every promise this order has carried">
+            Ship dates
+          </SectionHeading>
+          <ShipDateTrail
+            orderId={order.id}
+            trail={dates}
+            currentDate={order.plannedExFactoryDate}
+            canWrite={mayWrite}
+          />
+        </section>
 
         <section>
           <SectionHeading eyebrow={late > 0 ? `${late} late` : undefined}>

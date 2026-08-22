@@ -439,3 +439,54 @@ export const orderInputs = pgTable(
     ),
   ],
 ).enableRLS()
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Ship dates — a trail, not a column
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * `contract` — the date the order was sold against. `reship` — a renegotiated date,
+ * agreed with the buyer, now in force. `proposed` — asked for and not yet agreed;
+ * changes nothing until somebody records the agreement.
+ */
+export const shipDateKindEnum = pgEnum('ship_date_kind', ['contract', 'reship', 'proposed'])
+
+/**
+ * Every ship date this order has had, in order — the factory's own paper keeps
+ * `Ship Date`, `Re-Ship Date-01`, `Re-Ship Date-02` as separate columns because the
+ * history IS the negotiation record. A single overwritten column answers "when does
+ * it ship"; it cannot answer "when did we promise, who moved it, and on whose mail",
+ * which is the question a claim dispute actually asks.
+ *
+ * Append-only: nothing here is ever updated or deleted. `orders.planned_ex_factory_date`
+ * stays the denormalised date IN FORCE (the book sorts on it); recording a `reship`
+ * moves it, recording a `proposed` does not. The TNA is deliberately NOT recomputed by
+ * a ship-date row — rescheduling the calendar is its own decision with its own ripple
+ * preview, and welding the two together would move a factory's milestones as a side
+ * effect of typing in what a buyer asked for.
+ */
+export const orderShipDates = pgTable(
+  'order_ship_dates',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    companyId: uuid('company_id')
+      .notNull()
+      .references(() => companies.id, { onDelete: 'cascade' }),
+
+    orderId: uuid('order_id')
+      .notNull()
+      .references(() => orders.id, { onDelete: 'cascade' }),
+
+    shipDate: date('ship_date').notNull(),
+    kind: shipDateKindEnum('kind').notNull(),
+
+    /** Who agreed it and where — "buyer mail, 8 Aug", "sales contract §4". Free text on purpose: the evidence is a citation, not a foreign key. */
+    agreedWith: text('agreed_with'),
+    /** Why the date moved. Required for a reship by the service — a moved promise with no reason is the row nobody can defend later. */
+    reason: text('reason'),
+
+    createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('order_ship_dates_company_order_idx').on(t.companyId, t.orderId, t.createdAt)],
+).enableRLS()

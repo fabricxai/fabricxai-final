@@ -808,6 +808,32 @@ async function main(): Promise<void> {
       console.log(`[running] ${cells} checklist cells filled`)
     }
 
+    // One live negotiation on the trail: the buyer has asked POLO to pull in five
+    // days and nobody has agreed yet — a `proposed` row moves nothing, which is
+    // exactly the state a desk is usually in.
+    {
+      const { recordShipDate } = await import('@/modules/orders/service')
+      const { orderShipDates } = await import('@/modules/orders/schema')
+      const polo = byPo('POLO-2244')
+      const [already] = await withTenantRead(ctx, (tx) =>
+        tx
+          .select({ id: orderShipDates.id })
+          .from(orderShipDates)
+          .where(scoped(orderShipDates, ctx, eq(orderShipDates.orderId, polo.id)))
+          .limit(1),
+      )
+      if (!already) {
+        await recordShipDate(ctx, {
+          orderId: polo.id,
+          shipDate: day(19),
+          kind: 'proposed',
+          agreedWith: 'buyer mail, this week',
+          reason: 'retail window moved — buyer asks five days earlier',
+        })
+        console.log('[running] POLO-2244 · proposed pull-in recorded on the trail')
+      }
+    }
+
     console.log('\n[running] done.')
   } finally {
     await client.end()

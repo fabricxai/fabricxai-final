@@ -329,3 +329,37 @@ export const setInputCellPayload = z
   })
 
 export type SetInputCellPayload = z.infer<typeof setInputCellPayload>
+
+/**
+ * A new ship date for the trail. A reship demands a reason and an agreement
+ * citation: a moved promise with neither is the row nobody can defend when a
+ * buyer disputes it — the entire point of keeping the trail.
+ */
+export const recordShipDatePayload = z
+  .object({
+    orderId: z.string().uuid(),
+    shipDate: calendarDate,
+    kind: z.enum(['reship', 'proposed']),
+    agreedWith: z.string().trim().min(1).max(160).optional(),
+    reason: z.string().trim().min(1).max(280).optional(),
+  })
+  .superRefine((row, issues) => {
+    if (row.kind === 'reship') {
+      if (!row.reason) {
+        issues.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'a reship needs its reason',
+          path: ['reason'],
+        })
+      }
+      if (!row.agreedWith) {
+        issues.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'a reship needs who agreed it',
+          path: ['agreedWith'],
+        })
+      }
+    }
+  })
+
+export type RecordShipDatePayload = z.infer<typeof recordShipDatePayload>

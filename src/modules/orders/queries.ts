@@ -20,6 +20,7 @@ import { users } from '@/db/schema/core'
 import {
   orderBreakdowns,
   orderInputs,
+  orderShipDates,
   orderRevisions,
   orderStyles,
   orders,
@@ -733,5 +734,40 @@ export async function inputsMatrix(
         rollup: rollupInputs(filled, input.today),
       }
     })
+  })
+}
+
+export interface ShipDateEntry {
+  id: string
+  shipDate: string
+  kind: 'contract' | 'reship' | 'proposed'
+  agreedWith: string | null
+  reason: string | null
+  byName: string | null
+  at: Date
+}
+
+/**
+ * Every ship date this order has had, oldest first — the negotiation record.
+ * An empty trail is an order from before the table existed; the screen shows the
+ * date in force and says no history was recorded, which is true rather than blank.
+ */
+export async function shipDateTrail(ctx: AnyCtx, orderId: string): Promise<ShipDateEntry[]> {
+  return withTenantRead(ctx, async (tx) => {
+    const rows = await tx
+      .select({
+        id: orderShipDates.id,
+        shipDate: orderShipDates.shipDate,
+        kind: orderShipDates.kind,
+        agreedWith: orderShipDates.agreedWith,
+        reason: orderShipDates.reason,
+        byName: users.name,
+        at: orderShipDates.createdAt,
+      })
+      .from(orderShipDates)
+      .leftJoin(users, eq(users.id, orderShipDates.createdBy))
+      .where(scoped(orderShipDates, ctx, eq(orderShipDates.orderId, orderId)))
+      .orderBy(asc(orderShipDates.createdAt))
+    return rows
   })
 }

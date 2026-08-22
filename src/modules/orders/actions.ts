@@ -12,6 +12,7 @@ import {
   createOrder as createOrderIn,
   generateTna,
   previewRipple,
+  recordShipDate as recordShipDateIn,
   saveBreakdown,
   setInputCell,
   setOrderStatus as setOrderStatusIn,
@@ -304,6 +305,27 @@ export async function setOrderInputCell(input: {
     const result = await setInputCell(ctx, input)
 
     revalidatePath('/orders/inputs')
+    refresh(input.orderId)
+    return result
+  })
+}
+
+/**
+ * Append a ship date to the order's trail — a buyer's agreed reship, or a proposal
+ * still on the table. The service backfills the contract row on first use and moves
+ * the date in force only for a reship; the TNA stays where it is, on purpose.
+ */
+export async function recordOrderShipDate(input: {
+  orderId: string
+  shipDate: string
+  kind: 'reship' | 'proposed'
+  agreedWith?: string
+  reason?: string
+}): Promise<{ orderId: string; shipDate: string; kind: string; inForce: boolean } | ActionFailure> {
+  return surfaced(async () => {
+    const ctx = await requireRole(await headers(), ...WRITERS)
+    const result = await recordShipDateIn(ctx, input)
+
     refresh(input.orderId)
     return result
   })

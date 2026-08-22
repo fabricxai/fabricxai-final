@@ -19,6 +19,7 @@ import {
   orderBreakdowns,
   orderInputs,
   orderRevisions,
+  orderShipDates,
   orderStyles,
   orders,
   tnaMilestones,
@@ -51,6 +52,7 @@ import {
   orderFromPoDraft,
   orderRevisionDraft,
   orderStylePayload,
+  recordShipDatePayload,
   setInputCellPayload,
   tnaTemplatePayload,
   type SaveBreakdownPayload,
@@ -1114,5 +1116,81 @@ export async function setInputCell(
       })
 
     return { orderId: cell.orderId, category: cell.category, state: cell.state }
+  })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Ship dates — recording the trail
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Append one ship date to the order's trail.
+ *
+ * A `reship` is the buyer's agreement recorded: it becomes the date in force, so the
+ * denormalised `planned_ex_factory_date` moves with it — inside the same transaction,
+ * because a book sorted on one date and a trail asserting another is two screens
+ * arguing. A `proposed` is an ask, not an agreement; it changes nothing until someone
+ * records the reship.
+ *
+ * The TNA is deliberately untouched (see the schema note): rescheduling milestones is
+ * its own decision with its own ripple preview. The screen says so next to the button.
+ *
+ * The first write to an order with an empty trail also backfills a `contract` row from
+ * the date currently in force — so the trail's first entry is always the promise the
+ * order was sold against, even for orders that predate this table.
+ */
+export async function recordShipDate(
+  ctx: RequestCtx,
+  input: unknown,
+): Promise<{ orderId: string; shipDate: string; kind: string; inForce: boolean }> {
+  const row = recordShipDatePayload.parse(input)
+
+  return withTenantTx(ctx, async (tx) => {
+    const [order] = await tx
+      .select({ id: orders.id, status: orders.status, planned: orders.plannedExFactoryDate })
+      .from(orders)
+      .where(scoped(orders, ctx, eq(orders.id, row.orderId)))
+      .for('update')
+    if (!order) throw notFound('orders.errors.order_not_found', { id: row.orderId })
+    if (order.status === 'closed' || order.status === 'cancelled') {
+      throw conflict('orders.errors.inputs_order_settled', { status: order.status })
+    }
+
+    const [existing] = await tx
+      .select({ id: orderShipDates.id })
+      .from(orderShipDates)
+      .where(scoped(orderShipDates, ctx, eq(orderShipDates.orderId, row.orderId)))
+      .limit(1)
+
+    if (!existing && order.planned) {
+      await tx.insert(orderShipDates).values({
+        companyId: ctx.companyId,
+        orderId: row.orderId,
+        shipDate: order.planned,
+        kind: 'contract',
+        agreedWith: 'the date in force when the trail began',
+        createdBy: ctx.userId,
+      })
+    }
+
+    await tx.insert(orderShipDates).values({
+      companyId: ctx.companyId,
+      orderId: row.orderId,
+      shipDate: row.shipDate,
+      kind: row.kind,
+      agreedWith: row.agreedWith ?? null,
+      reason: row.reason ?? null,
+      createdBy: ctx.userId,
+    })
+
+    const inForce = row.kind === 'reship'
+    if (inForce) {
+      await tx
+        .update(orders)
+        .set({ plannedExFactoryDate: row.shipDate, updatedAt: new Date() })
+        .where(scoped(orders, ctx, eq(orders.id, row.orderId)))
+    }
+
+    return { orderId: row.orderId, shipDate: row.shipDate, kind: row.kind, inForce }
   })
 }
