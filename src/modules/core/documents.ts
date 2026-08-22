@@ -345,6 +345,61 @@ export async function documentsFor(
   })
 }
 
+/**
+ * Store bytes the SERVER already holds — the mail-intake path, where no browser is
+ * involved and a presigned URL would be a hop with no client on the other end.
+ *
+ * Same validation, same row shape and same bucket as the presign path, so a file
+ * that arrived by mail is indistinguishable downstream from one that was dragged
+ * in — which is the point: the classifier and the extractor must not care how a
+ * document entered the building. Status lands at `uploaded`, exactly as a confirmed
+ * browser upload would, and the existing pipeline takes it from there.
+ */
+export async function storeDocumentBytes(
+  ctx: AnyCtx,
+  input: Omit<UploadInput, 'sizeBytes'> & { bytes: Buffer; checksumSha256?: string },
+): Promise<{ documentId: string }> {
+  const sizeBytes = input.bytes.byteLength
+  validate({ ...input, sizeBytes })
+
+  const key = newObjectKey(ctx.companyId, input.filename)
+
+  await getS3().send(
+    new PutObjectCommand({
+      Bucket: env.S3_BUCKET,
+      Key: key,
+      Body: input.bytes,
+      ContentType: input.mimeType,
+    }),
+  )
+
+  const documentId = await withTenantTx(ctx, async (tx) => {
+    const [row] = await tx
+      .insert(documents)
+      .values({
+        companyId: ctx.companyId,
+        bucket: env.S3_BUCKET,
+        objectKey: key,
+        filename: input.filename,
+        mimeType: input.mimeType,
+        sizeBytes,
+        checksumSha256: input.checksumSha256 ?? null,
+        kind: input.kind ?? null,
+        moduleId: input.moduleId ?? null,
+        entityTable: input.entityTable ?? null,
+        entityId: input.entityId ?? null,
+        status: 'uploaded',
+        meta: input.meta ?? {},
+        uploadedBy: ctx.userId,
+      })
+      .returning({ id: documents.id })
+    if (!row) throw new Error('documents insert returned nothing')
+    return row.id
+  })
+
+  return { documentId }
+}
+
 /** Soft delete. The object is swept separately so a mistaken delete stays recoverable. */
 export async function softDelete(ctx: AnyCtx, documentId: string): Promise<void> {
   const updated = await withTenantTx(ctx, (tx) =>
