@@ -572,3 +572,79 @@ export async function orderIdByPoNumber(ctx: AnyCtx, poNumber: string): Promise<
     return rows.length === 1 ? rows[0]!.id : null
   })
 }
+
+export interface WeekMilestone {
+  orderId: string
+  poNumber: string | null
+  buyerName: string | null
+  name: string
+  plannedDate: string
+  status: string
+  ownerRole: string | null
+  critical: boolean
+  /** True when the planned date is before the window: it belongs to the past and is not done. */
+  overdue: boolean
+}
+
+/**
+ * Every milestone on the desk's open orders due inside a date window — plus everything
+ * OVERDUE from before it, because a week view that hides last Tuesday's unstarted cutting
+ * is a calendar for a factory that does not exist. The build pack calls this "the screen a
+ * merchandiser opens every morning"; the data has been here since the module shipped, and
+ * only per-order pages ever read it.
+ *
+ * Statuses come from the nightly scan, never recomputed here (same rule as the TNA table):
+ * two derivations of "late" is how a morning screen and an order page argue.
+ */
+export async function milestonesInWindow(
+  ctx: AnyCtx,
+  input: { from: string; to: string },
+): Promise<WeekMilestone[]> {
+  return withTenantRead(ctx, async (tx) => {
+    const rows = await tx
+      .select({
+        orderId: tnaMilestones.orderId,
+        poNumbers: orders.poNumbers,
+        buyerName: buyers.name,
+        name: tnaMilestones.name,
+        plannedDate: tnaMilestones.plannedDate,
+        status: tnaMilestones.status,
+        ownerRole: tnaMilestones.ownerRole,
+        critical: tnaMilestones.critical,
+      })
+      .from(tnaMilestones)
+      .innerJoin(orders, eq(orders.id, tnaMilestones.orderId))
+      .leftJoin(buyers, eq(buyers.id, orders.buyerId))
+      .where(
+        scoped(
+          tnaMilestones,
+          ctx,
+          and(
+            sql`${orders.status} NOT IN ('closed','cancelled')`,
+            sql`${tnaMilestones.status} <> 'done'`,
+            or(
+              and(
+                sql`${tnaMilestones.plannedDate} >= ${input.from}`,
+                sql`${tnaMilestones.plannedDate} <= ${input.to}`,
+              ),
+              // The backlog: planned before the window and still not done.
+              sql`${tnaMilestones.plannedDate} < ${input.from}`,
+            ),
+          ),
+        ),
+      )
+      .orderBy(asc(tnaMilestones.plannedDate))
+
+    return rows.map((row) => ({
+      orderId: row.orderId,
+      poNumber: row.poNumbers[0] ?? null,
+      buyerName: row.buyerName,
+      name: row.name,
+      plannedDate: row.plannedDate,
+      status: row.status,
+      ownerRole: row.ownerRole,
+      critical: row.critical,
+      overdue: row.plannedDate < input.from,
+    }))
+  })
+}

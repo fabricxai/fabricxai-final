@@ -19,7 +19,11 @@ import { getPolicy } from '@/modules/settings/service'
 import { factoryToday, FACTORY_TIMEZONE } from '@/lib/dates'
 import { requestLocale } from '@/lib/ui-locale'
 
+import { lcsForOrders, lcDetail } from '@/modules/commercial/queries'
+import type { BankDocsPolicy } from '@/modules/commercial/service'
+
 import { OrderBreakdown } from './breakdown-client'
+import { OrderLcCard } from './lc-card'
 import { OrderStatusControl } from './status-control'
 import { OrderTna } from './tna-client'
 
@@ -90,6 +94,21 @@ export default async function OrderDetailPage({
     (await preFinalReadiness(ctx, { today, windowDays: 21 }, qualityPolicy)).find(
       (row) => row.orderId === order.id,
     ) ?? null
+
+  /*
+   * The credit behind the order, read through commercial's queries (rule 11). Several
+   * credits can cover one order; the card shows the one with the worst float — that is
+   * the date the bank refuses documents over. No linked credit renders nothing at all:
+   * an empty LC card on every uncovered order would be furniture, not information.
+   */
+  const linkedLcs = await lcsForOrders(ctx, [order.id])
+  const worstLc = linkedLcs.sort(
+    (a, b) => (a.floatDays ?? Infinity) - (b.floatDays ?? Infinity),
+  )[0]
+  const commercialPolicy = await getPolicy<BankDocsPolicy>(ctx, 'commercial')
+  const lc = worstLc
+    ? await lcDetail(ctx, worstLc.lcId, commercialPolicy.btbLimitPct ?? 75)
+    : null
 
   return (
     <>
@@ -167,6 +186,15 @@ export default async function OrderDetailPage({
             </FactPair>
           </div>
         </Card>
+
+        {lc ? (
+          <section>
+            <SectionHeading eyebrow="read-only · commercial owns the credit">
+              Letter of credit
+            </SectionHeading>
+            <OrderLcCard lc={lc} orderId={order.id} seesPrices={seesPrices} />
+          </section>
+        ) : null}
 
         {forecast ? (
           <section>
