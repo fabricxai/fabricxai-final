@@ -7,7 +7,7 @@ import { FinalReadinessStrip } from '@/components/fx/final-readiness'
 import { RunRateCard } from '@/components/fx/run-rate'
 import { SectionHeading } from '@/components/fx/signature'
 import { FactPair } from '@/components/fx/tna'
-import { PageHeader } from '@/components/shell/page-shell'
+import { RouteHeader } from '@/components/shell/route-header'
 import { canWrite, NAV } from '@/components/shell/nav'
 import { getCtx } from '@/modules/core/session'
 import { companyProfile } from '@/modules/settings/service'
@@ -17,6 +17,7 @@ import { orderRunRate } from '@/modules/production/queries'
 import { preFinalReadiness, type QualityPolicy } from '@/modules/quality/service'
 import { getPolicy } from '@/modules/settings/service'
 import { factoryToday, FACTORY_TIMEZONE } from '@/lib/dates'
+import { requestLocale } from '@/lib/ui-locale'
 
 import { OrderBreakdown } from './breakdown-client'
 import { OrderStatusControl } from './status-control'
@@ -41,6 +42,7 @@ export default async function OrderDetailPage({
   if (!ctx) redirect('/login')
 
   const { orderId } = await params
+  const locale = await requestLocale()
   const order = await orderDetail(ctx, orderId)
   if (!order) notFound()
 
@@ -91,11 +93,31 @@ export default async function OrderDetailPage({
 
   return (
     <>
-      <PageHeader
-        back={{ href: '/orders', label: 'Order desk' }}
+      <RouteHeader
+        path={`/orders/${orderId}`}
+        labels={{ orderId: po }}
+        locale={locale}
         eyebrow={order.buyerName ?? 'Order'}
         title={po}
         meta={order.plannedExFactoryDate ? `ship ${order.plannedExFactoryDate}` : undefined}
+        actions={
+          <a
+            href={`/orders/${orderId}/documents`}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              minHeight: 'var(--fx-tap-min)',
+              padding: '10px 18px',
+              borderRadius: 'var(--fx-radius-md)',
+              border: '1px solid var(--fx-border-default)',
+              font: '600 14px/1 var(--fx-font-sans)',
+              color: 'var(--fx-text-primary)',
+              textDecoration: 'none',
+            }}
+          >
+            Style and documents
+          </a>
+        }
         // The header thread rule IS this view's amber moment, so nothing below
         // it takes an amber fill.
         ownsAmber
