@@ -27,6 +27,7 @@ import {
   type WorkRow,
 } from './home-copy'
 import { capsAssignedSection, deskCalmLinks, deskRoleFor, deskSections } from './desk-sections'
+import { MorningDigest, type DigestLine } from './digest'
 import { HomeView, type HomeSection } from './home-view'
 import { OwnerFigures } from './owner-figures'
 
@@ -309,6 +310,79 @@ export default async function HomePage() {
           { href: '/orders', label: HOME_COPY.calmOrders },
         ]
 
+  /*
+   * The digest: worst-first, at most four sentences, every clause a fact the sections
+   * below already loaded. A line with nothing true to say does not appear — three real
+   * sentences orient; a fourth manufactured one teaches people to skim past all of them.
+   */
+  const digest: DigestLine[] = []
+  if (!isOwnerView) {
+    const lateOrder = orders.find((o) => o.health === 'late')
+    if (lateOrder) {
+      digest.push({
+        id: 'late-order',
+        tone: 'late',
+        text: `${lateOrder.headline ? lateOrder.headline.replace(/_/g, ' ') : 'A milestone'} on ${
+          lateOrder.poNumbers[0] ?? 'an order'
+        } is late${
+          lateOrder.daysToExFactory !== null
+            ? ` — ex-factory is ${lateOrder.daysToExFactory} days out`
+            : ''
+        }. This is the one that needs you today.`,
+        href: `/orders/${lateOrder.id}`,
+        ref: lateOrder.poNumbers[0] ?? '',
+      })
+    }
+
+    const live = quotes.groups.flatMap((g) => g.rfqs)
+    const dueQuotes = live.filter(
+      (r) => r.daysToDeadline !== null && r.daysToDeadline <= 1 && r.status !== 'won' && r.status !== 'lost',
+    )
+    if (dueQuotes.length > 0) {
+      const worst = dueQuotes.reduce((a, b) =>
+        (a.daysToDeadline ?? 0) <= (b.daysToDeadline ?? 0) ? a : b,
+      )
+      digest.push({
+        id: 'quotes-due',
+        tone: 'risk',
+        text:
+          dueQuotes.length === 1
+            ? `One enquiry wants its price ${worst.daysToDeadline! < 0 ? `— ${Math.abs(worst.daysToDeadline!)} days past its deadline already` : worst.daysToDeadline === 0 ? 'today' : 'by tomorrow'}.`
+            : `${dueQuotes.length} enquiries want prices within a day — the oldest is ${
+                worst.daysToDeadline! < 0 ? `${Math.abs(worst.daysToDeadline!)} days past deadline` : 'due today'
+              }.`,
+        href: '/rfq',
+        ref: worst.styleCode ?? worst.title,
+      })
+    }
+
+    const chase = live
+      .filter((r) => r.waitingOnBuyer && r.oldestQuestionDays !== null)
+      .sort((a, b) => (b.oldestQuestionDays ?? 0) - (a.oldestQuestionDays ?? 0))[0]
+    if (chase && (chase.oldestQuestionDays ?? 0) >= 5) {
+      digest.push({
+        id: 'chase',
+        tone: 'risk',
+        text: `${chase.buyerName ?? 'A buyer'} has not answered the clarification on ${
+          chase.styleCode ?? chase.title
+        } in ${chase.oldestQuestionDays} days.`,
+        href: '/buyers/waiting',
+        ref: chase.styleCode ?? '',
+      })
+    }
+
+    if (digest.length > 0 && pp.length === 0 && orders.some((o) => o.health === 'ok')) {
+      const fine = orders.filter((o) => o.health === 'ok').length
+      digest.push({
+        id: 'steady',
+        tone: 'ok',
+        text: `${fine} order${fine === 1 ? ' is' : 's are'} on track and nothing is blocking a cut.`,
+        href: '/orders',
+        ref: '',
+      })
+    }
+  }
+
   return (
     <>
       <HomeView
@@ -319,6 +393,9 @@ export default async function HomePage() {
         /* The owner's second morning, folded into the first (plan 2.1): queues above because
            they are actionable, figures below because they are context. Never for the
            merchandiser branch — their figures live on their own desks. */
+        before={
+          digest.length > 0 ? <MorningDigest lines={digest} name={null} /> : undefined
+        }
         after={isOwnerView ? <OwnerFigures ctx={ctx} /> : undefined}
       />
       {/* The Pulse and Desk skins' pocket bar (mobile contract §3) — role-keyed because

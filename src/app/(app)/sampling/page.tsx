@@ -65,8 +65,19 @@ export default async function SamplingPage() {
       : []),
   ]
 
-  return (
-    <FloorScreen>
+  /*
+   * Density follows the reader, not the module (build pack 1.4: floor staff get the
+   * big-target board, "merchandisers see desk views"). The sample room's tablet wants
+   * 48px taps; a merchandiser at a desk with a mouse wants rows — the same screen at
+   * floor density read from an office chair is a page that scrolls three times for
+   * what one glance should carry. Same markup, one attribute, theme.css does the rest.
+   */
+  const deskReader = ctx.roles.some((r) =>
+    ['merchandiser', 'commercial', 'owner', 'admin'].includes(r),
+  )
+
+  const body = (
+    <>
       <PageHeader
         eyebrow="Sampling room"
         title={samples.length === 0 ? 'No samples' : `${samples.length} samples`}
@@ -179,8 +190,10 @@ export default async function SamplingPage() {
           )}
         </section>
       </div>
-    </FloorScreen>
+    </>
   )
+
+  return deskReader ? <div data-density="desk">{body}</div> : <FloorScreen>{body}</FloorScreen>
 }
 
 function SampleCard({ sample, highlight }: { sample: SampleRow; highlight?: boolean }) {

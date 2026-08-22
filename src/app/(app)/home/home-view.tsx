@@ -22,6 +22,7 @@ export function HomeView({
   calm,
   dayOne = false,
   calmLinks,
+  before,
   after,
 }: {
   sections: readonly HomeSection[]
@@ -39,6 +40,12 @@ export function HomeView({
    * first and reads second. On a calm morning the figures are most of what remains.
    */
   after?: React.ReactNode
+  /**
+   * Rendered between the header and the queues — the merchandiser's morning digest.
+   * ABOVE deliberately: three sentences of "what changed" orient faster than any queue,
+   * and the queues remain one scroll away.
+   */
+  before?: React.ReactNode
 }) {
   return (
     <>
@@ -49,6 +56,7 @@ export function HomeView({
         ownsAmber={!calm}
       />
 
+      {before}
 
       {calm ? (
         <EmptyState
