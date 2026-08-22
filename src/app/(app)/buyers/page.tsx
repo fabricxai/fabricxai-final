@@ -11,7 +11,7 @@ import { canWrite, NAV } from '@/components/shell/nav'
 import { getCtx } from '@/modules/core/session'
 import { companyProfile } from '@/modules/settings/service'
 import { buyerAccounts, pipeline } from '@/modules/buyers/queries'
-import type { BuyerDeskPolicy } from '@/modules/buyers/service'
+import { listAgents, type BuyerDeskPolicy } from '@/modules/buyers/service'
 import { getPolicy } from '@/modules/settings/service'
 
 import { LeadOpener } from './pipeline-client'
@@ -37,9 +37,10 @@ export default async function BuyersPage() {
   const policy = await getPolicy<BuyerDeskPolicy>(ctx, 'buyers')
   const now = new Date()
 
-  const [board, accounts] = await Promise.all([
+  const [board, accounts, agents] = await Promise.all([
     pipeline(ctx, { now, quietAfterDays: policy.quietAfterDays }),
     buyerAccounts(ctx),
+    listAgents(ctx),
   ])
 
   const profile = await companyProfile(ctx)
@@ -391,6 +392,65 @@ export default async function BuyersPage() {
             </div>
           )}
         </section>
+
+        {agents.length > 0 ? (
+          <section>
+            <SectionHeading eyebrow="who sits between you and the label">
+              Agents
+            </SectionHeading>
+            <div
+              style={{
+                background: 'var(--fx-bg-surface)',
+                border: '1px solid var(--fx-border-subtle)',
+                borderRadius: 'var(--fx-radius-md)',
+                overflow: 'hidden',
+              }}
+            >
+              {agents.map((agent, i) => (
+                <div
+                  key={agent.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 14,
+                    flexWrap: 'wrap',
+                    padding: '13px 22px',
+                    minHeight: 'var(--fx-row-height)',
+                    borderTop: i === 0 ? undefined : '1px solid var(--fx-border-subtle)',
+                  }}
+                >
+                  <span style={{ font: '500 14px/1.3 var(--fx-font-sans)' }}>{agent.name}</span>
+                  <Badge>
+                    {agent.type === 'buying_house' ? 'buying house' : 'individual'}
+                  </Badge>
+                  <span
+                    data-numeric
+                    data-mono
+                    style={{
+                      marginLeft: 'auto',
+                      font: '400 13px/1.3 var(--fx-font-mono)',
+                      color: 'var(--fx-text-secondary)',
+                    }}
+                  >
+                    {agent.commissionPct ? `${agent.commissionPct}% commission` : 'no commission on file'}
+                  </span>
+                </div>
+              ))}
+              <div
+                style={{
+                  padding: '10px 22px',
+                  borderTop: '1px solid var(--fx-border-subtle)',
+                  font: '400 12px/1.5 var(--fx-font-sans)',
+                  color: 'var(--fx-text-tertiary)',
+                }}
+              >
+                An order snapshots its agent&rsquo;s terms at confirmation — renegotiations never
+                silently reprice old orders. Ask MARBIM &ldquo;what were the buyer&rsquo;s terms on
+                the order date&rdquo; for the versioned answer.
+              </div>
+            </div>
+          </section>
+        ) : null}
       </div>
     </>
   )
