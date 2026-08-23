@@ -4,6 +4,7 @@ import { notFound, redirect } from 'next/navigation'
 import { InlineAlert } from '@/components/fx/feedback'
 import { SectionHeading } from '@/components/fx/signature'
 import { RouteHeader } from '@/components/shell/route-header'
+import { OrderTabs } from '../order-tabs'
 import { getCtx } from '@/modules/core/session'
 import { orderDetail } from '@/modules/orders/queries'
 import { sewnAgainstOrder } from '@/modules/production/queries'
@@ -110,6 +111,8 @@ export default async function BuyerPackPage({
         meta={`as of ${today}`}
         ownsAmber
       />
+
+      <OrderTabs orderId={orderId} active="pack" />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 28, maxWidth: 720 }}>
         <InlineAlert tone="info">

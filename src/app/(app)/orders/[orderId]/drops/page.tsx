@@ -3,8 +3,9 @@ import { notFound, redirect } from 'next/navigation'
 
 import { InlineAlert } from '@/components/fx/feedback'
 import { SectionHeading } from '@/components/fx/signature'
-import { StatusLabel } from '@/components/fx/signature'
+import { StatusChip } from '@/components/fx/status-chip'
 import { RouteHeader } from '@/components/shell/route-header'
+import { OrderTabs } from '../order-tabs'
 import { canWrite, NAV } from '@/components/shell/nav'
 import { lcsForOrders } from '@/modules/commercial/queries'
 import { getCtx } from '@/modules/core/session'
@@ -90,6 +91,8 @@ export default async function DropsPage({
         ownsAmber
       />
 
+      <OrderTabs orderId={orderId} active="drops" />
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: 36, maxWidth: 900 }}>
         <section>
           <SectionHeading eyebrow="each departure is read against the credit on its own">
@@ -156,13 +159,13 @@ export default async function DropsPage({
                         </span>
                       ) : null}
                       <span style={{ marginLeft: 'auto' }}>
-                        <StatusLabel status={conflict ? 'late' : 'on-track'}>
+                        <StatusChip status={conflict ? 'late' : 'on-track'}>
                           {conflict
                             ? `after the credit's ${latestShipment}`
                             : latestShipment
                               ? 'inside the credit'
                               : 'no credit linked'}
-                        </StatusLabel>
+                        </StatusChip>
                       </span>
                     </div>
                   </div>

@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 
 import { EmptyState } from '@/components/fx/feedback'
 import { Badge } from '@/components/fx/primitives'
-import { StatusLabel } from '@/components/fx/signature'
+import { StatusChip } from '@/components/fx/status-chip'
 import { RouteHeader } from '@/components/shell/route-header'
 import { getCtx } from '@/modules/core/session'
 import { orderList } from '@/modules/orders/queries'
@@ -193,9 +193,9 @@ export default async function WaitingOnBuyerPage() {
                       <span data-numeric data-mono>
                         {row.days} d
                       </span>
-                      <StatusLabel status={ageStatus(row.days)}>
+                      <StatusChip status={ageStatus(row.days)}>
                         {ageStatus(row.days) === 'late' ? 'chase' : 'waiting'}
-                      </StatusLabel>
+                      </StatusChip>
                     </>
                   )}
                 </span>

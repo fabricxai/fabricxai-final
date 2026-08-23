@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 
 import { EmptyState } from '@/components/fx/feedback'
 import { Ident } from '@/components/fx/format'
-import { StatusLabel } from '@/components/fx/signature'
+import { StatusChip } from '@/components/fx/status-chip'
 import { RouteHeader } from '@/components/shell/route-header'
 import { canWrite, NAV } from '@/components/shell/nav'
 import { getCtx } from '@/modules/core/session'
@@ -152,7 +152,7 @@ export default async function InputsMatrixPage() {
                 <span data-numeric data-mono style={{ font: '500 12.5px/1 var(--fx-font-mono)' }}>
                   {row.rollup.inHouse}/{row.rollup.applicable}
                 </span>
-                <StatusLabel
+                <StatusChip
                   status={
                     row.rollup.complete
                       ? 'on-track'
@@ -162,7 +162,7 @@ export default async function InputsMatrixPage() {
                   }
                 >
                   {row.rollup.complete ? 'all in' : row.rollup.late > 0 ? `${row.rollup.late} late` : 'open'}
-                </StatusLabel>
+                </StatusChip>
               </div>
             </div>
           ))}

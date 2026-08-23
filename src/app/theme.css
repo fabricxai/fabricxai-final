@@ -663,3 +663,46 @@ a:hover {
     padding-bottom: 76px;
   }
 }
+
+/* ── Print — the morning meeting still happens on paper ─────────────────────
+ *
+ * The order book and the inputs matrix get printed and initialled; a print that
+ * carries the sidebar, the search box and a clipped scroll container is a page
+ * someone photographs their screen instead of using. Chrome goes, containers
+ * unclip, and ink-drinking fills flatten. Colour is not relied on: the status
+ * chips carry shape + word, which is the whole reason they exist.
+ */
+@media print {
+  .fx-sidebar,
+  .fx-topbar,
+  .fx-floor-tabs,
+  [data-marbim-fab],
+  nav[aria-label='Breadcrumb'] {
+    display: none !important;
+  }
+
+  .fx-page-body {
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* A horizontally-scrolling card on screen is a clipped table on paper. */
+  .fx-scroll-x {
+    overflow: visible !important;
+    border: none !important;
+  }
+
+  a {
+    text-decoration: none;
+    color: inherit;
+  }
+
+  /* The thread rule is identity, not information — spare the toner. */
+  .fx-thread-rule {
+    display: none;
+  }
+
+  body {
+    background: #ffffff;
+  }
+}

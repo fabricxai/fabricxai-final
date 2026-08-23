@@ -24,6 +24,7 @@ import type { BankDocsPolicy } from '@/modules/commercial/service'
 
 import { OrderBreakdown } from './breakdown-client'
 import { OrderLcCard } from './lc-card'
+import { OrderTabs } from './order-tabs'
 import { ShipDateTrail } from './ship-dates'
 import { OrderStatusControl } from './status-control'
 import { OrderTna } from './tna-client'
@@ -122,78 +123,12 @@ export default async function OrderDetailPage({
         eyebrow={order.buyerName ?? 'Order'}
         title={po}
         meta={order.plannedExFactoryDate ? `ship ${order.plannedExFactoryDate}` : undefined}
-        actions={
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-          <a
-            href={`/orders/${orderId}/fabric`}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              minHeight: 'var(--fx-tap-min)',
-              padding: '10px 18px',
-              borderRadius: 'var(--fx-radius-md)',
-              border: '1px solid var(--fx-border-default)',
-              font: '600 14px/1 var(--fx-font-sans)',
-              color: 'var(--fx-text-primary)',
-              textDecoration: 'none',
-            }}
-          >
-            Fabric
-          </a>
-          <a
-            href={`/orders/${orderId}/drops`}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              minHeight: 'var(--fx-tap-min)',
-              padding: '10px 18px',
-              borderRadius: 'var(--fx-radius-md)',
-              border: '1px solid var(--fx-border-default)',
-              font: '600 14px/1 var(--fx-font-sans)',
-              color: 'var(--fx-text-primary)',
-              textDecoration: 'none',
-            }}
-          >
-            Drops &amp; colours
-          </a>
-          <a
-            href={`/orders/${orderId}/pack`}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              minHeight: 'var(--fx-tap-min)',
-              padding: '10px 18px',
-              borderRadius: 'var(--fx-radius-md)',
-              border: '1px solid var(--fx-border-default)',
-              font: '600 14px/1 var(--fx-font-sans)',
-              color: 'var(--fx-text-primary)',
-              textDecoration: 'none',
-            }}
-          >
-            Buyer status pack
-          </a>
-          <a
-            href={`/orders/${orderId}/documents`}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              minHeight: 'var(--fx-tap-min)',
-              padding: '10px 18px',
-              borderRadius: 'var(--fx-radius-md)',
-              border: '1px solid var(--fx-border-default)',
-              font: '600 14px/1 var(--fx-font-sans)',
-              color: 'var(--fx-text-primary)',
-              textDecoration: 'none',
-            }}
-          >
-            Style and documents
-          </a>
-          </span>
-        }
         // The header thread rule IS this view's amber moment, so nothing below
         // it takes an amber fill.
         ownsAmber
       />
+
+      <OrderTabs orderId={orderId} active="" />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 36 }}>
         <FinalReadinessStrip readiness={readiness} />

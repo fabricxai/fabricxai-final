@@ -7,6 +7,7 @@ import { Badge } from '@/components/fx/primitives'
 import { SectionHeading } from '@/components/fx/signature'
 import { FactPair } from '@/components/fx/tna'
 import { RouteHeader } from '@/components/shell/route-header'
+import { OrderTabs } from '../order-tabs'
 import { bomDetail, getBomForStyle } from '@/modules/costing/queries'
 import { documentsFor, type AttachedDocument } from '@/modules/core/documents'
 import { measurementSubjects } from '@/modules/quality/queries'
@@ -101,6 +102,8 @@ export default async function OrderDocumentsPage({
         meta={docs.length === 1 ? '1 file' : `${docs.length} files`}
         ownsAmber
       />
+
+      <OrderTabs orderId={orderId} active="documents" />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 36 }}>
         <Card>

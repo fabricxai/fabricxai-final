@@ -6,7 +6,7 @@ import { Badge } from '@/components/fx/primitives'
 import { EmptyState } from '@/components/fx/feedback'
 import { Ident } from '@/components/fx/format'
 import { milestoneLabel } from '@/components/fx/tna'
-import { StatusLabel } from '@/components/fx/signature'
+import { StatusChip } from '@/components/fx/status-chip'
 import { AskAboutRow } from '@/components/shell/ask-about-row'
 import { PageHeader } from '@/components/shell/page-shell'
 import { WorkCue } from '@/components/shell/work-cue'
@@ -454,7 +454,7 @@ export default async function OrdersPage() {
                     textAlign: 'right',
                   }}
                 >
-                  <StatusLabel status={SELVAGE[row.health]}>{WORD[row.health]}</StatusLabel>
+                  <StatusChip status={SELVAGE[row.health]}>{WORD[row.health]}</StatusChip>
                   {row.headline ? (
                     <span
                       style={{

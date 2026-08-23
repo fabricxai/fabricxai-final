@@ -471,6 +471,18 @@ export const NAV: readonly NavItem[] = [
 
   // ── System ──────────────────────────────────────────────
   {
+    id: 'alerts',
+    lockedAs: 'the alerts list',
+    label: 'Alerts',
+    href: '/alerts',
+    section: 'work',
+    // Reached from the bell's "see all", not the sidebar — a nav entry for policy,
+    // not for navigation. Everyone with a role can be addressed by a notification.
+    hiddenFromSidebar: true,
+    roles: ['member', 'viewer', 'merchandiser', 'commercial', 'planner', 'store', 'procurement', 'cutting', 'production', 'quality', 'shipment', 'maintenance', 'hr', 'compliance', 'finance'],
+    writeRoles: [],
+  },
+  {
     id: 'factory',
     lockedAs: 'the factory profile',
     label: 'Factory',

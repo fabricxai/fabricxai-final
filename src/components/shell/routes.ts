@@ -56,6 +56,7 @@ export const ROUTES: readonly RouteDef[] = [
   // ── Work ──
   { pattern: '/home', label: 'Your work' },
   { pattern: '/approve', label: 'Approve inbox' },
+  { pattern: '/alerts', label: 'Alerts' },
   { pattern: '/marbim', label: 'MARBIM' },
   { pattern: '/marbim/intake', label: 'Read a document' },
 
@@ -78,6 +79,7 @@ export const ROUTES: readonly RouteDef[] = [
   { pattern: '/buyers/waiting', label: 'Waiting on the buyer' },
   { pattern: '/buyers/scorecard', label: 'Buyer scorecard' },
   { pattern: '/rfq', label: 'RFQ & quotation' },
+  { pattern: '/rfq/due', label: 'Quotes due' },
   { pattern: '/costing', label: 'Costing studio' },
   { pattern: '/costing/bom', label: 'Bills of materials' },
   { pattern: '/costing/bom/[bomId]', label: 'Bill of materials' },
@@ -118,6 +120,7 @@ export const ROUTES: readonly RouteDef[] = [
 
   // ── Oversight ──
   { pattern: '/dashboard', label: 'Owner dashboard' },
+  { pattern: '/dashboard/book', label: 'Where the money is' },
   { pattern: '/workforce', label: 'Workforce & payroll' },
   { pattern: '/compliance', label: 'Compliance' },
   { pattern: '/refused', label: 'Refused writes' },

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 
-import { StatusLabel, type SelvageStatus } from '@/components/fx/signature'
+import { type SelvageStatus } from '@/components/fx/signature'
+import { StatusChip } from '@/components/fx/status-chip'
 import { milestoneLabel } from '@/components/fx/tna'
 import type { Locale } from '@/lib/i18n'
 import type { WeekMilestone } from '@/modules/orders/queries'
@@ -161,9 +162,9 @@ export function WeekStrip({ days, locale }: { days: readonly WeekDay[]; locale: 
                   >
                     {milestoneLabel(m.name, locale)}
                   </span>
-                  <StatusLabel status={STATUS_TO_SELVAGE[m.status] ?? 'on-track'}>
+                  <StatusChip status={STATUS_TO_SELVAGE[m.status] ?? 'on-track'}>
                     {STATUS_WORD[m.status] ?? m.status}
-                  </StatusLabel>
+                  </StatusChip>
                 </div>
                 <span
                   style={{

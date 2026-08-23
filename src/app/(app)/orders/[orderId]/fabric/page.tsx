@@ -1,8 +1,10 @@
 import { headers } from 'next/headers'
 import { notFound, redirect } from 'next/navigation'
 
-import { StatusLabel, type SelvageStatus } from '@/components/fx/signature'
+import { type SelvageStatus } from '@/components/fx/signature'
+import { StatusChip } from '@/components/fx/status-chip'
 import { RouteHeader } from '@/components/shell/route-header'
+import { OrderTabs } from '../order-tabs'
 import { canWrite, NAV } from '@/components/shell/nav'
 import { getCtx } from '@/modules/core/session'
 import { fabricLegs } from '@/modules/orders/queries'
@@ -88,6 +90,8 @@ export default async function FabricLegsPage({
         ownsAmber
       />
 
+      <OrderTabs orderId={orderId} active="fabric" />
+
       <div
         style={{
           background: 'var(--fx-bg-surface)',
@@ -141,7 +145,7 @@ export default async function FabricLegsPage({
                     {leg.actualDate ?? (status.word === 'overdue' ? 'not yet' : '')}
                   </span>
                   <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 12, alignItems: 'center' }}>
-                    <StatusLabel status={status.selvage}>{status.word}</StatusLabel>
+                    <StatusChip status={status.selvage}>{status.word}</StatusChip>
                     <LegEditor orderId={order.id} cell={leg} canWrite={mayWrite} />
                   </span>
                 </div>
