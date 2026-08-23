@@ -96,8 +96,9 @@ empty state must render.
 
 ## §8 · Open questions
 
-- The variant column is settled in the schema and displayed nowhere yet: the breakdown
-  editor does not expose it and `saveBreakdown`'s duplicate check still keys on
-  (colour, size) alone. Nothing can create a variant today, so the check cannot
-  false-positive — but the editor work and the widened duplicate key must land
-  together, before the first factory that orders by leg length.
+- ~~The variant column is settled in the schema and displayed nowhere yet~~ **paid,
+  2026-08-23, in one commit as this note demanded**: the editor exposes a "Leg /
+  pack" field, `saveBreakdown` keys duplicates on (colour, size, variant), the
+  revision diff names the variant when one exists, and the pivot's cell lookup sums
+  across variants instead of finding the first — the grid can no longer disagree
+  with its own totals.
