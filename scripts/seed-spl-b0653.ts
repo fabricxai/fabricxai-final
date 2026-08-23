@@ -49,7 +49,7 @@ import { buyers } from '@/modules/buyers/schema'
 import type { RequestCtx } from '@/modules/core/ctx'
 import { scoped } from '@/modules/core/scoped'
 import { withTenantRead, withTenantTx } from '@/modules/core/tenancy'
-import { orders, orderStyles } from '@/modules/orders/schema'
+import { orders, orderStyles, tnaMilestones, tnaTemplates } from '@/modules/orders/schema'
 import {
   createOrder,
   findTemplateForProductType,
@@ -318,13 +318,34 @@ async function main(): Promise<void> {
       orderId = created.orderId
       console.log(`[b0653] booked ${PO} · ${TOTAL_QTY.toLocaleString()} pcs · USD ${TOTAL_VALUE}`)
 
-      const template = await findTemplateForProductType(ctx, { productType: 'woven' })
+      await setOrderStatus(ctx, { orderId, status: 'in_production' })
+    }
+
+    /*
+     * The schedule, back-filled rather than tied to creation.
+     *
+     * A run that finds the order already booked must still be able to give it a TNA — the
+     * first pass through a tenant whose woven template was switched off left one without,
+     * and re-running the seed is how that gets fixed. `generateTna` preserves milestones
+     * that already carry actual dates, so this is safe on an order somebody has worked.
+     */
+    const [milestone] = await withTenantRead(ctx, (tx) =>
+      tx
+        .select({ id: tnaMilestones.id })
+        .from(tnaMilestones)
+        .where(scoped(tnaMilestones, ctx, eq(tnaMilestones.orderId, orderId)))
+        .limit(1),
+    )
+    if (milestone) {
+      console.log('[b0653] TNA already there, left alone')
+    } else {
+      const template = await wovenTemplate(ctx)
       if (template) {
         await generateTna(ctx, { orderId, templateId: template.id, exFactoryDate: EX_FACTORY })
         console.log(`[b0653] TNA generated from "${template.name}" against ${EX_FACTORY}`)
+      } else {
+        console.log('[b0653] no woven TNA template — the order has no schedule and PCD stays blank')
       }
-
-      await setOrderStatus(ctx, { orderId, status: 'in_production' })
     }
 
     const [style] = await withTenantRead(ctx, (tx) =>
@@ -423,6 +444,46 @@ async function main(): Promise<void> {
   } finally {
     await client.end()
   }
+}
+
+/**
+ * The woven template, activating it if this tenant left it switched off.
+ *
+ * `seedDefaultTnaTemplates` creates the modern set and then skips them forever — it has no
+ * opinion about `is_active`. Two of the older tenants carry hand-made templates whose
+ * milestones are PROSE ("Cutting start"), and the modern machine-named set sits inactive
+ * beside them. That is not a cosmetic difference: `NAMES_OTHER_MODULES_READ` is
+ * ['cutting', 'final_inspection', 'ex_factory'], so against a prose template the cutting
+ * gate, the pre-final readiness read and this round's PCD all silently find nothing. An
+ * order scheduled off one of those looks fine and is wired to nothing.
+ *
+ * So this reaches for `woven` specifically and switches it on if it is off, out loud. It
+ * activates ONE template and touches no other tenant setting.
+ */
+async function wovenTemplate(
+  ctx: RequestCtx,
+): Promise<{ id: string; name: string } | null> {
+  const found = await findTemplateForProductType(ctx, { productType: 'woven' })
+  if (found) return { id: found.id, name: found.name }
+
+  const [dormant] = await withTenantRead(ctx, (tx) =>
+    tx
+      .select({ id: tnaTemplates.id, name: tnaTemplates.name })
+      .from(tnaTemplates)
+      .where(scoped(tnaTemplates, ctx, eq(tnaTemplates.productType, 'woven'))),
+  )
+  if (!dormant) return null
+
+  await withTenantTx(ctx, (tx) =>
+    tx
+      .update(tnaTemplates)
+      .set({ isActive: true })
+      .where(scoped(tnaTemplates, ctx, eq(tnaTemplates.id, dormant.id))),
+  )
+  console.log(
+    `[b0653] activated the dormant "${dormant.name}" template — the gates read its milestone names, the prose ones they cannot`,
+  )
+  return dormant
 }
 
 /**

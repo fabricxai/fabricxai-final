@@ -39,14 +39,27 @@
 	# A dedicated `s3.` subdomain is the tidier long-term shape and needs a DNS record; this
 	# needs none.
 	handle /{$S3_BUCKET}/* {
-		reverse_proxy minio:9000 {
+		# `fxai-minio`, not `minio` — see the note on the application proxy below.
+		reverse_proxy fxai-minio:9000 {
 			# Uploads are up to 25MB (core/documents.ts); do not buffer them in Caddy.
 			flush_interval -1
 		}
 	}
 
 	# ── The application ────────────────────────────────────────────────────────
-	reverse_proxy app:3000 {
+	#
+	# The CONTAINER NAME, not the compose service alias.
+	#
+	# `app` and `minio` are service names, and a service name is only unique within one
+	# compose project. The day a second stack landed on this host with its own `app`
+	# service and a shared network, Docker's DNS answered `app` with the OTHER project's
+	# container — and this site quietly served that application for a day: every route
+	# only this product has returned 404, presigned URLs pointed at the wrong object
+	# store, and `/api/ready` still answered 200 because the impostor had one too.
+	#
+	# `container_name:` in docker-compose.prod.yml is globally unique on the host, so it
+	# is the name that cannot be hijacked. Do not "simplify" these back to `app`/`minio`.
+	reverse_proxy fxai-app:3000 {
 		# The app sets its own security headers in next.config.ts, deliberately, so
 		# that a deployment which bypasses this proxy still ships them. Nothing is
 		# added here — two sources for one header is how a CSP ends up doubled and
