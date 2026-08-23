@@ -8,7 +8,13 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { saveDropsPayload, setColourApprovalPayload, setFabricLegPayload } from '../zod'
+import {
+  breakdownCell,
+  saveBreakdownPayload,
+  saveDropsPayload,
+  setColourApprovalPayload,
+  setFabricLegPayload,
+} from '../zod'
 
 const ORDER = '4f9b1f6a-3c3e-4a1e-9b1a-2a4b5c6d7e8f'
 
@@ -66,5 +72,47 @@ describe('setColourApprovalPayload', () => {
     expect(() =>
       setColourApprovalPayload.parse({ orderId: ORDER, color: 'Navy', stage: 'vibe_check', status: 'sent' }),
     ).toThrow()
+  })
+})
+
+/**
+ * The third axis (HANDOFF-orders-dossier-additions §8).
+ *
+ * `variant` decides the grid's unique cell key, so its DEFAULTING is load-bearing in a
+ * way an ordinary optional field is not: every caller written before the column existed
+ * — the seeds, the demo, the RFQ-to-order path — sends cells without it, and each of
+ * those must land on the same key as a cell that sends an empty string. If the default
+ * ever became `undefined`, half the writers would collide with the other half's rows
+ * and the duplicate check would start refusing legitimate cells.
+ */
+describe('breakdownCell · the third axis', () => {
+  it('defaults to no third axis, so a caller that never heard of it stays valid', () => {
+    const cell = breakdownCell.parse({ color: 'Cream', size: '12', qty: 1680 })
+    expect(cell.variant).toBe('')
+  })
+
+  it('keeps a variant it is given, trimmed', () => {
+    const cell = breakdownCell.parse({ color: 'Cream', size: '12', variant: '  Drop 1 ', qty: 840 })
+    expect(cell.variant).toBe('Drop 1')
+  })
+
+  it('refuses a variant longer than the column holds', () => {
+    expect(() =>
+      breakdownCell.parse({ color: 'Cream', size: '12', variant: 'x'.repeat(41), qty: 10 }),
+    ).toThrow()
+  })
+
+  it('lets the same colour and size appear twice under different variants', () => {
+    // The real case this exists for: one PO line ships in October, the other a week
+    // later, and both are Cream/12. Without the third axis the second is a duplicate.
+    const parsed = saveBreakdownPayload.parse({
+      orderStyleId: ORDER,
+      cells: [
+        { color: 'Cream', size: '12', variant: 'Drop 1', qty: 1680 },
+        { color: 'Cream', size: '12', variant: 'Drop 2', qty: 840 },
+      ],
+    })
+    const keys = parsed.cells.map((c) => `${c.color}/${c.size}/${c.variant}`)
+    expect(new Set(keys).size).toBe(2)
   })
 })
