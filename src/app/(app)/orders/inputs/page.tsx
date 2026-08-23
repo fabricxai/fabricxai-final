@@ -12,6 +12,8 @@ import { inputsMatrix } from '@/modules/orders/queries'
 import { INPUT_CATEGORIES } from '@/modules/orders/zod'
 import { companyProfile } from '@/modules/settings/service'
 import { factoryToday } from '@/lib/dates'
+import { translator } from '@/lib/i18n-ui'
+import { requestLocale } from '@/lib/ui-locale'
 
 import { InputCellButton } from './matrix-client'
 
@@ -31,6 +33,8 @@ export default async function InputsMatrixPage() {
   const ctx = await getCtx(await headers())
   if (!ctx) redirect('/login')
 
+  const locale = await requestLocale()
+  const t = translator(locale)
   const today = factoryToday()
   const rows = await inputsMatrix(ctx, { today })
 
@@ -47,21 +51,25 @@ export default async function InputsMatrixPage() {
     <>
       <RouteHeader
         path="/orders/inputs"
-        eyebrow="Order desk · in-house checklist"
-        title="Inputs readiness"
+        locale={locale}
+        eyebrow={t('ui.inputs.eyebrow')}
+        title={t('ui.inputs.title')}
         meta={
           rows.length === 0
             ? undefined
-            : `${rows.length} open order${rows.length === 1 ? '' : 's'} · ${INPUT_CATEGORIES.length} input categories${blocked > 0 ? ` · ${blocked} with late inputs` : ''}`
+            : [
+                t.plural('ui.inputs.meta_orders', rows.length),
+                t('ui.inputs.meta_categories', { count: INPUT_CATEGORIES.length }),
+                blocked > 0 ? t('ui.inputs.meta_late', { count: blocked }) : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')
         }
         ownsAmber
       />
 
       {rows.length === 0 ? (
-        <EmptyState
-          title="No open orders to track"
-          body="Cells appear here the moment an order does — one row per PO, one column per input, each cell holding a date, a word, or a note. Type whichever you have."
-        />
+        <EmptyState title={t('ui.inputs.empty_title')} body={t('ui.inputs.empty_body')} />
       ) : (
         <div
           className="fx-scroll-x"
@@ -94,7 +102,7 @@ export default async function InputsMatrixPage() {
                 {INPUT_CATEGORY_WORDS[category]}
               </div>
             ))}
-            <div style={{ textAlign: 'right' }}>In-house</div>
+            <div style={{ textAlign: 'right' }}>{t('ui.inputs.col_inhouse')}</div>
           </div>
 
           {rows.map((row) => (
@@ -161,7 +169,11 @@ export default async function InputsMatrixPage() {
                         : 'at-risk'
                   }
                 >
-                  {row.rollup.complete ? 'all in' : row.rollup.late > 0 ? `${row.rollup.late} late` : 'open'}
+                  {row.rollup.complete
+                    ? t('ui.inputs.chip_all_in')
+                    : row.rollup.late > 0
+                      ? t('ui.inputs.chip_late', { count: row.rollup.late })
+                      : t('ui.inputs.chip_open')}
                 </StatusChip>
               </div>
             </div>
@@ -178,10 +190,8 @@ export default async function InputsMatrixPage() {
               color: 'var(--fx-text-tertiary)',
             }}
           >
-            <span>a cell holds a date, a word, or a note — type whichever you have</span>
-            <span style={{ marginLeft: 'auto' }}>
-              the count ignores categories a style does not use
-            </span>
+            <span>{t('ui.inputs.foot_cell')}</span>
+            <span style={{ marginLeft: 'auto' }}>{t('ui.inputs.foot_count')}</span>
           </div>
         </div>
       )}

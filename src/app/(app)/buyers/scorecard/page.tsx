@@ -9,6 +9,8 @@ import { outcomes } from '@/modules/memory/queries'
 import { orderList } from '@/modules/orders/queries'
 import { quoteCloseStats } from '@/modules/rfq/queries'
 import { shipmentBoard } from '@/modules/shipment/queries'
+import { translator } from '@/lib/i18n-ui'
+import { requestLocale } from '@/lib/ui-locale'
 
 /**
  * 1.1 Buyer desk — how our buyers actually behave.
@@ -57,6 +59,8 @@ export default async function BuyerScorecardPage() {
   const ctx = await getCtx(await headers())
   if (!ctx) redirect('/login')
 
+  const locale = await requestLocale()
+  const t = translator(locale)
   const [orders, shipments, memory, closing] = await Promise.all([
     orderList(ctx, { now: new Date() }),
     shipmentBoard(ctx),
@@ -127,30 +131,24 @@ export default async function BuyerScorecardPage() {
     <>
       <RouteHeader
         path="/buyers/scorecard"
-        eyebrow="Buyer desk · counted, never entered"
-        title="How our buyers actually behave"
-        meta={rows.length > 0 ? `${rows.length} buyers · treat thin rows as a hint` : undefined}
+        locale={locale}
+        eyebrow={t('ui.scorecard.eyebrow')}
+        title={t('ui.scorecard.title')}
+        meta={rows.length > 0 ? t('ui.scorecard.meta', { count: rows.length }) : undefined}
         ownsAmber
       />
 
       {rows.length === 0 ? (
-        <EmptyState
-          title="Nothing to count yet"
-          body="Scores appear as orders ship and close — departures against their dates, realised margin against the quote. Nothing on this screen is ever typed in."
-        />
+        <EmptyState title={t('ui.scorecard.empty_title')} body={t('ui.scorecard.empty_body')} />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
           {totalEvidence < 10 ? (
-            <InlineAlert tone="warning">
-              This screen gets honest at scale — under ten shipped-or-closed data points across
-              the book, every row is an anecdote wearing a percentage. Read the denominators,
-              not the bars.
-            </InlineAlert>
+            <InlineAlert tone="warning">{t('ui.scorecard.thin_warning')}</InlineAlert>
           ) : null}
 
           <section>
-            <SectionHeading eyebrow="departures from the shipment board · margins from closed outcomes">
-              By buyer
+            <SectionHeading eyebrow={t('ui.scorecard.section_eyebrow')}>
+              {t('ui.scorecard.section')}
             </SectionHeading>
             <div
               style={{
@@ -192,7 +190,7 @@ export default async function BuyerScorecardPage() {
                     </div>
 
                     <ScoreLine
-                      label="Ships on time"
+                      label={t('ui.scorecard.line_ontime')}
                       value={onTimePct !== null ? `${onTimePct}%` : null}
                       pct={onTimePct}
                       basis={
@@ -202,7 +200,7 @@ export default async function BuyerScorecardPage() {
                       }
                     />
                     <ScoreLine
-                      label="How they close"
+                      label={t('ui.scorecard.line_close')}
                       value={
                         closingByBuyer.get(row.buyer)?.avgCloseBelowFirstPct !== null &&
                         closingByBuyer.get(row.buyer) !== undefined
@@ -219,7 +217,7 @@ export default async function BuyerScorecardPage() {
                       }
                     />
                     <ScoreLine
-                      label="Margin we keep"
+                      label={t('ui.scorecard.line_margin')}
                       value={row.actualAvg !== null ? `${row.actualAvg}%` : null}
                       pct={
                         row.actualAvg !== null

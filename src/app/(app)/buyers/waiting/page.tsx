@@ -9,6 +9,7 @@ import { getCtx } from '@/modules/core/session'
 import { orderList } from '@/modules/orders/queries'
 import { board } from '@/modules/rfq/queries'
 import { sampleBoard } from '@/modules/sampling/queries'
+import { translator } from '@/lib/i18n-ui'
 import { requestLocale } from '@/lib/ui-locale'
 
 /**
@@ -59,6 +60,7 @@ export default async function WaitingOnBuyerPage() {
   if (!ctx) redirect('/login')
 
   const locale = await requestLocale()
+  const t = translator(locale)
   const now = new Date()
 
   const [rfqBoard, samples, orders] = await Promise.all([
@@ -120,23 +122,20 @@ export default async function WaitingOnBuyerPage() {
       <RouteHeader
         path="/buyers/waiting"
         locale={locale}
-        eyebrow="Buyer desk · chasing"
-        title="Waiting on the buyer"
+        eyebrow={t('ui.waiting.eyebrow')}
+        title={t('ui.waiting.title')}
         meta={
           rows.length === 0
-            ? 'nothing outstanding'
+            ? t('ui.waiting.meta_none')
             : oldest === null
-              ? `${rows.length} open`
-              : `${rows.length} open · oldest ${oldest} days`
+              ? t('ui.waiting.meta_open', { count: rows.length })
+              : `${t('ui.waiting.meta_open', { count: rows.length })} · ${t('ui.waiting.meta_oldest', { count: oldest })}`
         }
         ownsAmber
       />
 
       {rows.length === 0 ? (
-        <EmptyState
-          title="Nobody owes you an answer"
-          body="Every clarification has been answered and no sample is sitting with a buyer unverdicted. This screen fills itself as you ask."
-        />
+        <EmptyState title={t('ui.waiting.empty_title')} body={t('ui.waiting.empty_body')} />
       ) : (
         <div
           style={{
@@ -159,10 +158,10 @@ export default async function WaitingOnBuyerPage() {
               color: 'var(--fx-text-tertiary)',
             }}
           >
-            <span>What we are waiting for</span>
-            <span>Which one</span>
-            <span>Buyer</span>
-            <span>Waiting</span>
+            <span>{t('ui.waiting.col_what')}</span>
+            <span>{t('ui.waiting.col_ref')}</span>
+            <span>{t('ui.waiting.col_buyer')}</span>
+            <span>{t('ui.waiting.col_days')}</span>
           </div>
 
           {rows.map((row) => (
@@ -187,14 +186,16 @@ export default async function WaitingOnBuyerPage() {
                 <span>{row.buyer}</span>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
                   {row.days === null ? (
-                    <Badge>no clock</Badge>
+                    <Badge>{t('ui.waiting.no_clock')}</Badge>
                   ) : (
                     <>
                       <span data-numeric data-mono>
                         {row.days} d
                       </span>
                       <StatusChip status={ageStatus(row.days)}>
-                        {ageStatus(row.days) === 'late' ? 'chase' : 'waiting'}
+                        {ageStatus(row.days) === 'late'
+                          ? t('ui.waiting.chip_chase')
+                          : t('ui.waiting.chip_waiting')}
                       </StatusChip>
                     </>
                   )}

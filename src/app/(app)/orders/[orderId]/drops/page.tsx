@@ -11,6 +11,7 @@ import { lcsForOrders } from '@/modules/commercial/queries'
 import { getCtx } from '@/modules/core/session'
 import { colourApprovals, dropsForOrder, orderDetail } from '@/modules/orders/queries'
 import { companyProfile } from '@/modules/settings/service'
+import { translator } from '@/lib/i18n-ui'
 import { requestLocale } from '@/lib/ui-locale'
 
 import { ColourChain, DropsEditor } from './drops-client'
@@ -40,6 +41,7 @@ export default async function DropsPage({
   const order = await orderDetail(ctx, orderId)
   if (!order) notFound()
 
+  const t = translator(locale)
   const po = order.poNumbers[0] ?? order.id.slice(0, 8)
   const [drops, approvals, lcs] = await Promise.all([
     dropsForOrder(ctx, order.id),
@@ -86,8 +88,8 @@ export default async function DropsPage({
         labels={{ orderId: po }}
         locale={locale}
         eyebrow={order.buyerName ?? 'Order'}
-        title="Drops and colours"
-        meta={`${drops.length || 1} drop${drops.length === 1 || drops.length === 0 ? '' : 's'} · ${colours.length} colour${colours.length === 1 ? '' : 's'}`}
+        title={t('ui.drops.title')}
+        meta={`${t.plural('ui.drops.meta_drops', drops.length || 1)} · ${t.plural('ui.drops.meta_colours', colours.length)}`}
         ownsAmber
       />
 
@@ -95,8 +97,8 @@ export default async function DropsPage({
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 36, maxWidth: 900 }}>
         <section>
-          <SectionHeading eyebrow="each departure is read against the credit on its own">
-            Drops
+          <SectionHeading eyebrow={t('ui.drops.section_drops_eyebrow')}>
+            {t('ui.drops.section_drops')}
           </SectionHeading>
 
           <div
@@ -115,9 +117,9 @@ export default async function DropsPage({
                   color: 'var(--fx-text-secondary)',
                 }}
               >
-                One departure — the whole quantity ships on{' '}
-                {order.plannedExFactoryDate ?? 'a date still to be set'}. Split it when the buyer
-                orders drops.
+                {t('ui.drops.single_departure', {
+                  date: order.plannedExFactoryDate ?? t('ui.drops.date_unset'),
+                })}
               </p>
             ) : (
               drops.map((drop, i) => {
@@ -140,13 +142,13 @@ export default async function DropsPage({
                       }}
                     >
                       <span style={{ font: '500 14px/1.3 var(--fx-font-sans)', minWidth: 64 }}>
-                        Drop {drop.dropNo}
+                        {t('ui.drops.drop_label', { no: drop.dropNo })}
                       </span>
                       <span data-numeric data-mono style={{ font: '400 13.5px/1.3 var(--fx-font-mono)' }}>
                         {drop.qty.toLocaleString()} pcs
                       </span>
                       <span data-numeric data-mono style={{ font: '400 13.5px/1.3 var(--fx-font-mono)' }}>
-                        ship by {drop.shipDate}
+                        {t('ui.drops.ship_by', { date: drop.shipDate })}
                       </span>
                       {drop.note ? (
                         <span
@@ -161,10 +163,10 @@ export default async function DropsPage({
                       <span style={{ marginLeft: 'auto' }}>
                         <StatusChip status={conflict ? 'late' : 'on-track'}>
                           {conflict
-                            ? `after the credit's ${latestShipment}`
+                            ? t('ui.drops.chip_conflict', { date: latestShipment })
                             : latestShipment
-                              ? 'inside the credit'
-                              : 'no credit linked'}
+                              ? t('ui.drops.chip_inside')
+                              : t('ui.drops.chip_no_credit')}
                         </StatusChip>
                       </span>
                     </div>
@@ -193,11 +195,11 @@ export default async function DropsPage({
           <SectionHeading
             eyebrow={
               stalled.length > 0
-                ? `${stalled.length} colour${stalled.length === 1 ? '' : 's'} without an approved shade band`
-                : 'every colourway cleared'
+                ? t.plural('ui.drops.stalled', stalled.length)
+                : t('ui.drops.all_cleared')
             }
           >
-            Colour approvals
+            {t('ui.drops.section_colours')}
           </SectionHeading>
 
           <div
@@ -213,7 +215,7 @@ export default async function DropsPage({
           >
             {colours.length === 0 ? (
               <p style={{ font: '400 14px/1.6 var(--fx-font-sans)', color: 'var(--fx-text-secondary)' }}>
-                Colours appear here with the size breakdown — the chain is per colourway.
+                {t('ui.drops.colours_empty')}
               </p>
             ) : (
               colours.map((color, i) => (
@@ -246,9 +248,7 @@ export default async function DropsPage({
                 color: 'var(--fx-text-tertiary)',
               }}
             >
-              This is the buyer&rsquo;s chain — what they approved and when. The 4-point fabric
-              verdict is quality&rsquo;s, on their own screens, and the store&rsquo;s shade gate
-              refuses a mixed issue regardless of what is recorded here.
+              {t('ui.drops.footer')}
             </div>
           </div>
         </section>

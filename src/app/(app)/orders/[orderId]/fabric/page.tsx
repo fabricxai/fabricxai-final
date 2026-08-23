@@ -11,6 +11,7 @@ import { fabricLegs } from '@/modules/orders/queries'
 import { orderDetail } from '@/modules/orders/queries'
 import { companyProfile } from '@/modules/settings/service'
 import { factoryToday } from '@/lib/dates'
+import { translator, type Translator } from '@/lib/i18n-ui'
 import { requestLocale } from '@/lib/ui-locale'
 
 import { LegEditor } from './leg-editor'
@@ -27,27 +28,36 @@ import { LegEditor } from './leg-editor'
  */
 export const dynamic = 'force-dynamic'
 
-const LEG_WORDS: Record<string, string> = {
-  booking_placed: 'Booking placed',
-  pi_received: 'Mill proforma invoice',
-  ex_mill: 'Ex-mill',
-  on_vessel: 'On the vessel',
-  at_port: 'At port',
-  customs_cleared: 'Cleared customs',
-  in_house: 'In-house at the store',
+const LEG_KEYS: Record<string, string> = {
+  booking_placed: 'ui.fabriclegs.leg_booking_placed',
+  pi_received: 'ui.fabriclegs.leg_pi_received',
+  ex_mill: 'ui.fabriclegs.leg_ex_mill',
+  on_vessel: 'ui.fabriclegs.leg_on_vessel',
+  at_port: 'ui.fabriclegs.leg_at_port',
+  customs_cleared: 'ui.fabriclegs.leg_customs_cleared',
+  in_house: 'ui.fabriclegs.leg_in_house',
 }
 
 function legStatus(
   cell: { planDate: string | null; actualDate: string | null },
   today: string,
-): { selvage: SelvageStatus; word: string } {
+  t: Translator,
+): { selvage: SelvageStatus; word: string; overdue: boolean } {
   if (cell.actualDate) {
     const late = cell.planDate !== null && cell.actualDate > cell.planDate
-    return { selvage: late ? 'late' : 'on-track', word: late ? 'late' : 'done' }
+    return {
+      selvage: late ? 'late' : 'on-track',
+      word: late ? t('ui.fabriclegs.word_late') : t('ui.fabriclegs.word_done'),
+      overdue: false,
+    }
   }
-  if (cell.planDate && cell.planDate < today) return { selvage: 'late', word: 'overdue' }
-  if (cell.planDate) return { selvage: 'on-track', word: 'planned' }
-  return { selvage: 'on-track', word: '—' }
+  if (cell.planDate && cell.planDate < today) {
+    return { selvage: 'late', word: t('ui.fabriclegs.word_overdue'), overdue: true }
+  }
+  if (cell.planDate) {
+    return { selvage: 'on-track', word: t('ui.fabriclegs.word_planned'), overdue: false }
+  }
+  return { selvage: 'on-track', word: '—', overdue: false }
 }
 
 export default async function FabricLegsPage({
@@ -63,6 +73,7 @@ export default async function FabricLegsPage({
   const order = await orderDetail(ctx, orderId)
   if (!order) notFound()
 
+  const t = translator(locale)
   const today = factoryToday()
   const legs = await fabricLegs(ctx, order.id)
   const po = order.poNumbers[0] ?? order.id.slice(0, 8)
@@ -75,7 +86,7 @@ export default async function FabricLegsPage({
   )
 
   const slipped = legs.filter(
-    (leg) => legStatus(leg, today).selvage === 'late',
+    (leg) => legStatus(leg, today, t).selvage === 'late',
   ).length
 
   return (
@@ -85,8 +96,8 @@ export default async function FabricLegsPage({
         labels={{ orderId: po }}
         locale={locale}
         eyebrow={order.buyerName ?? 'Order'}
-        title="Where the fabric is"
-        meta={slipped > 0 ? `${slipped} leg${slipped === 1 ? '' : 's'} late` : undefined}
+        title={t('ui.fabriclegs.title')}
+        meta={slipped > 0 ? t.plural('ui.fabriclegs.meta_late', slipped) : undefined}
         ownsAmber
       />
 
@@ -103,7 +114,7 @@ export default async function FabricLegsPage({
         }}
       >
         {legs.map((leg, i) => {
-          const status = legStatus(leg, today)
+          const status = legStatus(leg, today, t)
           return (
             <div
               key={leg.leg}
@@ -124,14 +135,14 @@ export default async function FabricLegsPage({
               >
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, flexWrap: 'wrap' }}>
                   <span style={{ font: '500 14.5px/1.3 var(--fx-font-sans)', minWidth: 190 }}>
-                    {LEG_WORDS[leg.leg] ?? leg.leg}
+                    {LEG_KEYS[leg.leg] ? t(LEG_KEYS[leg.leg]!) : leg.leg}
                   </span>
                   <span
                     data-numeric
                     data-mono
                     style={{ font: '400 13px/1.3 var(--fx-font-mono)', color: 'var(--fx-text-tertiary)' }}
                   >
-                    planned {leg.planDate ?? '—'}
+                    {t('ui.fabriclegs.planned', { date: leg.planDate ?? '—' })}
                   </span>
                   <span
                     data-numeric
@@ -142,7 +153,7 @@ export default async function FabricLegsPage({
                         status.selvage === 'late' ? 'var(--fx-danger)' : 'var(--fx-text-primary)',
                     }}
                   >
-                    {leg.actualDate ?? (status.word === 'overdue' ? 'not yet' : '')}
+                    {leg.actualDate ?? (status.overdue ? t('ui.fabriclegs.not_yet') : '')}
                   </span>
                   <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 12, alignItems: 'center' }}>
                     <StatusChip status={status.selvage}>{status.word}</StatusChip>
@@ -169,9 +180,7 @@ export default async function FabricLegsPage({
             color: 'var(--fx-text-tertiary)',
           }}
         >
-          The store&rsquo;s GRN is the truth of in-house — this trail records the chase. A slip
-          against the booking&rsquo;s own late-delivery terms is commercial&rsquo;s to claim; give
-          them the leg and the dates.
+          {t('ui.fabriclegs.footer')}
         </div>
       </div>
     </>

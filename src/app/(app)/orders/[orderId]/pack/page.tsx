@@ -11,6 +11,7 @@ import { sewnAgainstOrder } from '@/modules/production/queries'
 import { shipmentBoard } from '@/modules/shipment/queries'
 import { remainingToPackFor } from '@/modules/shipment/service'
 import { factoryToday } from '@/lib/dates'
+import { translator } from '@/lib/i18n-ui'
 import { requestLocale } from '@/lib/ui-locale'
 
 import { CopyPack } from './pack-copy'
@@ -52,6 +53,7 @@ export default async function BuyerPackPage({
   const order = await orderDetail(ctx, orderId)
   if (!order) notFound()
 
+  const t = translator(locale)
   const today = factoryToday()
   const po = order.poNumbers[0] ?? order.id.slice(0, 8)
 
@@ -107,21 +109,20 @@ export default async function BuyerPackPage({
         labels={{ orderId: po }}
         locale={locale}
         eyebrow={order.buyerName ?? 'Order'}
-        title="Buyer status pack"
-        meta={`as of ${today}`}
+        title={t('ui.pack.title')}
+        meta={t('ui.pack.meta', { date: today })}
         ownsAmber
       />
 
       <OrderTabs orderId={orderId} active="pack" />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 28, maxWidth: 720 }}>
-        <InlineAlert tone="info">
-          Costs and CM are not in this pack — not hidden, never fetched. The buyer sees
-          quantities, dates and our honest reading, nothing else.
-        </InlineAlert>
+        <InlineAlert tone="info">{t('ui.pack.no_money')}</InlineAlert>
 
         <section>
-          <SectionHeading eyebrow="what the buyer will see">The pack</SectionHeading>
+          <SectionHeading eyebrow={t('ui.pack.section_eyebrow')}>
+            {t('ui.pack.section')}
+          </SectionHeading>
           <pre
             style={{
               margin: 0,
@@ -141,8 +142,7 @@ export default async function BuyerPackPage({
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
           <CopyPack text={lines} />
           <span style={{ font: '400 12.5px/1.5 var(--fx-font-sans)', color: 'var(--fx-text-tertiary)' }}>
-            Figures come from the floor&rsquo;s own records as of the last report — nothing here
-            is typed twice.
+            {t('ui.pack.foot_note')}
           </span>
         </div>
       </div>
