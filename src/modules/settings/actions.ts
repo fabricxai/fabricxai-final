@@ -17,6 +17,7 @@ import {
   type AuditQuery,
 } from './service'
 import type { Role } from '@/modules/core/ctx'
+import { serialiseAuditRow, type AuditTrailRow } from './audit-row'
 
 /**
  * X.3 Settings write paths.
@@ -49,11 +50,11 @@ export async function saveCompanyProfile(input: unknown): Promise<{ companyId: s
  */
 export async function readAuditTrail(
   query: AuditQuery = {},
-): Promise<{ rows: Awaited<ReturnType<typeof auditTrail>>; tables: string[] }> {
+): Promise<{ rows: AuditTrailRow[]; tables: string[] }> {
   const ctx = await requireRole(await headers(), 'owner', 'admin')
 
   const [rows, tables] = await Promise.all([auditTrail(ctx, query), auditedTables(ctx)])
-  return { rows, tables }
+  return { rows: rows.map(serialiseAuditRow), tables }
 }
 
 /**

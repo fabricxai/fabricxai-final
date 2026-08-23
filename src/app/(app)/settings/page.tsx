@@ -10,6 +10,8 @@ import { activeLines } from '@/modules/production/queries'
 import { listApprovalRules } from '@/modules/approvals/queries'
 import { ApprovalRules } from './approval-rules'
 
+import { serialiseAuditRow } from '@/modules/settings/audit-row'
+
 import { AuditViewer } from './audit-viewer'
 import { PolicySection } from './policy-section'
 import { LineScopeControls } from './line-scope'
@@ -258,17 +260,8 @@ export default async function SettingsPage() {
           <section id="audit" style={{ scrollMarginTop: 76 }}>
             <SectionHeading eyebrow="who changed what, and when">The audit trail</SectionHeading>
             <AuditViewer
-              initial={trail.map((row) => ({
-                id: String(row.id),
-                actorUserId: row.actorUserId,
-                actorName: row.actorName,
-                actorRole: row.actorRole,
-                action: row.action,
-                targetTable: row.targetTable,
-                targetId: row.targetId,
-                changedFields: row.changedFields,
-                occurredAt: row.occurredAt.toISOString(),
-              }))}
+              // The SAME projection the filter action uses — see modules/settings/audit-row.
+              initial={trail.map(serialiseAuditRow)}
               tables={trailTables}
             />
           </section>

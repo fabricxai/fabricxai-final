@@ -10,19 +10,18 @@ import { Badge, Button } from '@/components/fx/primitives'
 import { Eyebrow } from '@/components/fx/signature'
 import { actionErrorMessage } from '@/lib/action-error'
 import { readAuditTrail } from '@/modules/settings/actions'
+import type { AuditTrailRow } from '@/modules/settings/audit-row'
 
-interface AuditRow {
-  id: string
-  actorUserId: string | null
-  /** Resolved server-side. Null when the actor has left, or when there was no person at all. */
-  actorName: string | null
-  actorRole: string | null
-  action: string
-  targetTable: string
-  targetId: string | null
-  changedFields: string[] | null
-  occurredAt: string
-}
+/*
+ * The row shape is the ACTION's, imported rather than re-declared.
+ *
+ * It used to be declared here as well, and the two drifted: this file promised
+ * `occurredAt: string` while the action returned the `Date` drizzle gives for a
+ * timestamptz. A `Date` crosses the server-action boundary intact, so the first page
+ * rendered (the page had serialised it) and the first filter click threw
+ * "occurredAt.slice is not a function". One declaration cannot drift from itself.
+ */
+type AuditRow = AuditTrailRow
 
 /**
  * The audit trail, read at last (plan 5.8, audit FE-S14).
@@ -67,7 +66,9 @@ export function AuditViewer({
           ...(nextTable ? { targetTable: nextTable } : {}),
           ...(nextAction ? { action: nextAction } : {}),
         })
-        setRows(result.rows as unknown as AuditRow[])
+        // No cast. The action's type IS this component's type, so a shape change over
+        // there fails the build here instead of at a user's fingertip.
+        setRows(result.rows)
       } catch (error) {
         setFailure(actionErrorMessage(error, 'The trail could not be read.'))
       }
