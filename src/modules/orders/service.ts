@@ -183,11 +183,12 @@ export async function saveBreakdownIn(
   // otherwise silently lose one of the two quantities to the unique index.
   const seen = new Set<string>()
   for (const cell of cells) {
-    const key = compositeKey(cell.color, cell.size)
+    const key = compositeKey(cell.color, cell.size, cell.variant)
     if (seen.has(key)) {
       throw new AppError('validation_failed', 'orders.errors.duplicate_breakdown_cell', {
         color: cell.color,
         size: cell.size,
+        variant: cell.variant,
       })
     }
     seen.add(key)
@@ -257,6 +258,7 @@ export async function saveBreakdownIn(
         revision,
         color: cell.color,
         size: cell.size,
+        variant: cell.variant,
         qty: cell.qty,
       })),
     )
@@ -344,10 +346,13 @@ export async function applyRevision(
 
 /** Cell-level diff, computed server-side — never taken from the client. */
 function diffBreakdown(
-  before: readonly { color: string; size: string; qty: number }[],
-  after: readonly { color: string; size: string; qty: number }[],
+  before: readonly { color: string; size: string; variant?: string; qty: number }[],
+  after: readonly { color: string; size: string; variant?: string; qty: number }[],
 ): Record<string, unknown> {
-  const key = (cell: { color: string; size: string }) => `${cell.color}/${cell.size}`
+  // The variant joins the key only when it exists, so every pre-axis revision's
+  // stored diff keys keep meaning exactly what they meant.
+  const key = (cell: { color: string; size: string; variant?: string }) =>
+    cell.variant ? `${cell.color}/${cell.size}/${cell.variant}` : `${cell.color}/${cell.size}`
   const beforeMap = new Map(before.map((c) => [key(c), c.qty]))
   const afterMap = new Map(after.map((c) => [key(c), c.qty]))
 

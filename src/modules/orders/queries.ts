@@ -186,6 +186,8 @@ export interface MilestoneRow {
 export interface BreakdownCell {
   color: string
   size: string
+  /** The third axis where a PO line carries one — leg length, pack id. '' = none. */
+  variant: string
   qty: number
 }
 
@@ -269,6 +271,7 @@ export async function orderDetail(ctx: AnyCtx, orderId: string): Promise<OrderDe
           .select({
             color: orderBreakdowns.color,
             size: orderBreakdowns.size,
+            variant: orderBreakdowns.variant,
             qty: orderBreakdowns.qty,
           })
           .from(orderBreakdowns)

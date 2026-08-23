@@ -269,8 +269,10 @@ export function BreakdownGrid({
 
   const colors = [...new Set(cells.map((c) => c.color))]
   const sizes = [...new Set(cells.map((c) => c.size))]
+  // Summed, not found: a PO with a third axis (leg length, ratio pack) carries
+  // several cells per colour/size, and the pivot must agree with its own totals.
   const at = (color: string, size: string) =>
-    cells.find((c) => c.color === color && c.size === size)?.qty ?? 0
+    cells.filter((c) => c.color === color && c.size === size).reduce((s, c) => s + c.qty, 0)
 
   const total = cells.reduce((sum, c) => sum + c.qty, 0)
   const colTotal = (size: string) =>

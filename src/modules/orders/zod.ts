@@ -98,6 +98,13 @@ export const orderStylePayload = z.object({
 export const breakdownCell = z.object({
   color: z.string().min(1),
   size: z.string().min(1),
+  /**
+   * The third axis a PO line sometimes carries — a leg length ("27"), a ratio-pack
+   * id. Empty string is "no third axis" and is the default, so every existing
+   * caller keeps its meaning; NOT NULL end-to-end because two NULLs are distinct
+   * to the unique index and the cell-dedupe guarantee must hold.
+   */
+  variant: z.string().trim().max(40).default(''),
   qty: z.number().int().positive(),
 })
 
@@ -269,7 +276,9 @@ export const ORDERS_ZOD_MAP = {
 } as const
 
 export type CreateOrderPayload = z.infer<typeof createOrderPayload>
-export type SaveBreakdownPayload = z.infer<typeof saveBreakdownPayload>
+// z.input, not z.infer: `variant` defaults on parse, and every caller that predates
+// the third axis keeps compiling without naming it.
+export type SaveBreakdownPayload = z.input<typeof saveBreakdownPayload>
 export type GenerateTnaPayload = z.infer<typeof generateTnaPayload>
 export type ActualizeMilestonePayload = z.infer<typeof actualizeMilestonePayload>
 export type TnaTemplatePayload = z.infer<typeof tnaTemplatePayload>

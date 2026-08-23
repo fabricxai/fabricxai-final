@@ -467,6 +467,8 @@ export const UI_MESSAGES: Catalogue = {
     'ui.orders.no_cells':
       'This style has no grid yet. A breakdown is entered against the colours and sizes the buyer ordered.',
     'ui.orders.cell_color': 'Colour',
+    'ui.orders.cell_variant': 'Leg / pack',
+    'ui.orders.cell_variant_hint': 'the third axis, when the PO has one — 27", pack A. Blank for most styles.',
     'ui.orders.cell_size': 'Size',
     'ui.orders.cell_qty': 'Pieces',
     'ui.orders.add_cell': '＋ add the cell',
@@ -1844,6 +1846,8 @@ export const UI_MESSAGES: Catalogue = {
     'ui.orders.no_cells':
       'এই স্টাইলের এখনো কোনো গ্রিড নেই। বায়ার যে রং ও সাইজ দিয়েছে তার বিপরীতে ব্রেকডাউন লেখা হয়।',
     'ui.orders.cell_color': 'রং',
+    'ui.orders.cell_variant': 'লেগ / প্যাক',
+    'ui.orders.cell_variant_hint': 'তৃতীয় মাত্রা, পিও-তে থাকলে — ২৭", প্যাক এ। বেশিরভাগ স্টাইলে ফাঁকা।',
     'ui.orders.cell_size': 'সাইজ',
     'ui.orders.cell_qty': 'পিস',
     'ui.orders.add_cell': '＋ ঘর যোগ করুন',

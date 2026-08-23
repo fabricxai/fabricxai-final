@@ -15,6 +15,8 @@ import { proposeOrderRevision, saveOrderBreakdown } from '@/modules/orders/actio
 interface Cell {
   color: string
   size: string
+  /** The third axis — leg length, pack id. '' = none, the overwhelming case. */
+  variant: string
   qty: number
 }
 
@@ -69,6 +71,7 @@ export function OrderBreakdown({
   // because a PO grid is entered row-major: White S, White M, White L…
   const [newColor, setNewColor] = useState('')
   const [newSize, setNewSize] = useState('')
+  const [newVariant, setNewVariant] = useState('')
   const [newQty, setNewQty] = useState('')
 
   function addCell() {
@@ -78,12 +81,15 @@ export function OrderBreakdown({
     const qty = Number.parseInt(newQty, 10)
     if (!color || !size || !Number.isInteger(qty) || qty <= 0) return
 
+    const variant = newVariant.trim()
     setDraft((rows) => {
-      const key = compositeKey(color, size)
-      const existing = rows.findIndex((row) => compositeKey(row.color, row.size) === key)
+      const key = compositeKey(color, size, variant)
+      const existing = rows.findIndex(
+        (row) => compositeKey(row.color, row.size, row.variant) === key,
+      )
       // The same cell typed twice is a correction of itself, not a second cell.
       if (existing >= 0) return rows.map((row, i) => (i === existing ? { ...row, qty } : row))
-      return [...rows, { color, size, qty }]
+      return [...rows, { color, size, variant, qty }]
     })
     setNewSize('')
     setNewQty('')
@@ -94,11 +100,13 @@ export function OrderBreakdown({
     newColor.trim() !== '' && newSize.trim() !== '' && Number.parseInt(newQty, 10) > 0
 
   const original = useMemo(
-    () => new Map(cells.map((c) => [compositeKey(c.color, c.size), c.qty])),
+    () => new Map(cells.map((c) => [compositeKey(c.color, c.size, c.variant), c.qty])),
     [cells],
   )
 
-  const changed = draft.filter((c) => (original.get(compositeKey(c.color, c.size)) ?? 0) !== c.qty)
+  const changed = draft.filter(
+    (c) => (original.get(compositeKey(c.color, c.size, c.variant)) ?? 0) !== c.qty,
+  )
   const draftTotal = draft.reduce((sum, c) => sum + c.qty, 0)
   const currentTotal = cells.reduce((sum, c) => sum + c.qty, 0)
 
@@ -204,7 +212,7 @@ export function OrderBreakdown({
             >
               {draft.map((cell, index) => (
                 <div
-                  key={compositeKey(cell.color, cell.size)}
+                  key={compositeKey(cell.color, cell.size, cell.variant)}
                   className="fx-stack-tablet"
                   style={{
                     display: 'grid',
@@ -215,6 +223,9 @@ export function OrderBreakdown({
                 >
                   <span style={{ font: "400 14px/1.3 var(--fx-font-sans)" }}>
                     {cell.color} · {cell.size}
+                    {cell.variant ? (
+                      <span style={{ color: 'var(--fx-text-tertiary)' }}> · {cell.variant}</span>
+                    ) : null}
                   </span>
                   <TextInput
                     label=""
@@ -232,7 +243,7 @@ export function OrderBreakdown({
             className="fx-stack-tablet"
             style={{
               display: 'grid',
-              gridTemplateColumns: 'minmax(0, 1fr) minmax(0, .7fr) 100px auto',
+              gridTemplateColumns: 'minmax(0, 1fr) minmax(0, .6fr) minmax(0, .6fr) 100px auto',
               gap: 10,
               alignItems: 'end',
             }}
@@ -247,6 +258,13 @@ export function OrderBreakdown({
               mono
               value={newSize}
               onChange={(e) => setNewSize(e.target.value)}
+            />
+            <TextInput
+              label={t('ui.orders.cell_variant')}
+              hint={t('ui.orders.cell_variant_hint')}
+              mono
+              value={newVariant}
+              onChange={(e) => setNewVariant(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && addable) addCell()
               }}
