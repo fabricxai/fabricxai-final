@@ -7,6 +7,7 @@ import { RouteHeader } from '@/components/shell/route-header'
 import { getCtx } from '@/modules/core/session'
 import { outcomes } from '@/modules/memory/queries'
 import { orderList } from '@/modules/orders/queries'
+import { quoteCloseStats } from '@/modules/rfq/queries'
 import { shipmentBoard } from '@/modules/shipment/queries'
 
 /**
@@ -56,11 +57,13 @@ export default async function BuyerScorecardPage() {
   const ctx = await getCtx(await headers())
   if (!ctx) redirect('/login')
 
-  const [orders, shipments, memory] = await Promise.all([
+  const [orders, shipments, memory, closing] = await Promise.all([
     orderList(ctx, { now: new Date() }),
     shipmentBoard(ctx),
     outcomes(ctx, 100),
+    quoteCloseStats(ctx),
   ])
+  const closingByBuyer = new Map(closing.map((row) => [row.buyerName, row]))
 
   const byBuyer = new Map<string, BuyerScore>()
   const score = (buyer: string | null): BuyerScore => {
@@ -196,6 +199,23 @@ export default async function BuyerScorecardPage() {
                         row.departures > 0
                           ? `${row.onTimeDepartures} of ${row.departures} departure${row.departures === 1 ? '' : 's'} on or before their date`
                           : 'no departures recorded yet'
+                      }
+                    />
+                    <ScoreLine
+                      label="How they close"
+                      value={
+                        closingByBuyer.get(row.buyer)?.avgCloseBelowFirstPct !== null &&
+                        closingByBuyer.get(row.buyer) !== undefined
+                          ? `−${closingByBuyer.get(row.buyer)!.avgCloseBelowFirstPct}%`
+                          : null
+                      }
+                      pct={null}
+                      basis={
+                        closingByBuyer.get(row.buyer)
+                          ? closingByBuyer.get(row.buyer)!.avgCloseBelowFirstPct !== null
+                            ? `mean drop from first sent price to the closed order, over ${closingByBuyer.get(row.buyer)!.won} wins`
+                            : `${closingByBuyer.get(row.buyer)!.won} closed quote${closingByBuyer.get(row.buyer)!.won === 1 ? '' : 's'} — under three, no average is printed`
+                          : 'no quotes sent yet'
                       }
                     />
                     <ScoreLine

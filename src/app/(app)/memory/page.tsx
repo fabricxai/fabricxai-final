@@ -26,7 +26,11 @@ import { outcomes, type Pair } from '@/modules/memory/queries'
  */
 export const dynamic = 'force-dynamic'
 
-export default async function MemoryPage() {
+export default async function MemoryPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>
+}) {
   const ctx = await getCtx(await headers())
   if (!ctx) redirect('/login')
 
@@ -40,7 +44,21 @@ export default async function MemoryPage() {
   if (!env.MARBIM_ENABLED) return <LockedState what="order memory" />
 
   const now = new Date()
-  const cards = await outcomes(ctx)
+  const { q } = await searchParams
+  const all = await outcomes(ctx)
+  /*
+   * Search is a filter over what memory already compiled — style, buyer, PO, the
+   * defect words. Deliberately not the vector search: that is MARBIM's, needs an
+   * embedding call, and "show me the rib tees we made for H&M" is a substring.
+   */
+  const needle = q?.trim().toLowerCase() ?? ''
+  const cards = needle
+    ? all.filter((card) =>
+        [card.styleCode, card.buyerName, card.poNumber, ...card.topDefects.map((d) => d.code)]
+          .filter((v): v is string => typeof v === 'string')
+          .some((v) => v.toLowerCase().includes(needle)),
+      )
+    : all
 
   /*
    * The repeat bridge (design: repeat-order drift). A closed outcome next to its own
@@ -68,8 +86,41 @@ export default async function MemoryPage() {
       <PageHeader
         eyebrow="Order memory"
         title={cards.length === 0 ? 'Nothing compiled yet' : `${cards.length} closed orders`}
+        meta={needle ? `matching “${needle}”` : undefined}
         ownsAmber
       />
+
+      <form method="GET" style={{ marginBottom: 24, display: 'flex', gap: 10, maxWidth: 520 }}>
+        <input
+          type="search"
+          name="q"
+          defaultValue={needle}
+          placeholder="style, buyer, PO, or a defect word — rib, H&M, shading…"
+          style={{
+            flex: 1,
+            minHeight: 'var(--fx-tap-min)',
+            padding: '0 12px',
+            background: 'var(--fx-bg-sunken)',
+            border: '1px solid transparent',
+            borderRadius: 'var(--fx-radius-sm)',
+            font: '400 13px/1 var(--fx-font-sans)',
+          }}
+        />
+        <button
+          type="submit"
+          style={{
+            minHeight: 'var(--fx-tap-min)',
+            padding: '0 18px',
+            border: '1px solid var(--fx-border-default)',
+            borderRadius: 'var(--fx-radius-md)',
+            background: 'transparent',
+            font: '600 13px/1 var(--fx-font-sans)',
+            cursor: 'pointer',
+          }}
+        >
+          Search
+        </button>
+      </form>
 
       {cards.length === 0 ? (
         <EmptyState

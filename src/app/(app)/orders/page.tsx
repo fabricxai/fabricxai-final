@@ -23,6 +23,7 @@ import { money, sum } from '@/lib/money'
 import { requestLocale } from '@/lib/ui-locale'
 
 import { OrderBookKeys } from './book-keys'
+import { TnaPeekButton } from './tna-drawer'
 import { NewOrderButton } from './new-order'
 import { buildWeek, WeekStrip } from './week-strip'
 
@@ -345,6 +346,7 @@ export default async function OrdersPage() {
                   <Ident>{row.poNumbers[0] ?? '—'}</Ident>
                   {/* The code travels, not the uuid — the resolvers read what the row prints. */}
                   {row.poNumbers[0] ? <AskAboutRow code={row.poNumbers[0]} /> : null}
+                  <TnaPeekButton orderId={row.id} po={row.poNumbers[0] ?? row.id.slice(0, 8)} locale={locale} />
                 </span>
                 <span style={{ font: "400 14px/1.3 var(--fx-font-sans)" }}>
                   {row.buyerName ?? '—'}

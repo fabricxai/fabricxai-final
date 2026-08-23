@@ -853,3 +853,34 @@ export async function colourApprovals(ctx: AnyCtx, orderId: string): Promise<Col
       .orderBy(asc(orderColourApprovals.color), asc(orderColourApprovals.stage)),
   )
 }
+
+export interface MilestonePeek {
+  name: string
+  plannedDate: string
+  actualDate: string | null
+  status: string
+  critical: boolean
+  ownerRole: string | null
+}
+
+/**
+ * One order's milestones, slim — for the book's TNA drawer, which peeks at a
+ * schedule without leaving the list. `orderDetail` carries the whole dossier;
+ * a drawer that fetched it would be paying for a breakdown grid to show dates.
+ */
+export async function milestonePeek(ctx: AnyCtx, orderId: string): Promise<MilestonePeek[]> {
+  return withTenantRead(ctx, (tx) =>
+    tx
+      .select({
+        name: tnaMilestones.name,
+        plannedDate: tnaMilestones.plannedDate,
+        actualDate: tnaMilestones.actualDate,
+        status: tnaMilestones.status,
+        critical: tnaMilestones.critical,
+        ownerRole: tnaMilestones.ownerRole,
+      })
+      .from(tnaMilestones)
+      .where(scoped(tnaMilestones, ctx, eq(tnaMilestones.orderId, orderId)))
+      .orderBy(asc(tnaMilestones.plannedDate)),
+  )
+}

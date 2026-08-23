@@ -21,6 +21,7 @@ import {
   setOrderStatus as setOrderStatusIn,
   type OrderStatus,
 } from './service'
+import type { MilestonePeek } from './queries'
 import type { RipplePreview } from './tna'
 
 /**
@@ -380,5 +381,26 @@ export async function setOrderColourApproval(input: {
     revalidatePath(`/orders/${input.orderId}/drops`)
     refresh(input.orderId)
     return result
+  })
+}
+
+/**
+ * The book's TNA peek — a READ, exposed as an action so the drawer can fetch on
+ * open instead of the list preloading every order's schedule it may never show.
+ */
+export async function orderTnaPeek(input: {
+  orderId: string
+}): Promise<{ milestones: MilestonePeek[] } | ActionFailure> {
+  return surfaced(async () => {
+    const ctx = await requireRole(
+      await headers(),
+      'merchandiser',
+      'commercial',
+      'planner',
+      'production',
+      'viewer',
+    )
+    const { milestonePeek } = await import('./queries')
+    return { milestones: await milestonePeek(ctx, input.orderId) }
   })
 }
