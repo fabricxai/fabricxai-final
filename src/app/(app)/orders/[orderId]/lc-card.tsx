@@ -16,14 +16,36 @@ export function OrderLcCard({
   lc,
   orderId,
   seesPrices,
+  shipmentDocs = null,
+  expNumber = null,
 }: {
   lc: LcDetail
   orderId: string
   seesPrices: boolean
+  /** This order's submission rows from the shipment board; null = no shipment yet. */
+  shipmentDocs?: { kind: string; status: string; hasFile: boolean }[] | null
+  expNumber?: string | null
 }) {
   const linked = lc.linkedOrders.find((o) => o.orderId === orderId)
   const float = linked?.floatDays ?? null
   const conflict = float !== null && float < 0
+
+  /*
+   * The bank-docs checklist: what the credit DEMANDS (docsRequired, transcribed off the
+   * credit itself) against what the shipment HAS (the same doc rows the shipping desk
+   * files). A required kind with no filed document is owed, not zero — and the EXP number
+   * is called out by name because its absence is the one blocker with a legal deadline.
+   */
+  const requiredKinds = Object.entries(lc.docsRequired)
+    .filter(([, v]) => v === true)
+    .map(([k]) => k)
+  const docState = (kind: string): 'filed' | 'started' | 'owed' => {
+    if (!shipmentDocs) return 'owed'
+    const rows = shipmentDocs.filter((d) => d.kind === kind)
+    if (rows.some((d) => d.hasFile)) return 'filed'
+    return rows.length > 0 ? 'started' : 'owed'
+  }
+  const expRequired = requiredKinds.includes('exp_form')
 
   // Whole percents are enough for a bar read at a glance; the exact figures sit
   // beside it as the stored decimal strings. BigInt throughout (rule 4).
@@ -106,6 +128,64 @@ export function OrderLcCard({
           )}
         </FactPair>
       </div>
+
+      {requiredKinds.length > 0 ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <span
+            style={{
+              font: '500 10.5px/1 var(--fx-font-mono)',
+              letterSpacing: '.06em',
+              textTransform: 'uppercase',
+              color: 'var(--fx-text-tertiary)',
+            }}
+          >
+            bank documents the credit demands
+          </span>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            {requiredKinds.map((kind) => {
+              const state = docState(kind)
+              return (
+                <span
+                  key={kind}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '4px 10px',
+                    borderRadius: 'var(--fx-radius-full)',
+                    font: '500 12px/1.4 var(--fx-font-sans)',
+                    border:
+                      state === 'filed'
+                        ? '1px solid var(--fx-border-subtle)'
+                        : '1px dashed var(--fx-border-strong)',
+                    color: state === 'filed' ? 'var(--fx-text-secondary)' : 'var(--fx-text-primary)',
+                    background: state === 'filed' ? 'var(--fx-bg-sunken)' : 'transparent',
+                  }}
+                >
+                  <span aria-hidden>{state === 'filed' ? '✓' : state === 'started' ? '…' : '○'}</span>
+                  {kind.replace(/_/g, ' ')}
+                  <span style={{ color: 'var(--fx-text-tertiary)', fontWeight: 400 }}>
+                    {state === 'filed' ? 'filed' : state === 'started' ? 'drafted' : 'owed'}
+                  </span>
+                </span>
+              )
+            })}
+          </div>
+          {expRequired && !expNumber ? (
+            <span style={{ font: '400 12.5px/1.5 var(--fx-font-sans)', color: 'var(--fx-warning)' }}>
+              No EXP number on the shipment yet — the bank refuses the whole presentation
+              without it. The shipping desk records it.
+            </span>
+          ) : expNumber ? (
+            <span
+              data-mono
+              style={{ font: '400 12px/1.5 var(--fx-font-mono)', color: 'var(--fx-text-tertiary)' }}
+            >
+              EXP {expNumber}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
 
       {conflict ? (
         <InlineAlert tone="danger">

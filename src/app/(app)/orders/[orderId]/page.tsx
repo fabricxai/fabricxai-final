@@ -19,6 +19,7 @@ import { getPolicy } from '@/modules/settings/service'
 import { factoryToday, FACTORY_TIMEZONE } from '@/lib/dates'
 import { requestLocale } from '@/lib/ui-locale'
 
+import { shipmentBoard } from '@/modules/shipment/queries'
 import { lcsForOrders, lcDetail } from '@/modules/commercial/queries'
 import type { BankDocsPolicy } from '@/modules/commercial/service'
 
@@ -114,6 +115,19 @@ export default async function OrderDetailPage({
 
   const dates = await shipDateTrail(ctx, order.id)
 
+  /*
+   * PCD — the planned cut date every buyer follow-up asks for. Derived from the TNA's own
+   * cutting milestone rather than stored again: a second column would drift from the
+   * schedule the moment a ripple moved it, and the milestone is what the factory works to.
+   */
+  const pcd = order.milestones.find((m) => m.name === 'cutting')?.plannedDate ?? null
+
+  // This order's shipment rows, read through shipment's own board (rule 11) — they carry
+  // the filed bank documents and the EXP number the LC card's checklist reports against.
+  const shipmentRows = lc ? (await shipmentBoard(ctx)).filter((r) => r.orderId === order.id) : []
+  const expNumber = shipmentRows.find((r) => r.expNumber)?.expNumber ?? null
+  const shipmentDocs = shipmentRows.length > 0 ? shipmentRows.flatMap((r) => r.docs) : null
+
   return (
     <>
       <RouteHeader
@@ -161,6 +175,17 @@ export default async function OrderDetailPage({
                 {!seesPrices ? '•••' : order.totalValue ? `${order.totalValue} ${order.currency}` : '—'}
               </span>
             </FactPair>
+            <FactPair label="PCD — planned cut">
+              <span data-numeric data-mono>
+                {pcd ?? '—'}
+              </span>
+              {!pcd ? (
+                <span style={{ color: 'var(--fx-text-tertiary)', fontWeight: 400 }}>
+                  {' '}
+                  · set by the TNA below
+                </span>
+              ) : null}
+            </FactPair>
             <FactPair label="Status">
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                 <Badge tone={late > 0 ? 'danger' : 'neutral'}>{order.status}</Badge>
@@ -180,7 +205,13 @@ export default async function OrderDetailPage({
             <SectionHeading eyebrow="read-only · commercial owns the credit">
               Letter of credit
             </SectionHeading>
-            <OrderLcCard lc={lc} orderId={order.id} seesPrices={seesPrices} />
+            <OrderLcCard
+              lc={lc}
+              orderId={order.id}
+              seesPrices={seesPrices}
+              shipmentDocs={shipmentDocs}
+              expNumber={expNumber}
+            />
           </section>
         ) : null}
 
