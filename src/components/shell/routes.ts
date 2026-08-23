@@ -72,6 +72,7 @@ export const ROUTES: readonly RouteDef[] = [
 
   { pattern: '/sampling', label: 'Sampling room' },
   { pattern: '/sampling/library', label: 'Library' },
+  { pattern: '/sampling/load', label: "The room's load" },
   { pattern: '/sampling/[sampleId]', label: 'Sample' },
 
   // ── Commercial ──

@@ -160,6 +160,15 @@ export default async function SamplingPage() {
             >
               Library — what the buyer said last time →
             </Link>
+            <Link
+              href="/sampling/load"
+              style={{
+                font: "400 13px/1.4 var(--fx-font-sans)",
+                color: 'var(--fx-text-secondary)',
+              }}
+            >
+              The room&rsquo;s load — per month, per buyer →
+            </Link>
           </div>
 
           {samples.length - pp.length === 0 ? (

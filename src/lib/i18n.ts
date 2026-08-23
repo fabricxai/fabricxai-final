@@ -634,6 +634,8 @@ export const MESSAGES: Catalogue = {
     'sampling.errors.request_draft_insert_only':
       'A sample request is raised, not edited through the approve inbox.',
     'sampling.errors.request_not_found': 'That sample request no longer exists.',
+    'sampling.errors.requisition_line_missing': 'That requisition line no longer exists — reload and try again.',
+    'sampling.errors.substitute_needs_note': 'A substitution must say what went in instead.',
     'sampling.errors.stage_not_forward':
       'Sample stages move forward only. A sample back in pattern is a remake, which is a new request.',
     'settings.errors.disable_needs_note': 'Turning that off needs a note saying why.',
@@ -1092,6 +1094,8 @@ export const MESSAGES: Catalogue = {
     'sampling.errors.request_draft_insert_only':
       'স্যাম্পল রিকোয়েস্ট নতুন করে তোলা হয়, approve inbox থেকে বদলানো হয় না।',
     'sampling.errors.request_not_found': 'এই স্যাম্পল রিকোয়েস্টটি আর নেই।',
+    'sampling.errors.requisition_line_missing': 'রিকুইজিশনের এই লাইনটি আর নেই — রিলোড করে আবার চেষ্টা করুন।',
+    'sampling.errors.substitute_needs_note': 'বিকল্প ব্যবহার করলে কী ব্যবহার হয়েছে তা লিখতেই হবে।',
     'sampling.errors.stage_not_forward':
       'স্যাম্পলের ধাপ শুধু সামনে এগোয়। প্যাটার্নে ফিরে যাওয়া মানে আবার নতুন করে বানানো, সেটা নতুন রিকোয়েস্ট।',
     'marbim.errors.unavailable':

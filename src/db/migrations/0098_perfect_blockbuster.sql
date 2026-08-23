@@ -1,0 +1,1 @@
+ALTER TABLE "sample_requests" ADD COLUMN "requisition" jsonb DEFAULT '[]'::jsonb NOT NULL;

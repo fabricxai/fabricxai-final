@@ -252,3 +252,81 @@ describe('totalSampleCost', () => {
     expect(totalSampleCost([])).toBe('0.00')
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// The requisition, and the room's load (HANDOFF-sampling-requisition)
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { groupRoomLoad } from '../service'
+import { recordUsagePayload, requisitionLine } from '../zod'
+
+describe('requisitionLine', () => {
+  it('defaults the answer to pending and the note to empty', () => {
+    const line = requisitionLine.parse({
+      material: 'YKK zip 18cm',
+      qty: '24',
+      unit: 'pcs',
+    })
+    expect(line.used).toBe('pending')
+    expect(line.substituteNote).toBe('')
+    expect(line.spec).toBe('')
+  })
+
+  it('refuses a substitution that does not say what went in', () => {
+    expect(() =>
+      requisitionLine.parse({
+        material: 'collar rib',
+        qty: '2.5',
+        unit: 'm',
+        used: 'substituted',
+      }),
+    ).toThrow()
+  })
+
+  it('accepts a substitution that names its stand-in', () => {
+    const line = requisitionLine.parse({
+      material: 'collar rib',
+      qty: '2.5',
+      unit: 'm',
+      used: 'substituted',
+      substituteNote: 'local rib, 1x1 instead of 2x2',
+    })
+    expect(line.used).toBe('substituted')
+  })
+
+  it('refuses a qty that is not a decimal string — these are figures, never floats', () => {
+    expect(() =>
+      requisitionLine.parse({ material: 'thread', qty: '2,5', unit: 'cone' }),
+    ).toThrow()
+  })
+
+  it('recordUsagePayload takes an index into a small rewritten set, nothing larger', () => {
+    expect(() =>
+      recordUsagePayload.parse({
+        sampleRequestId: '3f0e8a4e-0000-4000-8000-000000000001',
+        lineIndex: 60,
+        used: 'as_specified',
+      }),
+    ).toThrow()
+  })
+})
+
+describe('groupRoomLoad', () => {
+  const at = (iso: string) => new Date(`${iso}T10:00:00Z`)
+
+  it('groups per month, newest first, buyers by weight', () => {
+    const months = groupRoomLoad([
+      { createdAt: at('2026-08-03'), open: true, buyer: 'H&M' },
+      { createdAt: at('2026-08-10'), open: true, buyer: 'H&M' },
+      { createdAt: at('2026-08-12'), open: false, buyer: 'Zara' },
+      { createdAt: at('2026-07-02'), open: false, buyer: 'Zara' },
+    ])
+    expect(months.map((m) => m.month)).toEqual(['2026-08', '2026-07'])
+    expect(months[0]).toMatchObject({ total: 3, open: 2 })
+    expect(months[0]!.byBuyer[0]).toEqual({ buyer: 'H&M', count: 2 })
+  })
+
+  it('an empty room is an empty report, not an error', () => {
+    expect(groupRoomLoad([])).toEqual([])
+  })
+})

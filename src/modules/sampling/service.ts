@@ -10,7 +10,7 @@
  * reading "has ever been approved" would leave a floor cutting against a decision nobody
  * made. Revocation emits its own event, because by then cutting may already have started.
  */
-import { and, desc, eq, inArray, isNotNull, lte } from 'drizzle-orm'
+import { and, desc, eq, gte, inArray, isNotNull, lte } from 'drizzle-orm'
 
 import type { AnyCtx, RequestCtx } from '../core/ctx'
 import { AppError, conflict, notFound } from '../core/errors'
@@ -43,9 +43,13 @@ import {
 import {
   dispatchPayload,
   feedbackRoundPayload,
+  recordUsagePayload,
+  requisitionLine,
   sampleCostPayload,
   sampleRequestPayload,
+  setRequisitionPayload,
   stageAdvancePayload,
+  type RequisitionLine,
 } from './zod'
 
 /**
@@ -1014,3 +1018,179 @@ export const offlineAdvanceStage = advanceStageIn
 export const offlineRecordFeedback = recordFeedbackIn
 
 export { conflict }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// The requisition, and the room's load (HANDOFF-sampling-requisition)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** The request, locked, still open — the precondition both requisition writes share. */
+async function requireOpenRequest(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  sampleRequestId: string,
+): Promise<typeof sampleRequests.$inferSelect> {
+  const [request] = await tx
+    .select()
+    .from(sampleRequests)
+    .where(scoped(sampleRequests, ctx, eq(sampleRequests.id, sampleRequestId)))
+    .for('update')
+
+  if (!request) {
+    throw notFound('sampling.errors.request_not_found', { sampleRequestId })
+  }
+  if (request.status === 'closed') {
+    throw conflict('sampling.errors.request_closed', { sampleRequestId: request.id })
+  }
+  return request
+}
+
+/**
+ * Replace the request's requisition lines as a set — the ASK.
+ *
+ * A whole-set write, like the breakdown editor: lines have no identity outside
+ * their request, and a per-line patch API over a jsonb array would invent one.
+ * Usage marks already recorded survive a re-ask only if the editor sends them
+ * back, which the screen does — it edits the stored set, not a blank one.
+ */
+export async function setSampleRequisition(
+  ctx: RequestCtx,
+  input: unknown,
+): Promise<{ sampleRequestId: string; lines: number }> {
+  const payload = setRequisitionPayload.parse(input)
+
+  return withTenantTx(ctx, async (tx) => {
+    const request = await requireOpenRequest(ctx, tx, payload.sampleRequestId)
+
+    await tx
+      .update(sampleRequests)
+      .set({ requisition: payload.lines, updatedAt: new Date() })
+      .where(scoped(sampleRequests, ctx, eq(sampleRequests.id, request.id)))
+
+    return { sampleRequestId: request.id, lines: payload.lines.length }
+  })
+}
+
+/**
+ * Mark one line's actual-vs-substitute — the ANSWER.
+ *
+ * Re-writable on purpose (HANDOFF §6): the room correcting its own record must
+ * not require an admin. A substitution with no note is refused, because "we used
+ * something else" with no what is exactly the memory this column exists to replace.
+ */
+export async function recordRequisitionUsage(
+  ctx: RequestCtx,
+  input: unknown,
+): Promise<{ sampleRequestId: string; lineIndex: number }> {
+  const payload = recordUsagePayload.parse(input)
+
+  if (payload.used === 'substituted' && !payload.substituteNote?.trim()) {
+    throw new AppError('validation_failed', 'sampling.errors.substitute_needs_note', {
+      lineIndex: payload.lineIndex,
+    })
+  }
+
+  return withTenantTx(ctx, async (tx) => {
+    const request = await requireOpenRequest(ctx, tx, payload.sampleRequestId)
+
+    // Stored jsonb re-validated on the way out — a line this parser cannot read is a
+    // line this op must not silently rewrite.
+    const lines = (request.requisition as unknown[]).map((l) => requisitionLine.parse(l))
+    const line = lines[payload.lineIndex]
+    if (!line) {
+      throw notFound('sampling.errors.requisition_line_missing', {
+        lineIndex: payload.lineIndex,
+      })
+    }
+
+    lines[payload.lineIndex] = {
+      ...line,
+      used: payload.used,
+      substituteNote: payload.used === 'substituted' ? payload.substituteNote!.trim() : '',
+    }
+
+    await tx
+      .update(sampleRequests)
+      .set({ requisition: lines, updatedAt: new Date() })
+      .where(scoped(sampleRequests, ctx, eq(sampleRequests.id, request.id)))
+
+    return { sampleRequestId: request.id, lineIndex: payload.lineIndex }
+  })
+}
+
+export interface RoomLoadMonth {
+  /** YYYY-MM, factory calendar. */
+  month: string
+  total: number
+  /** Still open at read time — the carrying load, not the history. */
+  open: number
+  byBuyer: { buyer: string; count: number }[]
+}
+
+/**
+ * The room's load, counted — never entered (HANDOFF §1).
+ *
+ * Requests per month per buyer, buyer resolved through the order join the board
+ * already uses; RFQ-linked development work lands in its own bucket by name.
+ * Two is a quiet month and nineteen is a refusal; the number decides, so the
+ * number must be visible.
+ */
+export async function roomLoad(
+  ctx: AnyCtx,
+  input: { now: Date; monthsBack?: number },
+): Promise<RoomLoadMonth[]> {
+  const monthsBack = Math.min(Math.max(input.monthsBack ?? 3, 1), 12)
+  const since = new Date(Date.UTC(input.now.getUTCFullYear(), input.now.getUTCMonth() - (monthsBack - 1), 1))
+
+  const { buyers } = await import('../buyers/schema')
+  const { orders } = await import('../orders/schema')
+
+  const rows = await withTenantRead(ctx, async (tx) =>
+    tx
+      .select({
+        createdAt: sampleRequests.createdAt,
+        status: sampleRequests.status,
+        buyerName: buyers.name,
+        hasOrder: isNotNull(sampleRequests.orderId),
+      })
+      .from(sampleRequests)
+      .leftJoin(orders, eq(orders.id, sampleRequests.orderId))
+      .leftJoin(buyers, eq(buyers.id, orders.buyerId))
+      .where(scoped(sampleRequests, ctx, gte(sampleRequests.createdAt, since))),
+  )
+
+  return groupRoomLoad(
+    rows.map((r) => ({
+      createdAt: r.createdAt,
+      open: r.status !== 'closed',
+      buyer: r.buyerName ?? (r.hasOrder ? 'No buyer on record' : 'no order yet — development'),
+    })),
+  )
+}
+
+/** Pure grouping, split out so the shape is testable without a database. */
+export function groupRoomLoad(
+  rows: readonly { createdAt: Date; open: boolean; buyer: string }[],
+): RoomLoadMonth[] {
+  const byMonth = new Map<string, { total: number; open: number; byBuyer: Map<string, number> }>()
+  for (const row of rows) {
+    const month = row.createdAt.toISOString().slice(0, 7)
+    const held = byMonth.get(month) ?? { total: 0, open: 0, byBuyer: new Map() }
+    held.total += 1
+    if (row.open) held.open += 1
+    held.byBuyer.set(row.buyer, (held.byBuyer.get(row.buyer) ?? 0) + 1)
+    byMonth.set(month, held)
+  }
+  return [...byMonth.entries()]
+    .sort(([a], [b]) => (a < b ? 1 : -1))
+    .map(([month, held]) => ({
+      month,
+      total: held.total,
+      open: held.open,
+      byBuyer: [...held.byBuyer.entries()]
+        .sort(([, a], [, b]) => b - a)
+        .map(([buyer, count]) => ({ buyer, count })),
+    }))
+}
+
+// RequisitionLine is re-exported for the screens; the zod stays the one shape.
+export type { RequisitionLine }

@@ -1,10 +1,13 @@
 import { headers } from 'next/headers'
 import { notFound, redirect } from 'next/navigation'
 
+import { SectionHeading } from '@/components/fx/signature'
 import { RouteHeader } from '@/components/shell/route-header'
 import { getCtx } from '@/modules/core/session'
 import { sampleTimeline } from '@/modules/sampling/service'
+import { requisitionLine } from '@/modules/sampling/zod'
 
+import { RequisitionSection, type RequisitionLineView } from './requisition-client'
 import { SampleDetailClient } from './sample-detail-client'
 
 /**
@@ -35,6 +38,18 @@ export default async function SampleDetailPage({
   if (!timeline) notFound()
 
   const { request, stages, rounds, dispatches, totalCost } = timeline
+
+  // Stored jsonb, re-validated on the way out; a row the parser refuses is counted,
+  // never silently dropped (the screen says so).
+  const requisitionRaw = (request.requisition as unknown[]) ?? []
+  const requisition: RequisitionLineView[] = []
+  let unreadable = 0
+  for (const row of requisitionRaw) {
+    const parsed = requisitionLine.safeParse(row)
+    if (parsed.success) requisition.push(parsed.data)
+    else unreadable += 1
+  }
+  const mayWrite = ctx.roles.some((r) => r === 'merchandiser' || r === 'owner' || r === 'admin')
 
   return (
     <>
@@ -69,6 +84,19 @@ export default async function SampleDetailPage({
           at: d.dispatchedAt.toISOString(),
         }))}
       />
+
+      <section style={{ marginTop: 36 }}>
+        <SectionHeading eyebrow="the ask, and what actually went in">
+          Requisition
+        </SectionHeading>
+        <RequisitionSection
+          sampleRequestId={request.id}
+          lines={requisition}
+          unreadable={unreadable}
+          canWrite={mayWrite}
+          closed={request.status === 'closed'}
+        />
+      </section>
     </>
   )
 }
