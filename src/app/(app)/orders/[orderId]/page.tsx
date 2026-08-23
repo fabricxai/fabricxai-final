@@ -7,18 +7,26 @@ import { FinalReadinessStrip } from '@/components/fx/final-readiness'
 import { RunRateCard } from '@/components/fx/run-rate'
 import { SectionHeading } from '@/components/fx/signature'
 import { FactPair } from '@/components/fx/tna'
-import { PageHeader } from '@/components/shell/page-shell'
+import { RouteHeader } from '@/components/shell/route-header'
 import { canWrite, NAV } from '@/components/shell/nav'
 import { getCtx } from '@/modules/core/session'
 import { companyProfile } from '@/modules/settings/service'
-import { orderDetail, tnaTemplateChoices } from '@/modules/orders/queries'
+import { orderDetail, shipDateTrail, tnaTemplateChoices } from '@/modules/orders/queries'
 import { orderStatusMachine, type OrderStatus } from '@/modules/orders/service'
 import { orderRunRate } from '@/modules/production/queries'
 import { preFinalReadiness, type QualityPolicy } from '@/modules/quality/service'
 import { getPolicy } from '@/modules/settings/service'
 import { factoryToday, FACTORY_TIMEZONE } from '@/lib/dates'
+import { requestLocale } from '@/lib/ui-locale'
+
+import { shipmentBoard } from '@/modules/shipment/queries'
+import { lcsForOrders, lcDetail } from '@/modules/commercial/queries'
+import type { BankDocsPolicy } from '@/modules/commercial/service'
 
 import { OrderBreakdown } from './breakdown-client'
+import { OrderLcCard } from './lc-card'
+import { OrderTabs } from './order-tabs'
+import { ShipDateTrail } from './ship-dates'
 import { OrderStatusControl } from './status-control'
 import { OrderTna } from './tna-client'
 
@@ -41,6 +49,7 @@ export default async function OrderDetailPage({
   if (!ctx) redirect('/login')
 
   const { orderId } = await params
+  const locale = await requestLocale()
   const order = await orderDetail(ctx, orderId)
   if (!order) notFound()
 
@@ -89,10 +98,42 @@ export default async function OrderDetailPage({
       (row) => row.orderId === order.id,
     ) ?? null
 
+  /*
+   * The credit behind the order, read through commercial's queries (rule 11). Several
+   * credits can cover one order; the card shows the one with the worst float — that is
+   * the date the bank refuses documents over. No linked credit renders nothing at all:
+   * an empty LC card on every uncovered order would be furniture, not information.
+   */
+  const linkedLcs = await lcsForOrders(ctx, [order.id])
+  const worstLc = linkedLcs.sort(
+    (a, b) => (a.floatDays ?? Infinity) - (b.floatDays ?? Infinity),
+  )[0]
+  const commercialPolicy = await getPolicy<BankDocsPolicy>(ctx, 'commercial')
+  const lc = worstLc
+    ? await lcDetail(ctx, worstLc.lcId, commercialPolicy.btbLimitPct ?? 75)
+    : null
+
+  const dates = await shipDateTrail(ctx, order.id)
+
+  /*
+   * PCD — the planned cut date every buyer follow-up asks for. Derived from the TNA's own
+   * cutting milestone rather than stored again: a second column would drift from the
+   * schedule the moment a ripple moved it, and the milestone is what the factory works to.
+   */
+  const pcd = order.milestones.find((m) => m.name === 'cutting')?.plannedDate ?? null
+
+  // This order's shipment rows, read through shipment's own board (rule 11) — they carry
+  // the filed bank documents and the EXP number the LC card's checklist reports against.
+  const shipmentRows = lc ? (await shipmentBoard(ctx)).filter((r) => r.orderId === order.id) : []
+  const expNumber = shipmentRows.find((r) => r.expNumber)?.expNumber ?? null
+  const shipmentDocs = shipmentRows.length > 0 ? shipmentRows.flatMap((r) => r.docs) : null
+
   return (
     <>
-      <PageHeader
-        back={{ href: '/orders', label: 'Order desk' }}
+      <RouteHeader
+        path={`/orders/${orderId}`}
+        labels={{ orderId: po }}
+        locale={locale}
         eyebrow={order.buyerName ?? 'Order'}
         title={po}
         meta={order.plannedExFactoryDate ? `ship ${order.plannedExFactoryDate}` : undefined}
@@ -100,6 +141,8 @@ export default async function OrderDetailPage({
         // it takes an amber fill.
         ownsAmber
       />
+
+      <OrderTabs orderId={orderId} active="" />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 36 }}>
         <FinalReadinessStrip readiness={readiness} />
@@ -132,6 +175,17 @@ export default async function OrderDetailPage({
                 {!seesPrices ? '•••' : order.totalValue ? `${order.totalValue} ${order.currency}` : '—'}
               </span>
             </FactPair>
+            <FactPair label="PCD — planned cut">
+              <span data-numeric data-mono>
+                {pcd ?? '—'}
+              </span>
+              {!pcd ? (
+                <span style={{ color: 'var(--fx-text-tertiary)', fontWeight: 400 }}>
+                  {' '}
+                  · set by the TNA below
+                </span>
+              ) : null}
+            </FactPair>
             <FactPair label="Status">
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                 <Badge tone={late > 0 ? 'danger' : 'neutral'}>{order.status}</Badge>
@@ -146,6 +200,21 @@ export default async function OrderDetailPage({
           </div>
         </Card>
 
+        {lc ? (
+          <section>
+            <SectionHeading eyebrow="read-only · commercial owns the credit">
+              Letter of credit
+            </SectionHeading>
+            <OrderLcCard
+              lc={lc}
+              orderId={order.id}
+              seesPrices={seesPrices}
+              shipmentDocs={shipmentDocs}
+              expNumber={expNumber}
+            />
+          </section>
+        ) : null}
+
         {forecast ? (
           <section>
             <SectionHeading eyebrow="read-only · a window into the sewing floor">
@@ -154,6 +223,18 @@ export default async function OrderDetailPage({
             <RunRateCard forecast={forecast} />
           </section>
         ) : null}
+
+        <section>
+          <SectionHeading eyebrow="a trail, not a column — every promise this order has carried">
+            Ship dates
+          </SectionHeading>
+          <ShipDateTrail
+            orderId={order.id}
+            trail={dates}
+            currentDate={order.plannedExFactoryDate}
+            canWrite={mayWrite}
+          />
+        </section>
 
         <section>
           <SectionHeading eyebrow={late > 0 ? `${late} late` : undefined}>

@@ -6,7 +6,7 @@ import { EmptyState, InlineAlert } from '@/components/fx/feedback'
 import { FloorScreen } from '@/components/fx/floor'
 import { Ident } from '@/components/fx/format'
 import { SectionHeading } from '@/components/fx/signature'
-import { PageHeader } from '@/components/shell/page-shell'
+import { RouteHeader } from '@/components/shell/route-header'
 import { tui } from '@/lib/i18n-ui'
 import { requestLocale } from '@/lib/ui-locale'
 import { cutWastage, lays, markers } from '@/modules/cutting/schema'
@@ -77,8 +77,8 @@ export default async function WastagePage() {
   if (rows.length === 0) {
     return (
       <FloorScreen>
-        <PageHeader
-        back={{ href: '/cutting', label: 'Cutting' }}
+        <RouteHeader
+        path="/cutting/wastage"
           eyebrow={tui(locale, 'ui.cutting.wastage_eyebrow')}
           title={tui(locale, 'ui.cutting.wastage_nothing_title')}
           ownsAmber
@@ -93,8 +93,8 @@ export default async function WastagePage() {
 
   return (
     <FloorScreen>
-      <PageHeader
-        back={{ href: '/cutting', label: 'Cutting' }}
+      <RouteHeader
+        path="/cutting/wastage"
         eyebrow={tui(locale, 'ui.cutting.wastage_eyebrow')}
         title={tui(locale, 'ui.cutting.wastage_title')}
         meta={

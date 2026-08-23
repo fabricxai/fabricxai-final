@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { EmptyState, InlineAlert } from '@/components/fx/feedback'
 import { FloorScreen } from '@/components/fx/floor'
 import { FloorTabs } from '@/components/shell/floor-tabs'
-import { PageHeader } from '@/components/shell/page-shell'
+import { RouteHeader } from '@/components/shell/route-header'
 import { tui } from '@/lib/i18n-ui'
 import { requestLocale } from '@/lib/ui-locale'
 import { checkPpApprovalFor } from '@/modules/sampling/service'
@@ -43,8 +43,8 @@ export default async function StartLayPage({
   if (orders.length === 0) {
     return (
       <FloorScreen>
-        <PageHeader
-        back={{ href: '/cutting', label: 'Cutting' }}
+        <RouteHeader
+        path="/cutting/lay"
           eyebrow={tui(locale, 'ui.cutting.lay_eyebrow')}
           title={tui(locale, 'ui.cutting.lay_nothing_title')}
           ownsAmber
@@ -87,8 +87,8 @@ export default async function StartLayPage({
 
   return (
     <FloorScreen>
-      <PageHeader
-        back={{ href: '/cutting', label: 'Cutting' }}
+      <RouteHeader
+        path="/cutting/lay"
         eyebrow={tui(locale, 'ui.cutting.lay_eyebrow')}
         title={`${target.poNumber ?? tui(locale, 'ui.cutting.order_fallback')} · ${target.styleCode}`}
         meta={gate.passed ? undefined : tui(locale, 'ui.cutting.meta_blocked')}

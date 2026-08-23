@@ -7,6 +7,8 @@ import { compareDecimalStrings } from '@/lib/quantity'
 
 import { Badge } from '@/components/fx/primitives'
 import { SectionHeading } from '@/components/fx/signature'
+import { board as planningBoard } from '@/modules/planning/queries'
+import { factoryToday } from '@/lib/dates'
 import { PageHeader } from '@/components/shell/page-shell'
 import { getCtx } from '@/modules/core/session'
 import { withTenantRead } from '@/modules/core/tenancy'
@@ -104,6 +106,15 @@ export default async function CostingPage({
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 36 }}>
         <CostingStudioDoor marginFloorPct={policy.marginFloorPct ?? null} seed={seed} />
+
+        {/*
+          * The floor you are quoting into (design: capacity-aware quoting; the agent's
+          * own mail said "I need to manage production space"). Read from the planner's
+          * board through their queries (rule 11) — line-days carrying any committed
+          * pieces over line-days that exist. Read-only here on purpose: the number is
+          * the planner's, and this card only stops a quote selling December twice.
+          */}
+        <CapacityStrip ctx={ctx} />
 
         {/* The bill of materials is where consumption comes from; the studio prices it.
             Keeping them on separate screens is what stops a rate being buried in a BOM. */}
@@ -212,5 +223,107 @@ export default async function CostingPage({
         </section>
       </div>
     </>
+  )
+}
+
+
+async function CapacityStrip({ ctx }: { ctx: NonNullable<Awaited<ReturnType<typeof getCtx>>> }) {
+  const today = factoryToday()
+  const months: { label: string; from: string; days: number }[] = []
+  for (let i = 0; i < 3; i++) {
+    const first = new Date(`${today.slice(0, 7)}-01T00:00:00Z`)
+    first.setUTCMonth(first.getUTCMonth() + i)
+    const next = new Date(first)
+    next.setUTCMonth(next.getUTCMonth() + 1)
+    months.push({
+      label: first.toLocaleDateString('en-GB', { month: 'long', timeZone: 'UTC' }),
+      from: first.toISOString().slice(0, 10),
+      days: Math.round((next.getTime() - first.getTime()) / 86_400_000),
+    })
+  }
+
+  const boards = await Promise.all(
+    months.map((m) => planningBoard(ctx, { from: m.from, days: m.days })),
+  )
+
+  // No lines set up yet — say nothing rather than draw three empty bars.
+  if ((boards[0]?.length ?? 0) === 0) return null
+
+  const rows = months.map((m, i) => {
+    const lines = boards[i] ?? []
+    let lineDays = 0
+    let busy = 0
+    for (const line of lines) {
+      for (const day of line.days) {
+        if (day.availableMinutes <= 0) continue
+        lineDays += 1
+        if (day.committed > 0) busy += 1
+      }
+    }
+    const pct = lineDays > 0 ? Math.round((busy * 100) / lineDays) : 0
+    return { label: m.label, pct, busy, lineDays }
+  })
+
+  return (
+    <section>
+      <SectionHeading eyebrow="read-only · the planner&rsquo;s number">
+        The floor you are quoting into
+      </SectionHeading>
+      <div
+        style={{
+          background: 'var(--fx-bg-surface)',
+          border: '1px solid var(--fx-border-subtle)',
+          borderRadius: 'var(--fx-radius-md)',
+          boxShadow: 'var(--fx-sh1)',
+          padding: '20px 24px',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+          gap: 24,
+        }}
+      >
+        {rows.map((row) => (
+          <div key={row.label} style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+              <span style={{ font: '500 13.5px/1 var(--fx-font-sans)' }}>{row.label}</span>
+              <span
+                data-numeric
+                data-mono
+                style={{
+                  marginLeft: 'auto',
+                  font: '400 12.5px/1 var(--fx-font-mono)',
+                  color: 'var(--fx-text-secondary)',
+                }}
+              >
+                {row.pct}%
+              </span>
+            </div>
+            <div
+              style={{
+                height: 10,
+                borderRadius: 4,
+                background: 'var(--fx-bg-sunken)',
+                overflow: 'hidden',
+              }}
+            >
+              <div
+                style={{
+                  width: `${row.pct}%`,
+                  height: '100%',
+                  background:
+                    row.pct >= 95
+                      ? 'var(--fx-danger)'
+                      : row.pct >= 80
+                        ? 'var(--fx-warning)'
+                        : 'var(--fx-success)',
+                }}
+              />
+            </div>
+            <span style={{ font: '400 11.5px/1.4 var(--fx-font-mono)', color: 'var(--fx-text-tertiary)' }}>
+              {row.busy} of {row.lineDays} line-days carry work
+            </span>
+          </div>
+        ))}
+      </div>
+    </section>
   )
 }

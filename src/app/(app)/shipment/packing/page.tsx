@@ -5,7 +5,7 @@ import { desc, eq, inArray } from 'drizzle-orm'
 import { EmptyState } from '@/components/fx/feedback'
 import { FloorScreen } from '@/components/fx/floor'
 import { FloorTabs } from '@/components/shell/floor-tabs'
-import { PageHeader } from '@/components/shell/page-shell'
+import { RouteHeader } from '@/components/shell/route-header'
 import { getCtx } from '@/modules/core/session'
 import { withTenantRead } from '@/modules/core/tenancy'
 import { orderStyles, orders } from '@/modules/orders/schema'
@@ -52,7 +52,8 @@ export default async function PackingPage({
   if (liveOrders.length === 0) {
     return (
       <FloorScreen>
-        <PageHeader eyebrow="Shipment · packing" title="Nothing to pack" ownsAmber />
+        <RouteHeader
+        path="/shipment/packing" eyebrow="Shipment · packing" title="Nothing to pack" ownsAmber />
         <EmptyState
           title="No live orders"
           body="Cartons are packed against an order. An order that has shipped or closed is no longer packable."
@@ -102,8 +103,8 @@ export default async function PackingPage({
 
   return (
     <FloorScreen>
-      <PageHeader
-        back={{ href: '/shipment', label: 'Shipment' }}
+      <RouteHeader
+        path="/shipment/packing"
         eyebrow="Shipment · finishing and packing"
         title={active.poNumbers?.[0] ?? active.styleCode ?? 'Order'}
         meta={overPacked > 0 ? `${overPacked} cells packed beyond finished` : undefined}

@@ -12,10 +12,16 @@ import {
   createOrder as createOrderIn,
   generateTna,
   previewRipple,
+  recordShipDate as recordShipDateIn,
   saveBreakdown,
+  saveDrops as saveDropsIn,
+  setColourApproval as setColourApprovalIn,
+  setFabricLeg as setFabricLegIn,
+  setInputCell,
   setOrderStatus as setOrderStatusIn,
   type OrderStatus,
 } from './service'
+import type { MilestonePeek } from './queries'
 import type { RipplePreview } from './tna'
 
 /**
@@ -280,5 +286,121 @@ export async function setOrderStatus(input: {
 
     refresh(input.orderId)
     return result
+  })
+}
+
+/**
+ * One cell of the In-House Check List.
+ *
+ * The write surface for `/orders/inputs`. Whole-cell semantics — see the service —
+ * and the same writers as every other order fact: the checklist is the merchandiser's
+ * sheet, but a planner chasing trims writes the truth they just heard on the phone.
+ */
+export async function setOrderInputCell(input: {
+  orderId: string
+  category: string
+  state: string
+  planDate?: string | null
+  actualDate?: string | null
+  note?: string | null
+}): Promise<{ orderId: string; category: string; state: string } | ActionFailure> {
+  return surfaced(async () => {
+    const ctx = await requireRole(await headers(), ...WRITERS)
+    const result = await setInputCell(ctx, input)
+
+    revalidatePath('/orders/inputs')
+    refresh(input.orderId)
+    return result
+  })
+}
+
+/**
+ * Append a ship date to the order's trail — a buyer's agreed reship, or a proposal
+ * still on the table. The service backfills the contract row on first use and moves
+ * the date in force only for a reship; the TNA stays where it is, on purpose.
+ */
+export async function recordOrderShipDate(input: {
+  orderId: string
+  shipDate: string
+  kind: 'reship' | 'proposed'
+  agreedWith?: string
+  reason?: string
+}): Promise<{ orderId: string; shipDate: string; kind: string; inForce: boolean } | ActionFailure> {
+  return surfaced(async () => {
+    const ctx = await requireRole(await headers(), ...WRITERS)
+    const result = await recordShipDateIn(ctx, input)
+
+    refresh(input.orderId)
+    return result
+  })
+}
+
+/** One cell of the fabric's journey — plan, actual, note (HANDOFF: dossier additions). */
+export async function setOrderFabricLeg(input: {
+  orderId: string
+  leg: string
+  planDate?: string | null
+  actualDate?: string | null
+  note?: string | null
+}): Promise<{ orderId: string; leg: string } | ActionFailure> {
+  return surfaced(async () => {
+    const ctx = await requireRole(await headers(), ...WRITERS)
+    const result = await setFabricLegIn(ctx, input)
+    revalidatePath(`/orders/${input.orderId}/fabric`)
+    refresh(input.orderId)
+    return result
+  })
+}
+
+/** Replace the order's drop plan wholesale — Σqty gated against tolerance server-side. */
+export async function saveOrderDrops(input: {
+  orderId: string
+  drops: { dropNo: number; qty: number; shipDate: string; note?: string | null }[]
+}): Promise<{ orderId: string; drops: number; exFactoryDate: string } | ActionFailure> {
+  return surfaced(async () => {
+    const ctx = await requireRole(await headers(), ...WRITERS)
+    const result = await saveDropsIn(ctx, input)
+    revalidatePath(`/orders/${input.orderId}/drops`)
+    refresh(input.orderId)
+    return result
+  })
+}
+
+/** One (order, colour, stage) row of the approval chain. */
+export async function setOrderColourApproval(input: {
+  orderId: string
+  color: string
+  stage: string
+  status: string
+  decidedOn?: string | null
+  note?: string | null
+}): Promise<{ orderId: string; color: string; stage: string; status: string } | ActionFailure> {
+  return surfaced(async () => {
+    const ctx = await requireRole(await headers(), ...WRITERS)
+    const result = await setColourApprovalIn(ctx, input)
+    revalidatePath(`/orders/${input.orderId}/drops`)
+    refresh(input.orderId)
+    return result
+  })
+}
+
+/**
+ * The book's TNA peek — a READ, exposed as an action so the drawer can fetch on
+ * open instead of the list preloading every order's schedule it may never show.
+ */
+export async function orderTnaPeek(input: {
+  orderId: string
+}): Promise<{ milestones: MilestonePeek[] } | ActionFailure> {
+  return surfaced(async () => {
+    const ctx = await requireRole(
+      await headers(),
+      'merchandiser',
+      'commercial',
+      'planner',
+      'production',
+      'viewer',
+    )
+    const { milestonePeek } = await import('./queries')
+    return { milestones: await milestonePeek(ctx, input.orderId) }
   })
 }

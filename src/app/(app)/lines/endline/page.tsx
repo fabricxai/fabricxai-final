@@ -5,7 +5,7 @@ import { eq } from 'drizzle-orm'
 import { EmptyState } from '@/components/fx/feedback'
 import { FloorScreen } from '@/components/fx/floor'
 import { FloorTabs } from '@/components/shell/floor-tabs'
-import { PageHeader } from '@/components/shell/page-shell'
+import { RouteHeader } from '@/components/shell/route-header'
 import { tui } from '@/lib/i18n-ui'
 import { requestLocale } from '@/lib/ui-locale'
 import { getCtx } from '@/modules/core/session'
@@ -69,8 +69,8 @@ export default async function EndlinePage() {
   if (lineRows.length === 0) {
     return (
       <FloorScreen>
-        <PageHeader
-        back={{ href: '/lines', label: 'Line tracking' }}
+        <RouteHeader
+        path="/lines/endline"
           eyebrow={tui(locale, 'ui.production.endline_eyebrow')}
           title={tui(locale, 'ui.production.no_lines_title')}
           ownsAmber
@@ -94,8 +94,8 @@ export default async function EndlinePage() {
 
   return (
     <FloorScreen>
-      <PageHeader
-        back={{ href: '/lines', label: 'Line tracking' }}
+      <RouteHeader
+        path="/lines/endline"
         eyebrow={tui(locale, 'ui.production.endline_eyebrow_dated', { date: today })}
         title={tui(locale, 'ui.production.endline_title')}
         meta={tui(locale, 'ui.production.endline_meta', {

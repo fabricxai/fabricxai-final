@@ -5,7 +5,7 @@ import { eq } from 'drizzle-orm'
 import { EmptyState } from '@/components/fx/feedback'
 import { FloorScreen } from '@/components/fx/floor'
 import { FloorTabs } from '@/components/shell/floor-tabs'
-import { PageHeader } from '@/components/shell/page-shell'
+import { RouteHeader } from '@/components/shell/route-header'
 import { tui } from '@/lib/i18n-ui'
 import { requestLocale } from '@/lib/ui-locale'
 import { getCtx } from '@/modules/core/session'
@@ -56,8 +56,8 @@ export default async function InlineQcPage({
   if (lineRows.length === 0) {
     return (
       <FloorScreen>
-        <PageHeader
-        back={{ href: '/quality', label: 'Quality' }}
+        <RouteHeader
+        path="/quality/inline"
           eyebrow={tui(locale, 'ui.quality.inline_eyebrow')}
           title={tui(locale, 'ui.quality.no_lines_set_up')}
           ownsAmber
@@ -97,8 +97,8 @@ export default async function InlineQcPage({
 
   return (
     <FloorScreen>
-      <PageHeader
-        back={{ href: '/quality', label: 'Quality' }}
+      <RouteHeader
+        path="/quality/inline"
         eyebrow={tui(locale, 'ui.quality.inline_eyebrow_dated', { date: today })}
         title={`${active.code} · ${active.name}`}
         meta={threshold ? tui(locale, 'ui.quality.target_dhu_meta', { threshold }) : undefined}

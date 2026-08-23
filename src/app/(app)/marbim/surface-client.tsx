@@ -22,6 +22,7 @@ import {
 } from '@/modules/marbim/surface-label'
 
 import { AttachControl, type Attachment } from './attach-client'
+import { DraftVerifyCards } from './verify-card'
 import {
   READABLE_BY_MARBIM,
   ReadDocumentFlow,
@@ -39,6 +40,10 @@ interface Turn {
   receipt: string | null
   /** How many tools actually ran. Decides what the footer is allowed to claim. */
   toolsRun: number
+  /** Drafts this turn proposed. The verify card renders under the answer for each. */
+  draftIds: string[]
+  /** True only on a turn that just ran — its card opens itself; stored ones offer first. */
+  liveDrafts: boolean
   vote?: 'up' | 'down' | null
   copied?: boolean
 }
@@ -74,6 +79,8 @@ function turnsFromStored(
       answer: row.answer,
       failed: false,
       toolsRun,
+      draftIds: row.proposedChangeIds,
+      liveDrafts: false,
       receipt: row.model ? receiptOf(row.model, toolsRun) : null,
       toolSteps: [
         {
@@ -280,6 +287,8 @@ export function MarbimSurface({
         failed: false,
         receipt: null,
         toolsRun: 0,
+        draftIds: [],
+        liveDrafts: false,
       },
     ])
     setMark('thinking')
@@ -338,6 +347,8 @@ export function MarbimSurface({
                   ],
                   receipt: receiptOf(result.model, result.toolCalls.length, result.durationMs),
                   toolsRun: result.toolCalls.length,
+                  draftIds: result.proposedChangeIds,
+                  liveDrafts: true,
                 }
               : turn,
           ),
@@ -445,6 +456,15 @@ export function MarbimSurface({
                     ) : turn.answer ? (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         <AnswerText>{turn.answer}</AnswerText>
+                        {/* Read-only roles cannot sign — showing them a Verify that 403s
+                            would be a chip that refuses. They keep the inbox link in the
+                            answer text, which for them is also refused, honestly, there. */}
+                        {!readOnly && turn.draftIds.length > 0 ? (
+                          <DraftVerifyCards
+                            pendingChangeIds={turn.draftIds}
+                            fresh={turn.liveDrafts}
+                          />
+                        ) : null}
                         <AnswerActions
                           vote={turn.vote ?? null}
                           copied={turn.copied}

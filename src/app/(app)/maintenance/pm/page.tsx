@@ -1,13 +1,13 @@
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 
-import { Breadcrumbs, StatTile } from '@/components/fx/data'
+import { StatTile } from '@/components/fx/data'
 import { EmptyState, InlineAlert } from '@/components/fx/feedback'
 import { Figure } from '@/components/fx/format'
 import { SectionHeading } from '@/components/fx/signature'
 import { FloorScreen } from '@/components/fx/floor'
 import { FloorTabs } from '@/components/shell/floor-tabs'
-import { PageHeader } from '@/components/shell/page-shell'
+import { RouteHeader } from '@/components/shell/route-header'
 import { getCtx } from '@/modules/core/session'
 import { pmWorklist, registry } from '@/modules/maintenance/queries'
 import { pmSchedulesWithReach } from '@/modules/maintenance/service'
@@ -58,17 +58,8 @@ export default async function PmPage() {
 
   return (
     <FloorScreen>
-      <div style={{ marginBottom: 18 }}>
-        <Breadcrumbs
-          trail={[
-            { label: 'Maintenance', href: '/maintenance' },
-            { label: 'Preventive maintenance' },
-          ]}
-        />
-      </div>
-
-      <PageHeader
-        back={{ href: '/maintenance', label: 'Maintenance' }}
+      <RouteHeader
+        path="/maintenance/pm"
         eyebrow="Maintenance · preventive"
         title={
           due.length === 0

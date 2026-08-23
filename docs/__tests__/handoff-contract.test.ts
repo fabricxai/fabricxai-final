@@ -36,6 +36,8 @@ interface Handoff {
   operations: string[]
   machines: string[]
   gates: string[]
+  /** Written before the build (CLAUDE.md's rule, finally honoured) rather than after it. */
+  prospective: boolean
 }
 
 /** The section between one `## §n` heading and the next. */
@@ -67,7 +69,14 @@ function parse(file: string): Handoff {
   const machines = [...section(text, 6).matchAll(/`([a-zA-Z]+Machine)`/g)].map((m) => m[1]!)
   const gates = [...section(text, 7).matchAll(/`GATES\.([a-zA-Z]+)`/g)].map((m) => m[1]!)
 
-  return { file, module: moduleId, operations: [...new Set(operations)], machines: [...new Set(machines)], gates: [...new Set(gates)] }
+  return {
+    file,
+    module: moduleId,
+    operations: [...new Set(operations)],
+    machines: [...new Set(machines)],
+    gates: [...new Set(gates)],
+    prospective: /before the build/i.test(text),
+  }
 }
 
 const handoffs = readdirSync(HANDOFF_DIR)
@@ -88,9 +97,12 @@ describe('the pilot set has a handoff at all', () => {
     /*
      * Not "some handoffs exist". The pilot set is store, cutting, production, quality,
      * sampling, commercial, workforce and approvals, and a missing one is a module going into
-     * a factory with no acceptance checklist.
+     * a factory with no acceptance checklist. PROSPECTIVE handoffs — written before their
+     * build, which is what the rule always demanded — may exist beside the eight; the
+     * assertion is that the eight are all present among the retroactive set, not that
+     * nothing else is.
      */
-    expect(handoffs.map((h) => h.module).sort()).toEqual([
+    expect(handoffs.filter((h) => !h.prospective).map((h) => h.module).sort()).toEqual([
       'approvals',
       'commercial',
       'cutting',
@@ -102,12 +114,20 @@ describe('the pilot set has a handoff at all', () => {
     ])
   })
 
-  it('each says which module it is about and admits it is retroactive', () => {
+  it('each says which module it is about and when it was written relative to the build', () => {
     for (const handoff of handoffs) {
       const text = readFileSync(join(HANDOFF_DIR, handoff.file), 'utf8')
-      // The honesty is the point. A retroactive handoff presenting itself as a design lock
-      // would be a worse document than none.
-      expect(text, handoff.file).toMatch(/Retroactive/i)
+      /*
+       * The honesty is the point, in both directions. A retroactive handoff presenting
+       * itself as a design lock would be a worse document than none — and a prospective
+       * one must say so too, because "written before the build" is the claim the ops
+       * check below turns into a promise the code has to keep.
+       */
+      if (handoff.prospective) {
+        expect(text, handoff.file).toMatch(/before the build/i)
+      } else {
+        expect(text, handoff.file).toMatch(/Retroactive/i)
+      }
       expect(text, handoff.file).toContain('## §8 · Open questions')
     }
   })

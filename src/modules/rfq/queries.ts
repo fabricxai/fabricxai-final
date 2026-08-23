@@ -194,3 +194,95 @@ export async function lossReasonList(ctx: AnyCtx): Promise<LossReasonOption[]> {
       .orderBy(asc(lossReasons.label)),
   )
 }
+
+export interface QuoteCloseStat {
+  buyerName: string
+  quotesSent: number
+  won: number
+  /** Mean % the closed unit price sits BELOW the first sent quote, at 1dp. Null under three data points. */
+  avgCloseBelowFirstPct: string | null
+}
+
+/**
+ * How each buyer closes — first sent price against the unit price the won order
+ * actually carries. This is the negotiating fact a merchandiser prices against
+ * ("this buyer takes 5% off whatever we open with"), computed instead of
+ * remembered. Integer arithmetic at scale 4 throughout (rule 4).
+ *
+ * Under three closed quotes a buyer gets no average: two data points wearing a
+ * percentage is a rumour, and this screen refuses to print one.
+ */
+export async function quoteCloseStats(ctx: AnyCtx): Promise<QuoteCloseStat[]> {
+  const { orders, orderStyles } = await import('@/modules/orders/schema')
+
+  return withTenantRead(ctx, async (tx) => {
+    const rows = await tx
+      .select({
+        buyerName: buyers.name,
+        rfqId: rfqs.id,
+        firstQuote: quotes.fobPrice,
+        version: quotes.version,
+        closedPrice: orderStyles.unitPrice,
+      })
+      .from(rfqs)
+      .leftJoin(buyers, eq(buyers.id, rfqs.buyerId))
+      .leftJoin(quotes, eq(quotes.rfqId, rfqs.id))
+      .leftJoin(orders, eq(orders.sourceRfqId, rfqs.id))
+      .leftJoin(orderStyles, eq(orderStyles.orderId, orders.id))
+      .where(scoped(rfqs, ctx))
+
+    const toMinor4 = (value: string): bigint => {
+      const [whole = '0', frac = ''] = value.split('.')
+      return BigInt(whole) * 10_000n + BigInt(frac.padEnd(4, '0').slice(0, 4))
+    }
+
+    interface Bucket {
+      quotesSent: Set<string>
+      // Per won RFQ: the FIRST sent version's price and the closed price.
+      closes: Map<string, { firstVersion: number; first: bigint; closed: bigint }>
+    }
+    const byBuyer = new Map<string, Bucket>()
+
+    for (const row of rows) {
+      const buyer = row.buyerName ?? 'No buyer on the enquiry'
+      const bucket = byBuyer.get(buyer) ?? { quotesSent: new Set(), closes: new Map() }
+      byBuyer.set(buyer, bucket)
+      if (row.firstQuote !== null) bucket.quotesSent.add(row.rfqId)
+      if (row.firstQuote !== null && row.closedPrice !== null && row.version !== null) {
+        const held = bucket.closes.get(row.rfqId)
+        if (!held || row.version < held.firstVersion) {
+          bucket.closes.set(row.rfqId, {
+            firstVersion: row.version,
+            first: toMinor4(row.firstQuote),
+            closed: toMinor4(row.closedPrice),
+          })
+        }
+      }
+    }
+
+    return [...byBuyer.entries()]
+      .map(([buyerName, bucket]) => {
+        const closes = [...bucket.closes.values()].filter((c) => c.first > 0n)
+        let avg: string | null = null
+        if (closes.length >= 3) {
+          // Mean of (first − closed)/first in tenths of a percent, integer maths.
+          const totalTenths = closes.reduce(
+            (sum, c) => sum + ((c.first - c.closed) * 1000n) / c.first,
+            0n,
+          )
+          const mean = totalTenths / BigInt(closes.length)
+          const negative = mean < 0n
+          const abs = negative ? -mean : mean
+          avg = `${negative ? '-' : ''}${abs / 10n}.${abs % 10n}`
+        }
+        return {
+          buyerName,
+          quotesSent: bucket.quotesSent.size,
+          won: bucket.closes.size,
+          avgCloseBelowFirstPct: avg,
+        }
+      })
+      .filter((row) => row.quotesSent > 0)
+      .sort((a, b) => b.quotesSent - a.quotesSent)
+  })
+}

@@ -2,11 +2,13 @@ import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { desc } from 'drizzle-orm'
 
-import { Breadcrumbs } from '@/components/fx/data'
 import { Badge } from '@/components/fx/primitives'
 import { SectionHeading } from '@/components/fx/signature'
 import { LockedState } from '@/components/fx/feedback'
-import { PageHeader } from '@/components/shell/page-shell'
+import { RouteHeader } from '@/components/shell/route-header'
+import { unfiledDocuments } from '@/modules/marbim/service'
+
+import { UnfiledTray } from './unfiled-tray'
 import { env } from '@/lib/env'
 import { FloorTabs } from '@/components/shell/floor-tabs'
 import { getCtx } from '@/modules/core/session'
@@ -59,6 +61,8 @@ export default async function IntakePage() {
    */
   if (!env.MARBIM_ENABLED) return <LockedState what="document intake" />
 
+  const unfiled = await unfiledDocuments(ctx)
+
   /*
    * The same rule as the wall, never the raw list. This page offered all of `INTAKE_KINDS`,
    * including the eight form-filling kinds `readDocument` refuses for everybody — so "a
@@ -88,12 +92,8 @@ export default async function IntakePage() {
 
   return (
     <>
-      <div style={{ marginBottom: 18 }}>
-        <Breadcrumbs trail={[{ label: 'MARBIM', href: '/marbim' }, { label: 'Read a document' }]} />
-      </div>
-
-      <PageHeader
-        back={{ href: '/marbim', label: 'MARBIM' }}
+      <RouteHeader
+        path="/marbim/intake"
         eyebrow="MARBIM · document intake"
         title="Give MARBIM something to read"
         meta={`${kinds.length} kinds it knows how to file`}
@@ -181,6 +181,18 @@ export default async function IntakePage() {
           </section>
         ) : null}
       </div>
+
+      {unfiled.length > 0 ? (
+        <section style={{ marginTop: 36 }}>
+          <SectionHeading
+            eyebrow={`${unfiled.length} file${unfiled.length === 1 ? '' : 's'} waiting for a person — never guessed onto an order`}
+          >
+            Unfiled
+          </SectionHeading>
+          <UnfiledTray docs={unfiled} />
+        </section>
+      ) : null}
+
       {ctx.roles.some((r) => r === 'merchandiser' || r === 'commercial') ? (
         <FloorTabs
           tabs={[

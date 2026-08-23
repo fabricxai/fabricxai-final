@@ -1,6 +1,8 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { TnaTimelineView } from '@/components/fx/tna-timeline-view'
+import { SegmentedControl } from '@/components/fx/primitives'
 import { useState, useTransition } from 'react'
 
 import { InlineAlert, Modal, Toast } from '@/components/fx/feedback'
@@ -58,6 +60,7 @@ export function OrderTna({
   const router = useRouter()
   const [pending, startTransition] = useTransition()
 
+  const [view, setView] = useState<'table' | 'timeline'>('table')
   const [target, setTarget] = useState<Milestone | null>(null)
   const [actualDate, setActualDate] = useState(() => factoryToday())
   const [preview, setPreview] = useState<RippleView | null>(null)
@@ -128,11 +131,29 @@ export function OrderTna({
         />
       ) : null}
 
-      <MilestoneTimeline
-        milestones={milestones}
-        locale={locale}
-        {...(canWrite ? { onActualize: open } : {})}
-      />
+      {milestones.length > 1 ? (
+        <div style={{ marginBottom: 14 }}>
+          <SegmentedControl
+            label="Time and action view"
+            value={view}
+            onChange={(next) => setView(next)}
+            options={[
+              { value: 'table', label: 'Table' },
+              { value: 'timeline', label: 'Against the calendar' },
+            ]}
+          />
+        </div>
+      ) : null}
+
+      {view === 'timeline' ? (
+        <TnaTimelineView milestones={milestones} today={factoryToday()} locale={locale} />
+      ) : (
+        <MilestoneTimeline
+          milestones={milestones}
+          locale={locale}
+          {...(canWrite ? { onActualize: open } : {})}
+        />
+      )}
 
       <Modal
         open={target !== null}

@@ -14,6 +14,7 @@ import { PageHeader } from '@/components/shell/page-shell'
 import { env } from '@/lib/env'
 import { getCtx } from '@/modules/core/session'
 import { NOTE_EDIT_WINDOW_DAYS, noteWindowOpen } from '@/modules/memory/memory'
+import { getBomForStyle } from '@/modules/costing/queries'
 import { outcomes, type Pair } from '@/modules/memory/queries'
 
 /**
@@ -25,7 +26,11 @@ import { outcomes, type Pair } from '@/modules/memory/queries'
  */
 export const dynamic = 'force-dynamic'
 
-export default async function MemoryPage() {
+export default async function MemoryPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>
+}) {
   const ctx = await getCtx(await headers())
   if (!ctx) redirect('/login')
 
@@ -39,15 +44,83 @@ export default async function MemoryPage() {
   if (!env.MARBIM_ENABLED) return <LockedState what="order memory" />
 
   const now = new Date()
-  const cards = await outcomes(ctx)
+  const { q } = await searchParams
+  const all = await outcomes(ctx)
+  /*
+   * Search is a filter over what memory already compiled — style, buyer, PO, the
+   * defect words. Deliberately not the vector search: that is MARBIM's, needs an
+   * embedding call, and "show me the rib tees we made for H&M" is a substring.
+   */
+  const needle = q?.trim().toLowerCase() ?? ''
+  const cards = needle
+    ? all.filter((card) =>
+        [card.styleCode, card.buyerName, card.poNumber, ...card.topDefects.map((d) => d.code)]
+          .filter((v): v is string => typeof v === 'string')
+          .some((v) => v.toLowerCase().includes(needle)),
+      )
+    : all
+
+  /*
+   * The repeat bridge (design: repeat-order drift). A closed outcome next to its own
+   * quoted-vs-actual margin is exactly the moment to price the style again — and the
+   * costing studio already seeds from a BOM. This resolves each card's BOM through
+   * costing's query; a style with no approved sheet simply gets no button, because a
+   * repeat with no bill of materials is a blank form wearing a shortcut.
+   */
+  const bomByStyle = new Map<string, string>()
+  await Promise.all(
+    [...new Set(cards.map((c) => c.styleCode).filter((code): code is string => !!code))].map(
+      async (code) => {
+        try {
+          const ref = await getBomForStyle(ctx, code)
+          bomByStyle.set(code, ref.bomId)
+        } catch {
+          // No approved sheet behind the style — no bridge, honestly.
+        }
+      },
+    ),
+  )
 
   return (
     <>
       <PageHeader
         eyebrow="Order memory"
         title={cards.length === 0 ? 'Nothing compiled yet' : `${cards.length} closed orders`}
+        meta={needle ? `matching “${needle}”` : undefined}
         ownsAmber
       />
+
+      <form method="GET" style={{ marginBottom: 24, display: 'flex', gap: 10, maxWidth: 520 }}>
+        <input
+          type="search"
+          name="q"
+          defaultValue={needle}
+          placeholder="style, buyer, PO, or a defect word — rib, H&M, shading…"
+          style={{
+            flex: 1,
+            minHeight: 'var(--fx-tap-min)',
+            padding: '0 12px',
+            background: 'var(--fx-bg-sunken)',
+            border: '1px solid transparent',
+            borderRadius: 'var(--fx-radius-sm)',
+            font: '400 13px/1 var(--fx-font-sans)',
+          }}
+        />
+        <button
+          type="submit"
+          style={{
+            minHeight: 'var(--fx-tap-min)',
+            padding: '0 18px',
+            border: '1px solid var(--fx-border-default)',
+            borderRadius: 'var(--fx-radius-md)',
+            background: 'transparent',
+            font: '600 13px/1 var(--fx-font-sans)',
+            cursor: 'pointer',
+          }}
+        >
+          Search
+        </button>
+      </form>
 
       {cards.length === 0 ? (
         <EmptyState
@@ -77,6 +150,21 @@ export default async function MemoryPage() {
                 >
                   {card.poNumber ? <Ident>{card.poNumber}</Ident> : null}
                   {card.styleCode ? <Badge>{card.styleCode}</Badge> : null}
+                  {card.styleCode && bomByStyle.has(card.styleCode) ? (
+                    <a
+                      href={`/costing?bomId=${bomByStyle.get(card.styleCode)}`}
+                      style={{
+                        font: '500 13px/1 var(--fx-font-sans)',
+                        color: 'var(--fx-text-primary)',
+                        textDecoration: 'none',
+                        border: '1px solid var(--fx-border-default)',
+                        borderRadius: 'var(--fx-radius-md)',
+                        padding: '7px 12px',
+                      }}
+                    >
+                      Price this again →
+                    </a>
+                  ) : null}
                   {card.buyerName ? (
                     <span style={{ font: "500 14px/1.3 var(--fx-font-sans)" }}>{card.buyerName}</span>
                   ) : null}

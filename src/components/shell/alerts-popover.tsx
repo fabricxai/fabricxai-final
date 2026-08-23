@@ -122,6 +122,18 @@ export function AlertsPopover({ alerts }: { alerts: readonly AlertItem[] }) {
             <span style={{ font: '600 14px/1.2 var(--fx-font-sans)', color: 'var(--fx-text-primary)' }}>
               {count === 0 ? 'No unread alerts' : `${count} unread`}
             </span>
+            <a
+              href="/alerts"
+              style={{
+                font: '500 12px/1 var(--fx-font-sans)',
+                color: 'var(--fx-text-secondary)',
+                textDecoration: 'none',
+                marginLeft: 'auto',
+                padding: 4,
+              }}
+            >
+              See all →
+            </a>
             {count > 0 ? (
               <button
                 type="button"

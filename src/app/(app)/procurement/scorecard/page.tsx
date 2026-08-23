@@ -1,12 +1,12 @@
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 
-import { Breadcrumbs, StatTile } from '@/components/fx/data'
+import { StatTile } from '@/components/fx/data'
 import { EmptyState, InlineAlert } from '@/components/fx/feedback'
 import { Figure, Ident } from '@/components/fx/format'
 import { Badge } from '@/components/fx/primitives'
 import { SectionHeading } from '@/components/fx/signature'
-import { PageHeader } from '@/components/shell/page-shell'
+import { RouteHeader } from '@/components/shell/route-header'
 import { getCtx } from '@/modules/core/session'
 import {
   lastPeriodWithRecord,
@@ -63,7 +63,8 @@ export default async function ScorecardPage({
   if (!period) {
     return (
       <>
-        <PageHeader eyebrow="Procurement" title="Supplier scorecard" ownsAmber />
+        <RouteHeader
+        path="/procurement/scorecard" eyebrow="Procurement" title="Supplier scorecard" ownsAmber />
         <EmptyState
           title="No period has been scored yet"
           body="Scores are computed overnight from closed receipts and the quotes suppliers returned. Nothing has run yet, which is not the same as every supplier having no record — there is simply nothing to read."
@@ -86,14 +87,8 @@ export default async function ScorecardPage({
 
   return (
     <>
-      <div style={{ marginBottom: 18 }}>
-        <Breadcrumbs
-          trail={[{ label: 'Procurement', href: '/procurement' }, { label: 'Scorecard' }]}
-        />
-      </div>
-
-      <PageHeader
-        back={{ href: '/procurement', label: 'Procurement' }}
+      <RouteHeader
+        path="/procurement/scorecard"
         eyebrow="Procurement · supplier scorecard"
         title={`How suppliers performed in ${monthName(period)}`}
         meta={`${scored.length} of ${rows.length} with a record`}

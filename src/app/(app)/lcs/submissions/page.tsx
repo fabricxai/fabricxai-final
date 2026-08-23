@@ -2,9 +2,8 @@ import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { desc, eq } from 'drizzle-orm'
 
-import { Breadcrumbs } from '@/components/fx/data'
 import { EmptyState } from '@/components/fx/feedback'
-import { PageHeader } from '@/components/shell/page-shell'
+import { RouteHeader } from '@/components/shell/route-header'
 import { buyers } from '@/modules/buyers/schema'
 import { docSubmissions, lcs } from '@/modules/commercial/schema'
 import { agingDiscrepancies, type BankDocsPolicy } from '@/modules/commercial/service'
@@ -80,7 +79,8 @@ export default async function SubmissionsPage() {
   if (openLcs.length === 0) {
     return (
       <>
-        <PageHeader eyebrow="Commercial · submissions" title="No live credits" ownsAmber />
+        <RouteHeader
+        path="/lcs/submissions" eyebrow="Commercial · submissions" title="No live credits" ownsAmber />
         <EmptyState
           title="Nothing to present against"
           body="Documents are presented against a letter of credit. Record one on the register first."
@@ -91,13 +91,8 @@ export default async function SubmissionsPage() {
 
   return (
     <>
-      <div style={{ marginBottom: 18 }}>
-        <Breadcrumbs
-          trail={[{ label: 'LC register', href: '/lcs' }, { label: 'Documents at the bank' }]}
-        />
-      </div>
-
-      <PageHeader
+      <RouteHeader
+        path="/lcs/submissions"
         eyebrow="Commercial · submissions"
         title="Documents at the bank"
         meta={

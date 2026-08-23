@@ -13,6 +13,8 @@ import {
   createSampleRequest,
   dispatchSample,
   recordFeedback,
+  recordRequisitionUsage,
+  setSampleRequisition,
 } from './service'
 
 function refresh(id?: string): void {
@@ -147,4 +149,35 @@ export async function closeSample(input: { sampleRequestId: string }): Promise<v
   const ctx = await requireRole(await headers(), 'merchandiser')
   await closeSampleRequest(ctx, input)
   refresh(input.sampleRequestId)
+}
+
+/**
+ * Write the request's requisition — the ask (HANDOFF-sampling-requisition §5).
+ * A whole-set write; the screen edits the stored lines, so usage marks survive.
+ */
+export async function saveSampleRequisition(input: {
+  sampleRequestId: string
+  lines: unknown[]
+}): Promise<{ lines: number } | ActionFailure> {
+  const ctx = await requireRole(await headers(), 'merchandiser')
+  return surfaced(async () => {
+    const result = await setSampleRequisition(ctx, input)
+    refresh(input.sampleRequestId)
+    return { lines: result.lines }
+  })
+}
+
+/** Mark one line as-specified or substituted — the answer, correctable by design. */
+export async function markRequisitionUsage(input: {
+  sampleRequestId: string
+  lineIndex: number
+  used: string
+  substituteNote?: string
+}): Promise<{ lineIndex: number } | ActionFailure> {
+  const ctx = await requireRole(await headers(), 'merchandiser')
+  return surfaced(async () => {
+    const result = await recordRequisitionUsage(ctx, input)
+    refresh(input.sampleRequestId)
+    return { lineIndex: result.lineIndex }
+  })
 }

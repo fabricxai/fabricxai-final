@@ -202,6 +202,10 @@ export const MESSAGES: Catalogue = {
     'orders.errors.no_styles':
       'An order needs at least one style — one with none is an order nobody can cost, cut or ship.',
     'orders.errors.order_not_found': 'That order no longer exists.',
+    'orders.errors.inputs_order_settled':
+      'This order is settled — its checklist is history now, and history does not get edited.',
+    'orders.errors.drops_outside_tolerance':
+      'The drops add up to more or less than the buyer contracted, beyond the agreed tolerance.',
     'orders.errors.po_draft_insert_only':
       'An order drafted from a PO is created, not edited. Amending a confirmed order is a revision with its own trail.',
     'orders.errors.style_not_found': 'That style is not on this order.',
@@ -630,6 +634,8 @@ export const MESSAGES: Catalogue = {
     'sampling.errors.request_draft_insert_only':
       'A sample request is raised, not edited through the approve inbox.',
     'sampling.errors.request_not_found': 'That sample request no longer exists.',
+    'sampling.errors.requisition_line_missing': 'That requisition line no longer exists — reload and try again.',
+    'sampling.errors.substitute_needs_note': 'A substitution must say what went in instead.',
     'sampling.errors.stage_not_forward':
       'Sample stages move forward only. A sample back in pattern is a remake, which is a new request.',
     'settings.errors.disable_needs_note': 'Turning that off needs a note saying why.',
@@ -742,6 +748,10 @@ export const MESSAGES: Catalogue = {
     // ── 1.3 ──
     // The floor says these terms in English anyway (PP, QA, ex-factory), so the
     // Bangla keeps them rather than inventing translations nobody uses out loud.
+    'orders.errors.inputs_order_settled':
+      'অর্ডারটি বন্ধ হয়ে গেছে — এর চেকলিস্ট এখন ইতিহাস, আর ইতিহাস বদলানো যায় না।',
+    'orders.errors.drops_outside_tolerance':
+      'ড্রপগুলোর যোগফল বায়ারের চুক্তির চেয়ে সহনসীমার বাইরে বেশি বা কম।',
     'orders.milestones.order_confirmed': 'পিও গৃহীত',
     'orders.milestones.yarn_booking': 'সুতা বুকিং',
     'orders.milestones.yarn_in_house': 'সুতা ইন-হাউস',
@@ -1084,6 +1094,8 @@ export const MESSAGES: Catalogue = {
     'sampling.errors.request_draft_insert_only':
       'স্যাম্পল রিকোয়েস্ট নতুন করে তোলা হয়, approve inbox থেকে বদলানো হয় না।',
     'sampling.errors.request_not_found': 'এই স্যাম্পল রিকোয়েস্টটি আর নেই।',
+    'sampling.errors.requisition_line_missing': 'রিকুইজিশনের এই লাইনটি আর নেই — রিলোড করে আবার চেষ্টা করুন।',
+    'sampling.errors.substitute_needs_note': 'বিকল্প ব্যবহার করলে কী ব্যবহার হয়েছে তা লিখতেই হবে।',
     'sampling.errors.stage_not_forward':
       'স্যাম্পলের ধাপ শুধু সামনে এগোয়। প্যাটার্নে ফিরে যাওয়া মানে আবার নতুন করে বানানো, সেটা নতুন রিকোয়েস্ট।',
     'marbim.errors.unavailable':

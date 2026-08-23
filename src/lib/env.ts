@@ -109,6 +109,15 @@ const baseSchema = z.object({
   // subscribe devices nothing can ever send to. Absent = push disabled, app unchanged.
   VAPID_PUBLIC_KEY: z.string().min(1).optional(),
   VAPID_PRIVATE_KEY: z.string().min(1).optional(),
+
+  /**
+   * Mail intake (HANDOFF-marbim-mail-intake): the bearer token an MTA adapter posts
+   * with, and the one tenant its mail belongs to. Both optional — absent means the
+   * endpoint refuses everything, fail closed, which is the correct state for every
+   * deployment that has not pointed a mailbox at it.
+   */
+  INTAKE_MAIL_TOKEN: z.string().min(16).optional(),
+  INTAKE_MAIL_COMPANY_ID: z.string().uuid().optional(),
   VAPID_SUBJECT: z.string().startsWith('mailto:').optional(),
 
   // Email: transactional only, never self-hosted SMTP in prod. Dev uses Mailpit.

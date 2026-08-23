@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { EmptyState } from '@/components/fx/feedback'
 import { FloorScreen } from '@/components/fx/floor'
 import { FloorTabs } from '@/components/shell/floor-tabs'
-import { PageHeader } from '@/components/shell/page-shell'
+import { RouteHeader } from '@/components/shell/route-header'
 import { tui } from '@/lib/i18n-ui'
 import { requestLocale } from '@/lib/ui-locale'
 import { getCtx } from '@/modules/core/session'
@@ -42,8 +42,8 @@ export default async function CutReportPage({
   if (open.length === 0) {
     return (
       <FloorScreen>
-        <PageHeader
-        back={{ href: '/cutting', label: 'Cutting' }}
+        <RouteHeader
+        path="/cutting/report"
           eyebrow={tui(locale, 'ui.cutting.report_eyebrow')}
           title={tui(locale, 'ui.cutting.report_nothing_title')}
           ownsAmber
@@ -75,8 +75,8 @@ export default async function CutReportPage({
 
   return (
     <FloorScreen>
-      <PageHeader
-        back={{ href: '/cutting', label: 'Cutting' }}
+      <RouteHeader
+        path="/cutting/report"
         eyebrow={tui(locale, 'ui.cutting.report_eyebrow')}
         title={`${lay.layNo} · ${lay.color}`}
         meta={tui(locale, 'ui.cutting.report_meta', {

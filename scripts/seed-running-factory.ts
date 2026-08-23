@@ -738,6 +738,178 @@ async function main(): Promise<void> {
     await productionPhase(ctx, byPo('POLO-2244'), lineRows)
     await shippingPhase(ctx, byPo('DENIM-2251'), lineRows)
 
+    // ── the in-house checklist, at the same three depths (HANDOFF §10: edge rows) ──
+    //
+    // JKT is early: mostly booked, one thing landed, a note-carrying problem cell.
+    // POLO is mid-flight: everything in except the two finishing trims. DENIM has
+    // shipped a part: everything in, one n/a. This gives /orders/inputs all four
+    // states, a late cell, a note, and a roll-up at each stage of honesty.
+    {
+      const { setInputCell } = await import('@/modules/orders/service')
+      const inputPlan: Record<string, Record<string, {
+        state: 'pending' | 'booked' | 'in_house' | 'not_applicable'
+        plan?: number
+        actual?: number
+        note?: string
+      }>> = {
+        'JKT-2210': {
+          pp: { state: 'pending', plan: 12, note: 'round 1 with the buyer — comment sheet awaited' },
+          fabric: { state: 'booked', plan: 18 },
+          thread: { state: 'in_house', plan: -4, actual: -2 },
+          zipper: { state: 'booked', plan: 14, note: 'coming by air, supplier confirmed on the phone' },
+          labels: { state: 'pending', plan: 20 },
+          pocketing: { state: 'not_applicable' },
+        },
+        'POLO-2244': {
+          pp: { state: 'in_house', plan: -30, actual: -28 },
+          fabric: { state: 'in_house', plan: -21, actual: -18 },
+          thread: { state: 'in_house', plan: -20, actual: -20 },
+          labels: { state: 'in_house', plan: -14, actual: -12 },
+          buttons: { state: 'in_house', plan: -14, actual: -14 },
+          hangtag: { state: 'booked', plan: -2, note: 'printer promises Thursday — chase if quiet' },
+          poly_carton: { state: 'booked', plan: 4 },
+          zipper: { state: 'not_applicable' },
+          hook_bar: { state: 'not_applicable' },
+          elastic: { state: 'not_applicable' },
+          pocketing: { state: 'not_applicable' },
+          barcode: { state: 'in_house', plan: -7, actual: -7 },
+        },
+        'DENIM-2251': {
+          pp: { state: 'in_house', plan: -60, actual: -58 },
+          fabric: { state: 'in_house', plan: -45, actual: -44 },
+          pocketing: { state: 'in_house', plan: -40, actual: -40 },
+          thread: { state: 'in_house', plan: -40, actual: -38 },
+          labels: { state: 'in_house', plan: -30, actual: -30 },
+          elastic: { state: 'not_applicable' },
+          hook_bar: { state: 'in_house', plan: -28, actual: -26 },
+          zipper: { state: 'in_house', plan: -28, actual: -28 },
+          buttons: { state: 'in_house', plan: -28, actual: -28 },
+          hangtag: { state: 'in_house', plan: -14, actual: -13 },
+          barcode: { state: 'in_house', plan: -14, actual: -14 },
+          poly_carton: { state: 'in_house', plan: -10, actual: -9 },
+        },
+      }
+
+      let cells = 0
+      for (const [po, categories] of Object.entries(inputPlan)) {
+        const order = byPo(po)
+        for (const [category, cell] of Object.entries(categories)) {
+          await setInputCell(ctx, {
+            orderId: order.id,
+            category,
+            state: cell.state,
+            planDate: cell.plan !== undefined ? day(cell.plan) : null,
+            actualDate: cell.actual !== undefined ? day(cell.actual) : null,
+            note: cell.note ?? null,
+          })
+          cells += 1
+        }
+      }
+      console.log(`[running] ${cells} checklist cells filled`)
+    }
+
+    // One live negotiation on the trail: the buyer has asked POLO to pull in five
+    // days and nobody has agreed yet — a `proposed` row moves nothing, which is
+    // exactly the state a desk is usually in.
+    {
+      const { recordShipDate } = await import('@/modules/orders/service')
+      const { orderShipDates } = await import('@/modules/orders/schema')
+      const polo = byPo('POLO-2244')
+      const [already] = await withTenantRead(ctx, (tx) =>
+        tx
+          .select({ id: orderShipDates.id })
+          .from(orderShipDates)
+          .where(scoped(orderShipDates, ctx, eq(orderShipDates.orderId, polo.id)))
+          .limit(1),
+      )
+      if (!already) {
+        await recordShipDate(ctx, {
+          orderId: polo.id,
+          shipDate: day(19),
+          kind: 'proposed',
+          agreedWith: 'buyer mail, this week',
+          reason: 'retail window moved — buyer asks five days earlier',
+        })
+        console.log('[running] POLO-2244 · proposed pull-in recorded on the trail')
+      }
+    }
+
+    // ── the dossier additions, per their HANDOFF §10 ──────────────────────────
+    //
+    // DENIM: the fabric's full journey with the slip growing on the way — ex-mill
+    // late by four days, in-house by seven. POLO: two drops (the second carrying the
+    // balance) and three colours with one stalled at shade band. JKT stays untouched:
+    // the empty states must render.
+    {
+      const { setFabricLeg, saveDrops, setColourApproval } = await import('@/modules/orders/service')
+      const { orderFabricLegs, orderDrops } = await import('@/modules/orders/schema')
+
+      const denim = byPo('DENIM-2251')
+      const [legsExist] = await withTenantRead(ctx, (tx) =>
+        tx
+          .select({ id: orderFabricLegs.id })
+          .from(orderFabricLegs)
+          .where(scoped(orderFabricLegs, ctx, eq(orderFabricLegs.orderId, denim.id)))
+          .limit(1),
+      )
+      if (!legsExist) {
+        const legs: [string, number, number | null, string | null][] = [
+          ['booking_placed', -78, -78, null],
+          ['pi_received', -72, -71, null],
+          ['ex_mill', -50, -46, 'mill lost four days at dyeing — claim window noted'],
+          ['on_vessel', -46, -42, null],
+          ['at_port', -26, -22, null],
+          ['customs_cleared', -24, -18, 'UD endorsement queued two extra days'],
+          ['in_house', -22, -15, null],
+        ]
+        for (const [leg, plan, actual, note] of legs) {
+          await setFabricLeg(ctx, {
+            orderId: denim.id,
+            leg,
+            planDate: day(plan),
+            actualDate: actual === null ? null : day(actual),
+            note,
+          })
+        }
+        console.log('[running] DENIM-2251 · fabric journey recorded, slip and all')
+      }
+
+      const polo = byPo('POLO-2244')
+      const [dropsExist] = await withTenantRead(ctx, (tx) =>
+        tx
+          .select({ id: orderDrops.id })
+          .from(orderDrops)
+          .where(scoped(orderDrops, ctx, eq(orderDrops.orderId, polo.id)))
+          .limit(1),
+      )
+      if (!dropsExist) {
+        await saveDrops(ctx, {
+          orderId: polo.id,
+          drops: [
+            { dropNo: 1, qty: 14000, shipDate: day(17), note: 'white first — the retail window' },
+            { dropNo: 2, qty: 10000, shipDate: day(24) },
+          ],
+        })
+        for (const [color, stage, status, decided] of [
+          ['White', 'lab_dip', 'approved', -60],
+          ['White', 'bulk_lot', 'approved', -20],
+          ['White', 'shade_band', 'approved', -12],
+          ['Navy', 'lab_dip', 'approved', -58],
+          ['Navy', 'bulk_lot', 'approved', -18],
+          ['Navy', 'shade_band', 'sent', null],
+        ] as const) {
+          await setColourApproval(ctx, {
+            orderId: polo.id,
+            color,
+            stage,
+            status,
+            decidedOn: decided === null ? null : day(decided),
+          })
+        }
+        console.log('[running] POLO-2244 · two drops, colour chain with Navy stalled at shade band')
+      }
+    }
+
     console.log('\n[running] done.')
   } finally {
     await client.end()

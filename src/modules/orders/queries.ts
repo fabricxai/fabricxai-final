@@ -19,12 +19,18 @@ import { users } from '@/db/schema/core'
 
 import {
   orderBreakdowns,
+  orderColourApprovals,
+  orderDrops,
+  orderFabricLegs,
+  orderInputs,
+  orderShipDates,
   orderRevisions,
   orderStyles,
   orders,
   tnaMilestones,
   tnaTemplates,
 } from './schema'
+import { fillCategories, rollupInputs, type InputCell, type InputsRollup } from './inputs'
 import { milestoneDependency } from './zod'
 
 /** How a row reads on the desk: the worst thing true about the order. */
@@ -180,6 +186,8 @@ export interface MilestoneRow {
 export interface BreakdownCell {
   color: string
   size: string
+  /** The third axis where a PO line carries one — leg length, pack id. '' = none. */
+  variant: string
   qty: number
 }
 
@@ -263,6 +271,7 @@ export async function orderDetail(ctx: AnyCtx, orderId: string): Promise<OrderDe
           .select({
             color: orderBreakdowns.color,
             size: orderBreakdowns.size,
+            variant: orderBreakdowns.variant,
             qty: orderBreakdowns.qty,
           })
           .from(orderBreakdowns)
@@ -571,4 +580,310 @@ export async function orderIdByPoNumber(ctx: AnyCtx, poNumber: string): Promise<
       .limit(2)
     return rows.length === 1 ? rows[0]!.id : null
   })
+}
+
+export interface WeekMilestone {
+  orderId: string
+  poNumber: string | null
+  buyerName: string | null
+  name: string
+  plannedDate: string
+  status: string
+  ownerRole: string | null
+  critical: boolean
+  /** True when the planned date is before the window: it belongs to the past and is not done. */
+  overdue: boolean
+}
+
+/**
+ * Every milestone on the desk's open orders due inside a date window — plus everything
+ * OVERDUE from before it, because a week view that hides last Tuesday's unstarted cutting
+ * is a calendar for a factory that does not exist. The build pack calls this "the screen a
+ * merchandiser opens every morning"; the data has been here since the module shipped, and
+ * only per-order pages ever read it.
+ *
+ * Statuses come from the nightly scan, never recomputed here (same rule as the TNA table):
+ * two derivations of "late" is how a morning screen and an order page argue.
+ */
+export async function milestonesInWindow(
+  ctx: AnyCtx,
+  input: { from: string; to: string },
+): Promise<WeekMilestone[]> {
+  return withTenantRead(ctx, async (tx) => {
+    const rows = await tx
+      .select({
+        orderId: tnaMilestones.orderId,
+        poNumbers: orders.poNumbers,
+        buyerName: buyers.name,
+        name: tnaMilestones.name,
+        plannedDate: tnaMilestones.plannedDate,
+        status: tnaMilestones.status,
+        ownerRole: tnaMilestones.ownerRole,
+        critical: tnaMilestones.critical,
+      })
+      .from(tnaMilestones)
+      .innerJoin(orders, eq(orders.id, tnaMilestones.orderId))
+      .leftJoin(buyers, eq(buyers.id, orders.buyerId))
+      .where(
+        scoped(
+          tnaMilestones,
+          ctx,
+          and(
+            sql`${orders.status} NOT IN ('closed','cancelled')`,
+            sql`${tnaMilestones.status} <> 'done'`,
+            or(
+              and(
+                sql`${tnaMilestones.plannedDate} >= ${input.from}`,
+                sql`${tnaMilestones.plannedDate} <= ${input.to}`,
+              ),
+              // The backlog: planned before the window and still not done.
+              sql`${tnaMilestones.plannedDate} < ${input.from}`,
+            ),
+          ),
+        ),
+      )
+      .orderBy(asc(tnaMilestones.plannedDate))
+
+    return rows.map((row) => ({
+      orderId: row.orderId,
+      poNumber: row.poNumbers[0] ?? null,
+      buyerName: row.buyerName,
+      name: row.name,
+      plannedDate: row.plannedDate,
+      status: row.status,
+      ownerRole: row.ownerRole,
+      critical: row.critical,
+      overdue: row.plannedDate < input.from,
+    }))
+  })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Inputs readiness — reading the In-House Check List
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface OrderInputsRow {
+  orderId: string
+  poNumber: string | null
+  buyerName: string | null
+  styleCode: string | null
+  plannedExFactoryDate: string | null
+  cells: InputCell[]
+  rollup: InputsRollup
+}
+
+/**
+ * The matrix: every open order's twelve cells and its roll-up, ex-factory soonest first.
+ *
+ * Missing rows render as `pending` — an untouched order is twelve open questions, not a
+ * blank that reads as done — and the roll-up counts only the categories the style uses
+ * (`inputs.ts` carries that rule, with its reasons).
+ */
+export async function inputsMatrix(
+  ctx: AnyCtx,
+  input: { today: string },
+): Promise<OrderInputsRow[]> {
+  return withTenantRead(ctx, async (tx) => {
+    const open = await tx
+      .select({
+        id: orders.id,
+        poNumbers: orders.poNumbers,
+        buyerName: buyers.name,
+        plannedExFactoryDate: orders.plannedExFactoryDate,
+      })
+      .from(orders)
+      .leftJoin(buyers, eq(buyers.id, orders.buyerId))
+      .where(scoped(orders, ctx, sql`${orders.status} NOT IN ('closed','cancelled')`))
+      .orderBy(sql`${orders.plannedExFactoryDate} ASC NULLS LAST`)
+
+    if (open.length === 0) return []
+    const orderIds = open.map((o) => o.id)
+
+    const [styles, cells] = await Promise.all([
+      tx
+        .select({ orderId: orderStyles.orderId, styleCode: orderStyles.styleCode })
+        .from(orderStyles)
+        .where(scoped(orderStyles, ctx, inArray(orderStyles.orderId, orderIds))),
+      tx
+        .select({
+          orderId: orderInputs.orderId,
+          category: orderInputs.category,
+          state: orderInputs.state,
+          planDate: orderInputs.planDate,
+          actualDate: orderInputs.actualDate,
+          note: orderInputs.note,
+        })
+        .from(orderInputs)
+        .where(scoped(orderInputs, ctx, inArray(orderInputs.orderId, orderIds))),
+    ])
+
+    const styleByOrder = new Map(styles.map((s) => [s.orderId, s.styleCode]))
+    const cellsByOrder = new Map<string, InputCell[]>()
+    for (const cell of cells) {
+      const held = cellsByOrder.get(cell.orderId) ?? []
+      // A category outside the registered set (an older vocabulary, a bad import)
+      // is dropped from the matrix rather than crashing it; the row still exists
+      // in the table and a schema change can rename it.
+      held.push(cell as InputCell)
+      cellsByOrder.set(cell.orderId, held)
+    }
+
+    return open.map((order) => {
+      const filled = fillCategories(cellsByOrder.get(order.id) ?? [])
+      return {
+        orderId: order.id,
+        poNumber: order.poNumbers[0] ?? null,
+        buyerName: order.buyerName,
+        styleCode: styleByOrder.get(order.id) ?? null,
+        plannedExFactoryDate: order.plannedExFactoryDate,
+        cells: filled,
+        rollup: rollupInputs(filled, input.today),
+      }
+    })
+  })
+}
+
+export interface ShipDateEntry {
+  id: string
+  shipDate: string
+  kind: 'contract' | 'reship' | 'proposed'
+  agreedWith: string | null
+  reason: string | null
+  byName: string | null
+  at: Date
+}
+
+/**
+ * Every ship date this order has had, oldest first — the negotiation record.
+ * An empty trail is an order from before the table existed; the screen shows the
+ * date in force and says no history was recorded, which is true rather than blank.
+ */
+export async function shipDateTrail(ctx: AnyCtx, orderId: string): Promise<ShipDateEntry[]> {
+  return withTenantRead(ctx, async (tx) => {
+    const rows = await tx
+      .select({
+        id: orderShipDates.id,
+        shipDate: orderShipDates.shipDate,
+        kind: orderShipDates.kind,
+        agreedWith: orderShipDates.agreedWith,
+        reason: orderShipDates.reason,
+        byName: users.name,
+        at: orderShipDates.createdAt,
+      })
+      .from(orderShipDates)
+      .leftJoin(users, eq(users.id, orderShipDates.createdBy))
+      .where(scoped(orderShipDates, ctx, eq(orderShipDates.orderId, orderId)))
+      .orderBy(asc(orderShipDates.createdAt))
+    return rows
+  })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Dossier additions — reads
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface FabricLegCell {
+  leg: string
+  planDate: string | null
+  actualDate: string | null
+  note: string | null
+}
+
+/** The journey, every leg present (missing rows render as untouched), transit order. */
+export async function fabricLegs(ctx: AnyCtx, orderId: string): Promise<FabricLegCell[]> {
+  const { FABRIC_LEGS } = await import('./zod')
+
+  return withTenantRead(ctx, async (tx) => {
+    const rows = await tx
+      .select({
+        leg: orderFabricLegs.leg,
+        planDate: orderFabricLegs.planDate,
+        actualDate: orderFabricLegs.actualDate,
+        note: orderFabricLegs.note,
+      })
+      .from(orderFabricLegs)
+      .where(scoped(orderFabricLegs, ctx, eq(orderFabricLegs.orderId, orderId)))
+
+    const byLeg = new Map(rows.map((row) => [row.leg, row]))
+    return FABRIC_LEGS.map(
+      (leg) => byLeg.get(leg) ?? { leg, planDate: null, actualDate: null, note: null },
+    )
+  })
+}
+
+export interface DropRow {
+  dropNo: number
+  qty: number
+  shipDate: string
+  note: string | null
+}
+
+export async function dropsForOrder(ctx: AnyCtx, orderId: string): Promise<DropRow[]> {
+  return withTenantRead(ctx, (tx) =>
+    tx
+      .select({
+        dropNo: orderDrops.dropNo,
+        qty: orderDrops.qty,
+        shipDate: orderDrops.shipDate,
+        note: orderDrops.note,
+      })
+      .from(orderDrops)
+      .where(scoped(orderDrops, ctx, eq(orderDrops.orderId, orderId)))
+      .orderBy(asc(orderDrops.dropNo)),
+  )
+}
+
+export interface ColourApprovalRow {
+  color: string
+  stage: string
+  status: string
+  decidedOn: string | null
+  note: string | null
+}
+
+export async function colourApprovals(ctx: AnyCtx, orderId: string): Promise<ColourApprovalRow[]> {
+  return withTenantRead(ctx, (tx) =>
+    tx
+      .select({
+        color: orderColourApprovals.color,
+        stage: orderColourApprovals.stage,
+        status: orderColourApprovals.status,
+        decidedOn: orderColourApprovals.decidedOn,
+        note: orderColourApprovals.note,
+      })
+      .from(orderColourApprovals)
+      .where(scoped(orderColourApprovals, ctx, eq(orderColourApprovals.orderId, orderId)))
+      .orderBy(asc(orderColourApprovals.color), asc(orderColourApprovals.stage)),
+  )
+}
+
+export interface MilestonePeek {
+  name: string
+  plannedDate: string
+  actualDate: string | null
+  status: string
+  critical: boolean
+  ownerRole: string | null
+}
+
+/**
+ * One order's milestones, slim — for the book's TNA drawer, which peeks at a
+ * schedule without leaving the list. `orderDetail` carries the whole dossier;
+ * a drawer that fetched it would be paying for a breakdown grid to show dates.
+ */
+export async function milestonePeek(ctx: AnyCtx, orderId: string): Promise<MilestonePeek[]> {
+  return withTenantRead(ctx, (tx) =>
+    tx
+      .select({
+        name: tnaMilestones.name,
+        plannedDate: tnaMilestones.plannedDate,
+        actualDate: tnaMilestones.actualDate,
+        status: tnaMilestones.status,
+        critical: tnaMilestones.critical,
+        ownerRole: tnaMilestones.ownerRole,
+      })
+      .from(tnaMilestones)
+      .where(scoped(tnaMilestones, ctx, eq(tnaMilestones.orderId, orderId)))
+      .orderBy(asc(tnaMilestones.plannedDate)),
+  )
 }

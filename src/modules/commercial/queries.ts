@@ -430,3 +430,66 @@ export async function searchLcs(
       .limit(input.limit),
   )
 }
+
+export interface OrderLcRow {
+  orderId: string
+  lcId: string
+  number: string
+  status: string
+  latestShipmentDate: string | null
+  expiryDate: string | null
+  /** latest shipment − the order's planned ex-factory, in days. Negative = conflict. */
+  floatDays: number | null
+}
+
+/**
+ * The credits covering a set of orders — the order desk's view of this module.
+ *
+ * The merchandiser's MARBIM primer warns about latest-shipment breaches and the seeded
+ * test kit asks about "slack to the LC latest shipment", but the desk itself could not
+ * see an LC at all: `/lcs` belongs to commercial and finance, and the linkage lived only
+ * in the nightly countdown job. This is the read-only window the order book and the order
+ * page put next to the dates a merchandiser is actually steering — owned here because the
+ * credits are this module's (rule 11), even though the callers sit in orders.
+ *
+ * Float is computed against each order's OWN ex-factory, the same arithmetic as
+ * `lcDetail`'s linked-order rows, so the two screens cannot disagree about a conflict.
+ */
+export async function lcsForOrders(ctx: AnyCtx, orderIds: readonly string[]): Promise<OrderLcRow[]> {
+  if (orderIds.length === 0) return []
+  const { orderLcs, orders } = await import('@/modules/orders/schema')
+
+  return withTenantRead(ctx, async (tx) => {
+    const rows = await tx
+      .select({
+        orderId: orderLcs.orderId,
+        lcId: lcs.id,
+        number: lcs.number,
+        status: lcs.status,
+        latestShipmentDate: lcs.latestShipmentDate,
+        expiryDate: lcs.expiryDate,
+        plannedExFactoryDate: orders.plannedExFactoryDate,
+      })
+      .from(orderLcs)
+      .innerJoin(lcs, eq(lcs.id, orderLcs.lcId))
+      .innerJoin(orders, eq(orders.id, orderLcs.orderId))
+      .where(scoped(orderLcs, ctx, inArray(orderLcs.orderId, [...orderIds])))
+
+    return rows.map((row) => ({
+      orderId: row.orderId,
+      lcId: row.lcId,
+      number: row.number,
+      status: row.status,
+      latestShipmentDate: row.latestShipmentDate,
+      expiryDate: row.expiryDate,
+      floatDays:
+        row.latestShipmentDate && row.plannedExFactoryDate
+          ? Math.round(
+              (new Date(`${row.latestShipmentDate}T00:00:00Z`).getTime() -
+                new Date(`${row.plannedExFactoryDate}T00:00:00Z`).getTime()) /
+                86_400_000,
+            )
+          : null,
+    }))
+  })
+}

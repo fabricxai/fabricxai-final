@@ -17,7 +17,12 @@ import { fromMinor, roundToScale, toMinor } from '@/lib/quantity'
 
 import {
   orderBreakdowns,
+  orderColourApprovals,
+  orderDrops,
+  orderFabricLegs,
+  orderInputs,
   orderRevisions,
+  orderShipDates,
   orderStyles,
   orders,
   tnaMilestones,
@@ -50,6 +55,11 @@ import {
   orderFromPoDraft,
   orderRevisionDraft,
   orderStylePayload,
+  recordShipDatePayload,
+  saveDropsPayload,
+  setColourApprovalPayload,
+  setFabricLegPayload,
+  setInputCellPayload,
   tnaTemplatePayload,
   type SaveBreakdownPayload,
 } from './zod'
@@ -173,11 +183,12 @@ export async function saveBreakdownIn(
   // otherwise silently lose one of the two quantities to the unique index.
   const seen = new Set<string>()
   for (const cell of cells) {
-    const key = compositeKey(cell.color, cell.size)
+    const key = compositeKey(cell.color, cell.size, cell.variant)
     if (seen.has(key)) {
       throw new AppError('validation_failed', 'orders.errors.duplicate_breakdown_cell', {
         color: cell.color,
         size: cell.size,
+        variant: cell.variant,
       })
     }
     seen.add(key)
@@ -247,6 +258,7 @@ export async function saveBreakdownIn(
         revision,
         color: cell.color,
         size: cell.size,
+        variant: cell.variant,
         qty: cell.qty,
       })),
     )
@@ -334,10 +346,13 @@ export async function applyRevision(
 
 /** Cell-level diff, computed server-side — never taken from the client. */
 function diffBreakdown(
-  before: readonly { color: string; size: string; qty: number }[],
-  after: readonly { color: string; size: string; qty: number }[],
+  before: readonly { color: string; size: string; variant?: string; qty: number }[],
+  after: readonly { color: string; size: string; variant?: string; qty: number }[],
 ): Record<string, unknown> {
-  const key = (cell: { color: string; size: string }) => `${cell.color}/${cell.size}`
+  // The variant joins the key only when it exists, so every pre-axis revision's
+  // stored diff keys keep meaning exactly what they meant.
+  const key = (cell: { color: string; size: string; variant?: string }) =>
+    cell.variant ? `${cell.color}/${cell.size}/${cell.variant}` : `${cell.color}/${cell.size}`
   const beforeMap = new Map(before.map((c) => [key(c), c.qty]))
   const afterMap = new Map(after.map((c) => [key(c), c.qty]))
 
@@ -1045,5 +1060,316 @@ export async function findTemplateForProductType(
       if (row) return row
     }
     return null
+  })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Inputs readiness — writing one cell of the In-House Check List
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Set one (order, category) cell: state, plan date, actual date, note.
+ *
+ * An upsert, because the sheet's habit is to touch a cell the first time anything is
+ * known about it — there is no "create the row first" step on paper and there is none
+ * here. Whole-cell semantics: the payload is the cell as it should now stand, exactly
+ * like a breakdown revision, so a cleared note is a cleared note rather than a merge
+ * question.
+ *
+ * Two rules the database also enforces, refused here with words instead of a constraint
+ * error: an actual date belongs only to an in-house cell, and the order must exist and
+ * be this company's. Moving a cell OUT of in_house clears its actual date — a landed
+ * date on a cell that says "booked" is the sheet lying about the store.
+ */
+export async function setInputCell(
+  ctx: RequestCtx,
+  input: unknown,
+): Promise<{ orderId: string; category: string; state: string }> {
+  const cell = setInputCellPayload.parse(input)
+
+  return withTenantTx(ctx, async (tx) => {
+    const [order] = await tx
+      .select({ id: orders.id, status: orders.status })
+      .from(orders)
+      .where(scoped(orders, ctx, eq(orders.id, cell.orderId)))
+    if (!order) throw notFound('orders.errors.order_not_found', { id: cell.orderId })
+
+    // A settled order's checklist is history; editing history is how a claim
+    // argument loses its evidence.
+    if (order.status === 'closed' || order.status === 'cancelled') {
+      throw conflict('orders.errors.inputs_order_settled', { status: order.status })
+    }
+
+    const actualDate = cell.state === 'in_house' ? (cell.actualDate ?? null) : null
+
+    await tx
+      .insert(orderInputs)
+      .values({
+        companyId: ctx.companyId,
+        orderId: cell.orderId,
+        category: cell.category,
+        state: cell.state,
+        planDate: cell.planDate ?? null,
+        actualDate,
+        note: cell.note ?? null,
+        updatedBy: ctx.userId,
+      })
+      .onConflictDoUpdate({
+        target: [orderInputs.orderId, orderInputs.category],
+        set: {
+          state: cell.state,
+          planDate: cell.planDate ?? null,
+          actualDate,
+          note: cell.note ?? null,
+          updatedBy: ctx.userId,
+          updatedAt: new Date(),
+        },
+      })
+
+    return { orderId: cell.orderId, category: cell.category, state: cell.state }
+  })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Ship dates — recording the trail
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Append one ship date to the order's trail.
+ *
+ * A `reship` is the buyer's agreement recorded: it becomes the date in force, so the
+ * denormalised `planned_ex_factory_date` moves with it — inside the same transaction,
+ * because a book sorted on one date and a trail asserting another is two screens
+ * arguing. A `proposed` is an ask, not an agreement; it changes nothing until someone
+ * records the reship.
+ *
+ * The TNA is deliberately untouched (see the schema note): rescheduling milestones is
+ * its own decision with its own ripple preview. The screen says so next to the button.
+ *
+ * The first write to an order with an empty trail also backfills a `contract` row from
+ * the date currently in force — so the trail's first entry is always the promise the
+ * order was sold against, even for orders that predate this table.
+ */
+export async function recordShipDate(
+  ctx: RequestCtx,
+  input: unknown,
+): Promise<{ orderId: string; shipDate: string; kind: string; inForce: boolean }> {
+  const row = recordShipDatePayload.parse(input)
+
+  return withTenantTx(ctx, async (tx) => {
+    const [order] = await tx
+      .select({ id: orders.id, status: orders.status, planned: orders.plannedExFactoryDate })
+      .from(orders)
+      .where(scoped(orders, ctx, eq(orders.id, row.orderId)))
+      .for('update')
+    if (!order) throw notFound('orders.errors.order_not_found', { id: row.orderId })
+    if (order.status === 'closed' || order.status === 'cancelled') {
+      throw conflict('orders.errors.inputs_order_settled', { status: order.status })
+    }
+
+    const [existing] = await tx
+      .select({ id: orderShipDates.id })
+      .from(orderShipDates)
+      .where(scoped(orderShipDates, ctx, eq(orderShipDates.orderId, row.orderId)))
+      .limit(1)
+
+    if (!existing && order.planned) {
+      await tx.insert(orderShipDates).values({
+        companyId: ctx.companyId,
+        orderId: row.orderId,
+        shipDate: order.planned,
+        kind: 'contract',
+        agreedWith: 'the date in force when the trail began',
+        createdBy: ctx.userId,
+      })
+    }
+
+    await tx.insert(orderShipDates).values({
+      companyId: ctx.companyId,
+      orderId: row.orderId,
+      shipDate: row.shipDate,
+      kind: row.kind,
+      agreedWith: row.agreedWith ?? null,
+      reason: row.reason ?? null,
+      createdBy: ctx.userId,
+    })
+
+    const inForce = row.kind === 'reship'
+    if (inForce) {
+      await tx
+        .update(orders)
+        .set({ plannedExFactoryDate: row.shipDate, updatedAt: new Date() })
+        .where(scoped(orders, ctx, eq(orders.id, row.orderId)))
+    }
+
+    return { orderId: row.orderId, shipDate: row.shipDate, kind: row.kind, inForce }
+  })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Dossier additions — HANDOFF-orders-dossier-additions §5
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** The settled-order refusal the three dossier writes share. */
+async function requireOpenOrder(
+  ctx: AnyCtx,
+  tx: TenantDb,
+  orderId: string,
+): Promise<{ id: string; status: string }> {
+  const [order] = await tx
+    .select({ id: orders.id, status: orders.status })
+    .from(orders)
+    .where(scoped(orders, ctx, eq(orders.id, orderId)))
+    .for('update')
+  if (!order) throw notFound('orders.errors.order_not_found', { id: orderId })
+  if (order.status === 'closed' || order.status === 'cancelled') {
+    throw conflict('orders.errors.inputs_order_settled', { status: order.status })
+  }
+  return order
+}
+
+/**
+ * Upsert one (order, leg) cell of the fabric's journey. Whole-cell semantics, like
+ * the inputs checklist — the payload is the cell as it should now stand.
+ */
+export async function setFabricLeg(
+  ctx: RequestCtx,
+  input: unknown,
+): Promise<{ orderId: string; leg: string }> {
+  const cell = setFabricLegPayload.parse(input)
+
+  return withTenantTx(ctx, async (tx) => {
+    await requireOpenOrder(ctx, tx, cell.orderId)
+
+    await tx
+      .insert(orderFabricLegs)
+      .values({
+        companyId: ctx.companyId,
+        orderId: cell.orderId,
+        leg: cell.leg,
+        planDate: cell.planDate ?? null,
+        actualDate: cell.actualDate ?? null,
+        note: cell.note ?? null,
+        updatedBy: ctx.userId,
+      })
+      .onConflictDoUpdate({
+        target: [orderFabricLegs.orderId, orderFabricLegs.leg],
+        set: {
+          planDate: cell.planDate ?? null,
+          actualDate: cell.actualDate ?? null,
+          note: cell.note ?? null,
+          updatedBy: ctx.userId,
+          updatedAt: new Date(),
+        },
+      })
+
+    return { orderId: cell.orderId, leg: cell.leg }
+  })
+}
+
+/**
+ * Replace the order's drop list wholesale.
+ *
+ * Whole-list, not per-row: a drop plan is one decision about how the quantity
+ * leaves, and a partial edit that leaves drop 2 orphaned from a deleted drop 1 is
+ * a plan nobody made. Σqty is checked against contracted ± tolerance with the same
+ * arithmetic as the breakdown gate; the order's denormalised ex-factory date moves
+ * to the LAST drop's date in the same transaction — the order leaves the factory
+ * when the last drop does, and the book sorts on that.
+ */
+export async function saveDrops(
+  ctx: RequestCtx,
+  input: unknown,
+): Promise<{ orderId: string; drops: number; exFactoryDate: string }> {
+  const payload = saveDropsPayload.parse(input)
+
+  return withTenantTx(ctx, async (tx) => {
+    await requireOpenOrder(ctx, tx, payload.orderId)
+
+    const [order] = await tx
+      .select({ tolerancePct: orders.qtyTolerancePct })
+      .from(orders)
+      .where(scoped(orders, ctx, eq(orders.id, payload.orderId)))
+    const [style] = await tx
+      .select({ contractedQty: orderStyles.contractedQty })
+      .from(orderStyles)
+      .where(scoped(orderStyles, ctx, eq(orderStyles.orderId, payload.orderId)))
+
+    const totals = checkBreakdownTotal({
+      cells: payload.drops.map((d) => ({ qty: d.qty })),
+      contractedQty: style?.contractedQty ?? null,
+      tolerancePct: order?.tolerancePct ?? '0',
+    })
+    if (!totals.withinTolerance) {
+      throw new AppError('validation_failed', 'orders.errors.drops_outside_tolerance', {
+        totalQty: totals.totalQty,
+        allowedMin: totals.allowedMin,
+        allowedMax: totals.allowedMax,
+      })
+    }
+
+    await tx
+      .delete(orderDrops)
+      .where(scoped(orderDrops, ctx, eq(orderDrops.orderId, payload.orderId)))
+    await tx.insert(orderDrops).values(
+      payload.drops.map((drop) => ({
+        companyId: ctx.companyId,
+        orderId: payload.orderId,
+        dropNo: drop.dropNo,
+        qty: drop.qty,
+        shipDate: drop.shipDate,
+        note: drop.note ?? null,
+        createdBy: ctx.userId,
+      })),
+    )
+
+    const last = payload.drops.reduce((a, b) => (a.shipDate >= b.shipDate ? a : b))
+    await tx
+      .update(orders)
+      .set({ plannedExFactoryDate: last.shipDate, updatedAt: new Date() })
+      .where(scoped(orders, ctx, eq(orders.id, payload.orderId)))
+
+    return { orderId: payload.orderId, drops: payload.drops.length, exFactoryDate: last.shipDate }
+  })
+}
+
+/**
+ * Upsert one (order, colour, stage) row of the approval chain. A log, not a gate —
+ * the HANDOFF's §6 says why there is no state machine here: the record this replaces
+ * includes "the buyer verbally approved this months ago, write it down now".
+ */
+export async function setColourApproval(
+  ctx: RequestCtx,
+  input: unknown,
+): Promise<{ orderId: string; color: string; stage: string; status: string }> {
+  const row = setColourApprovalPayload.parse(input)
+
+  return withTenantTx(ctx, async (tx) => {
+    await requireOpenOrder(ctx, tx, row.orderId)
+
+    await tx
+      .insert(orderColourApprovals)
+      .values({
+        companyId: ctx.companyId,
+        orderId: row.orderId,
+        color: row.color,
+        stage: row.stage,
+        status: row.status,
+        decidedOn: row.decidedOn ?? null,
+        note: row.note ?? null,
+        updatedBy: ctx.userId,
+      })
+      .onConflictDoUpdate({
+        target: [orderColourApprovals.orderId, orderColourApprovals.color, orderColourApprovals.stage],
+        set: {
+          status: row.status,
+          decidedOn: row.decidedOn ?? null,
+          note: row.note ?? null,
+          updatedBy: ctx.userId,
+          updatedAt: new Date(),
+        },
+      })
+
+    return { orderId: row.orderId, color: row.color, stage: row.stage, status: row.status }
   })
 }

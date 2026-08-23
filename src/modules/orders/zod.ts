@@ -98,6 +98,13 @@ export const orderStylePayload = z.object({
 export const breakdownCell = z.object({
   color: z.string().min(1),
   size: z.string().min(1),
+  /**
+   * The third axis a PO line sometimes carries — a leg length ("27"), a ratio-pack
+   * id. Empty string is "no third axis" and is the default, so every existing
+   * caller keeps its meaning; NOT NULL end-to-end because two NULLs are distinct
+   * to the unique index and the cell-dedupe guarantee must hold.
+   */
+  variant: z.string().trim().max(40).default(''),
   qty: z.number().int().positive(),
 })
 
@@ -269,7 +276,172 @@ export const ORDERS_ZOD_MAP = {
 } as const
 
 export type CreateOrderPayload = z.infer<typeof createOrderPayload>
-export type SaveBreakdownPayload = z.infer<typeof saveBreakdownPayload>
+// z.input, not z.infer: `variant` defaults on parse, and every caller that predates
+// the third axis keeps compiling without naming it.
+export type SaveBreakdownPayload = z.input<typeof saveBreakdownPayload>
 export type GenerateTnaPayload = z.infer<typeof generateTnaPayload>
 export type ActualizeMilestonePayload = z.infer<typeof actualizeMilestonePayload>
 export type TnaTemplatePayload = z.infer<typeof tnaTemplatePayload>
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Inputs readiness — the In-House Check List
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * The canonical categories, in the order the factory's own sheet columns them.
+ * `pp` is first because the sheet's first banner is PP Status, and the room
+ * reads left to right the way the work happens.
+ */
+export const INPUT_CATEGORIES = [
+  'pp',
+  'fabric',
+  'pocketing',
+  'thread',
+  'labels',
+  'elastic',
+  'hook_bar',
+  'zipper',
+  'buttons',
+  'hangtag',
+  'barcode',
+  'poly_carton',
+] as const
+
+export type InputCategory = (typeof INPUT_CATEGORIES)[number]
+
+export const inputCategory = z.enum(INPUT_CATEGORIES)
+
+export const inputState = z.enum(['pending', 'booked', 'in_house', 'not_applicable'])
+
+/**
+ * One cell edit. The sheet's cell holds a date OR a word OR a note; the patch
+ * carries whichever the person has, and the service refuses only the combination
+ * the schema also refuses — an actual date on a cell that is not in-house.
+ */
+export const setInputCellPayload = z
+  .object({
+    orderId: z.string().uuid(),
+    category: inputCategory,
+    state: inputState,
+    planDate: calendarDate.nullable().optional(),
+    actualDate: calendarDate.nullable().optional(),
+    note: z.string().trim().max(280).nullable().optional(),
+  })
+  .superRefine((cell, issues) => {
+    if (cell.actualDate && cell.state !== 'in_house') {
+      issues.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'an actual date belongs to an in-house cell',
+        path: ['actualDate'],
+      })
+    }
+  })
+
+export type SetInputCellPayload = z.infer<typeof setInputCellPayload>
+
+/**
+ * A new ship date for the trail. A reship demands a reason and an agreement
+ * citation: a moved promise with neither is the row nobody can defend when a
+ * buyer disputes it — the entire point of keeping the trail.
+ */
+export const recordShipDatePayload = z
+  .object({
+    orderId: z.string().uuid(),
+    shipDate: calendarDate,
+    kind: z.enum(['reship', 'proposed']),
+    agreedWith: z.string().trim().min(1).max(160).optional(),
+    reason: z.string().trim().min(1).max(280).optional(),
+  })
+  .superRefine((row, issues) => {
+    if (row.kind === 'reship') {
+      if (!row.reason) {
+        issues.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'a reship needs its reason',
+          path: ['reason'],
+        })
+      }
+      if (!row.agreedWith) {
+        issues.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'a reship needs who agreed it',
+          path: ['agreedWith'],
+        })
+      }
+    }
+  })
+
+export type RecordShipDatePayload = z.infer<typeof recordShipDatePayload>
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Dossier additions — fabric legs, drops, colour approvals
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** The fabric's journey, in transit order — the confirmation sheet's columns as a vocabulary. */
+export const FABRIC_LEGS = [
+  'booking_placed',
+  'pi_received',
+  'ex_mill',
+  'on_vessel',
+  'at_port',
+  'customs_cleared',
+  'in_house',
+] as const
+
+export type FabricLeg = (typeof FABRIC_LEGS)[number]
+
+export const setFabricLegPayload = z.object({
+  orderId: z.string().uuid(),
+  leg: z.enum(FABRIC_LEGS),
+  planDate: calendarDate.nullable().optional(),
+  actualDate: calendarDate.nullable().optional(),
+  note: z.string().trim().max(280).nullable().optional(),
+})
+
+export type SetFabricLegPayload = z.infer<typeof setFabricLegPayload>
+
+export const saveDropsPayload = z
+  .object({
+    orderId: z.string().uuid(),
+    drops: z
+      .array(
+        z.object({
+          dropNo: z.number().int().min(1).max(20),
+          qty: z.number().int().positive(),
+          shipDate: calendarDate,
+          note: z.string().trim().max(280).nullable().optional(),
+        }),
+      )
+      .min(1)
+      .max(20),
+  })
+  .superRefine((payload, issues) => {
+    const seen = new Set<number>()
+    for (const drop of payload.drops) {
+      if (seen.has(drop.dropNo)) {
+        issues.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `drop ${drop.dropNo} appears twice`,
+          path: ['drops'],
+        })
+      }
+      seen.add(drop.dropNo)
+    }
+  })
+
+export type SaveDropsPayload = z.infer<typeof saveDropsPayload>
+
+export const COLOUR_STAGES = ['lab_dip', 'bulk_lot', 'shade_band'] as const
+
+export type ColourStage = (typeof COLOUR_STAGES)[number]
+
+export const setColourApprovalPayload = z.object({
+  orderId: z.string().uuid(),
+  color: z.string().trim().min(1).max(60),
+  stage: z.enum(COLOUR_STAGES),
+  status: z.enum(['pending', 'sent', 'approved', 'rejected']),
+  decidedOn: calendarDate.nullable().optional(),
+  note: z.string().trim().max(280).nullable().optional(),
+})
+
+export type SetColourApprovalPayload = z.infer<typeof setColourApprovalPayload>

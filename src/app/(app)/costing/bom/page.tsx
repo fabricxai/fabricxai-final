@@ -2,12 +2,11 @@ import Link from 'next/link'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 
-import { Breadcrumbs } from '@/components/fx/data'
 import { EmptyState } from '@/components/fx/feedback'
 import { Ident } from '@/components/fx/format'
 import { Badge } from '@/components/fx/primitives'
 import { SectionHeading } from '@/components/fx/signature'
-import { PageHeader } from '@/components/shell/page-shell'
+import { RouteHeader } from '@/components/shell/route-header'
 import { getCtx } from '@/modules/core/session'
 import { bomLibrary } from '@/modules/costing/queries'
 
@@ -48,14 +47,8 @@ export default async function BomPage() {
 
   return (
     <>
-      <div style={{ marginBottom: 18 }}>
-        <Breadcrumbs
-          trail={[{ label: 'Costing studio', href: '/costing' }, { label: 'Bills of materials' }]}
-        />
-      </div>
-
-      <PageHeader
-        back={{ href: '/costing', label: 'Costing studio' }}
+      <RouteHeader
+        path="/costing/bom"
         eyebrow="Costing · bill of materials"
         title={
           boms.length === 0

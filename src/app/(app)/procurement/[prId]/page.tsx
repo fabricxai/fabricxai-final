@@ -2,7 +2,7 @@ import { headers } from 'next/headers'
 import { notFound, redirect } from 'next/navigation'
 import { eq } from 'drizzle-orm'
 
-import { PageHeader } from '@/components/shell/page-shell'
+import { RouteHeader } from '@/components/shell/route-header'
 import { btbLcs, lcs } from '@/modules/commercial/schema'
 import { getCtx } from '@/modules/core/session'
 import { withTenantRead } from '@/modules/core/tenancy'
@@ -144,8 +144,9 @@ export default async function RequisitionPage({
 
   return (
     <>
-      <PageHeader
-        back={{ href: '/procurement', label: 'Procurement' }}
+      <RouteHeader
+        path={`/procurement/${prId}`}
+        labels={{ prId: pr.prNo }}
         eyebrow="Procurement · requisition"
         title={pr.prNo}
         meta={pr.neededBy ? `needed by ${pr.neededBy} · ${pr.status}` : String(pr.status)}

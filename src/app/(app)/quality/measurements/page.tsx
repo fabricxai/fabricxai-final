@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 
 import { EmptyState } from '@/components/fx/feedback'
 import { FloorScreen } from '@/components/fx/floor'
-import { PageHeader } from '@/components/shell/page-shell'
+import { RouteHeader } from '@/components/shell/route-header'
 import { tui } from '@/lib/i18n-ui'
 import { requestLocale } from '@/lib/ui-locale'
 import { getCtx } from '@/modules/core/session'
@@ -40,8 +40,8 @@ export default async function MeasurementsPage() {
   if (subjects.length === 0) {
     return (
       <FloorScreen>
-        <PageHeader
-        back={{ href: '/quality', label: 'Quality' }}
+        <RouteHeader
+        path="/quality/measurements"
           eyebrow={tui(locale, 'ui.quality.measure_eyebrow')}
           title={tui(locale, 'ui.quality.measure_empty_page_title')}
           ownsAmber
@@ -58,8 +58,8 @@ export default async function MeasurementsPage() {
 
   return (
     <FloorScreen>
-      <PageHeader
-        back={{ href: '/quality', label: 'Quality' }}
+      <RouteHeader
+        path="/quality/measurements"
         eyebrow={tui(locale, 'ui.quality.measure_eyebrow_full')}
         title={tui(locale, 'ui.quality.charts_meta', {
           measured: subjects.length - withoutChart.length,

@@ -11,7 +11,7 @@ import { canWrite, NAV } from '@/components/shell/nav'
 import { getCtx } from '@/modules/core/session'
 import { companyProfile } from '@/modules/settings/service'
 import { buyerAccounts, pipeline } from '@/modules/buyers/queries'
-import type { BuyerDeskPolicy } from '@/modules/buyers/service'
+import { listAgents, termsFor, type BuyerDeskPolicy } from '@/modules/buyers/service'
 import { getPolicy } from '@/modules/settings/service'
 
 import { LeadOpener } from './pipeline-client'
@@ -30,17 +30,32 @@ import Link from 'next/link'
  */
 export const dynamic = 'force-dynamic'
 
-export default async function BuyersPage() {
+export default async function BuyersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ termsBuyer?: string; termsDate?: string }>
+}) {
   const ctx = await getCtx(await headers())
   if (!ctx) redirect('/login')
 
   const policy = await getPolicy<BuyerDeskPolicy>(ctx, 'buyers')
   const now = new Date()
 
-  const [board, accounts] = await Promise.all([
+  const { termsBuyer, termsDate } = await searchParams
+  const [board, accounts, agents] = await Promise.all([
     pipeline(ctx, { now, quietAfterDays: policy.quietAfterDays }),
     buyerAccounts(ctx),
+    listAgents(ctx),
   ])
+
+  /*
+   * Terms as they stood ON A DATE — the versioned read the MARBIM tool has had all
+   * along, finally on a screen. Read for the order date, never "today": terms
+   * renegotiated in May must not silently reprice an order confirmed in March, and a
+   * panel that only showed the current version would invite exactly that mistake.
+   */
+  const termsAsOf =
+    termsBuyer && termsDate ? await termsFor(ctx, { buyerId: termsBuyer, onDate: termsDate }) : null
 
   const profile = await companyProfile(ctx)
   const mayWrite = canWrite(
@@ -69,7 +84,43 @@ export default async function BuyersPage() {
         eyebrow="Buyer & lead desk"
         title={open === 0 ? 'No open leads' : `${open} leads in play`}
         meta={board.quiet.length > 0 ? `${board.quiet.length} gone quiet` : undefined}
-        {...(mayWrite ? { actions: <NewLead /> } : {})}
+        actions={
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
+            <a
+              href="/buyers/waiting"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                minHeight: 'var(--fx-tap-min)',
+                padding: '10px 18px',
+                borderRadius: 'var(--fx-radius-md)',
+                border: '1px solid var(--fx-border-default)',
+                font: '600 14px/1 var(--fx-font-sans)',
+                color: 'var(--fx-text-primary)',
+                textDecoration: 'none',
+              }}
+            >
+              Waiting on the buyer
+            </a>
+            <a
+              href="/buyers/scorecard"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                minHeight: 'var(--fx-tap-min)',
+                padding: '10px 18px',
+                borderRadius: 'var(--fx-radius-md)',
+                border: '1px solid var(--fx-border-default)',
+                font: '600 14px/1 var(--fx-font-sans)',
+                color: 'var(--fx-text-primary)',
+                textDecoration: 'none',
+              }}
+            >
+              Scorecard
+            </a>
+            {mayWrite ? <NewLead /> : null}
+          </span>
+        }
         /*
          * The button is this screen's amber moment when it is there, so the header's rule
          * goes muted — `ownsAmber`'s own contract: one primary action or one accent, never
@@ -371,6 +422,175 @@ export default async function BuyersPage() {
             </div>
           )}
         </section>
+
+        <section>
+          <SectionHeading eyebrow="versioned by date — an old order keeps its old terms">
+            Terms as they stood
+          </SectionHeading>
+          <div
+            style={{
+              background: 'var(--fx-bg-surface)',
+              border: '1px solid var(--fx-border-subtle)',
+              borderRadius: 'var(--fx-radius-md)',
+              padding: '18px 22px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 16,
+            }}
+          >
+            <form
+              method="GET"
+              style={{ display: 'flex', gap: 12, alignItems: 'end', flexWrap: 'wrap' }}
+            >
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <span style={{ font: '500 13px/1 var(--fx-font-sans)' }}>Buyer</span>
+                <select
+                  name="termsBuyer"
+                  defaultValue={termsBuyer ?? ''}
+                  style={{
+                    minHeight: 'var(--fx-tap-min)',
+                    padding: '0 12px',
+                    border: '1px solid var(--fx-border-default)',
+                    borderRadius: 'var(--fx-radius-sm)',
+                    background: 'var(--fx-bg-surface)',
+                    font: '400 14px/1.2 var(--fx-font-sans)',
+                  }}
+                >
+                  <option value="">choose…</option>
+                  {accounts.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <span style={{ font: '500 13px/1 var(--fx-font-sans)' }}>On the date</span>
+                <input
+                  type="date"
+                  name="termsDate"
+                  defaultValue={termsDate ?? ''}
+                  style={{
+                    minHeight: 'var(--fx-tap-min)',
+                    padding: '0 12px',
+                    border: '1px solid var(--fx-border-default)',
+                    borderRadius: 'var(--fx-radius-sm)',
+                    font: '400 14px/1.2 var(--fx-font-sans)',
+                  }}
+                />
+              </label>
+              <button
+                type="submit"
+                style={{
+                  minHeight: 'var(--fx-tap-min)',
+                  padding: '10px 18px',
+                  border: '1px solid var(--fx-border-default)',
+                  borderRadius: 'var(--fx-radius-md)',
+                  background: 'transparent',
+                  font: '600 14px/1 var(--fx-font-sans)',
+                  cursor: 'pointer',
+                }}
+              >
+                Read the terms
+              </button>
+            </form>
+
+            {termsBuyer && termsDate ? (
+              termsAsOf ? (
+                <div
+                  style={{
+                    borderTop: '1px solid var(--fx-border-subtle)',
+                    paddingTop: 14,
+                    display: 'flex',
+                    gap: 28,
+                    flexWrap: 'wrap',
+                    font: '400 13.5px/1.5 var(--fx-font-sans)',
+                  }}
+                >
+                  <span>
+                    <strong>v{termsAsOf.version}</strong> · in force from {termsAsOf.validFrom}
+                  </span>
+                  <span>payment: {termsAsOf.payment.toUpperCase()}</span>
+                  <span>incoterm: {termsAsOf.incoterm ?? '—'}</span>
+                  <span>tolerance: ±{termsAsOf.tolerancePct ?? '—'}%</span>
+                  <span>AQL: {termsAsOf.aqlLevel ?? '—'}</span>
+                </div>
+              ) : (
+                <span
+                  style={{
+                    borderTop: '1px solid var(--fx-border-subtle)',
+                    paddingTop: 14,
+                    font: '400 13.5px/1.5 var(--fx-font-sans)',
+                    color: 'var(--fx-text-secondary)',
+                  }}
+                >
+                  No terms were on file for that buyer on that date — an order confirmed then was
+                  running on whatever the mail said, which is exactly the state this register
+                  exists to end.
+                </span>
+              )
+            ) : null}
+          </div>
+        </section>
+
+        {agents.length > 0 ? (
+          <section>
+            <SectionHeading eyebrow="who sits between you and the label">
+              Agents
+            </SectionHeading>
+            <div
+              style={{
+                background: 'var(--fx-bg-surface)',
+                border: '1px solid var(--fx-border-subtle)',
+                borderRadius: 'var(--fx-radius-md)',
+                overflow: 'hidden',
+              }}
+            >
+              {agents.map((agent, i) => (
+                <div
+                  key={agent.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 14,
+                    flexWrap: 'wrap',
+                    padding: '13px 22px',
+                    minHeight: 'var(--fx-row-height)',
+                    borderTop: i === 0 ? undefined : '1px solid var(--fx-border-subtle)',
+                  }}
+                >
+                  <span style={{ font: '500 14px/1.3 var(--fx-font-sans)' }}>{agent.name}</span>
+                  <Badge>
+                    {agent.type === 'buying_house' ? 'buying house' : 'individual'}
+                  </Badge>
+                  <span
+                    data-numeric
+                    data-mono
+                    style={{
+                      marginLeft: 'auto',
+                      font: '400 13px/1.3 var(--fx-font-mono)',
+                      color: 'var(--fx-text-secondary)',
+                    }}
+                  >
+                    {agent.commissionPct ? `${agent.commissionPct}% commission` : 'no commission on file'}
+                  </span>
+                </div>
+              ))}
+              <div
+                style={{
+                  padding: '10px 22px',
+                  borderTop: '1px solid var(--fx-border-subtle)',
+                  font: '400 12px/1.5 var(--fx-font-sans)',
+                  color: 'var(--fx-text-tertiary)',
+                }}
+              >
+                An order snapshots its agent&rsquo;s terms at confirmation — renegotiations never
+                silently reprice old orders. Ask MARBIM &ldquo;what were the buyer&rsquo;s terms on
+                the order date&rdquo; for the versioned answer.
+              </div>
+            </div>
+          </section>
+        ) : null}
       </div>
     </>
   )

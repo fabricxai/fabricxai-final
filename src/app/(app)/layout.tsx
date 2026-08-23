@@ -5,6 +5,7 @@ import { AlertsPopover } from '@/components/shell/alerts-popover'
 import { MarbimButton } from '@/components/shell/marbim-button'
 import { marbimEntryFor } from '@/components/shell/marbim-context'
 import { MarbimPanel } from '@/components/shell/marbim-panel'
+import { ShortcutsSheet } from '@/components/shell/shortcuts-sheet'
 import { OutcomeToasts } from '@/components/shell/outcome-toasts'
 import { PendingReadings } from '@/components/shell/pending-readings'
 import { PageBody, TopBar } from '@/components/shell/page-shell'
@@ -175,6 +176,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             trust={{ ...trust, pending: routed }}
           />
         ) : null}
+        {/* ? anywhere: the keyboard, written down — only bindings that exist. */}
+        <ShortcutsSheet />
         {/* The shared outcome stack: every action's done/refused/failed lands here as a
             small edge toast, fed by the two chokepoints every screen already uses
             (live-test feedback, Phase 9). */}

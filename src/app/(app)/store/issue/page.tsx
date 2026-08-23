@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { EmptyState } from '@/components/fx/feedback'
 import { FloorScreen } from '@/components/fx/floor'
 import { FloorTabs } from '@/components/shell/floor-tabs'
-import { PageHeader } from '@/components/shell/page-shell'
+import { RouteHeader } from '@/components/shell/route-header'
 import { tui } from '@/lib/i18n-ui'
 import { requestLocale } from '@/lib/ui-locale'
 import { getCtx } from '@/modules/core/session'
@@ -62,8 +62,8 @@ export default async function StoreIssuePage() {
   if (outstanding.length === 0) {
     return (
       <FloorScreen>
-        <PageHeader
-        back={{ href: '/store', label: 'Store' }}
+        <RouteHeader
+        path="/store/issue"
           eyebrow={tui(locale, 'ui.store.issue_eyebrow')}
           title={tui(locale, 'ui.store.issue_title_empty')}
           ownsAmber
@@ -110,8 +110,8 @@ export default async function StoreIssuePage() {
 
   return (
     <FloorScreen>
-      <PageHeader
-        back={{ href: '/store', label: 'Store' }}
+      <RouteHeader
+        path="/store/issue"
         eyebrow={tui(locale, 'ui.store.issue_eyebrow')}
         title={tui(
           locale,

@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 
 import { FloorScreen } from '@/components/fx/floor'
 import { FloorTabs } from '@/components/shell/floor-tabs'
-import { PageHeader } from '@/components/shell/page-shell'
+import { RouteHeader } from '@/components/shell/route-header'
 import { tui } from '@/lib/i18n-ui'
 import { requestLocale } from '@/lib/ui-locale'
 import { udRegister } from '@/modules/commercial/ud-queries'
@@ -71,8 +71,8 @@ export default async function StoreReceivePage() {
 
   return (
     <FloorScreen>
-      <PageHeader
-        back={{ href: '/store', label: 'Store' }}
+      <RouteHeader
+        path="/store/receive"
         eyebrow={tui(locale, 'ui.store.receive_eyebrow')}
         title={tui(locale, 'ui.store.receive_title')}
         meta={tui(locale, 'ui.store.receive_meta')}

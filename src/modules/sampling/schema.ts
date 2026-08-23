@@ -90,6 +90,14 @@ export const sampleRequests = pgTable(
 
     status: sampleRequestStatusEnum('status').notNull().default('requested'),
 
+    /**
+     * The sample's bill of materials as an ask, and what was actually used.
+     * A jsonb set, not a child table: lines have no identity outside their request
+     * and nothing else joins to them (HANDOFF-sampling-requisition §2). Shape is
+     * enforced by `requisitionLine` in zod at every write.
+     */
+    requisition: jsonb('requisition').$type<unknown[]>().notNull().default([]),
+
     createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

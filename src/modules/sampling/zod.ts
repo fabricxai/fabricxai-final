@@ -101,3 +101,40 @@ export const SAMPLING_ZOD_MAP = {
 export type SampleRequestPayload = z.infer<typeof sampleRequestPayload>
 export type FeedbackRoundPayload = z.infer<typeof feedbackRoundPayload>
 export type StageAdvancePayload = z.infer<typeof stageAdvancePayload>
+
+/**
+ * One requisition line — the ask, and later the answer (HANDOFF-sampling-requisition).
+ *
+ * `qty` is a decimal string with a free-text unit because these are consumption figures
+ * ("2.5 m of collar rib"), not money and not arithmetic inputs. `used` starts `pending`;
+ * a substitution must say what actually went into the garment, because that note is the
+ * difference between a fit comment and a trim comment when the buyer's feedback lands.
+ */
+export const requisitionLine = z
+  .object({
+    material: z.string().trim().min(1).max(120),
+    spec: z.string().trim().max(200).default(''),
+    qty: z.string().regex(/^\d{1,7}(\.\d{1,3})?$/, 'expected a quantity'),
+    unit: z.string().trim().min(1).max(16),
+    used: z.enum(['pending', 'as_specified', 'substituted']).default('pending'),
+    substituteNote: z.string().trim().max(200).default(''),
+  })
+  .refine((l) => l.used !== 'substituted' || l.substituteNote.length > 0, {
+    message: 'a substitution must say what went in instead',
+    path: ['substituteNote'],
+  })
+
+export type RequisitionLine = z.output<typeof requisitionLine>
+
+export const setRequisitionPayload = z.object({
+  sampleRequestId: z.string().uuid(),
+  lines: z.array(requisitionLine).max(60),
+})
+
+export const recordUsagePayload = z.object({
+  sampleRequestId: z.string().uuid(),
+  /** Index into the stored lines — the set is small and rewritten whole by the editor. */
+  lineIndex: z.number().int().min(0).max(59),
+  used: z.enum(['as_specified', 'substituted']),
+  substituteNote: z.string().trim().max(200).optional(),
+})

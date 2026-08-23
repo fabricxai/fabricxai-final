@@ -191,6 +191,14 @@ export const orderBreakdowns = pgTable(
     revision: integer('revision').notNull(),
     color: text('color').notNull(),
     size: text('size').notNull(),
+    /**
+     * The third axis a real PO line sometimes carries — a leg length, a ratio-pack id.
+     * Empty string means "no third axis" (the overwhelming case), NOT NULL because two
+     * NULLs are distinct to a unique index and the cell-dedupe guarantee must hold.
+     * Readers that aggregate by (color, size) — cutting's markers, shipment's cartons —
+     * see the union of variants, which is what a marker or a carton count wants.
+     */
+    variant: text('variant').notNull().default(''),
     qty: integer('qty').notNull(),
 
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -201,6 +209,7 @@ export const orderBreakdowns = pgTable(
       t.revision,
       t.color,
       t.size,
+      t.variant,
     ),
     index('order_breakdowns_company_style_idx').on(t.companyId, t.orderStyleId, t.revision),
     check('order_breakdowns_qty_positive', sql`${t.qty} > 0`),
@@ -357,5 +366,254 @@ export const tnaMilestones = pgTable(
     // "What is this person supposed to be doing this week?"
     index('tna_milestones_company_owner_idx').on(t.companyId, t.ownerUserId, t.plannedDate),
     index('tna_milestones_order_idx').on(t.orderId),
+  ],
+).enableRLS()
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Inputs readiness — the In-House Check List, as a table
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Where one input category stands for one order.
+ *
+ * `pending` — nothing done yet. `booked` — ordered from a supplier, not landed.
+ * `in_house` — physically at the store (carries `actualDate`). `not_applicable` —
+ * this style has no such input, which is neither an achievement nor a gap and is
+ * excluded from every count.
+ */
+export const orderInputStateEnum = pgEnum('order_input_state', [
+  'pending',
+  'booked',
+  'in_house',
+  'not_applicable',
+])
+
+/**
+ * The merchandiser's In-House Check List, one cell per (order, input category).
+ *
+ * Modelled on the sheet the factory actually keeps: a monthly workbook, one row per PO,
+ * a Plan/Actual date-pair column per input — fabric, pocketing, thread, labels, elastic,
+ * hook & bar, zipper, buttons, hangtags, barcodes, poly/carton — whose cells hold a date
+ * OR a word ("Booked", "Stock") OR a note ("101 rolls short, talk to commercial"). That
+ * date-or-word-or-note cell is the load-bearing observation: forcing it to a date-only
+ * column would make the sheet unusable on day one, so a cell here is state + optional
+ * dates + optional note, and the screen renders whichever the cell has.
+ *
+ * Categories are free text validated by the module's zod, not a pg enum: the canonical
+ * twelve cover the sheet, but a knit factory tracks collars and a woven one does not, and
+ * an ALTER TYPE for every new trim would make the schema the bottleneck for a checklist.
+ *
+ * The TNA stays the calendar of MILESTONES (fabric_in_house, trims_in_house); this is the
+ * per-material detail behind the trims milestone. The two are deliberately not merged —
+ * a milestone is a date the buyer plan hangs on, an input row is one supplier's delivery.
+ */
+export const orderInputs = pgTable(
+  'order_inputs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    companyId: uuid('company_id')
+      .notNull()
+      .references(() => companies.id, { onDelete: 'cascade' }),
+
+    orderId: uuid('order_id')
+      .notNull()
+      .references(() => orders.id, { onDelete: 'cascade' }),
+
+    /** One of the module's registered categories — see `INPUT_CATEGORIES` in zod.ts. */
+    category: text('category').notNull(),
+
+    state: orderInputStateEnum('state').notNull().default('pending'),
+
+    /** When it is meant to be in-house. Null on the sheet is common — a row can be tracked before it is planned. */
+    planDate: date('plan_date'),
+    /** When it actually landed. Set with `in_house`, cleared when the state moves back. */
+    actualDate: date('actual_date'),
+
+    /** The margin note — "coming by air, lands 26 Aug". The cell's third voice. */
+    note: text('note'),
+
+    updatedBy: text('updated_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('order_inputs_order_category_key').on(t.orderId, t.category),
+    index('order_inputs_company_order_idx').on(t.companyId, t.orderId),
+    // The matrix screen: every open order's cells in one read.
+    index('order_inputs_company_state_idx').on(t.companyId, t.state),
+    // An in-house cell carries the date it landed; the others must not pretend to.
+    check(
+      'order_inputs_actual_only_in_house',
+      sql`${t.actualDate} IS NULL OR ${t.state} = 'in_house'`,
+    ),
+  ],
+).enableRLS()
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Ship dates — a trail, not a column
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * `contract` — the date the order was sold against. `reship` — a renegotiated date,
+ * agreed with the buyer, now in force. `proposed` — asked for and not yet agreed;
+ * changes nothing until somebody records the agreement.
+ */
+export const shipDateKindEnum = pgEnum('ship_date_kind', ['contract', 'reship', 'proposed'])
+
+/**
+ * Every ship date this order has had, in order — the factory's own paper keeps
+ * `Ship Date`, `Re-Ship Date-01`, `Re-Ship Date-02` as separate columns because the
+ * history IS the negotiation record. A single overwritten column answers "when does
+ * it ship"; it cannot answer "when did we promise, who moved it, and on whose mail",
+ * which is the question a claim dispute actually asks.
+ *
+ * Append-only: nothing here is ever updated or deleted. `orders.planned_ex_factory_date`
+ * stays the denormalised date IN FORCE (the book sorts on it); recording a `reship`
+ * moves it, recording a `proposed` does not. The TNA is deliberately NOT recomputed by
+ * a ship-date row — rescheduling the calendar is its own decision with its own ripple
+ * preview, and welding the two together would move a factory's milestones as a side
+ * effect of typing in what a buyer asked for.
+ */
+export const orderShipDates = pgTable(
+  'order_ship_dates',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    companyId: uuid('company_id')
+      .notNull()
+      .references(() => companies.id, { onDelete: 'cascade' }),
+
+    orderId: uuid('order_id')
+      .notNull()
+      .references(() => orders.id, { onDelete: 'cascade' }),
+
+    shipDate: date('ship_date').notNull(),
+    kind: shipDateKindEnum('kind').notNull(),
+
+    /** Who agreed it and where — "buyer mail, 8 Aug", "sales contract §4". Free text on purpose: the evidence is a citation, not a foreign key. */
+    agreedWith: text('agreed_with'),
+    /** Why the date moved. Required for a reship by the service — a moved promise with no reason is the row nobody can defend later. */
+    reason: text('reason'),
+
+    createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('order_ship_dates_company_order_idx').on(t.companyId, t.orderId, t.createdAt)],
+).enableRLS()
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fabric legs, drops, colour approvals — HANDOFF-orders-dossier-additions
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * The fabric's journey, one row per (order, leg) — the confirmation sheet's
+ * FABRICS ETD / ETA / INHOUSE PLAN columns as data. The cell is the checklist
+ * shape (plan, actual, note); late is derived, never stored. The store's GRN
+ * stays the truth of "in-house"; a leg records the chase, not the stock.
+ */
+export const orderFabricLegs = pgTable(
+  'order_fabric_legs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    companyId: uuid('company_id')
+      .notNull()
+      .references(() => companies.id, { onDelete: 'cascade' }),
+    orderId: uuid('order_id')
+      .notNull()
+      .references(() => orders.id, { onDelete: 'cascade' }),
+
+    /** One of FABRIC_LEGS in zod.ts — booking_placed … in_house, in transit order. */
+    leg: text('leg').notNull(),
+
+    planDate: date('plan_date'),
+    actualDate: date('actual_date'),
+    /** "mill lost four days at ex-mill" — the chase's margin voice. */
+    note: text('note'),
+
+    updatedBy: text('updated_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('order_fabric_legs_order_leg_key').on(t.orderId, t.leg),
+    index('order_fabric_legs_company_order_idx').on(t.companyId, t.orderId),
+  ],
+).enableRLS()
+
+/**
+ * One buyer PO, several departures. Each drop carries its own latest-ship date and
+ * is read against the credit on its own; the order's denormalised ex-factory date
+ * is the LAST drop's — the order leaves the factory when the last drop does — and
+ * `saveDrops` keeps it in step in the same transaction.
+ */
+export const orderDrops = pgTable(
+  'order_drops',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    companyId: uuid('company_id')
+      .notNull()
+      .references(() => companies.id, { onDelete: 'cascade' }),
+    orderId: uuid('order_id')
+      .notNull()
+      .references(() => orders.id, { onDelete: 'cascade' }),
+
+    dropNo: integer('drop_no').notNull(),
+    qty: integer('qty').notNull(),
+    shipDate: date('ship_date').notNull(),
+    note: text('note'),
+
+    createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('order_drops_order_no_key').on(t.orderId, t.dropNo),
+    index('order_drops_company_order_idx').on(t.companyId, t.orderId),
+    check('order_drops_qty_positive', sql`${t.qty} > 0`),
+  ],
+).enableRLS()
+
+/** pending → sent → approved | rejected; rejected → sent. A log, not a gate — see the HANDOFF's §6. */
+export const colourApprovalStatusEnum = pgEnum('colour_approval_status', [
+  'pending',
+  'sent',
+  'approved',
+  'rejected',
+])
+
+/**
+ * The colour chain, one row per (order, colour, stage): lab dip → bulk lot → shade
+ * band. The merchandiser's record of what the BUYER approved and when — quality's
+ * 4-point result is deliberately not duplicated here. Colour is free text matched
+ * against the breakdown's colours by the screen, not an FK: an approval can be
+ * recorded before the grid revision that names the colour lands.
+ */
+export const orderColourApprovals = pgTable(
+  'order_colour_approvals',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    companyId: uuid('company_id')
+      .notNull()
+      .references(() => companies.id, { onDelete: 'cascade' }),
+    orderId: uuid('order_id')
+      .notNull()
+      .references(() => orders.id, { onDelete: 'cascade' }),
+
+    color: text('color').notNull(),
+    /** One of COLOUR_STAGES in zod.ts. */
+    stage: text('stage').notNull(),
+
+    status: colourApprovalStatusEnum('status').notNull().default('pending'),
+    /** When the buyer decided — their date, not ours. */
+    decidedOn: date('decided_on'),
+    note: text('note'),
+
+    updatedBy: text('updated_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('order_colour_approvals_cell_key').on(t.orderId, t.color, t.stage),
+    index('order_colour_approvals_company_order_idx').on(t.companyId, t.orderId),
   ],
 ).enableRLS()
