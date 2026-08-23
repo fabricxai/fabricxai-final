@@ -609,6 +609,8 @@ export async function loadChatTurns(input: { conversationId: string }): Promise<
       answer: string | null
       toolCalls: { name: string; ok: boolean; ms?: number; error?: string }[]
       model: string | null
+      /** Drafts this turn put in the approve inbox — the surface offers to verify them in place. */
+      proposedChangeIds: string[]
     }[]
   | ActionFailure
 > {
@@ -624,6 +626,7 @@ export async function loadChatTurns(input: { conversationId: string }): Promise<
       answer: turn.answer,
       toolCalls: normalizeStoredToolCalls(turn.toolCalls),
       model: turn.model,
+      proposedChangeIds: turn.proposedChangeIds,
     }))
   })
 }
