@@ -290,6 +290,32 @@ cheap; doing them per-module is what produces six drawers that disagree.
 
 ---
 
+## Phase 6 — Owner and admin (design runbook S1)
+
+Raised by the S1 VERIFY step. Two findings, both about doors rather than pixels: one screen that
+exists with no way in, and one action whose schema is narrower than the service behind it.
+
+- [ ] **6.1 🅜 `/dashboard/book` is orphaned by 2.1.** — Plan 2.1 turned `/dashboard` into a
+  redirect and left its child page live. `/dashboard/book` ("where the money is") is a real
+  screen that nothing links to: its parent redirects away before anybody reaches its links, and
+  `navItemFor` resolves it by longest prefix to the `dashboard` NAV entry, whose `roles` is empty
+  — so it is an owner-and-admin-only screen reachable only by typing the URL. Either fold what it
+  shows into `/home` the way its parent's figures were folded, or delete it and let the redirect
+  catch the path. Leaving a live child under a redirected parent is the state 2.1 was closing.
+  *Verify:* every route under `src/app/(app)` is reachable by clicking from a landing the role
+  actually lands on, or is a deliberate deep-link target named in a test.
+- [ ] **6.2 🅛 The approval-rule action is narrower than its service.** — `upsertApprovalRule`
+  accepts `autoApprove` and `minConfidence`; `setApprovalRule`'s zod does not include either, so
+  the auto-approve threshold cannot be set from any screen. That threshold is the one knob that
+  decides whether a measured draft ever skips a person, which makes it exactly the knob an owner
+  should be able to see and refuse. Either expose both fields with the sentence preview the rest
+  of the rule editor already builds, or drop them from the service so the two agree.
+  *Verify:* a rule saved with a threshold routes a draft above it to auto-approve and one below
+  it to the inbox, and the rule's sentence says which — in both languages. Unscored drafts
+  (`ai_chat`) must still never auto-approve whatever the threshold says.
+
+---
+
 ## Sequencing notes and dependencies
 
 - Phase 1 has no dependencies and every task is independently shippable — it can interleave with
@@ -302,6 +328,9 @@ cheap; doing them per-module is what produces six drawers that disagree.
   session that starts before the primitive exists designs against something nobody can build.
   5.2 and 5.3 are independent and can land first. 5.6 is the only Phase 5 task that touches
   `nav.ts`, and `core` rule 12 does not apply (this is shell, not `modules/core`).
+- Phase 6 has no dependencies and neither task blocks a design session: S1 is drawn against the
+  code as it stands today, with `/dashboard/book` absent from the canvas and the auto-approve
+  threshold left undrawn because there is no door for it yet.
 - The go-live gates (key rotation, rate limiting, password reset, `day0-run.log` cleanup) are not
   in this plan and remain ahead of all of it for any real-factory deployment.
 
