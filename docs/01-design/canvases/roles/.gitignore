@@ -1,0 +1,4 @@
+# The seeded page is a build output — ~3 MB of editor payload plus base64 brand assets,
+# reproducible from <session>/ with the command in its _README.md, and already living
+# online as the published Artifact. Only the source artboards and canvas.json are tracked.
+fabricx-role-*.html

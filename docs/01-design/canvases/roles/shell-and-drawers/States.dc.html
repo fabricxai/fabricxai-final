@@ -1,0 +1,164 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Anek+Bangla:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #FBFAF8; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: #181D29; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+  a:hover { color: #B88C21; }
+  .tabular, [data-numeric] { font-variant-numeric: tabular-nums; }
+  .fx-selvage { display: flex; align-items: stretch; overflow: hidden; }
+  .fx-selvage::before { content: ''; flex-shrink: 0; width: 3px; background: #A9A49A; }
+  .fx-selvage[data-status="on-track"]::before { background: #2F7D5B; }
+  .fx-selvage[data-status="at-risk"]::before { background: #8C5A16; }
+  .fx-selvage[data-status="late"]::before { background: #B23A32; }
+  .fx-selvage[data-status="done"]::before { background: #A9A49A; }
+  .fx-selvage[data-critical="true"]::before { width: 5px; }
+  .fx-thread-rule { height: 9px; background-image: repeating-linear-gradient(115deg, #E1B334 0 2px, transparent 2px 9px); }
+  .fx-thread-rule[data-variant="muted"] { height: 7px; background-image: repeating-linear-gradient(115deg, #D6D2C9 0 2px, transparent 2px 9px); }
+  .fx-weave { background-image: repeating-linear-gradient(146deg, transparent 0 7px, #E7E4DE 7px 9px, transparent 9px 17px); }
+  .fx-cut { clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%); border-radius: 8px; }
+  .fx-cut-chip { clip-path: polygon(0 0, 100% 0, 100% 100%, 10px 100%, 0 calc(100% - 10px)); }
+  @keyframes fx-spread { to { transform: translate(calc(var(--dx) * 6%), calc(var(--dy) * 6%)); } }
+  @keyframes fx-converge { 0% { transform: translate(calc(var(--dx) * 26%), calc(var(--dy) * 26%)) scale(.82); opacity: 0; } 62% { transform: translate(0, 0) scale(1.15); opacity: 1; } 100% { transform: translate(0, 0) scale(1); opacity: 1; } }
+  @keyframes fx-orbit { 0%, 100% { transform: rotate(-13deg); opacity: .45; } 50% { transform: rotate(13deg); opacity: 1; } }
+  @keyframes fx-travel { 0% { transform: translate(-10%, 10%); opacity: .25; } 40% { transform: translate(0, 0); opacity: 1; } 100% { transform: translate(10%, -10%); opacity: .25; } }
+  @keyframes fx-breathe { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(calc(var(--dx) * 3.5%), calc(var(--dy) * 3.5%)); } }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
+</style>
+</helmet>
+
+<div style="--fx-bg-canvas:#FBFAF8; --fx-bg-surface:#FFFFFF; --fx-bg-raised:#FFFFFF; --fx-bg-sunken:#F3F1EC; --fx-bg-hover:rgba(24,29,41,.035); --fx-bg-selected:rgba(225,179,52,.12); --fx-border-subtle:#E7E4DE; --fx-border-default:#D6D2C9; --fx-border-strong:#A9A49A; --fx-text-primary:#181D29; --fx-text-secondary:#4C5364; --fx-text-tertiary:#5E6675; --fx-text-disabled:#A8AEBB; --fx-text-inverse:#FBFAF8; --fx-accent:#E1B334; --fx-accent-hover:#CFA22B; --fx-accent-pressed:#B88C21; --fx-accent-subtle:#FAF1DA; --fx-accent-on:#181D29; --fx-success:#2F7D5B; --fx-warning:#8C5A16; --fx-danger:#B23A32; --fx-info:#2F5FA8; --fx-focus:#181D29; --fx-sh1:0 1px 2px rgba(24,29,41,.06); --fx-sh2:0 4px 12px rgba(24,29,41,.08); --fx-sh3:0 12px 32px rgba(24,29,41,.12); --fx-slash-angle:-34deg; --fx-weave-angle:146deg; --fx-thread-angle:115deg; width: 1900px; min-height: 800px; background: var(--fx-bg-canvas); color: var(--fx-text-primary); font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: 16px; line-height: 1.55; padding: 40px; display: flex; flex-direction: column;">
+
+  <div style="margin-bottom: 26px;">
+    <div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Every artboard, in five states</div>
+    <div style="font: 400 14px/1.6 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); margin-top: 10px; max-width: 96ch; text-wrap: pretty;">
+      Populated with real Bangladeshi data, empty with an instruction and a door, loading as the weave — never a circular spinner, there is not one in the system —
+      error as a bordered alert with the mark held and desaturated, and, on the floor only, offline-queued.
+    </div>
+  </div>
+  <div style="display: flex; gap: 32px; align-items: stretch;">
+    <div style="width: 340px; flex-shrink: 0; display: flex; flex-direction: column; gap: 12px;">
+    <div style="font: 500 11px/1.45 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--fx-text-tertiary); padding-bottom: 10px;">populated</div>
+    <div style="flex: 1; display: flex; flex-direction: column;"><div style="background: var(--fx-bg-surface); border: 1px solid var(--fx-border-subtle); border-radius: 8px; box-shadow: var(--fx-sh1); overflow: hidden; padding: 0px;">
+      <div class="fx-selvage" data-status="at-risk"  style="border-top: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 16px; padding: 12px 18px; min-height: 44px;">
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;">
+          <span data-numeric style="font: 500 12.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">GRN-2291</span>
+          <span style="font: 400 14px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-wrap: pretty;">12,180 m of 40s poplin</span>
+        </div>
+        <span style="font: 400 12.5px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary);">26 rolls · bonded against UD-2026-118</span>
+      </div>
+      
+      
+    </div>
+  </div>
+      <div class="fx-selvage" data-status="on-track"  style="border-top: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 16px; padding: 12px 18px; min-height: 44px;">
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;">
+          <span data-numeric style="font: 500 12.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">GRN-2290</span>
+          <span style="font: 400 14px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-wrap: pretty;">84 cartons of trims</span>
+        </div>
+        <span style="font: 400 12.5px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary);">Ha-Meem Accessories · inspected</span>
+      </div>
+      
+      
+    </div>
+  </div>
+      <div class="fx-selvage" data-status="done"  style="border-top: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 16px; padding: 12px 18px; min-height: 44px;">
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;">
+          <span data-numeric style="font: 500 12.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">GRN-2288</span>
+          <span style="font: 400 14px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-wrap: pretty;">40,000 poly bags</span>
+        </div>
+        <span style="font: 400 12.5px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary);">Padma Poly Bags · closed</span>
+      </div>
+      
+      
+    </div>
+  </div>
+    </div></div>
+  </div>
+    <div style="width: 340px; flex-shrink: 0; display: flex; flex-direction: column; gap: 12px;">
+    <div style="font: 500 11px/1.45 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--fx-text-tertiary); padding-bottom: 10px;">empty — an instruction and a door</div>
+    <div style="flex: 1; display: flex; flex-direction: column;"><div class="fx-weave" style="border: 1px solid var(--fx-border-subtle); border-radius: 8px; padding: 34px 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; text-align: center; background-color: var(--fx-bg-surface);">
+    <img src="marbim-logo-ink.png" alt="" style="width: 48px; height: 48px; display: block; flex-shrink: 0;" />
+    <div style="font: 600 17px/1.25 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary);">No receipt yet today</div>
+    <div style="font: 400 14px/1.55 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); max-width: 46ch; text-wrap: pretty;">The first truck of the day starts here. Photograph the challan at the gate and MARBIM reads it into a receipt for you to confirm.</div>
+    <button style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 10px 18px; font: 600 14px/1 'Plus Jakarta Sans', system-ui, sans-serif; min-height: 36px;  background: transparent; color: var(--fx-text-primary); border: 1px solid var(--fx-border-default); cursor: pointer;">Start a receipt</button>
+  </div></div>
+  </div>
+    <div style="width: 340px; flex-shrink: 0; display: flex; flex-direction: column; gap: 12px;">
+    <div style="font: 500 11px/1.45 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--fx-text-tertiary); padding-bottom: 10px;">loading — the weave, never a spinner</div>
+    <div style="flex: 1; display: flex; flex-direction: column;"><div style="border: 1px solid var(--fx-border-subtle); border-radius: 8px; background: var(--fx-bg-surface); flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 48px;">
+      <span style="position: relative; display: inline-block; width: 48px; height: 48px; flex-shrink: 0;"><img src="i-1.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: -0.896; --dy: 0.444; transform-origin: center; animation: fx-orbit 1.4s ease-in-out 0ms infinite;" /><img src="i-2.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: -0.271; --dy: 0.963; transform-origin: center; animation: fx-orbit 1.4s ease-in-out -90ms infinite;" /><img src="i-3.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: -0.97; --dy: -0.243; transform-origin: center; animation: fx-orbit 1.4s ease-in-out -180ms infinite;" /><img src="i-4.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: 0.415; --dy: 0.91; transform-origin: center; animation: fx-orbit 1.4s ease-in-out -270ms infinite;" /><img src="i-5.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: -0.512; --dy: -0.859; transform-origin: center; animation: fx-orbit 1.4s ease-in-out -360ms infinite;" /><img src="i-6.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: 0.936; --dy: 0.352; transform-origin: center; animation: fx-orbit 1.4s ease-in-out -450ms infinite;" /><img src="i-7.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: 0.282; --dy: -0.96; transform-origin: center; animation: fx-orbit 1.4s ease-in-out -540ms infinite;" /><img src="i-8.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: 0.908; --dy: -0.419; transform-origin: center; animation: fx-orbit 1.4s ease-in-out -630ms infinite;" /></span>
+      <span style="font: 400 13px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">Reading the store…</span>
+    </div></div>
+  </div>
+    <div style="width: 340px; flex-shrink: 0; display: flex; flex-direction: column; gap: 12px;">
+    <div style="font: 500 11px/1.45 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--fx-text-tertiary); padding-bottom: 10px;">error — what failed, and a way back</div>
+    <div style="flex: 1; display: flex; flex-direction: column;"><div style="border: 1px solid var(--fx-danger); border-radius: 8px; padding: 28px; display: flex; flex-direction: column; align-items: flex-start; gap: 12px; background: var(--fx-bg-surface); flex: 1;">
+      <img src="marbim-logo-ink.png" alt="" style="filter: grayscale(1); opacity: .5; width: 32px; height: 32px; display: block; flex-shrink: 0;" />
+      <div style="font: 600 17px/1.25 'Plus Jakarta Sans', system-ui, sans-serif;">That did not load</div>
+      <div style="font: 400 14px/1.55 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); text-wrap: pretty;">The store’s receipts could not be read just now. Nothing you entered has been lost.</div>
+      <button style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 10px 18px; font: 600 14px/1 'Plus Jakarta Sans', system-ui, sans-serif; min-height: 36px;  background: transparent; color: var(--fx-text-primary); border: 1px solid var(--fx-border-default); cursor: pointer;">Try again</button>
+    </div></div>
+  </div>
+    <div style="width: 400px; flex-shrink: 0; display: flex; flex-direction: column; gap: 12px;">
+    <div style="font: 500 11px/1.45 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--fx-text-tertiary); padding-bottom: 10px;">offline / queued — floor only</div>
+    <div style="flex: 1; display: flex; flex-direction: column;"><div style="flex: 1; display: flex; flex-direction: column; gap: 12px;">
+      <div style="border: 1px solid var(--fx-warning); border-radius: 999px; padding: 10px 16px; display: inline-flex; align-items: center; gap: 10px; font: 500 14px/1 'JetBrains Mono', ui-monospace, monospace; align-self: flex-start; background: var(--fx-bg-surface);">
+        <span style="width: 9px; height: 9px; border-radius: 999px; background: var(--fx-warning);"></span>offline · 2 saved here
+      </div>
+      <div style="background: var(--fx-bg-surface); border: 1px solid var(--fx-border-subtle); border-radius: 8px; box-shadow: var(--fx-sh1); overflow: hidden; padding: 0px;">
+        <div class="fx-selvage" data-status="done"  style="border-top: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 16px; padding: 12px 18px; min-height: 44px;">
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;">
+          <span data-numeric style="font: 500 12.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">11:42</span>
+          <span style="font: 400 14px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-wrap: pretty;">Receipt for PO-BF-0982 — saved on this tablet</span>
+        </div>
+        <span style="font: 400 12.5px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary);">it will send itself when the network comes back</span>
+      </div>
+      
+      
+    </div>
+  </div>
+        <div class="fx-selvage" data-status="done"  style="border-top: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 16px; padding: 12px 18px; min-height: 44px;">
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;">
+          <span data-numeric style="font: 500 12.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">11:51</span>
+          <span style="font: 400 14px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-wrap: pretty;">Issue of 620 m to lay 3 — saved on this tablet</span>
+        </div>
+        
+      </div>
+      
+      
+    </div>
+  </div>
+      </div>
+      <div style="border: 1px solid var(--fx-danger); border-radius: 8px; background: var(--fx-bg-surface); padding: 16px 20px; display: flex; flex-direction: column; gap: 8px;">
+        <div style="font: 600 15px/1.3 'Plus Jakarta Sans', system-ui, sans-serif;">1 entry was refused</div>
+        <div style="font: 400 13.5px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); text-wrap: pretty;">issue stock — a bonded issue needs a UD reference</div>
+      </div>
+      <div style="font: 400 12px/1.5 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); text-wrap: pretty;">Queued will send itself. Refused never will — somebody has to look at it.</div>
+    </div></div>
+  </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

@@ -1,0 +1,111 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Anek+Bangla:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #0F131B; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: #F4F3F0; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+  a:hover { color: #F2D077; }
+  .tabular, [data-numeric] { font-variant-numeric: tabular-nums; }
+  .fx-selvage { display: flex; align-items: stretch; overflow: hidden; }
+  .fx-selvage::before { content: ''; flex-shrink: 0; width: 3px; background: #4E576B; }
+  .fx-selvage[data-status="on-track"]::before { background: #4FA97D; }
+  .fx-selvage[data-status="at-risk"]::before { background: #D99A3F; }
+  .fx-selvage[data-status="late"]::before { background: #E0665C; }
+  .fx-selvage[data-status="done"]::before { background: #4E576B; }
+  .fx-selvage[data-critical="true"]::before { width: 5px; }
+  .fx-thread-rule { height: 9px; background-image: repeating-linear-gradient(115deg, #E1B334 0 2px, transparent 2px 9px); }
+  .fx-thread-rule[data-variant="muted"] { height: 7px; background-image: repeating-linear-gradient(115deg, #343B4C 0 2px, transparent 2px 9px); }
+  .fx-weave { background-image: repeating-linear-gradient(146deg, transparent 0 7px, #252B3A 7px 9px, transparent 9px 17px); }
+  .fx-cut { clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%); border-radius: 8px; }
+  .fx-cut-chip { clip-path: polygon(0 0, 100% 0, 100% 100%, 10px 100%, 0 calc(100% - 10px)); }
+  @keyframes fx-spread { to { transform: translate(calc(var(--dx) * 6%), calc(var(--dy) * 6%)); } }
+  @keyframes fx-converge { 0% { transform: translate(calc(var(--dx) * 26%), calc(var(--dy) * 26%)) scale(.82); opacity: 0; } 62% { transform: translate(0, 0) scale(1.15); opacity: 1; } 100% { transform: translate(0, 0) scale(1); opacity: 1; } }
+  @keyframes fx-orbit { 0%, 100% { transform: rotate(-13deg); opacity: .45; } 50% { transform: rotate(13deg); opacity: 1; } }
+  @keyframes fx-travel { 0% { transform: translate(-10%, 10%); opacity: .25; } 40% { transform: translate(0, 0); opacity: 1; } 100% { transform: translate(10%, -10%); opacity: .25; } }
+  @keyframes fx-breathe { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(calc(var(--dx) * 3.5%), calc(var(--dy) * 3.5%)); } }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
+</style>
+</helmet>
+
+<div style="--fx-bg-canvas:#0F131B; --fx-bg-surface:#181D29; --fx-bg-raised:#212736; --fx-bg-sunken:#0B0E15; --fx-bg-hover:rgba(255,255,255,.05); --fx-bg-selected:rgba(225,179,52,.17); --fx-border-subtle:#252B3A; --fx-border-default:#343B4C; --fx-border-strong:#4E576B; --fx-text-primary:#F4F3F0; --fx-text-secondary:#AEB5C4; --fx-text-tertiary:#7D8597; --fx-text-disabled:#565E71; --fx-text-inverse:#181D29; --fx-accent:#E1B334; --fx-accent-hover:#EBC352; --fx-accent-pressed:#F2D077; --fx-accent-subtle:rgba(225,179,52,.14); --fx-accent-on:#181D29; --fx-success:#4FA97D; --fx-warning:#D99A3F; --fx-danger:#E0665C; --fx-info:#6D9BE8; --fx-focus:#E1B334; --fx-sh1:none; --fx-sh2:0 6px 20px rgba(0,0,0,.45); --fx-sh3:0 18px 44px rgba(0,0,0,.55); --fx-slash-angle:-34deg; --fx-weave-angle:146deg; --fx-thread-angle:115deg; width: 390px; min-height: 844px; background: var(--fx-bg-sunken); color: var(--fx-text-primary); font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: 16px; line-height: 1.55; padding: 0px; display: flex; flex-direction: column;">
+
+  <div style="flex: 1; min-height: 0; opacity: .34; filter: saturate(.55); display: flex; flex-direction: column; overflow: hidden;">
+    <header style="border-bottom: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface); padding: 12px 16px; min-height: 64px; display: flex; align-items: center;">
+      <span style="font: 600 18px/1.2 'Plus Jakarta Sans', system-ui, sans-serif;">Receiving</span>
+    </header>
+    <div style="padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+      <div class="fx-selvage" data-status="at-risk" style="background: var(--fx-bg-surface); border-top: 1px solid var(--fx-border-subtle); ">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 16px; padding: 14px 20px; min-height: 56px;">
+      <span style="display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1;">
+        <span style="font: 600 17px/1.3 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary);">Shanghai Textile</span>
+        <span style="font: 400 15px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">PO-IMP-0311 · 12,400 m</span>
+      </span>
+      
+    </div>
+  </div>
+    </div>
+  </div>
+
+  <div style="flex-shrink: 0; background: var(--fx-bg-surface); border-top: 1px solid var(--fx-border-subtle); border-radius: 14px 14px 0 0; box-shadow: var(--fx-sh3); display: flex; flex-direction: column; max-height: 640px; overflow: hidden;">
+    <div style="display: flex; justify-content: center; padding: 10px 0 4px;">
+      <span style="width: 44px; height: 4px; border-radius: 999px; background: var(--fx-border-strong);"></span>
+    </div>
+    <div style="display: flex; align-items: stretch;">
+      <div style="width: 3px; flex-shrink: 0; background: var(--fx-warning);"></div>
+      <div style="flex: 1; min-width: 0; padding: 14px 18px 16px; border-bottom: 1px solid var(--fx-border-subtle); display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;">
+            <span data-numeric style="font: 500 14px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">ROLL-11482</span><span style="font: 400 13px/1.3 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">40s poplin · shade B</span>
+          </div>
+          <span style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-warning);">quarantined</span>
+        </div>
+        <div style="background: var(--fx-bg-sunken); border: 1px solid var(--fx-border-subtle); border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 5px;">
+          <div style="font: 500 10px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">On this roll</div>
+          <div style="display: flex; align-items: baseline; gap: 6px;">
+            <span data-numeric style="font: 600 26px/1.05 'Plus Jakarta Sans', system-ui, sans-serif; letter-spacing: -.02em;">218.4</span>
+            <span style="font: 400 13px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">m</span>
+          </div>
+          <div style="font: 400 12.5px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">of 240 m received · 21.6 m cut away at the 4-point check</div>
+        </div>
+      </div>
+    </div>
+    <div style="display: flex; gap: 4px; padding: 0 18px; border-bottom: 1px solid var(--fx-border-subtle);">
+      <span style="padding: 12px 10px; font: 600 13px/1 'Plus Jakarta Sans', system-ui, sans-serif; border-bottom: 2px solid var(--fx-text-primary); margin-bottom: -1px;">Details</span>
+      <span style="padding: 12px 10px; font: 500 13px/1 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary);">History</span>
+    </div>
+    <div style="padding: 16px 18px; display: flex; flex-direction: column; gap: 2px; overflow: hidden;">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding: 9px 0; border-bottom: 1px solid var(--fx-border-subtle);">
+    <span style="font: 400 13px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">Received on</span>
+    <span style="font: 500 14px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-align: right;">GRN-2291 · 28 Nov 2026</span>
+  </div>
+      <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding: 9px 0; border-bottom: 1px solid var(--fx-border-subtle);">
+    <span style="font: 400 13px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">Bonded against</span>
+    <span style="font: 500 14px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-align: right;">UD-2026-118</span>
+  </div>
+      <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding: 9px 0; border-bottom: 1px solid var(--fx-border-subtle);">
+    <span style="font: 400 13px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">4-point score</span>
+    <span style="font: 500 14px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-align: right;">19 points / 100 m — passes</span>
+  </div>
+      <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding: 9px 0; border-bottom: 1px solid var(--fx-border-subtle);">
+    <span style="font: 400 13px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">Shade group</span>
+    <span style="font: 500 14px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-align: right;">B — do not mix with A on one lay</span>
+  </div>
+    </div>
+    <div style="padding: 14px 18px 20px; border-top: 1px solid var(--fx-border-subtle); display: flex; gap: 10px; justify-content: flex-end;">
+      <button style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 10px 18px; font: 600 14px/1 'Plus Jakarta Sans', system-ui, sans-serif; min-height: 44px;  background: transparent; color: var(--fx-text-primary); border: 1px solid transparent; cursor: pointer;">Move shelf</button><button style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 10px 18px; font: 600 14px/1 'Plus Jakarta Sans', system-ui, sans-serif; min-height: 44px;  background: var(--fx-accent); color: var(--fx-accent-on); border: none; cursor: pointer;">Issue to cutting</button>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

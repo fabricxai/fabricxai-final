@@ -1,0 +1,360 @@
+{
+  "pages": [
+    {
+      "id": "shell",
+      "name": "Shell"
+    },
+    {
+      "id": "drawers",
+      "name": "Drawers"
+    },
+    {
+      "id": "shared",
+      "name": "Shared screens"
+    },
+    {
+      "id": "auth",
+      "name": "Auth & states"
+    },
+    {
+      "id": "bengali",
+      "name": "Bengali"
+    }
+  ],
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 1060,
+      "page": "shell",
+      "title": "/home · shell · desk · owner · populated"
+    },
+    {
+      "file": "Rails.dc.html",
+      "x": 1560,
+      "y": 0,
+      "w": 1180,
+      "h": 1300,
+      "page": "shell",
+      "title": "shell · rail · owner 25 | merchandiser 13 | production 7 + More"
+    },
+    {
+      "file": "ShellFloor.dc.html",
+      "x": 0,
+      "y": 1500,
+      "w": 768,
+      "h": 1024,
+      "page": "shell",
+      "title": "/store/receive · shell · floor · dark"
+    },
+    {
+      "file": "ShellPhone.dc.html",
+      "x": 900,
+      "y": 1500,
+      "w": 390,
+      "h": 920,
+      "page": "shell",
+      "title": "shell · phone · tab bar"
+    },
+    {
+      "file": "PhoneSheet.dc.html",
+      "x": 1390,
+      "y": 1500,
+      "w": 390,
+      "h": 844,
+      "page": "shell",
+      "title": "shell · phone · drawer as bottom sheet"
+    },
+    {
+      "file": "ShellOverlays.dc.html",
+      "x": 1880,
+      "y": 1500,
+      "w": 1240,
+      "h": 1080,
+      "page": "shell",
+      "title": "shell · the ? sheet, the mark’s states, the role phrase"
+    },
+    {
+      "file": "DrawerAnatomy.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1160,
+      "h": 1080,
+      "page": "drawers",
+      "title": "drawer · anatomy · PO-IMP-0311"
+    },
+    {
+      "file": "DrawerRecord.dc.html",
+      "x": 1280,
+      "y": 0,
+      "w": 1980,
+      "h": 1080,
+      "page": "drawers",
+      "title": "drawer · record · 560 | 560 | 720"
+    },
+    {
+      "file": "DrawerDraft.dc.html",
+      "x": 0,
+      "y": 1280,
+      "w": 640,
+      "h": 1540,
+      "page": "drawers",
+      "title": "drawer · draft · GRN from a challan · Fields"
+    },
+    {
+      "file": "DrawerDraftSource.dc.html",
+      "x": 760,
+      "y": 1280,
+      "w": 640,
+      "h": 1180,
+      "page": "drawers",
+      "title": "drawer · draft · Source"
+    },
+    {
+      "file": "DrawerDraftStates.dc.html",
+      "x": 1520,
+      "y": 1280,
+      "w": 1260,
+      "h": 1180,
+      "page": "drawers",
+      "title": "drawer · draft · raiser | ai_chat"
+    },
+    {
+      "file": "DrawerException.dc.html",
+      "x": 0,
+      "y": 2960,
+      "w": 1260,
+      "h": 1140,
+      "page": "drawers",
+      "title": "drawer · exception · PO-BF-2044"
+    },
+    {
+      "file": "DrawerGate.dc.html",
+      "x": 1380,
+      "y": 2960,
+      "w": 1260,
+      "h": 1220,
+      "page": "drawers",
+      "title": "drawer · gate · UD overdraw · store | production"
+    },
+    {
+      "file": "DrawerPersonDoc.dc.html",
+      "x": 2760,
+      "y": 2960,
+      "w": 1260,
+      "h": 1140,
+      "page": "drawers",
+      "title": "drawer · person | drawer · document"
+    },
+    {
+      "file": "Approve.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1280,
+      "h": 940,
+      "page": "shared",
+      "title": "/approve · populated"
+    },
+    {
+      "file": "ApproveEmpty.dc.html",
+      "x": 1400,
+      "y": 0,
+      "w": 1280,
+      "h": 860,
+      "page": "shared",
+      "title": "/approve · empty"
+    },
+    {
+      "file": "Alerts.dc.html",
+      "x": 0,
+      "y": 1120,
+      "w": 1280,
+      "h": 880,
+      "page": "shared",
+      "title": "/alerts · populated"
+    },
+    {
+      "file": "AlertsEmpty.dc.html",
+      "x": 1400,
+      "y": 1120,
+      "w": 1280,
+      "h": 720,
+      "page": "shared",
+      "title": "/alerts · empty"
+    },
+    {
+      "file": "Refused.dc.html",
+      "x": 0,
+      "y": 2120,
+      "w": 1280,
+      "h": 860,
+      "page": "shared",
+      "title": "/refused · populated"
+    },
+    {
+      "file": "RefusedEmpty.dc.html",
+      "x": 1400,
+      "y": 2120,
+      "w": 1280,
+      "h": 700,
+      "page": "shared",
+      "title": "/refused · empty"
+    },
+    {
+      "file": "Factory.dc.html",
+      "x": 0,
+      "y": 3100,
+      "w": 1280,
+      "h": 960,
+      "page": "shared",
+      "title": "/factory · populated"
+    },
+    {
+      "file": "FactoryEmpty.dc.html",
+      "x": 1400,
+      "y": 3100,
+      "w": 1280,
+      "h": 720,
+      "page": "shared",
+      "title": "/factory · empty"
+    },
+    {
+      "file": "Settings.dc.html",
+      "x": 0,
+      "y": 4180,
+      "w": 1280,
+      "h": 1220,
+      "page": "shared",
+      "title": "/settings · populated · owner"
+    },
+    {
+      "file": "SettingsReadOnly.dc.html",
+      "x": 1400,
+      "y": 4180,
+      "w": 1280,
+      "h": 920,
+      "page": "shared",
+      "title": "/settings · read-only profile"
+    },
+    {
+      "file": "Login.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1260,
+      "h": 820,
+      "page": "auth",
+      "title": "/login · desk + phone"
+    },
+    {
+      "file": "Signup.dc.html",
+      "x": 1360,
+      "y": 0,
+      "w": 1260,
+      "h": 900,
+      "page": "auth",
+      "title": "/signup · desk + phone"
+    },
+    {
+      "file": "Confirm.dc.html",
+      "x": 2720,
+      "y": 0,
+      "w": 1260,
+      "h": 820,
+      "page": "auth",
+      "title": "email confirmation · desk + phone"
+    },
+    {
+      "file": "Forgot.dc.html",
+      "x": 4080,
+      "y": 0,
+      "w": 1260,
+      "h": 1220,
+      "page": "auth",
+      "title": "/forgot-password · /reset-password · desk + phone"
+    },
+    {
+      "file": "States.dc.html",
+      "x": 0,
+      "y": 1400,
+      "w": 1900,
+      "h": 800,
+      "page": "auth",
+      "title": "the five states strip"
+    },
+    {
+      "file": "BengaliShell.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 1140,
+      "page": "bengali",
+      "title": "/home · shell · desk · bn"
+    },
+    {
+      "file": "BengaliApprove.dc.html",
+      "x": 1560,
+      "y": 0,
+      "w": 1280,
+      "h": 900,
+      "page": "bengali",
+      "title": "/approve · bn"
+    },
+    {
+      "file": "BengaliDraft.dc.html",
+      "x": 2960,
+      "y": 0,
+      "w": 640,
+      "h": 1620,
+      "page": "bengali",
+      "title": "drawer · draft · bn"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "brief-shell",
+      "page": "shell",
+      "x": 0,
+      "y": -220,
+      "w": 620,
+      "text": "S0 — Shell, drawer system, shared surfaces.\n\nEverything S1–S15 draws is composed from these five pages. The rail, the top bar, the six drawer families and the five shared screens are locked here so no later canvas has to invent them.\n\nThe rail is the access rule made visible: a role with no access has no entry, not a disabled one."
+    },
+    {
+      "id": "brief-drawers",
+      "page": "drawers",
+      "x": 0,
+      "y": -260,
+      "w": 660,
+      "text": "The side-drawer contract.\n\nLists on the page, details in the drawer. 560px default, 720px when the body is a grid. A drawer never opens a second drawer — a link inside one navigates to the target’s page with that row’s drawer already open (?open=…), so a push notification and an approve-inbox source link land in the same place.\n\nSix families: record · draft · exception · gate · person · document."
+    },
+    {
+      "id": "brief-shared",
+      "page": "shared",
+      "x": 0,
+      "y": -240,
+      "w": 640,
+      "text": "The five screens every role shares, each populated and empty.\n\nThe empty states are the work here. An empty approve inbox that says “nothing routed to you” teaches a storekeeper that the screen is not for them; one that names the two draft kinds a storekeeper raises, and the door that raises each, teaches them the opposite."
+    },
+    {
+      "id": "brief-auth",
+      "page": "auth",
+      "x": 0,
+      "y": -200,
+      "w": 620,
+      "text": "Auth, and the five states every later artboard points back at.\n\nThe weave wash is one of its four sanctioned uses, and the only place it covers this much of the viewport. Loading is the mark, never a circular spinner — there is not one anywhere in this system."
+    },
+    {
+      "id": "brief-bengali",
+      "page": "bengali",
+      "x": 0,
+      "y": -220,
+      "w": 620,
+      "text": "The Bengali pass, at the length the floor actually reads.\n\nAnek Bangla at the same px, one step looser. No negative tracking (matra clusters break), no 700 weight, no uppercase transform. Identifiers, money and quantities stay Latin mono in both languages: the paper on the desk says PO-BF-2044, so the screen does too."
+    }
+  ],
+  "launch": {
+    "view": "canvas",
+    "page": "shell"
+  }
+}

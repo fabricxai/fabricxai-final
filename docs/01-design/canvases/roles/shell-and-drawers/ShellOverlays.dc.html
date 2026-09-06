@@ -1,0 +1,227 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Anek+Bangla:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #FBFAF8; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: #181D29; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+  a:hover { color: #B88C21; }
+  .tabular, [data-numeric] { font-variant-numeric: tabular-nums; }
+  .fx-selvage { display: flex; align-items: stretch; overflow: hidden; }
+  .fx-selvage::before { content: ''; flex-shrink: 0; width: 3px; background: #A9A49A; }
+  .fx-selvage[data-status="on-track"]::before { background: #2F7D5B; }
+  .fx-selvage[data-status="at-risk"]::before { background: #8C5A16; }
+  .fx-selvage[data-status="late"]::before { background: #B23A32; }
+  .fx-selvage[data-status="done"]::before { background: #A9A49A; }
+  .fx-selvage[data-critical="true"]::before { width: 5px; }
+  .fx-thread-rule { height: 9px; background-image: repeating-linear-gradient(115deg, #E1B334 0 2px, transparent 2px 9px); }
+  .fx-thread-rule[data-variant="muted"] { height: 7px; background-image: repeating-linear-gradient(115deg, #D6D2C9 0 2px, transparent 2px 9px); }
+  .fx-weave { background-image: repeating-linear-gradient(146deg, transparent 0 7px, #E7E4DE 7px 9px, transparent 9px 17px); }
+  .fx-cut { clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%); border-radius: 8px; }
+  .fx-cut-chip { clip-path: polygon(0 0, 100% 0, 100% 100%, 10px 100%, 0 calc(100% - 10px)); }
+  @keyframes fx-spread { to { transform: translate(calc(var(--dx) * 6%), calc(var(--dy) * 6%)); } }
+  @keyframes fx-converge { 0% { transform: translate(calc(var(--dx) * 26%), calc(var(--dy) * 26%)) scale(.82); opacity: 0; } 62% { transform: translate(0, 0) scale(1.15); opacity: 1; } 100% { transform: translate(0, 0) scale(1); opacity: 1; } }
+  @keyframes fx-orbit { 0%, 100% { transform: rotate(-13deg); opacity: .45; } 50% { transform: rotate(13deg); opacity: 1; } }
+  @keyframes fx-travel { 0% { transform: translate(-10%, 10%); opacity: .25; } 40% { transform: translate(0, 0); opacity: 1; } 100% { transform: translate(10%, -10%); opacity: .25; } }
+  @keyframes fx-breathe { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(calc(var(--dx) * 3.5%), calc(var(--dy) * 3.5%)); } }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
+</style>
+</helmet>
+
+<div style="--fx-bg-canvas:#FBFAF8; --fx-bg-surface:#FFFFFF; --fx-bg-raised:#FFFFFF; --fx-bg-sunken:#F3F1EC; --fx-bg-hover:rgba(24,29,41,.035); --fx-bg-selected:rgba(225,179,52,.12); --fx-border-subtle:#E7E4DE; --fx-border-default:#D6D2C9; --fx-border-strong:#A9A49A; --fx-text-primary:#181D29; --fx-text-secondary:#4C5364; --fx-text-tertiary:#5E6675; --fx-text-disabled:#A8AEBB; --fx-text-inverse:#FBFAF8; --fx-accent:#E1B334; --fx-accent-hover:#CFA22B; --fx-accent-pressed:#B88C21; --fx-accent-subtle:#FAF1DA; --fx-accent-on:#181D29; --fx-success:#2F7D5B; --fx-warning:#8C5A16; --fx-danger:#B23A32; --fx-info:#2F5FA8; --fx-focus:#181D29; --fx-sh1:0 1px 2px rgba(24,29,41,.06); --fx-sh2:0 4px 12px rgba(24,29,41,.08); --fx-sh3:0 12px 32px rgba(24,29,41,.12); --fx-slash-angle:-34deg; --fx-weave-angle:146deg; --fx-thread-angle:115deg; width: 1240px; min-height: 1080px; background: var(--fx-bg-canvas); color: var(--fx-text-primary); font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: 16px; line-height: 1.55; padding: 40px; display: flex; flex-direction: column;">
+
+  <div style="margin-bottom: 26px;">
+    <div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Shell · what the top bar opens</div>
+    <h1 style="font: 700 30px/1.15 'Plus Jakarta Sans', system-ui, sans-serif; letter-spacing: -.02em; margin: 10px 0 12px;">The mark, the sheet, and the phrase</h1>
+    <div style="font: 400 14px/1.6 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); max-width: 84ch; text-wrap: pretty;">
+      Three pieces of chrome that belong to no module. Locked here so no later canvas redraws them.
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 48px; align-items: flex-start;">
+    <div style="display: flex; flex-direction: column; gap: 12px; flex-shrink: 0;">
+      <div style="font: 500 11px/1.45 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--fx-text-tertiary); padding-bottom: 10px;">? — anywhere, and it is the whole keyboard</div>
+      <div class="fx-cut" style="width: 520px; background: var(--fx-bg-raised); border: 1px solid var(--fx-border-subtle); border-radius: 14px; box-shadow: var(--fx-sh3); padding: 28px; display: flex; flex-direction: column; gap: 20px;">
+    <span style="font: 600 18px/1.2 'Plus Jakarta Sans', system-ui, sans-serif;">Keyboard</span>
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+      <span style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary); padding-bottom: 8px;">Anywhere</span>
+      <div style="display: flex; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--fx-border-subtle);">
+        <span style="display: inline-flex; gap: 5px; min-width: 92px;"><kbd style="display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px; font: 500 12px/1 'JetBrains Mono', ui-monospace, monospace; background: var(--fx-bg-surface); border: 1px solid var(--fx-border-default); border-bottom-width: 2px; border-radius: 5px; color: var(--fx-text-secondary);">Ctrl</kbd><kbd style="display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px; font: 500 12px/1 'JetBrains Mono', ui-monospace, monospace; background: var(--fx-bg-surface); border: 1px solid var(--fx-border-default); border-bottom-width: 2px; border-radius: 5px; color: var(--fx-text-secondary);">K</kbd></span>
+        <span style="font: 400 13.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">ask MARBIM about the screen you are on</span>
+        <span style="margin-left: auto; font: 400 11.5px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); white-space: nowrap;">⌘K on a Mac</span>
+      </div><div style="display: flex; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--fx-border-subtle);">
+        <span style="display: inline-flex; gap: 5px; min-width: 92px;"><kbd style="display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px; font: 500 12px/1 'JetBrains Mono', ui-monospace, monospace; background: var(--fx-bg-surface); border: 1px solid var(--fx-border-default); border-bottom-width: 2px; border-radius: 5px; color: var(--fx-text-secondary);">?</kbd></span>
+        <span style="font: 400 13.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">this sheet</span>
+        
+      </div>
+    </div><div style="display: flex; flex-direction: column; gap: 2px;">
+      <span style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary); padding-bottom: 8px;">Order book</span>
+      <div style="display: flex; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--fx-border-subtle);">
+        <span style="display: inline-flex; gap: 5px; min-width: 92px;"><kbd style="display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px; font: 500 12px/1 'JetBrains Mono', ui-monospace, monospace; background: var(--fx-bg-surface); border: 1px solid var(--fx-border-default); border-bottom-width: 2px; border-radius: 5px; color: var(--fx-text-secondary);">j</kbd></span>
+        <span style="font: 400 13.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">next order</span>
+        <span style="margin-left: auto; font: 400 11.5px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); white-space: nowrap;">/orders</span>
+      </div><div style="display: flex; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--fx-border-subtle);">
+        <span style="display: inline-flex; gap: 5px; min-width: 92px;"><kbd style="display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px; font: 500 12px/1 'JetBrains Mono', ui-monospace, monospace; background: var(--fx-bg-surface); border: 1px solid var(--fx-border-default); border-bottom-width: 2px; border-radius: 5px; color: var(--fx-text-secondary);">k</kbd></span>
+        <span style="font: 400 13.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">previous order</span>
+        <span style="margin-left: auto; font: 400 11.5px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); white-space: nowrap;">/orders</span>
+      </div><div style="display: flex; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--fx-border-subtle);">
+        <span style="display: inline-flex; gap: 5px; min-width: 92px;"><kbd style="display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px; font: 500 12px/1 'JetBrains Mono', ui-monospace, monospace; background: var(--fx-bg-surface); border: 1px solid var(--fx-border-default); border-bottom-width: 2px; border-radius: 5px; color: var(--fx-text-secondary);">↵</kbd></span>
+        <span style="font: 400 13.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">open the focused order</span>
+        <span style="margin-left: auto; font: 400 11.5px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); white-space: nowrap;">/orders</span>
+      </div><div style="display: flex; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--fx-border-subtle);">
+        <span style="display: inline-flex; gap: 5px; min-width: 92px;"><kbd style="display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px; font: 500 12px/1 'JetBrains Mono', ui-monospace, monospace; background: var(--fx-bg-surface); border: 1px solid var(--fx-border-default); border-bottom-width: 2px; border-radius: 5px; color: var(--fx-text-secondary);">i</kbd></span>
+        <span style="font: 400 13.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">inputs readiness</span>
+        <span style="margin-left: auto; font: 400 11.5px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); white-space: nowrap;">/orders</span>
+      </div>
+    </div><div style="display: flex; flex-direction: column; gap: 2px;">
+      <span style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary); padding-bottom: 8px;">Approve inbox</span>
+      <div style="display: flex; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--fx-border-subtle);">
+        <span style="display: inline-flex; gap: 5px; min-width: 92px;"><kbd style="display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px; font: 500 12px/1 'JetBrains Mono', ui-monospace, monospace; background: var(--fx-bg-surface); border: 1px solid var(--fx-border-default); border-bottom-width: 2px; border-radius: 5px; color: var(--fx-text-secondary);">j</kbd></span>
+        <span style="font: 400 13.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">next draft</span>
+        <span style="margin-left: auto; font: 400 11.5px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); white-space: nowrap;">/approve</span>
+      </div><div style="display: flex; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--fx-border-subtle);">
+        <span style="display: inline-flex; gap: 5px; min-width: 92px;"><kbd style="display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px; font: 500 12px/1 'JetBrains Mono', ui-monospace, monospace; background: var(--fx-bg-surface); border: 1px solid var(--fx-border-default); border-bottom-width: 2px; border-radius: 5px; color: var(--fx-text-secondary);">k</kbd></span>
+        <span style="font: 400 13.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">previous draft</span>
+        <span style="margin-left: auto; font: 400 11.5px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); white-space: nowrap;">/approve</span>
+      </div><div style="display: flex; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--fx-border-subtle);">
+        <span style="display: inline-flex; gap: 5px; min-width: 92px;"><kbd style="display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px; font: 500 12px/1 'JetBrains Mono', ui-monospace, monospace; background: var(--fx-bg-surface); border: 1px solid var(--fx-border-default); border-bottom-width: 2px; border-radius: 5px; color: var(--fx-text-secondary);">a</kbd></span>
+        <span style="font: 400 13.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">approve the focused draft — with your corrections</span>
+        <span style="margin-left: auto; font: 400 11.5px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); white-space: nowrap;">/approve</span>
+      </div><div style="display: flex; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--fx-border-subtle);">
+        <span style="display: inline-flex; gap: 5px; min-width: 92px;"><kbd style="display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px; font: 500 12px/1 'JetBrains Mono', ui-monospace, monospace; background: var(--fx-bg-surface); border: 1px solid var(--fx-border-default); border-bottom-width: 2px; border-radius: 5px; color: var(--fx-text-secondary);">r</kbd></span>
+        <span style="font: 400 13.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">reject — asks for a reason</span>
+        <span style="margin-left: auto; font: 400 11.5px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); white-space: nowrap;">/approve</span>
+      </div><div style="display: flex; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--fx-border-subtle);">
+        <span style="display: inline-flex; gap: 5px; min-width: 92px;"><kbd style="display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px; font: 500 12px/1 'JetBrains Mono', ui-monospace, monospace; background: var(--fx-bg-surface); border: 1px solid var(--fx-border-default); border-bottom-width: 2px; border-radius: 5px; color: var(--fx-text-secondary);">x</kbd></span>
+        <span style="font: 400 13.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">select for a batch</span>
+        <span style="margin-left: auto; font: 400 11.5px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); white-space: nowrap;">/approve</span>
+      </div>
+    </div>
+    <span style="font: 400 12px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); text-wrap: pretty;">
+      Nothing here is destructive without a confirm — approve and reject always show what changes first.
+    </span>
+  </div>
+      <div style="font: 400 12px/1.5 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); padding: 10px 0 0; max-width: 70ch; text-wrap: pretty;">Only bindings that exist are listed. A sheet with aspirations on it teaches people the sheet lies, and then nobody opens it again.</div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 34px; min-width: 0;">
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        <div style="font: 500 11px/1.45 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--fx-text-tertiary); padding-bottom: 10px;">the mark — the product’s only loading affordance</div>
+        <div style="display: flex; gap: 14px; flex-wrap: wrap;">
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; width: 120px;">
+    <div style="width: 72px; height: 72px; border: 1px solid var(--fx-border-subtle); border-radius: 8px; background: var(--fx-bg-surface); display: flex; align-items: center; justify-content: center;">
+      <img src="marbim-logo-ink.png" alt="" style="width: 48px; height: 48px; display: block; flex-shrink: 0;" />
+    </div>
+    <span style="font: 500 11.5px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">rest</span>
+    <span style="font: 400 11.5px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); text-align: center; text-wrap: pretty;">the mark at anchor</span>
+  </div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; width: 120px;">
+    <div style="width: 72px; height: 72px; border: 1px solid var(--fx-border-subtle); border-radius: 8px; background: var(--fx-bg-surface); display: flex; align-items: center; justify-content: center;">
+      <span style="position: relative; display: inline-block; width: 48px; height: 48px; flex-shrink: 0;"><img src="i-1.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: -0.896; --dy: 0.444; transform-origin: center; animation: fx-spread 220ms cubic-bezier(.2,.8,.2,1) 0ms 1 forwards;" /><img src="i-2.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: -0.271; --dy: 0.963; transform-origin: center; animation: fx-spread 220ms cubic-bezier(.2,.8,.2,1) 30ms 1 forwards;" /><img src="i-3.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: -0.97; --dy: -0.243; transform-origin: center; animation: fx-spread 220ms cubic-bezier(.2,.8,.2,1) 60ms 1 forwards;" /><img src="i-4.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: 0.415; --dy: 0.91; transform-origin: center; animation: fx-spread 220ms cubic-bezier(.2,.8,.2,1) 90ms 1 forwards;" /><img src="i-5.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: -0.512; --dy: -0.859; transform-origin: center; animation: fx-spread 220ms cubic-bezier(.2,.8,.2,1) 120ms 1 forwards;" /><img src="i-6.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: 0.936; --dy: 0.352; transform-origin: center; animation: fx-spread 220ms cubic-bezier(.2,.8,.2,1) 150ms 1 forwards;" /><img src="i-7.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: 0.282; --dy: -0.96; transform-origin: center; animation: fx-spread 220ms cubic-bezier(.2,.8,.2,1) 180ms 1 forwards;" /><img src="i-8.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: 0.908; --dy: -0.419; transform-origin: center; animation: fx-spread 220ms cubic-bezier(.2,.8,.2,1) 210ms 1 forwards;" /></span>
+    </div>
+    <span style="font: 500 11.5px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">awake</span>
+    <span style="font: 400 11.5px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); text-align: center; text-wrap: pretty;">the panel opens</span>
+  </div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; width: 120px;">
+    <div style="width: 72px; height: 72px; border: 1px solid var(--fx-border-subtle); border-radius: 8px; background: var(--fx-bg-surface); display: flex; align-items: center; justify-content: center;">
+      <span style="position: relative; display: inline-block; width: 48px; height: 48px; flex-shrink: 0;"><img src="i-1.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: -0.896; --dy: 0.444; transform-origin: center; animation: fx-breathe 2.4s ease-in-out 0ms infinite;" /><img src="i-2.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: -0.271; --dy: 0.963; transform-origin: center; animation: fx-breathe 2.4s ease-in-out -150ms infinite;" /><img src="i-3.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: -0.97; --dy: -0.243; transform-origin: center; animation: fx-breathe 2.4s ease-in-out -300ms infinite;" /><img src="i-4.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: 0.415; --dy: 0.91; transform-origin: center; animation: fx-breathe 2.4s ease-in-out -450ms infinite;" /><img src="i-5.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: -0.512; --dy: -0.859; transform-origin: center; animation: fx-breathe 2.4s ease-in-out -600ms infinite;" /><img src="i-6.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: 0.936; --dy: 0.352; transform-origin: center; animation: fx-breathe 2.4s ease-in-out -750ms infinite;" /><img src="i-7.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: 0.282; --dy: -0.96; transform-origin: center; animation: fx-breathe 2.4s ease-in-out -900ms infinite;" /><img src="i-8.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: 0.908; --dy: -0.419; transform-origin: center; animation: fx-breathe 2.4s ease-in-out -1050ms infinite;" /></span>
+    </div>
+    <span style="font: 500 11.5px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">listening</span>
+    <span style="font: 400 11.5px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); text-align: center; text-wrap: pretty;">the top bar, always</span>
+  </div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; width: 120px;">
+    <div style="width: 72px; height: 72px; border: 1px solid var(--fx-border-subtle); border-radius: 8px; background: var(--fx-bg-surface); display: flex; align-items: center; justify-content: center;">
+      <span style="position: relative; display: inline-block; width: 48px; height: 48px; flex-shrink: 0;"><img src="i-1.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: -0.896; --dy: 0.444; transform-origin: center; animation: fx-orbit 1.4s ease-in-out 0ms infinite;" /><img src="i-2.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: -0.271; --dy: 0.963; transform-origin: center; animation: fx-orbit 1.4s ease-in-out -90ms infinite;" /><img src="i-3.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: -0.97; --dy: -0.243; transform-origin: center; animation: fx-orbit 1.4s ease-in-out -180ms infinite;" /><img src="i-4.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: 0.415; --dy: 0.91; transform-origin: center; animation: fx-orbit 1.4s ease-in-out -270ms infinite;" /><img src="i-5.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: -0.512; --dy: -0.859; transform-origin: center; animation: fx-orbit 1.4s ease-in-out -360ms infinite;" /><img src="i-6.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: 0.936; --dy: 0.352; transform-origin: center; animation: fx-orbit 1.4s ease-in-out -450ms infinite;" /><img src="i-7.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: 0.282; --dy: -0.96; transform-origin: center; animation: fx-orbit 1.4s ease-in-out -540ms infinite;" /><img src="i-8.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: 0.908; --dy: -0.419; transform-origin: center; animation: fx-orbit 1.4s ease-in-out -630ms infinite;" /></span>
+    </div>
+    <span style="font: 500 11.5px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">thinking</span>
+    <span style="font: 400 11.5px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); text-align: center; text-wrap: pretty;">a screen is loading</span>
+  </div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; width: 120px;">
+    <div style="width: 72px; height: 72px; border: 1px solid var(--fx-border-subtle); border-radius: 8px; background: var(--fx-bg-surface); display: flex; align-items: center; justify-content: center;">
+      <span style="position: relative; display: inline-block; width: 48px; height: 48px; flex-shrink: 0;"><img src="i-1.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: -0.896; --dy: 0.444; transform-origin: center; animation: fx-travel .8s ease-in-out 0ms infinite;" /><img src="i-2.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: -0.271; --dy: 0.963; transform-origin: center; animation: fx-travel .8s ease-in-out -90ms infinite;" /><img src="i-3.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: -0.97; --dy: -0.243; transform-origin: center; animation: fx-travel .8s ease-in-out -180ms infinite;" /><img src="i-4.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: 0.415; --dy: 0.91; transform-origin: center; animation: fx-travel .8s ease-in-out -270ms infinite;" /><img src="i-5.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: -0.512; --dy: -0.859; transform-origin: center; animation: fx-travel .8s ease-in-out -360ms infinite;" /><img src="i-6.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: 0.936; --dy: 0.352; transform-origin: center; animation: fx-travel .8s ease-in-out -450ms infinite;" /><img src="i-7.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: 0.282; --dy: -0.96; transform-origin: center; animation: fx-travel .8s ease-in-out -540ms infinite;" /><img src="i-8.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: 0.908; --dy: -0.419; transform-origin: center; animation: fx-travel .8s ease-in-out -630ms infinite;" /></span>
+    </div>
+    <span style="font: 500 11.5px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">streaming</span>
+    <span style="font: 400 11.5px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); text-align: center; text-wrap: pretty;">an answer is arriving</span>
+  </div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; width: 120px;">
+    <div style="width: 72px; height: 72px; border: 1px solid var(--fx-border-subtle); border-radius: 8px; background: var(--fx-bg-surface); display: flex; align-items: center; justify-content: center;">
+      <img src="marbim-logo-ink.png" alt="" style="filter: grayscale(1); opacity: .5; width: 48px; height: 48px; display: block; flex-shrink: 0;" />
+    </div>
+    <span style="font: 500 11.5px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">blocked</span>
+    <span style="font: 400 11.5px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); text-align: center; text-wrap: pretty;">refused, or no access</span>
+  </div>
+        </div>
+        <div style="font: 400 13px/1.6 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); max-width: 62ch; text-wrap: pretty;">
+          Eight strokes, transform and opacity only. Colour is never animated and the strokes are never
+          recoloured — the ink set serves light surfaces, the white set dark ones, and the theme scope picks.
+          There is no circular spinner anywhere in this product.
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        <div style="font: 500 11px/1.45 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--fx-text-tertiary); padding-bottom: 10px;">the role phrase — describeRoles, in the reader’s language</div>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 24px;">
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+    <span style="display: inline-flex; align-items: center; align-self: flex-start; gap: 8px; padding: 7px 12px; border-radius: 8px; border: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+      <span style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--fx-text-tertiary); white-space: nowrap;">Storekeeper</span>
+      <span style="width: 24px; height: 24px; border-radius: 999px; background: var(--fx-bg-sunken); border: 2px solid var(--fx-bg-surface); display: inline-flex; align-items: center; justify-content: center; font: 600 9px/1 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); flex-shrink: 0;">SB</span>
+    </span>
+    <span style="font: 400 12px/1.5 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">['store']</span>
+  </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+    <span style="display: inline-flex; align-items: center; align-self: flex-start; gap: 8px; padding: 7px 12px; border-radius: 8px; border: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+      <span style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--fx-text-tertiary); white-space: nowrap;">স্টোরকিপার</span>
+      <span style="width: 24px; height: 24px; border-radius: 999px; background: var(--fx-bg-sunken); border: 2px solid var(--fx-bg-surface); display: inline-flex; align-items: center; justify-content: center; font: 600 9px/1 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); flex-shrink: 0;">SB</span>
+    </span>
+    <span style="font: 400 12px/1.5 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">['store'] · bn</span>
+  </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+    <span style="display: inline-flex; align-items: center; align-self: flex-start; gap: 8px; padding: 7px 12px; border-radius: 8px; border: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+      <span style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--fx-text-tertiary); white-space: nowrap;">Merchandiser and Planner</span>
+      <span style="width: 24px; height: 24px; border-radius: 999px; background: var(--fx-bg-sunken); border: 2px solid var(--fx-bg-surface); display: inline-flex; align-items: center; justify-content: center; font: 600 9px/1 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); flex-shrink: 0;">SB</span>
+    </span>
+    <span style="font: 400 12px/1.5 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">['merchandiser', 'planner']</span>
+  </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+    <span style="display: inline-flex; align-items: center; align-self: flex-start; gap: 8px; padding: 7px 12px; border-radius: 8px; border: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+      <span style="font: 500 12.5px/1.5 'Anek Bangla', 'Noto Sans Bengali', sans-serif; color: var(--fx-text-tertiary); white-space: nowrap;">মার্চেন্ডাইজার ও প্ল্যানার</span>
+      <span style="width: 24px; height: 24px; border-radius: 999px; background: var(--fx-bg-sunken); border: 2px solid var(--fx-bg-surface); display: inline-flex; align-items: center; justify-content: center; font: 600 9px/1 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); flex-shrink: 0;">SB</span>
+    </span>
+    <span style="font: 400 12px/1.5 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">['merchandiser', 'planner'] · bn</span>
+  </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+    <span style="display: inline-flex; align-items: center; align-self: flex-start; gap: 8px; padding: 7px 12px; border-radius: 8px; border: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+      <span style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--fx-text-tertiary); white-space: nowrap;">No role</span>
+      <span style="width: 24px; height: 24px; border-radius: 999px; background: var(--fx-bg-sunken); border: 2px solid var(--fx-bg-surface); display: inline-flex; align-items: center; justify-content: center; font: 600 9px/1 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); flex-shrink: 0;">SB</span>
+    </span>
+    <span style="font: 400 12px/1.5 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">[] — signed in, no desk yet</span>
+  </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+    <span style="display: inline-flex; align-items: center; align-self: flex-start; gap: 8px; padding: 7px 12px; border-radius: 8px; border: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+      <span style="font: 500 12.5px/1.5 'Anek Bangla', 'Noto Sans Bengali', sans-serif; color: var(--fx-text-tertiary); white-space: nowrap;">কোনো রোল নেই</span>
+      <span style="width: 24px; height: 24px; border-radius: 999px; background: var(--fx-bg-sunken); border: 2px solid var(--fx-bg-surface); display: inline-flex; align-items: center; justify-content: center; font: 600 9px/1 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); flex-shrink: 0;">SB</span>
+    </span>
+    <span style="font: 400 12px/1.5 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">[] · bn</span>
+  </div>
+        </div>
+        <div style="font: 400 13px/1.6 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); max-width: 62ch; text-wrap: pretty;">
+          The conjunction is copy, not punctuation: Bangla joins with ও, not with “and”, so the last join
+          comes out of the catalogue rather than a template literal. A person holding two desks reads one
+          phrase, not two chips — and “No role” is a real state a new account sits in until an admin grants one.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
