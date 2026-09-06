@@ -1,0 +1,242 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Anek+Bangla:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #FBFAF8; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: #181D29; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+  a:hover { color: #B88C21; }
+  .tabular, [data-numeric] { font-variant-numeric: tabular-nums; }
+  .fx-selvage { display: flex; align-items: stretch; overflow: hidden; }
+  .fx-selvage::before { content: ''; flex-shrink: 0; width: 3px; background: #A9A49A; }
+  .fx-selvage[data-status="on-track"]::before { background: #2F7D5B; }
+  .fx-selvage[data-status="at-risk"]::before { background: #8C5A16; }
+  .fx-selvage[data-status="late"]::before { background: #B23A32; }
+  .fx-selvage[data-status="done"]::before { background: #A9A49A; }
+  .fx-selvage[data-critical="true"]::before { width: 5px; }
+  .fx-thread-rule { height: 9px; background-image: repeating-linear-gradient(115deg, #E1B334 0 2px, transparent 2px 9px); }
+  .fx-thread-rule[data-variant="muted"] { height: 7px; background-image: repeating-linear-gradient(115deg, #D6D2C9 0 2px, transparent 2px 9px); }
+  .fx-weave { background-image: repeating-linear-gradient(146deg, transparent 0 7px, #E7E4DE 7px 9px, transparent 9px 17px); }
+  .fx-cut { clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%); border-radius: 8px; }
+  .fx-cut-chip { clip-path: polygon(0 0, 100% 0, 100% 100%, 10px 100%, 0 calc(100% - 10px)); }
+  @keyframes fx-spread { to { transform: translate(calc(var(--dx) * 6%), calc(var(--dy) * 6%)); } }
+  @keyframes fx-converge { 0% { transform: translate(calc(var(--dx) * 26%), calc(var(--dy) * 26%)) scale(.82); opacity: 0; } 62% { transform: translate(0, 0) scale(1.15); opacity: 1; } 100% { transform: translate(0, 0) scale(1); opacity: 1; } }
+  @keyframes fx-orbit { 0%, 100% { transform: rotate(-13deg); opacity: .45; } 50% { transform: rotate(13deg); opacity: 1; } }
+  @keyframes fx-travel { 0% { transform: translate(-10%, 10%); opacity: .25; } 40% { transform: translate(0, 0); opacity: 1; } 100% { transform: translate(10%, -10%); opacity: .25; } }
+  @keyframes fx-breathe { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(calc(var(--dx) * 3.5%), calc(var(--dy) * 3.5%)); } }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
+</style>
+</helmet>
+
+<div style="--fx-bg-canvas:#FBFAF8; --fx-bg-surface:#FFFFFF; --fx-bg-raised:#FFFFFF; --fx-bg-sunken:#F3F1EC; --fx-bg-hover:rgba(24,29,41,.035); --fx-bg-selected:rgba(225,179,52,.12); --fx-border-subtle:#E7E4DE; --fx-border-default:#D6D2C9; --fx-border-strong:#A9A49A; --fx-text-primary:#181D29; --fx-text-secondary:#4C5364; --fx-text-tertiary:#5E6675; --fx-text-disabled:#A8AEBB; --fx-text-inverse:#FBFAF8; --fx-accent:#E1B334; --fx-accent-hover:#CFA22B; --fx-accent-pressed:#B88C21; --fx-accent-subtle:#FAF1DA; --fx-accent-on:#181D29; --fx-success:#2F7D5B; --fx-warning:#8C5A16; --fx-danger:#B23A32; --fx-info:#2F5FA8; --fx-focus:#181D29; --fx-sh1:0 1px 2px rgba(24,29,41,.06); --fx-sh2:0 4px 12px rgba(24,29,41,.08); --fx-sh3:0 12px 32px rgba(24,29,41,.12); --fx-slash-angle:-34deg; --fx-weave-angle:146deg; --fx-thread-angle:115deg; width: 1300px; min-height: 1060px; background: var(--fx-bg-sunken); color: var(--fx-text-primary); font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: 16px; line-height: 1.55; padding: 40px; display: flex; flex-direction: column;">
+
+  <div style="margin-bottom: 24px;">
+    <div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Drawer · figure — new in S1</div>
+    <div style="font: 400 14px/1.6 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); max-width: 92ch; margin-top: 10px; text-wrap: pretty;">
+      Every tile on the numbers strip opens one. A figure a person cannot argue with is a figure they will not trust, so the drawer holds the trend and then the denominator itself — the actual rows the percentage was computed from.
+    </div>
+  </div>
+  <div style="display: flex; gap: 40px; align-items: flex-start;">
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <div style="font: 500 11px/1.45 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--fx-text-tertiary); padding-bottom: 10px;">on-time delivery — trend, then the rows</div>
+      <aside style="position: relative; width: 560px; height: 880px; flex-shrink: 0; background: var(--fx-bg-surface); border-left: 1px solid var(--fx-border-subtle); border-radius: 14px 0 0 14px; box-shadow: var(--fx-sh3); display: flex; flex-direction: column; overflow: hidden;">
+
+  <!-- 1 · header: the status rim, the identity line, the one number -->
+  <div style="display: flex; align-items: stretch;">
+    <div style="width: 3px; flex-shrink: 0; background: var(--fx-success);"></div>
+    <div style="flex: 1; min-width: 0; padding: 22px 26px; border-bottom: 1px solid var(--fx-border-subtle); display: flex; flex-direction: column; gap: 14px;">
+      
+      <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;">
+        <div style="display: flex; flex-direction: column; gap: 7px; min-width: 0;">
+          <div style="display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;">
+            <span data-numeric style="font: 500 15px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">On-time delivery</span>
+            <span style="font: 400 14px/1.3 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">2 Nov → 2 Dec 2026</span>
+          </div>
+          <span style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-success);">above the floor</span>
+        </div>
+        <span style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; color: var(--fx-text-secondary); font: 400 15px/1 'Plus Jakarta Sans', system-ui, sans-serif; flex-shrink: 0;">✕</span>
+      </div>
+      <div style="position: relative; background: var(--fx-bg-sunken); border: 1px solid var(--fx-border-subtle); border-radius: 8px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px;">
+        
+        <div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">On-time delivery</div>
+        <div style="display: flex; align-items: baseline; gap: 6px;">
+          <span data-numeric style="font: 600 30px/1.05 'Plus Jakarta Sans', system-ui, sans-serif; letter-spacing: -.02em; color: var(--fx-success);">91</span>
+          <span style="font: 400 14px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">%</span>
+        </div>
+        <div style="font: 400 13px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">31 of 34 shipments left on the ex-factory date · as of yesterday</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="position: relative; display: flex; gap: 4px; padding: 0 26px; border-bottom: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+    
+    <span style="padding: 13px 12px; font: 600 13.5px/1 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); border-bottom: 2px solid var(--fx-text-primary); margin-bottom: -1px;">Trend</span><span style="padding: 13px 12px; font: 500 13.5px/1 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); border-bottom: 2px solid transparent; margin-bottom: -1px;">The 34 shipments</span><span style="padding: 13px 12px; font: 500 13.5px/1 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); border-bottom: 2px solid transparent; margin-bottom: -1px;">How it is computed</span>
+  </div>
+
+  <div style="position: relative; flex: 1; min-height: 0; padding: 26px; overflow: hidden; display: flex; flex-direction: column; gap: 18px;">
+    
+    
+    <div style="position: relative;">
+    <svg width="476" height="132" viewBox="0 0 476 132" fill="none" style="display: block; overflow: visible;">
+      <!-- recessive baseline and target; the grid never competes with the mark -->
+      <line x1="0" y1="110.0" x2="476" y2="110.0" stroke="var(--fx-border-subtle)" stroke-width="1"/>
+      <line x1="0" y1="35.0" x2="476" y2="35.0" stroke="var(--fx-border-default)" stroke-width="1" stroke-dasharray="3 4"/>
+      <polyline points="0.0,70.0 43.3,50.0 86.5,80.0 129.8,60.0 173.1,40.0 216.4,65.0 259.6,45.0 302.9,35.0 346.2,60.0 389.5,75.0 432.7,50.0 476.0,55.0" stroke="var(--fx-text-primary)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      <!-- the crosshair, and a marker bigger than the line it sits on -->
+      <line x1="389.5" y1="10" x2="389.5" y2="110.0" stroke="var(--fx-border-default)" stroke-width="1"/>
+      <circle cx="389.5" cy="75.0" r="5" fill="var(--fx-bg-surface)" stroke="var(--fx-text-primary)" stroke-width="2"/>
+      <circle cx="476.0" cy="55.0" r="4" fill="var(--fx-text-primary)"/>
+    </svg>
+    <div style="position: absolute; left: 399px; top: 0; border: 1px solid var(--fx-border-default); border-radius: 4px; background: var(--fx-bg-surface); box-shadow: var(--fx-sh2); padding: 8px 10px; display: flex; flex-direction: column; gap: 3px; pointer-events: none;">
+      <span style="font: 400 11px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">w 10 Nov</span>
+      <span data-numeric style="font: 500 13px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">87% · 9 of 10 shipments</span>
+    </div>
+    <div style="display: flex; justify-content: space-between; font: 400 11px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); margin-top: -14px;">
+      <span>8 Sep</span><span>target 95%</span><span>24 Nov · 91%</span>
+    </div>
+  </div>
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding: 9px 0; border-bottom: 1px solid var(--fx-border-subtle);">
+    <span style="font: 400 13px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">Window</span>
+    <span style="font: 500 14px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-align: right;">12 weeks, to 24 Nov 2026</span>
+  </div>
+          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding: 9px 0; border-bottom: 1px solid var(--fx-border-subtle);">
+    <span style="font: 400 13px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">Floor</span>
+    <span style="font: 500 14px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-align: right;">8 shipments before a percentage is stated</span>
+  </div>
+          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding: 9px 0; border-bottom: 1px solid var(--fx-border-subtle);">
+    <span style="font: 400 13px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">Worst week</span>
+    <span style="font: 500 14px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-align: right;">86% — w 22 Sep, the Eid shutdown</span>
+  </div>
+          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding: 9px 0; border-bottom: 1px solid var(--fx-border-subtle);">
+    <span style="font: 400 13px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">Direction</span>
+    <span style="font: 500 14px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-align: right;">flat — 91% against 90% four weeks ago</span>
+  </div>
+        </div>
+        <div style="font: 400 12.5px/1.6 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); text-wrap: pretty;">
+          One series, so no legend — the drawer’s own title names it. The dashed line is the target you set in Settings, not a computed value.
+        </div>
+  </div>
+
+  
+
+  <div style="position: relative; padding: 18px 26px; border-top: 1px solid var(--fx-border-subtle); display: flex; gap: 10px; justify-content: flex-end; align-items: center;">
+    
+    <button style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 10px 18px; font: 600 14px/1 'Plus Jakarta Sans', system-ui, sans-serif; min-height: 36px;  background: transparent; color: var(--fx-text-primary); border: 1px solid transparent; cursor: pointer;">Export the rows</button><button style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 10px 18px; font: 600 14px/1 'Plus Jakarta Sans', system-ui, sans-serif; min-height: 36px;  background: transparent; color: var(--fx-text-primary); border: 1px solid var(--fx-border-default); cursor: pointer;">Open the shipment board</button>
+  </div>
+</aside>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <div style="font: 500 11px/1.45 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--fx-text-tertiary); padding-bottom: 10px;">the denominator, as rows — the tab that settles an argument</div>
+      <aside style="position: relative; width: 560px; height: 880px; flex-shrink: 0; background: var(--fx-bg-surface); border-left: 1px solid var(--fx-border-subtle); border-radius: 14px 0 0 14px; box-shadow: var(--fx-sh3); display: flex; flex-direction: column; overflow: hidden;">
+
+  <!-- 1 · header: the status rim, the identity line, the one number -->
+  <div style="display: flex; align-items: stretch;">
+    <div style="width: 3px; flex-shrink: 0; background: var(--fx-success);"></div>
+    <div style="flex: 1; min-width: 0; padding: 22px 26px; border-bottom: 1px solid var(--fx-border-subtle); display: flex; flex-direction: column; gap: 14px;">
+      
+      <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;">
+        <div style="display: flex; flex-direction: column; gap: 7px; min-width: 0;">
+          <div style="display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;">
+            <span data-numeric style="font: 500 15px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">On-time delivery</span>
+            <span style="font: 400 14px/1.3 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">2 Nov → 2 Dec 2026</span>
+          </div>
+          <span style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-success);">above the floor</span>
+        </div>
+        <span style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; color: var(--fx-text-secondary); font: 400 15px/1 'Plus Jakarta Sans', system-ui, sans-serif; flex-shrink: 0;">✕</span>
+      </div>
+      <div style="position: relative; background: var(--fx-bg-sunken); border: 1px solid var(--fx-border-subtle); border-radius: 8px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px;">
+        
+        <div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">The three that were late</div>
+        <div style="display: flex; align-items: baseline; gap: 6px;">
+          <span data-numeric style="font: 600 30px/1.05 'Plus Jakarta Sans', system-ui, sans-serif; letter-spacing: -.02em; color: var(--fx-danger);">3</span>
+          <span style="font: 400 14px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">of 34</span>
+        </div>
+        <div style="font: 400 13px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">every shipment in the window, and what moved each one</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="position: relative; display: flex; gap: 4px; padding: 0 26px; border-bottom: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+    
+    <span style="padding: 13px 12px; font: 500 13.5px/1 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); border-bottom: 2px solid transparent; margin-bottom: -1px;">Trend</span><span style="padding: 13px 12px; font: 600 13.5px/1 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); border-bottom: 2px solid var(--fx-text-primary); margin-bottom: -1px;">The 34 shipments</span><span style="padding: 13px 12px; font: 500 13.5px/1 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); border-bottom: 2px solid transparent; margin-bottom: -1px;">How it is computed</span>
+  </div>
+
+  <div style="position: relative; flex: 1; min-height: 0; padding: 26px; overflow: hidden; display: flex; flex-direction: column; gap: 18px;">
+    
+    
+    <div style="display: flex; flex-direction: column; gap: 0;">
+          <div style="display: grid; grid-template-columns: minmax(0, 1fr) 84px 84px 58px; gap: 10px; padding-bottom: 8px;">
+            <div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Shipment</div><span style="text-align: right;"><div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Planned</div></span><span style="text-align: right;"><div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Left</div></span><span></span>
+          </div>
+          <div style="border-top: 1px solid var(--fx-border-subtle); display: grid; grid-template-columns: minmax(0, 1fr) 84px 84px 58px; gap: 10px; align-items: center; padding: 9px 0;">
+    <span style="min-width: 0; display: flex; align-items: baseline; gap: 8px;"><span data-numeric style="font: 500 12px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">SHP-0912</span><span style="font: 400 12.5px/1.3 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">H&M</span></span>
+    <span data-numeric style="font: 400 12px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); text-align: right;">24 Nov</span>
+    <span data-numeric style="font: 400 12px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); text-align: right;">—</span>
+    <span style="text-align: right;"><span style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-success);">not yet</span></span>
+  </div>
+          <div style="border-top: 1px solid var(--fx-border-subtle); display: grid; grid-template-columns: minmax(0, 1fr) 84px 84px 58px; gap: 10px; align-items: center; padding: 9px 0;">
+    <span style="min-width: 0; display: flex; align-items: baseline; gap: 8px;"><span data-numeric style="font: 500 12px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">SHP-0908</span><span style="font: 400 12.5px/1.3 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">Bestseller</span></span>
+    <span data-numeric style="font: 400 12px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); text-align: right;">18 Nov</span>
+    <span data-numeric style="font: 400 12px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary); text-align: right;">21 Nov</span>
+    <span style="text-align: right;"><span style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-danger);">+3d</span></span>
+  </div>
+          <div style="border-top: 1px solid var(--fx-border-subtle); display: grid; grid-template-columns: minmax(0, 1fr) 84px 84px 58px; gap: 10px; align-items: center; padding: 9px 0;">
+    <span style="min-width: 0; display: flex; align-items: baseline; gap: 8px;"><span data-numeric style="font: 500 12px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">SHP-0904</span><span style="font: 400 12.5px/1.3 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">Primark</span></span>
+    <span data-numeric style="font: 400 12px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); text-align: right;">11 Nov</span>
+    <span data-numeric style="font: 400 12px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary); text-align: right;">13 Nov</span>
+    <span style="text-align: right;"><span style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-danger);">+2d</span></span>
+  </div>
+          <div style="border-top: 1px solid var(--fx-border-subtle); display: grid; grid-template-columns: minmax(0, 1fr) 84px 84px 58px; gap: 10px; align-items: center; padding: 9px 0;">
+    <span style="min-width: 0; display: flex; align-items: baseline; gap: 8px;"><span data-numeric style="font: 500 12px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">SHP-0901</span><span style="font: 400 12.5px/1.3 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">C&A</span></span>
+    <span data-numeric style="font: 400 12px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); text-align: right;">4 Nov</span>
+    <span data-numeric style="font: 400 12px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); text-align: right;">4 Nov</span>
+    <span style="text-align: right;"><span style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-success);">on</span></span>
+  </div>
+          <div style="border-top: 1px solid var(--fx-border-subtle); display: grid; grid-template-columns: minmax(0, 1fr) 84px 84px 58px; gap: 10px; align-items: center; padding: 9px 0;">
+    <span style="min-width: 0; display: flex; align-items: baseline; gap: 8px;"><span data-numeric style="font: 500 12px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">SHP-0898</span><span style="font: 400 12.5px/1.3 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">H&M</span></span>
+    <span data-numeric style="font: 400 12px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); text-align: right;">28 Oct</span>
+    <span data-numeric style="font: 400 12px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); text-align: right;">28 Oct</span>
+    <span style="text-align: right;"><span style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-success);">on</span></span>
+  </div>
+          <div style="border-top: 1px solid var(--fx-border-subtle); display: grid; grid-template-columns: minmax(0, 1fr) 84px 84px 58px; gap: 10px; align-items: center; padding: 9px 0;">
+    <span style="min-width: 0; display: flex; align-items: baseline; gap: 8px;"><span data-numeric style="font: 500 12px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">SHP-0894</span><span style="font: 400 12.5px/1.3 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">Primark</span></span>
+    <span data-numeric style="font: 400 12px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); text-align: right;">21 Oct</span>
+    <span data-numeric style="font: 400 12px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary); text-align: right;">28 Oct</span>
+    <span style="text-align: right;"><span style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-danger);">+7d</span></span>
+  </div>
+          <div style="border-top: 1px solid var(--fx-border-subtle); display: grid; grid-template-columns: minmax(0, 1fr) 84px 84px 58px; gap: 10px; align-items: center; padding: 9px 0;">
+    <span style="min-width: 0; display: flex; align-items: baseline; gap: 8px;"><span data-numeric style="font: 500 12px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">SHP-0891</span><span style="font: 400 12.5px/1.3 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">C&A</span></span>
+    <span data-numeric style="font: 400 12px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); text-align: right;">14 Oct</span>
+    <span data-numeric style="font: 400 12px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); text-align: right;">14 Oct</span>
+    <span style="text-align: right;"><span style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-success);">on</span></span>
+  </div>
+        </div>
+        <div style="font: 400 12.5px/1.6 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); text-wrap: pretty;">
+          …and 27 more that left on their date. The three late ones are together at the top because they are the reason the number is 91 and not 100 — sorting them under the twenty-seven that worked would hide the answer inside the evidence.
+        </div>
+  </div>
+
+  
+
+  <div style="position: relative; padding: 18px 26px; border-top: 1px solid var(--fx-border-subtle); display: flex; gap: 10px; justify-content: flex-end; align-items: center;">
+    
+    <button style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 10px 18px; font: 600 14px/1 'Plus Jakarta Sans', system-ui, sans-serif; min-height: 36px;  background: transparent; color: var(--fx-text-primary); border: 1px solid transparent; cursor: pointer;">Export the rows</button><button style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 10px 18px; font: 600 14px/1 'Plus Jakarta Sans', system-ui, sans-serif; min-height: 36px;  background: transparent; color: var(--fx-text-primary); border: 1px solid var(--fx-border-default); cursor: pointer;">Open the shipment board</button>
+  </div>
+</aside>
+    </div>
+  </div>
+  <div style="font: 400 12px/1.5 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); padding: 12px 0 0; max-width: 76ch; text-wrap: pretty;">The line is ink, not amber. Amber in this product means a person must act, and a trend is context — using the accent for a data series would put the strongest colour on the screen’s least actionable element. Recessive baseline, dashed target, a marker only where the pointer is and on the last point, and no number printed on every point.</div>
+</div>
+</x-dc>
+</body>
+</html>

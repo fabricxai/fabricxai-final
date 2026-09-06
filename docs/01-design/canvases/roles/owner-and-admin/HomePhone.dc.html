@@ -1,0 +1,195 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Anek+Bangla:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #FBFAF8; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: #181D29; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+  a:hover { color: #B88C21; }
+  .tabular, [data-numeric] { font-variant-numeric: tabular-nums; }
+  .fx-selvage { display: flex; align-items: stretch; overflow: hidden; }
+  .fx-selvage::before { content: ''; flex-shrink: 0; width: 3px; background: #A9A49A; }
+  .fx-selvage[data-status="on-track"]::before { background: #2F7D5B; }
+  .fx-selvage[data-status="at-risk"]::before { background: #8C5A16; }
+  .fx-selvage[data-status="late"]::before { background: #B23A32; }
+  .fx-selvage[data-status="done"]::before { background: #A9A49A; }
+  .fx-selvage[data-critical="true"]::before { width: 5px; }
+  .fx-thread-rule { height: 9px; background-image: repeating-linear-gradient(115deg, #E1B334 0 2px, transparent 2px 9px); }
+  .fx-thread-rule[data-variant="muted"] { height: 7px; background-image: repeating-linear-gradient(115deg, #D6D2C9 0 2px, transparent 2px 9px); }
+  .fx-weave { background-image: repeating-linear-gradient(146deg, transparent 0 7px, #E7E4DE 7px 9px, transparent 9px 17px); }
+  .fx-cut { clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%); border-radius: 8px; }
+  .fx-cut-chip { clip-path: polygon(0 0, 100% 0, 100% 100%, 10px 100%, 0 calc(100% - 10px)); }
+  @keyframes fx-spread { to { transform: translate(calc(var(--dx) * 6%), calc(var(--dy) * 6%)); } }
+  @keyframes fx-converge { 0% { transform: translate(calc(var(--dx) * 26%), calc(var(--dy) * 26%)) scale(.82); opacity: 0; } 62% { transform: translate(0, 0) scale(1.15); opacity: 1; } 100% { transform: translate(0, 0) scale(1); opacity: 1; } }
+  @keyframes fx-orbit { 0%, 100% { transform: rotate(-13deg); opacity: .45; } 50% { transform: rotate(13deg); opacity: 1; } }
+  @keyframes fx-travel { 0% { transform: translate(-10%, 10%); opacity: .25; } 40% { transform: translate(0, 0); opacity: 1; } 100% { transform: translate(10%, -10%); opacity: .25; } }
+  @keyframes fx-breathe { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(calc(var(--dx) * 3.5%), calc(var(--dy) * 3.5%)); } }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
+</style>
+</helmet>
+
+<div style="--fx-bg-canvas:#FBFAF8; --fx-bg-surface:#FFFFFF; --fx-bg-raised:#FFFFFF; --fx-bg-sunken:#F3F1EC; --fx-bg-hover:rgba(24,29,41,.035); --fx-bg-selected:rgba(225,179,52,.12); --fx-border-subtle:#E7E4DE; --fx-border-default:#D6D2C9; --fx-border-strong:#A9A49A; --fx-text-primary:#181D29; --fx-text-secondary:#4C5364; --fx-text-tertiary:#5E6675; --fx-text-disabled:#A8AEBB; --fx-text-inverse:#FBFAF8; --fx-accent:#E1B334; --fx-accent-hover:#CFA22B; --fx-accent-pressed:#B88C21; --fx-accent-subtle:#FAF1DA; --fx-accent-on:#181D29; --fx-success:#2F7D5B; --fx-warning:#8C5A16; --fx-danger:#B23A32; --fx-info:#2F5FA8; --fx-focus:#181D29; --fx-sh1:0 1px 2px rgba(24,29,41,.06); --fx-sh2:0 4px 12px rgba(24,29,41,.08); --fx-sh3:0 12px 32px rgba(24,29,41,.12); --fx-slash-angle:-34deg; --fx-weave-angle:146deg; --fx-thread-angle:115deg; width: 1400px; min-height: 900px; background: var(--fx-bg-canvas); color: var(--fx-text-primary); font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: 16px; line-height: 1.55; padding: 40px; display: flex; flex-direction: column;">
+
+  <div style="margin-bottom: 24px;">
+    <div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Pulse — the owner and admin skin</div>
+    <div style="font: 400 14px/1.6 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); margin-top: 10px; max-width: 92ch; text-wrap: pretty;">
+      Three tabs, and the only write is approve or reject. Everything that changes the rules of the factory — roles, policies, approval routing, payroll computation — is deliberately absent: that is desk work.
+    </div>
+  </div>
+  <div style="display: flex; gap: 32px; align-items: flex-start;">
+    
+  <div style="width: 390px; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px;">
+    <div style="font: 500 11px/1.45 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--fx-text-tertiary); padding-bottom: 10px;">1 · what’s wrong</div>
+    <div style="width: 390px; height: 700px; border: 1px solid var(--fx-border-subtle); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; background: var(--fx-bg-canvas);">
+      <div style="flex-shrink: 0; border-bottom: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface); padding: 12px 16px; min-height: 60px; display: flex; align-items: center; gap: 10px;">
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+          <span style="font: 600 17px/1.2 'Plus Jakarta Sans', system-ui, sans-serif;">What’s wrong</span>
+          <span style="font: 500 10.5px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--fx-text-tertiary);">Owner · Barakah Fashions</span>
+        </div>
+        <span style="position: relative; display: inline-block; width: 22px; height: 22px; flex-shrink: 0;"><img src="i-1.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: -0.896; --dy: 0.444; transform-origin: center; animation: fx-breathe 2.4s ease-in-out 0ms infinite;" /><img src="i-2.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: -0.271; --dy: 0.963; transform-origin: center; animation: fx-breathe 2.4s ease-in-out -150ms infinite;" /><img src="i-3.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: -0.97; --dy: -0.243; transform-origin: center; animation: fx-breathe 2.4s ease-in-out -300ms infinite;" /><img src="i-4.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: 0.415; --dy: 0.91; transform-origin: center; animation: fx-breathe 2.4s ease-in-out -450ms infinite;" /><img src="i-5.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: -0.512; --dy: -0.859; transform-origin: center; animation: fx-breathe 2.4s ease-in-out -600ms infinite;" /><img src="i-6.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: 0.936; --dy: 0.352; transform-origin: center; animation: fx-breathe 2.4s ease-in-out -750ms infinite;" /><img src="i-7.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: 0.282; --dy: -0.96; transform-origin: center; animation: fx-breathe 2.4s ease-in-out -900ms infinite;" /><img src="i-8.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: 0.908; --dy: -0.419; transform-origin: center; animation: fx-breathe 2.4s ease-in-out -1050ms infinite;" /></span>
+      </div>
+      <div style="flex: 1; min-height: 0; padding: 14px; display: flex; flex-direction: column; gap: 12px; overflow: hidden;"><div class="fx-selvage" data-status="late" style="background: var(--fx-bg-surface); border: 1px solid var(--fx-border-subtle); border-radius: 8px; overflow: hidden;">
+        <div style="flex: 1; min-width: 0; padding: 12px 14px; display: flex; flex-direction: column; gap: 5px;">
+          <div style="display: flex; align-items: baseline; gap: 8px;"><span data-numeric style="font: 500 12px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">PO-BF-2044</span><span style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-danger);">late</span></div>
+          <span style="font: 400 13.5px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; text-wrap: pretty;">will miss ex-factory by 4 days — cutting has not started because the PP sample for ST-2610 is still with H&M</span>
+        </div>
+      </div><div class="fx-selvage" data-status="late" style="background: var(--fx-bg-surface); border: 1px solid var(--fx-border-subtle); border-radius: 8px; overflow: hidden;">
+        <div style="flex: 1; min-width: 0; padding: 12px 14px; display: flex; flex-direction: column; gap: 5px;">
+          <div style="display: flex; align-items: baseline; gap: 8px;"><span data-numeric style="font: 500 12px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">LC-BF-7781</span><span style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-danger);">late</span></div>
+          <span style="font: 400 13.5px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; text-wrap: pretty;">latest shipment 21 Dec now falls before PO-BF-2044’s revised ex-factory</span>
+        </div>
+      </div><div class="fx-selvage" data-status="at-risk" style="background: var(--fx-bg-surface); border: 1px solid var(--fx-border-subtle); border-radius: 8px; overflow: hidden;">
+        <div style="flex: 1; min-width: 0; padding: 12px 14px; display: flex; flex-direction: column; gap: 5px;">
+          <div style="display: flex; align-items: baseline; gap: 8px;"><span data-numeric style="font: 500 12px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">UD-2026-118</span><span style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-warning);">at risk</span></div>
+          <span style="font: 400 13.5px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; text-wrap: pretty;">balance is 1,240 m against six open bonded issues — Karim Uddin has asked to overdraw by 160 m</span>
+        </div>
+      </div></div>
+      <div style="display: flex; background: var(--fx-bg-surface); border-top: 1px solid var(--fx-border-default);">
+        <span style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; min-height: 56px; padding: 8px 4px; color: var(--fx-text-primary);">
+          <span style="display: block; width: 2px; height: 12px; transform: skewX(-34deg); background: var(--fx-accent);"></span>
+          <span style="font: 600 12px/1.2 'Plus Jakarta Sans', system-ui, sans-serif;">What’s wrong</span>
+        </span><span style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; min-height: 56px; padding: 8px 4px; color: var(--fx-text-tertiary);">
+          <span style="display: block; width: 2px; height: 12px; transform: skewX(-34deg); background: transparent;"></span>
+          <span style="font: 500 12px/1.2 'Plus Jakarta Sans', system-ui, sans-serif;">Approve</span>
+        </span><span style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; min-height: 56px; padding: 8px 4px; color: var(--fx-text-tertiary);">
+          <span style="display: block; width: 2px; height: 12px; transform: skewX(-34deg); background: transparent;"></span>
+          <span style="font: 500 12px/1.2 'Plus Jakarta Sans', system-ui, sans-serif;">Figures</span>
+        </span>
+      </div>
+    </div>
+  </div>
+    
+  <div style="width: 390px; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px;">
+    <div style="font: 500 11px/1.45 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--fx-text-tertiary); padding-bottom: 10px;">2 · approve</div>
+    <div style="width: 390px; height: 700px; border: 1px solid var(--fx-border-subtle); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; background: var(--fx-bg-canvas);">
+      <div style="flex-shrink: 0; border-bottom: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface); padding: 12px 16px; min-height: 60px; display: flex; align-items: center; gap: 10px;">
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+          <span style="font: 600 17px/1.2 'Plus Jakarta Sans', system-ui, sans-serif;">Approve</span>
+          <span style="font: 500 10.5px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--fx-text-tertiary);">Owner · Barakah Fashions</span>
+        </div>
+        <span style="position: relative; display: inline-block; width: 22px; height: 22px; flex-shrink: 0;"><img src="i-1.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: -0.896; --dy: 0.444; transform-origin: center; animation: fx-breathe 2.4s ease-in-out 0ms infinite;" /><img src="i-2.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: -0.271; --dy: 0.963; transform-origin: center; animation: fx-breathe 2.4s ease-in-out -150ms infinite;" /><img src="i-3.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: -0.97; --dy: -0.243; transform-origin: center; animation: fx-breathe 2.4s ease-in-out -300ms infinite;" /><img src="i-4.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: 0.415; --dy: 0.91; transform-origin: center; animation: fx-breathe 2.4s ease-in-out -450ms infinite;" /><img src="i-5.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: -0.512; --dy: -0.859; transform-origin: center; animation: fx-breathe 2.4s ease-in-out -600ms infinite;" /><img src="i-6.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: 0.936; --dy: 0.352; transform-origin: center; animation: fx-breathe 2.4s ease-in-out -750ms infinite;" /><img src="i-7.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: 0.282; --dy: -0.96; transform-origin: center; animation: fx-breathe 2.4s ease-in-out -900ms infinite;" /><img src="i-8.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: 0.908; --dy: -0.419; transform-origin: center; animation: fx-breathe 2.4s ease-in-out -1050ms infinite;" /></span>
+      </div>
+      <div style="flex: 1; min-height: 0; padding: 14px; display: flex; flex-direction: column; gap: 12px; overflow: hidden;"><div style="border: 1px solid var(--fx-border-subtle); border-radius: 8px; background: var(--fx-bg-surface); padding: 12px 14px; display: flex; flex-direction: column; gap: 9px;">
+        <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;"><span data-numeric style="font: 500 12px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">Store</span><span class="" style="display: inline-block; font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-accent-on); background: var(--fx-accent-subtle); border: 1px solid transparent; border-radius: 4px; padding: 5px 8px;">26 h</span></div>
+        <span style="font: 400 13.5px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; text-wrap: pretty;">3 drafts — GRN readings from challan photos</span>
+        <span style="display: inline-flex; align-items: center; gap: 8px;">
+    <span data-numeric style="font: 500 13px/1.2 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-warning);">0.82</span>
+    <span style="display: flex; gap: 4px; align-items: center;"><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-warning);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-warning);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-warning);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-warning);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-warning);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-warning);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-warning);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-warning);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-border-default);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-border-default);"></span></span></span>
+        <div style="display: flex; gap: 8px;"><button style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 8px 14px; font: 600 13px/1 'Plus Jakarta Sans', system-ui, sans-serif; min-height: 44px;  background: transparent; color: var(--fx-text-primary); border: 1px solid transparent; cursor: pointer;">Reject</button><button style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 8px 14px; font: 600 13px/1 'Plus Jakarta Sans', system-ui, sans-serif; min-height: 44px;  background: transparent; color: var(--fx-text-primary); border: 1px solid var(--fx-border-default); cursor: pointer;">Approve</button></div>
+      </div><div style="border: 1px solid var(--fx-border-subtle); border-radius: 8px; background: var(--fx-bg-surface); padding: 12px 14px; display: flex; flex-direction: column; gap: 9px;">
+        <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;"><span data-numeric style="font: 500 12px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">Merchandising</span><span class="" style="display: inline-block; font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-accent-on); background: var(--fx-accent-subtle); border: 1px solid transparent; border-radius: 4px; padding: 5px 8px;">26 h</span></div>
+        <span style="font: 400 13.5px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; text-wrap: pretty;">2 drafts — style measurements and one new order</span>
+        <span style="display: inline-flex; align-items: center; gap: 8px;">
+    <span data-numeric style="font: 500 13px/1.2 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-warning);">0.74</span>
+    <span style="display: flex; gap: 4px; align-items: center;"><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-warning);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-warning);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-warning);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-warning);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-warning);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-warning);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-warning);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-border-default);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-border-default);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-border-default);"></span></span></span>
+        <div style="display: flex; gap: 8px;"><button style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 8px 14px; font: 600 13px/1 'Plus Jakarta Sans', system-ui, sans-serif; min-height: 44px;  background: transparent; color: var(--fx-text-primary); border: 1px solid transparent; cursor: pointer;">Reject</button><button style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 8px 14px; font: 600 13px/1 'Plus Jakarta Sans', system-ui, sans-serif; min-height: 44px;  background: transparent; color: var(--fx-text-primary); border: 1px solid var(--fx-border-default); cursor: pointer;">Approve</button></div>
+      </div><div style="border: 1px solid var(--fx-border-subtle); border-radius: 8px; background: var(--fx-bg-surface); padding: 12px 14px; display: flex; flex-direction: column; gap: 9px;">
+        <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;"><span data-numeric style="font: 500 12px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">Procurement</span><span class="" style="display: inline-block; font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-accent-on); background: var(--fx-accent-subtle); border: 1px solid transparent; border-radius: 4px; padding: 5px 8px;">5 h</span></div>
+        <span style="font: 400 13.5px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; text-wrap: pretty;">1 draft — a purchase order off a pro-forma</span>
+        <span style="display: inline-flex; align-items: center; gap: 8px;">
+    <span data-numeric style="font: 500 13px/1.2 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">0.96</span>
+    <span style="display: flex; gap: 4px; align-items: center;"><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-accent);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-accent);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-accent);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-accent);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-accent);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-accent);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-accent);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-accent);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-accent);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-accent);"></span></span></span>
+        <div style="display: flex; gap: 8px;"><button style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 8px 14px; font: 600 13px/1 'Plus Jakarta Sans', system-ui, sans-serif; min-height: 44px;  background: transparent; color: var(--fx-text-primary); border: 1px solid transparent; cursor: pointer;">Reject</button><button style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 8px 14px; font: 600 13px/1 'Plus Jakarta Sans', system-ui, sans-serif; min-height: 44px;  background: transparent; color: var(--fx-text-primary); border: 1px solid var(--fx-border-default); cursor: pointer;">Approve</button></div>
+      </div></div>
+      <div style="display: flex; background: var(--fx-bg-surface); border-top: 1px solid var(--fx-border-default);">
+        <span style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; min-height: 56px; padding: 8px 4px; color: var(--fx-text-tertiary);">
+          <span style="display: block; width: 2px; height: 12px; transform: skewX(-34deg); background: transparent;"></span>
+          <span style="font: 500 12px/1.2 'Plus Jakarta Sans', system-ui, sans-serif;">What’s wrong</span>
+        </span><span style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; min-height: 56px; padding: 8px 4px; color: var(--fx-text-primary);">
+          <span style="display: block; width: 2px; height: 12px; transform: skewX(-34deg); background: var(--fx-accent);"></span>
+          <span style="font: 600 12px/1.2 'Plus Jakarta Sans', system-ui, sans-serif;">Approve</span>
+        </span><span style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; min-height: 56px; padding: 8px 4px; color: var(--fx-text-tertiary);">
+          <span style="display: block; width: 2px; height: 12px; transform: skewX(-34deg); background: transparent;"></span>
+          <span style="font: 500 12px/1.2 'Plus Jakarta Sans', system-ui, sans-serif;">Figures</span>
+        </span>
+      </div>
+    </div>
+  </div>
+    
+  <div style="width: 390px; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px;">
+    <div style="font: 500 11px/1.45 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--fx-text-tertiary); padding-bottom: 10px;">3 · figures</div>
+    <div style="width: 390px; height: 700px; border: 1px solid var(--fx-border-subtle); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; background: var(--fx-bg-canvas);">
+      <div style="flex-shrink: 0; border-bottom: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface); padding: 12px 16px; min-height: 60px; display: flex; align-items: center; gap: 10px;">
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+          <span style="font: 600 17px/1.2 'Plus Jakarta Sans', system-ui, sans-serif;">Figures</span>
+          <span style="font: 500 10.5px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--fx-text-tertiary);">Owner · Barakah Fashions</span>
+        </div>
+        <span style="position: relative; display: inline-block; width: 22px; height: 22px; flex-shrink: 0;"><img src="i-1.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: -0.896; --dy: 0.444; transform-origin: center; animation: fx-breathe 2.4s ease-in-out 0ms infinite;" /><img src="i-2.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: -0.271; --dy: 0.963; transform-origin: center; animation: fx-breathe 2.4s ease-in-out -150ms infinite;" /><img src="i-3.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: -0.97; --dy: -0.243; transform-origin: center; animation: fx-breathe 2.4s ease-in-out -300ms infinite;" /><img src="i-4.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: 0.415; --dy: 0.91; transform-origin: center; animation: fx-breathe 2.4s ease-in-out -450ms infinite;" /><img src="i-5.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: -0.512; --dy: -0.859; transform-origin: center; animation: fx-breathe 2.4s ease-in-out -600ms infinite;" /><img src="i-6.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: 0.936; --dy: 0.352; transform-origin: center; animation: fx-breathe 2.4s ease-in-out -750ms infinite;" /><img src="i-7.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: 0.282; --dy: -0.96; transform-origin: center; animation: fx-breathe 2.4s ease-in-out -900ms infinite;" /><img src="i-8.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: 0.908; --dy: -0.419; transform-origin: center; animation: fx-breathe 2.4s ease-in-out -1050ms infinite;" /></span>
+      </div>
+      <div style="flex: 1; min-height: 0; padding: 14px; display: flex; flex-direction: column; gap: 12px; overflow: hidden;"><div style="background: var(--fx-bg-surface); border: 1px solid var(--fx-border-subtle); border-radius: 8px; box-shadow: var(--fx-sh1); padding: 18px 20px; display: flex; flex-direction: column; gap: 8px; min-width: 0;">
+    <div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Order book</div>
+    <div style="display: flex; align-items: baseline; gap: 6px;">
+          <span data-numeric style="font: 600 34px/1.05 'Plus Jakarta Sans', system-ui, sans-serif; letter-spacing: -.02em; color: var(--fx-text-primary);">19</span>
+          <span style="font: 400 14px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">orders</span>
+        </div>
+    <div style="font: 400 13px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); text-wrap: pretty;">412,000 pieces across 5 statuses</div>
+    <div style="font: 400 11.5px/1.45 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">counted from the order book</div>
+    <div style="font: 400 11.5px/1.45 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">as of just now</div>
+  </div><div style="background: var(--fx-bg-surface); border: 1px solid var(--fx-border-subtle); border-radius: 8px; box-shadow: var(--fx-sh1); padding: 18px 20px; display: flex; flex-direction: column; gap: 8px; min-width: 0;">
+    <div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">On-time delivery</div>
+    <div style="display: flex; align-items: baseline; gap: 6px;">
+          <span data-numeric style="font: 600 34px/1.05 'Plus Jakarta Sans', system-ui, sans-serif; letter-spacing: -.02em; color: var(--fx-text-primary);">91</span>
+          <span style="font: 400 14px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">%</span>
+        </div>
+    <div style="font: 400 13px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); text-wrap: pretty;">31 of 34 shipments left on the ex-factory date</div>
+    <div style="font: 400 11.5px/1.45 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">minimum 8 shipments before a percentage is stated</div>
+    <div style="font: 400 11.5px/1.45 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">as of yesterday</div>
+  </div><div style="background: var(--fx-bg-surface); border: 1px solid var(--fx-border-subtle); border-radius: 8px; box-shadow: var(--fx-sh1); padding: 18px 20px; display: flex; flex-direction: column; gap: 8px; min-width: 0;">
+    <div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Efficiency</div>
+    <div style="display: flex; align-items: baseline; gap: 6px;">
+          <span data-numeric style="font: 600 34px/1.05 'Plus Jakarta Sans', system-ui, sans-serif; letter-spacing: -.02em; color: var(--fx-success);">68</span>
+          <span style="font: 400 14px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">%</span>
+        </div>
+    <div style="font: 400 13px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); text-wrap: pretty;">142 line-days of hourly output</div>
+    <div style="font: 400 11.5px/1.45 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">earned minutes over available minutes, as one ratio for the period</div>
+    <div style="font: 400 11.5px/1.45 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">as of yesterday</div>
+  </div></div>
+      <div style="display: flex; background: var(--fx-bg-surface); border-top: 1px solid var(--fx-border-default);">
+        <span style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; min-height: 56px; padding: 8px 4px; color: var(--fx-text-tertiary);">
+          <span style="display: block; width: 2px; height: 12px; transform: skewX(-34deg); background: transparent;"></span>
+          <span style="font: 500 12px/1.2 'Plus Jakarta Sans', system-ui, sans-serif;">What’s wrong</span>
+        </span><span style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; min-height: 56px; padding: 8px 4px; color: var(--fx-text-tertiary);">
+          <span style="display: block; width: 2px; height: 12px; transform: skewX(-34deg); background: transparent;"></span>
+          <span style="font: 500 12px/1.2 'Plus Jakarta Sans', system-ui, sans-serif;">Approve</span>
+        </span><span style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; min-height: 56px; padding: 8px 4px; color: var(--fx-text-primary);">
+          <span style="display: block; width: 2px; height: 12px; transform: skewX(-34deg); background: var(--fx-accent);"></span>
+          <span style="font: 600 12px/1.2 'Plus Jakarta Sans', system-ui, sans-serif;">Figures</span>
+        </span>
+      </div>
+    </div>
+  </div>
+  </div>
+  <div style="font: 400 12px/1.5 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); padding: 12px 0 0; max-width: 76ch; text-wrap: pretty;">The tab bar is the navigation — the rail is hidden entirely below 640px rather than duplicated behind a hamburger. A drawer opened from any of these becomes a bottom sheet with the same footer.</div>
+</div>
+</x-dc>
+</body>
+</html>

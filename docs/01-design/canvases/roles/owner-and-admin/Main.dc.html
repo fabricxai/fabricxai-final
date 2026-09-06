@@ -1,0 +1,498 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Anek+Bangla:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #FBFAF8; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: #181D29; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+  a:hover { color: #B88C21; }
+  .tabular, [data-numeric] { font-variant-numeric: tabular-nums; }
+  .fx-selvage { display: flex; align-items: stretch; overflow: hidden; }
+  .fx-selvage::before { content: ''; flex-shrink: 0; width: 3px; background: #A9A49A; }
+  .fx-selvage[data-status="on-track"]::before { background: #2F7D5B; }
+  .fx-selvage[data-status="at-risk"]::before { background: #8C5A16; }
+  .fx-selvage[data-status="late"]::before { background: #B23A32; }
+  .fx-selvage[data-status="done"]::before { background: #A9A49A; }
+  .fx-selvage[data-critical="true"]::before { width: 5px; }
+  .fx-thread-rule { height: 9px; background-image: repeating-linear-gradient(115deg, #E1B334 0 2px, transparent 2px 9px); }
+  .fx-thread-rule[data-variant="muted"] { height: 7px; background-image: repeating-linear-gradient(115deg, #D6D2C9 0 2px, transparent 2px 9px); }
+  .fx-weave { background-image: repeating-linear-gradient(146deg, transparent 0 7px, #E7E4DE 7px 9px, transparent 9px 17px); }
+  .fx-cut { clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%); border-radius: 8px; }
+  .fx-cut-chip { clip-path: polygon(0 0, 100% 0, 100% 100%, 10px 100%, 0 calc(100% - 10px)); }
+  @keyframes fx-spread { to { transform: translate(calc(var(--dx) * 6%), calc(var(--dy) * 6%)); } }
+  @keyframes fx-converge { 0% { transform: translate(calc(var(--dx) * 26%), calc(var(--dy) * 26%)) scale(.82); opacity: 0; } 62% { transform: translate(0, 0) scale(1.15); opacity: 1; } 100% { transform: translate(0, 0) scale(1); opacity: 1; } }
+  @keyframes fx-orbit { 0%, 100% { transform: rotate(-13deg); opacity: .45; } 50% { transform: rotate(13deg); opacity: 1; } }
+  @keyframes fx-travel { 0% { transform: translate(-10%, 10%); opacity: .25; } 40% { transform: translate(0, 0); opacity: 1; } 100% { transform: translate(10%, -10%); opacity: .25; } }
+  @keyframes fx-breathe { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(calc(var(--dx) * 3.5%), calc(var(--dy) * 3.5%)); } }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
+</style>
+</helmet>
+
+<div style="--fx-bg-canvas:#FBFAF8; --fx-bg-surface:#FFFFFF; --fx-bg-raised:#FFFFFF; --fx-bg-sunken:#F3F1EC; --fx-bg-hover:rgba(24,29,41,.035); --fx-bg-selected:rgba(225,179,52,.12); --fx-border-subtle:#E7E4DE; --fx-border-default:#D6D2C9; --fx-border-strong:#A9A49A; --fx-text-primary:#181D29; --fx-text-secondary:#4C5364; --fx-text-tertiary:#5E6675; --fx-text-disabled:#A8AEBB; --fx-text-inverse:#FBFAF8; --fx-accent:#E1B334; --fx-accent-hover:#CFA22B; --fx-accent-pressed:#B88C21; --fx-accent-subtle:#FAF1DA; --fx-accent-on:#181D29; --fx-success:#2F7D5B; --fx-warning:#8C5A16; --fx-danger:#B23A32; --fx-info:#2F5FA8; --fx-focus:#181D29; --fx-sh1:0 1px 2px rgba(24,29,41,.06); --fx-sh2:0 4px 12px rgba(24,29,41,.08); --fx-sh3:0 12px 32px rgba(24,29,41,.12); --fx-slash-angle:-34deg; --fx-weave-angle:146deg; --fx-thread-angle:115deg; width: 1440px; min-height: 2160px; background: var(--fx-bg-canvas); color: var(--fx-text-primary); font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: 16px; line-height: 1.55; padding: 0px; display: flex; flex-direction: column;">
+<header style="height: 60px; flex-shrink: 0; border-bottom: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface); display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, 420px) minmax(0, 1fr); align-items: center; gap: 16px; padding: 0 24px;">
+    <div style="display: flex; align-items: center; gap: 16px; min-width: 0;">
+      <img src="fabricxai-logo-light.png" alt="FabricX AI" style="height: 26px; width: auto; display: block;" />
+      <span style="display: inline-flex; align-items: center; gap: 10px; padding: 5px 12px 5px 5px; border-radius: 8px; border: 1px solid var(--fx-border-default); background: var(--fx-bg-sunken); color: var(--fx-text-primary);">
+        <span style="width: 32px; height: 32px; border-radius: 4px; background: var(--fx-text-primary); color: var(--fx-text-inverse); display: inline-flex; align-items: center; justify-content: center; font: 700 12px/1 'Plus Jakarta Sans', system-ui, sans-serif; letter-spacing: .04em; flex-shrink: 0;">BF</span>
+        <span style="font: 600 14px/1.2 'Plus Jakarta Sans', system-ui, sans-serif; white-space: nowrap;">Barakah Fashions Ltd</span>
+      </span>
+    </div>
+    <div style="justify-self: center; width: 100%;">
+      <div style="display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--fx-border-default); background: var(--fx-bg-sunken); color: var(--fx-text-tertiary); font: 400 13px/1 'Plus Jakarta Sans', system-ui, sans-serif;">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.5"/><path d="M10.5 10.5L14 14" stroke="currentColor" stroke-width="1.5"/></svg>
+        Search modules, orders, buyers…
+      </div>
+    </div>
+    <div style="justify-self: end; display: flex; align-items: center; gap: 14px; min-width: 0;">
+      <button style="display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--fx-border-default); background: var(--fx-bg-surface); color: var(--fx-text-secondary); font: 500 12.5px/1 'Plus Jakarta Sans', system-ui, sans-serif; cursor: pointer;">
+        <span style="position: relative; display: inline-block; width: 20px; height: 20px; flex-shrink: 0;"><img src="i-1.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: -0.896; --dy: 0.444; transform-origin: center; animation: fx-breathe 2.4s ease-in-out 0ms infinite;" /><img src="i-2.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: -0.271; --dy: 0.963; transform-origin: center; animation: fx-breathe 2.4s ease-in-out -150ms infinite;" /><img src="i-3.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: -0.97; --dy: -0.243; transform-origin: center; animation: fx-breathe 2.4s ease-in-out -300ms infinite;" /><img src="i-4.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: 0.415; --dy: 0.91; transform-origin: center; animation: fx-breathe 2.4s ease-in-out -450ms infinite;" /><img src="i-5.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: -0.512; --dy: -0.859; transform-origin: center; animation: fx-breathe 2.4s ease-in-out -600ms infinite;" /><img src="i-6.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: 0.936; --dy: 0.352; transform-origin: center; animation: fx-breathe 2.4s ease-in-out -750ms infinite;" /><img src="i-7.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: 0.282; --dy: -0.96; transform-origin: center; animation: fx-breathe 2.4s ease-in-out -900ms infinite;" /><img src="i-8.png" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; --dx: 0.908; --dy: -0.419; transform-origin: center; animation: fx-breathe 2.4s ease-in-out -1050ms infinite;" /></span>Ask MARBIM
+      </button>
+      <span style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--fx-border-subtle); font: 500 13px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">?</span>
+      <span style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--fx-border-subtle); color: var(--fx-text-tertiary);">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M13 9.5A5.5 5.5 0 016.5 3a5.5 5.5 0 106.5 6.5z" stroke="currentColor" stroke-width="1.4"/></svg>
+      </span>
+      <span style="display: flex; align-items: center; gap: 8px;">
+        <span style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--fx-text-tertiary); white-space: nowrap;">Owner</span>
+        <span style="width: 30px; height: 30px; border-radius: 999px; background: var(--fx-bg-sunken); border: 2px solid var(--fx-bg-surface); display: inline-flex; align-items: center; justify-content: center; font: 600 11px/1 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">MR</span>
+      </span>
+    </div>
+  </header>
+<div style="flex: 1; display: flex; min-height: 0;">
+  <nav style="width: 232px; flex-shrink: 0;  border-right: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface); padding: 20px 12px; display: flex; flex-direction: column; gap: 22px; overflow: hidden;">
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+      <div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .09em; text-transform: uppercase; color: var(--fx-text-tertiary); padding: 0 12px 8px;">Work</div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-height: 36px; border-radius: 8px; font: 500 14px/1.2 'Plus Jakarta Sans', system-ui, sans-serif; background: var(--fx-bg-selected); color: var(--fx-text-primary);">
+      <span style="width: 2px; height: 15px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-accent);"></span>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink: 0; display: block;"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><path d="M3 3.5h10v10H3z"/><path d="M5.5 6.5h5"/><path d="M5.5 9h3.5"/><path d="M5.5 11.5h4"/></g></svg>
+      <span style="flex: 1; min-width: 0;">Your work</span>
+      
+    </div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-height: 36px; border-radius: 8px; font: 500 14px/1.2 'Plus Jakarta Sans', system-ui, sans-serif; background: transparent; color: var(--fx-text-secondary);">
+      <span style="width: 2px; height: 15px; flex-shrink: 0; transform: skewX(-34deg); background: transparent;"></span>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink: 0; display: block;"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><path d="M2 5.5h12v7H2z"/><path d="M2 5.5l6 4 6-4"/></g></svg>
+      <span style="flex: 1; min-width: 0;">Approve inbox</span>
+      <span style="display: inline-block; font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; color: var(--fx-accent-on); background: var(--fx-accent-subtle); border: 1px solid transparent; border-radius: 4px; padding: 5px 8px;">7</span>
+    </div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-height: 36px; border-radius: 8px; font: 500 14px/1.2 'Plus Jakarta Sans', system-ui, sans-serif; background: transparent; color: var(--fx-text-secondary);">
+      <span style="width: 2px; height: 15px; flex-shrink: 0; transform: skewX(-34deg); background: transparent;"></span>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink: 0; display: block;"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><path d="M3.5 3.5l9 9"/><path d="M12.5 3.5l-9 9"/></g></svg>
+      <span style="flex: 1; min-width: 0;">MARBIM</span>
+      
+    </div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-height: 36px; border-radius: 8px; font: 500 14px/1.2 'Plus Jakarta Sans', system-ui, sans-serif; background: transparent; color: var(--fx-text-secondary);">
+      <span style="width: 2px; height: 15px; flex-shrink: 0; transform: skewX(-34deg); background: transparent;"></span>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink: 0; display: block;"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><rect x="2.5" y="3.5" width="11" height="10"/><path d="M2.5 6.5h11"/><path d="M5.5 2v3"/><path d="M10.5 2v3"/></g></svg>
+      <span style="flex: 1; min-width: 0;">Order desk & TNA</span>
+      
+    </div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-height: 36px; border-radius: 8px; font: 500 14px/1.2 'Plus Jakarta Sans', system-ui, sans-serif; background: transparent; color: var(--fx-text-secondary);">
+      <span style="width: 2px; height: 15px; flex-shrink: 0; transform: skewX(-34deg); background: transparent;"></span>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink: 0; display: block;"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><path d="M4 4.5h9v8H4z"/><path d="M2.5 3h9"/><path d="M2.5 3v8"/></g></svg>
+      <span style="flex: 1; min-width: 0;">Order memory</span>
+      
+    </div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-height: 36px; border-radius: 8px; font: 500 14px/1.2 'Plus Jakarta Sans', system-ui, sans-serif; background: transparent; color: var(--fx-text-secondary);">
+      <span style="width: 2px; height: 15px; flex-shrink: 0; transform: skewX(-34deg); background: transparent;"></span>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink: 0; display: block;"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><path d="M5 2.5h6l1.5 3.5H3.5L5 2.5z"/><path d="M3.5 6v7.5h9V6"/><path d="M8 9v4.5"/></g></svg>
+      <span style="flex: 1; min-width: 0;">Sampling room</span>
+      
+    </div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+        <div style="display: flex; align-items: center; gap: 8px; padding: 4px 12px 8px; cursor: pointer;">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style="flex-shrink: 0;"><path d="M3 1.5L6.5 5 3 8.5" stroke="var(--fx-text-tertiary)" stroke-width="1.5"/></svg>
+          <span style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .09em; text-transform: uppercase; color: var(--fx-text-tertiary); flex: 1;">Commercial</span>
+          <span data-numeric style="font: 400 11px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-disabled);">6</span>
+        </div>
+      </div>
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+        <div style="display: flex; align-items: center; gap: 8px; padding: 4px 12px 8px; cursor: pointer;">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style="flex-shrink: 0;"><path d="M3 1.5L6.5 5 3 8.5" stroke="var(--fx-text-tertiary)" stroke-width="1.5"/></svg>
+          <span style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .09em; text-transform: uppercase; color: var(--fx-text-tertiary); flex: 1;">Floor</span>
+          <span data-numeric style="font: 400 11px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-disabled);">8</span>
+        </div>
+      </div>
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+        <div style="display: flex; align-items: center; gap: 8px; padding: 4px 12px 8px; cursor: pointer;">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style="flex-shrink: 0;"><path d="M3 1.5L6.5 5 3 8.5" stroke="var(--fx-text-tertiary)" stroke-width="1.5"/></svg>
+          <span style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .09em; text-transform: uppercase; color: var(--fx-text-tertiary); flex: 1;">Oversight</span>
+          <span data-numeric style="font: 400 11px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-disabled);">3</span>
+        </div>
+      </div>
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+        <div style="display: flex; align-items: center; gap: 8px; padding: 4px 12px 8px; cursor: pointer;">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style="flex-shrink: 0;"><path d="M3 1.5L6.5 5 3 8.5" stroke="var(--fx-text-tertiary)" stroke-width="1.5"/></svg>
+          <span style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .09em; text-transform: uppercase; color: var(--fx-text-tertiary); flex: 1;">System</span>
+          <span data-numeric style="font: 400 11px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-disabled);">2</span>
+        </div>
+      </div>
+    
+  </nav>
+  <main style="flex: 1; min-width: 0; background: var(--fx-bg-canvas); padding: 32px 48px 40px; overflow: hidden;">
+    <div style="max-width: 1280px; margin: 0 auto;">
+  <div style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 32px;">
+    <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap;">
+      <div style="display: flex; flex-direction: column; gap: 8px; min-width: 0;">
+        <div style="font: 400 12px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--fx-text-tertiary);">What needs you</div>
+        <h1 style="font: 700 34px/1.15 'Plus Jakarta Sans', system-ui, sans-serif; letter-spacing: -0.02em; margin: 0; color: var(--fx-text-primary);">Your work</h1>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px; flex-shrink: 0;">
+        <span style="font: 400 13px/1.5 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-secondary);">Wednesday, 2 December 2026 · Barakah Fashions Ltd</span>
+        
+      </div>
+    </div>
+    <div class="fx-thread-rule" data-variant="accent"></div>
+  </div>
+
+  <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 12px;">
+    <span style="display: flex; gap: 4px; transform: skewX(-34deg);"><i style="display: block; width: 2px; height: 15px; background: var(--fx-accent);"></i><i style="display: block; width: 2px; height: 15px; background: var(--fx-accent);"></i><i style="display: block; width: 2px; height: 15px; background: var(--fx-accent);"></i></span>
+    <h2 style="font: 600 26px/1.15 'Plus Jakarta Sans', system-ui, sans-serif; letter-spacing: -.012em; margin: 0;">What is wrong</h2>
+    <span style="margin-left: auto; font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">4 open</span>
+  </div>
+  <div style="background: var(--fx-bg-surface); border: 1px solid var(--fx-border-subtle); border-radius: 8px; box-shadow: var(--fx-sh1); overflow: hidden; padding: 0px;"><div class="fx-selvage" data-status="late" data-critical="true" style="border-top: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 16px; padding: 12px 18px; min-height: 44px;">
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;">
+          <span data-numeric style="font: 500 12.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">PO-BF-2044</span>
+          <span style="font: 400 14px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-wrap: pretty;">will miss ex-factory by 4 days — cutting has not started because the PP sample for ST-2610 is still with H&M</span>
+        </div>
+        <span style="font: 400 12.5px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary);">42,000 pcs · $203,700 FOB · ex-factory 18 Dec 2026</span>
+      </div>
+      <span style="font: 400 12.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); flex-shrink: 0;">9 days</span>
+      <span style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-danger);">late</span>
+    </div>
+  </div><div class="fx-selvage" data-status="late"  style="border-top: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 16px; padding: 12px 18px; min-height: 44px;">
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;">
+          <span data-numeric style="font: 500 12.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">LC-BF-7781</span>
+          <span style="font: 400 14px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-wrap: pretty;">latest shipment 21 Dec now falls before PO-BF-2044’s revised ex-factory</span>
+        </div>
+        <span style="font: 400 12.5px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary);">Bestseller A/S · $486,200 · no amendment raised</span>
+      </div>
+      <span style="font: 400 12.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); flex-shrink: 0;">2 days</span>
+      <span style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-danger);">late</span>
+    </div>
+  </div><div class="fx-selvage" data-status="at-risk"  style="border-top: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 16px; padding: 12px 18px; min-height: 44px;">
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;">
+          <span data-numeric style="font: 500 12.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">UD-2026-118</span>
+          <span style="font: 400 14px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-wrap: pretty;">balance is 1,240 m against six open bonded issues — Karim Uddin has asked to overdraw by 160 m</span>
+        </div>
+        <span style="font: 400 12.5px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary);">refused at the counter at 11:20; the request is yours to decide</span>
+      </div>
+      <span style="font: 400 12.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); flex-shrink: 0;">4 h</span>
+      <span style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-warning);">at risk</span>
+    </div>
+  </div><div class="fx-selvage" data-status="at-risk"  style="border-top: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 16px; padding: 12px 18px; min-height: 44px;">
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;">
+          <span data-numeric style="font: 500 12.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">PO-IMP-0311</span>
+          <span style="font: 400 14px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-wrap: pretty;">9 days past the promised delivery and the lay needs it on 6 Dec — chase Shanghai Textile</span>
+        </div>
+        <span style="font: 400 12.5px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary);">12,400 m of 40s poplin · BTB-2026-0093</span>
+      </div>
+      <span style="font: 400 12.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); flex-shrink: 0;">9 days</span>
+      <span style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-warning);">at risk</span>
+    </div>
+  </div></div>
+  <div style="height: 30px;"></div>
+
+  <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 12px;">
+    <span style="display: flex; gap: 4px; transform: skewX(-34deg);"><i style="display: block; width: 2px; height: 15px; background: var(--fx-accent);"></i><i style="display: block; width: 2px; height: 15px; background: var(--fx-accent);"></i><i style="display: block; width: 2px; height: 15px; background: var(--fx-accent);"></i></span>
+    <h2 style="font: 600 26px/1.15 'Plus Jakarta Sans', system-ui, sans-serif; letter-spacing: -.012em; margin: 0;">Decide now</h2>
+    <span style="margin-left: auto; font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">7 drafts, 2 ageing</span>
+  </div>
+  <div style="background: var(--fx-bg-surface); border: 1px solid var(--fx-border-subtle); border-radius: 8px; box-shadow: var(--fx-sh1); overflow: hidden; padding: 0px;"><div class="fx-selvage" data-status="done"  style="border-top: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 16px; padding: 12px 18px; min-height: 44px;">
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;">
+          <span data-numeric style="font: 500 12.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">Store</span>
+          <span style="font: 400 14px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-wrap: pretty;">3 drafts — GRN readings from challan photos</span>
+        </div>
+        <span style="font: 400 12.5px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary);">oldest 26 h · weakest field 0.82</span>
+      </div>
+      
+      <span style="display: flex; align-items: center; gap: 12px;"><span style="display: inline-flex; align-items: center; gap: 8px;">
+    <span data-numeric style="font: 500 13px/1.2 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-warning);">0.82</span>
+    <span style="display: flex; gap: 4px; align-items: center;"><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-warning);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-warning);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-warning);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-warning);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-warning);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-warning);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-warning);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-warning);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-border-default);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-border-default);"></span></span></span><span class="" style="display: inline-block; font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-accent-on); background: var(--fx-accent-subtle); border: 1px solid transparent; border-radius: 4px; padding: 5px 8px;">26 h</span></span>
+    </div>
+  </div><div class="fx-selvage" data-status="done"  style="border-top: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 16px; padding: 12px 18px; min-height: 44px;">
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;">
+          <span data-numeric style="font: 500 12.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">Merchandising</span>
+          <span style="font: 400 14px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-wrap: pretty;">2 drafts — style measurements and one new order</span>
+        </div>
+        <span style="font: 400 12.5px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary);">oldest 26 h · weakest field 0.74</span>
+      </div>
+      
+      <span style="display: flex; align-items: center; gap: 12px;"><span style="display: inline-flex; align-items: center; gap: 8px;">
+    <span data-numeric style="font: 500 13px/1.2 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-warning);">0.74</span>
+    <span style="display: flex; gap: 4px; align-items: center;"><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-warning);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-warning);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-warning);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-warning);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-warning);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-warning);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-warning);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-border-default);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-border-default);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-border-default);"></span></span></span><span class="" style="display: inline-block; font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-accent-on); background: var(--fx-accent-subtle); border: 1px solid transparent; border-radius: 4px; padding: 5px 8px;">26 h</span></span>
+    </div>
+  </div><div class="fx-selvage" data-status="done"  style="border-top: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 16px; padding: 12px 18px; min-height: 44px;">
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;">
+          <span data-numeric style="font: 500 12.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">Procurement</span>
+          <span style="font: 400 14px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-wrap: pretty;">1 draft — a purchase order off a pro-forma</span>
+        </div>
+        <span style="font: 400 12.5px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary);">oldest 5 h · weakest field 0.96</span>
+      </div>
+      
+      <span style="display: flex; align-items: center; gap: 12px;"><span style="display: inline-flex; align-items: center; gap: 8px;">
+    <span data-numeric style="font: 500 13px/1.2 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">0.96</span>
+    <span style="display: flex; gap: 4px; align-items: center;"><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-accent);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-accent);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-accent);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-accent);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-accent);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-accent);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-accent);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-accent);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-accent);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-accent);"></span></span></span><span class="" style="display: inline-block; font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-accent-on); background: var(--fx-accent-subtle); border: 1px solid transparent; border-radius: 4px; padding: 5px 8px;">5 h</span></span>
+    </div>
+  </div><div class="fx-selvage" data-status="done"  style="border-top: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 16px; padding: 12px 18px; min-height: 44px;">
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;">
+          <span data-numeric style="font: 500 12.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">Commercial</span>
+          <span style="font: 400 14px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-wrap: pretty;">1 draft — an LC amendment off the bank’s advice</span>
+        </div>
+        <span style="font: 400 12.5px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary);">oldest 3 h · weakest field 0.93</span>
+      </div>
+      
+      <span style="display: flex; align-items: center; gap: 12px;"><span style="display: inline-flex; align-items: center; gap: 8px;">
+    <span data-numeric style="font: 500 13px/1.2 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">0.93</span>
+    <span style="display: flex; gap: 4px; align-items: center;"><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-accent);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-accent);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-accent);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-accent);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-accent);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-accent);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-accent);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-accent);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-accent);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-border-default);"></span></span></span><span class="" style="display: inline-block; font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-accent-on); background: var(--fx-accent-subtle); border: 1px solid transparent; border-radius: 4px; padding: 5px 8px;">3 h</span></span>
+    </div>
+  </div></div>
+  <div style="height: 30px;"></div>
+
+  <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 12px;">
+    <span style="display: flex; gap: 4px; transform: skewX(-34deg);"><i style="display: block; width: 2px; height: 15px; background: var(--fx-accent);"></i><i style="display: block; width: 2px; height: 15px; background: var(--fx-accent);"></i><i style="display: block; width: 2px; height: 15px; background: var(--fx-accent);"></i></span>
+    <h2 style="font: 600 26px/1.15 'Plus Jakarta Sans', system-ui, sans-serif; letter-spacing: -.012em; margin: 0;">The numbers</h2>
+    <span style="margin-left: auto; font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">2026-11-02 → 2026-12-02</span>
+  </div>
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px;">
+    <div style="background: var(--fx-bg-surface); border: 1px solid var(--fx-border-subtle); border-radius: 8px; box-shadow: var(--fx-sh1); padding: 18px 20px; display: flex; flex-direction: column; gap: 8px; min-width: 0;">
+    <div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Order book</div>
+    <div style="display: flex; align-items: baseline; gap: 6px;">
+          <span data-numeric style="font: 600 34px/1.05 'Plus Jakarta Sans', system-ui, sans-serif; letter-spacing: -.02em; color: var(--fx-text-primary);">19</span>
+          <span style="font: 400 14px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">orders</span>
+        </div>
+    <div style="font: 400 13px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); text-wrap: pretty;">412,000 pieces across 5 statuses</div>
+    <div style="font: 400 11.5px/1.45 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">counted from the order book</div>
+    <div style="font: 400 11.5px/1.45 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">as of just now</div>
+  </div><div style="background: var(--fx-bg-surface); border: 1px solid var(--fx-border-subtle); border-radius: 8px; box-shadow: var(--fx-sh1); padding: 18px 20px; display: flex; flex-direction: column; gap: 8px; min-width: 0;">
+    <div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">On-time delivery</div>
+    <div style="display: flex; align-items: baseline; gap: 6px;">
+          <span data-numeric style="font: 600 34px/1.05 'Plus Jakarta Sans', system-ui, sans-serif; letter-spacing: -.02em; color: var(--fx-text-primary);">91</span>
+          <span style="font: 400 14px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">%</span>
+        </div>
+    <div style="font: 400 13px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); text-wrap: pretty;">31 of 34 shipments left on the ex-factory date</div>
+    <div style="font: 400 11.5px/1.45 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">minimum 8 shipments before a percentage is stated</div>
+    <div style="font: 400 11.5px/1.45 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">as of yesterday</div>
+  </div><div style="background: var(--fx-bg-surface); border: 1px solid var(--fx-border-subtle); border-radius: 8px; box-shadow: var(--fx-sh1); padding: 18px 20px; display: flex; flex-direction: column; gap: 8px; min-width: 0;">
+    <div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Efficiency</div>
+    <div style="display: flex; align-items: baseline; gap: 6px;">
+          <span data-numeric style="font: 600 34px/1.05 'Plus Jakarta Sans', system-ui, sans-serif; letter-spacing: -.02em; color: var(--fx-success);">68</span>
+          <span style="font: 400 14px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">%</span>
+        </div>
+    <div style="font: 400 13px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); text-wrap: pretty;">142 line-days of hourly output</div>
+    <div style="font: 400 11.5px/1.45 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">earned minutes over available minutes, as one ratio for the period</div>
+    <div style="font: 400 11.5px/1.45 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">as of yesterday</div>
+  </div><div style="background: var(--fx-bg-surface); border: 1px solid var(--fx-border-subtle); border-radius: 8px; box-shadow: var(--fx-sh1); padding: 18px 20px; display: flex; flex-direction: column; gap: 8px; min-width: 0;">
+    <div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">DHU</div>
+    <div style="display: flex; align-items: baseline; gap: 6px;">
+          <span data-numeric style="font: 600 34px/1.05 'Plus Jakarta Sans', system-ui, sans-serif; letter-spacing: -.02em; color: var(--fx-warning);">4.2</span>
+          
+        </div>
+    <div style="font: 400 13px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); text-wrap: pretty;">26 days of inline checks</div>
+    <div style="font: 400 11.5px/1.45 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">defects per hundred units</div>
+    <div style="font: 400 11.5px/1.45 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">as of yesterday</div>
+  </div><div style="background: var(--fx-bg-surface); border: 1px solid var(--fx-border-subtle); border-radius: 8px; box-shadow: var(--fx-sh1); padding: 18px 20px; display: flex; flex-direction: column; gap: 8px; min-width: 0;">
+    <div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Cash position · USD</div>
+    <div style="display: flex; align-items: baseline; gap: 6px;">
+          <span data-numeric style="font: 600 34px/1.05 'Plus Jakarta Sans', system-ui, sans-serif; letter-spacing: -.02em; color: var(--fx-text-primary);">173,260</span>
+          
+        </div>
+    <div style="font: 400 13px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); text-wrap: pretty;">$486,200 in against $312,940 out</div>
+    <div style="font: 400 11.5px/1.45 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">one currency only — USD receivables against USD payables</div>
+    <div style="font: 400 11.5px/1.45 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">as of today, 06:00</div>
+  </div>
+    <div style="background: var(--fx-bg-surface); border: 1px solid var(--fx-border-subtle); border-radius: 8px; box-shadow: var(--fx-sh1); padding: 18px 20px; display: flex; flex-direction: column; gap: 8px; min-width: 0;">
+    <div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Payroll · November</div>
+    <div style="display: flex; align-items: baseline; gap: 6px;">
+          <span data-numeric style="font: 600 34px/1.05 'Plus Jakarta Sans', system-ui, sans-serif; letter-spacing: -.02em; color: var(--fx-warning);">৳1,04,82,640</span>
+          
+        </div>
+    <div style="font: 400 13px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); text-wrap: pretty;">2,412 workers · computed by Farzana Yasmin, awaiting your approval</div>
+    <div style="font: 400 11.5px/1.45 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">gazette v2026-1 · 208-hour basic divisor</div>
+    <div style="font: 400 11.5px/1.45 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">as of 2 Dec, 09:14</div>
+  </div>
+  </div>
+  <div style="height: 30px;"></div>
+
+  <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 12px;">
+    <span style="display: flex; gap: 4px; transform: skewX(-34deg);"><i style="display: block; width: 2px; height: 15px; background: var(--fx-accent);"></i><i style="display: block; width: 2px; height: 15px; background: var(--fx-accent);"></i><i style="display: block; width: 2px; height: 15px; background: var(--fx-accent);"></i></span>
+    <h2 style="font: 600 26px/1.15 'Plus Jakarta Sans', system-ui, sans-serif; letter-spacing: -.012em; margin: 0;">Desks that need a person</h2>
+    <span style="margin-left: auto; font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">12 desks</span>
+  </div>
+  <div style="background: var(--fx-bg-surface); border: 1px solid var(--fx-border-subtle); border-radius: 8px; box-shadow: var(--fx-sh1); overflow: hidden; padding: 0px;"><div class="fx-selvage" data-status="at-risk"  style="border-top: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 16px; padding: 12px 18px; min-height: 44px;">
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;">
+          <span data-numeric style="font: 500 12.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">/store/receive</span>
+          <span style="font: 400 14px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-wrap: pretty;"><strong style="font-weight: 600;">Store</strong> — 3 trucks at the gate · 1 GRN uninspected</span>
+        </div>
+        <span style="font: 400 12.5px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary);">Karim Uddin</span>
+      </div>
+      
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M5.5 2.5L11 8l-5.5 5.5" stroke="var(--fx-text-tertiary)" stroke-width="1.5"/></svg>
+    </div>
+  </div><div class="fx-selvage" data-status="late"  style="border-top: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 16px; padding: 12px 18px; min-height: 44px;">
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;">
+          <span data-numeric style="font: 500 12.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">/lines/hourly</span>
+          <span style="font: 400 14px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-wrap: pretty;"><strong style="font-weight: 600;">Production</strong> — L4 behind plan by 22% · 42 min of downtime</span>
+        </div>
+        <span style="font: 400 12.5px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary);">Shilpi Begum, Rina Das</span>
+      </div>
+      
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M5.5 2.5L11 8l-5.5 5.5" stroke="var(--fx-text-tertiary)" stroke-width="1.5"/></svg>
+    </div>
+  </div><div class="fx-selvage" data-status="at-risk"  style="border-top: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 16px; padding: 12px 18px; min-height: 44px;">
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;">
+          <span data-numeric style="font: 500 12.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">/quality/inline</span>
+          <span style="font: 400 14px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-wrap: pretty;"><strong style="font-weight: 600;">Quality</strong> — 2 lots finished and never inspected</span>
+        </div>
+        <span style="font: 400 12.5px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary);">Mitu Rani</span>
+      </div>
+      
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M5.5 2.5L11 8l-5.5 5.5" stroke="var(--fx-text-tertiary)" stroke-width="1.5"/></svg>
+    </div>
+  </div><div class="fx-selvage" data-status="on-track"  style="border-top: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 16px; padding: 12px 18px; min-height: 44px;">
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;">
+          <span data-numeric style="font: 500 12.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">/cutting</span>
+          <span style="font: 400 14px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-wrap: pretty;"><strong style="font-weight: 600;">Cutting</strong> — queue clear — PP holds ST-2610</span>
+        </div>
+        <span style="font: 400 12.5px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary);">Rafiq Islam</span>
+      </div>
+      
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M5.5 2.5L11 8l-5.5 5.5" stroke="var(--fx-text-tertiary)" stroke-width="1.5"/></svg>
+    </div>
+  </div><div class="fx-selvage" data-status="late"  style="border-top: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 16px; padding: 12px 18px; min-height: 44px;">
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;">
+          <span data-numeric style="font: 500 12.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">/maintenance</span>
+          <span style="font: 400 14px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-wrap: pretty;"><strong style="font-weight: 600;">Maintenance</strong> — 1 line-down ticket, claimed 13:24</span>
+        </div>
+        <span style="font: 400 12.5px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary);">Sabbir Khan</span>
+      </div>
+      
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M5.5 2.5L11 8l-5.5 5.5" stroke="var(--fx-text-tertiary)" stroke-width="1.5"/></svg>
+    </div>
+  </div><div class="fx-selvage" data-status="at-risk"  style="border-top: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 16px; padding: 12px 18px; min-height: 44px;">
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;">
+          <span data-numeric style="font: 500 12.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">/shipment</span>
+          <span style="font: 400 14px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-wrap: pretty;"><strong style="font-weight: 600;">Shipment</strong> — 1 shipment with no EXP number</span>
+        </div>
+        <span style="font: 400 12.5px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary);">Jahid Hasan</span>
+      </div>
+      
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M5.5 2.5L11 8l-5.5 5.5" stroke="var(--fx-text-tertiary)" stroke-width="1.5"/></svg>
+    </div>
+  </div><div class="fx-selvage" data-status="at-risk"  style="border-top: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 16px; padding: 12px 18px; min-height: 44px;">
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;">
+          <span data-numeric style="font: 500 12.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">/planning</span>
+          <span style="font: 400 14px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-wrap: pretty;"><strong style="font-weight: 600;">Planning</strong> — 4 lines held open from 6 Dec</span>
+        </div>
+        <span style="font: 400 12.5px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary);">Nazmul Karim</span>
+      </div>
+      
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M5.5 2.5L11 8l-5.5 5.5" stroke="var(--fx-text-tertiary)" stroke-width="1.5"/></svg>
+    </div>
+  </div><div class="fx-selvage" data-status="at-risk"  style="border-top: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 16px; padding: 12px 18px; min-height: 44px;">
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;">
+          <span data-numeric style="font: 500 12.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">/procurement</span>
+          <span style="font: 400 14px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-wrap: pretty;"><strong style="font-weight: 600;">Procurement</strong> — 2 POs past their delivery date</span>
+        </div>
+        <span style="font: 400 12.5px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary);">Procurement Officer</span>
+      </div>
+      
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M5.5 2.5L11 8l-5.5 5.5" stroke="var(--fx-text-tertiary)" stroke-width="1.5"/></svg>
+    </div>
+  </div><div class="fx-selvage" data-status="late"  style="border-top: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 16px; padding: 12px 18px; min-height: 44px;">
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;">
+          <span data-numeric style="font: 500 12.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">/lcs</span>
+          <span style="font: 400 14px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-wrap: pretty;"><strong style="font-weight: 600;">Commercial</strong> — 1 LC date conflict · 1 discrepant presentation</span>
+        </div>
+        <span style="font: 400 12.5px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary);">Tanvir Ahmed</span>
+      </div>
+      
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M5.5 2.5L11 8l-5.5 5.5" stroke="var(--fx-text-tertiary)" stroke-width="1.5"/></svg>
+    </div>
+  </div><div class="fx-selvage" data-status="on-track"  style="border-top: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 16px; padding: 12px 18px; min-height: 44px;">
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;">
+          <span data-numeric style="font: 500 12.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">/finance</span>
+          <span style="font: 400 14px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-wrap: pretty;"><strong style="font-weight: 600;">Finance</strong> — nothing waiting</span>
+        </div>
+        <span style="font: 400 12.5px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary);">Salma Khatun</span>
+      </div>
+      
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M5.5 2.5L11 8l-5.5 5.5" stroke="var(--fx-text-tertiary)" stroke-width="1.5"/></svg>
+    </div>
+  </div><div class="fx-selvage" data-status="on-track"  style="border-top: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 16px; padding: 12px 18px; min-height: 44px;">
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;">
+          <span data-numeric style="font: 500 12.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">/compliance</span>
+          <span style="font: 400 14px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-wrap: pretty;"><strong style="font-weight: 600;">Compliance</strong> — fire drill logged · next due 4 Jan</span>
+        </div>
+        <span style="font: 400 12.5px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary);">Rumi Chowdhury</span>
+      </div>
+      
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M5.5 2.5L11 8l-5.5 5.5" stroke="var(--fx-text-tertiary)" stroke-width="1.5"/></svg>
+    </div>
+  </div><div class="fx-selvage" data-status="at-risk"  style="border-top: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 16px; padding: 12px 18px; min-height: 44px;">
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;">
+          <span data-numeric style="font: 500 12.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">/workforce</span>
+          <span style="font: 400 14px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-wrap: pretty;"><strong style="font-weight: 600;">Workforce</strong> — November run computed, awaiting your approval</span>
+        </div>
+        <span style="font: 400 12.5px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary);">Farzana Yasmin</span>
+      </div>
+      
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M5.5 2.5L11 8l-5.5 5.5" stroke="var(--fx-text-tertiary)" stroke-width="1.5"/></svg>
+    </div>
+  </div></div>
+
+  <div style="font: 400 12px/1.5 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); padding: 12px 0 0; max-width: 76ch; text-wrap: pretty;">Order is the argument: what is wrong, then what to decide, then the numbers, then the desks. Plan 2.1 settled that home wins over /dashboard because queues are actionable and figures are context — an owner acts first and reads second. Every row here opens a drawer; nothing on this screen is a dead end. The payroll tile is a PROPOSAL — the strip in owner-figures.tsx today is order book, OTD, efficiency, DHU and cash, with no payroll figure at all.</div></div>
+  </main>
+</div>
+</div>
+</x-dc>
+</body>
+</html>

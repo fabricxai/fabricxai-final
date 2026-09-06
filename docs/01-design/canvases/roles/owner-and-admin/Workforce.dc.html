@@ -1,0 +1,153 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Anek+Bangla:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #FBFAF8; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: #181D29; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+  a:hover { color: #B88C21; }
+  .tabular, [data-numeric] { font-variant-numeric: tabular-nums; }
+  .fx-selvage { display: flex; align-items: stretch; overflow: hidden; }
+  .fx-selvage::before { content: ''; flex-shrink: 0; width: 3px; background: #A9A49A; }
+  .fx-selvage[data-status="on-track"]::before { background: #2F7D5B; }
+  .fx-selvage[data-status="at-risk"]::before { background: #8C5A16; }
+  .fx-selvage[data-status="late"]::before { background: #B23A32; }
+  .fx-selvage[data-status="done"]::before { background: #A9A49A; }
+  .fx-selvage[data-critical="true"]::before { width: 5px; }
+  .fx-thread-rule { height: 9px; background-image: repeating-linear-gradient(115deg, #E1B334 0 2px, transparent 2px 9px); }
+  .fx-thread-rule[data-variant="muted"] { height: 7px; background-image: repeating-linear-gradient(115deg, #D6D2C9 0 2px, transparent 2px 9px); }
+  .fx-weave { background-image: repeating-linear-gradient(146deg, transparent 0 7px, #E7E4DE 7px 9px, transparent 9px 17px); }
+  .fx-cut { clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%); border-radius: 8px; }
+  .fx-cut-chip { clip-path: polygon(0 0, 100% 0, 100% 100%, 10px 100%, 0 calc(100% - 10px)); }
+  @keyframes fx-spread { to { transform: translate(calc(var(--dx) * 6%), calc(var(--dy) * 6%)); } }
+  @keyframes fx-converge { 0% { transform: translate(calc(var(--dx) * 26%), calc(var(--dy) * 26%)) scale(.82); opacity: 0; } 62% { transform: translate(0, 0) scale(1.15); opacity: 1; } 100% { transform: translate(0, 0) scale(1); opacity: 1; } }
+  @keyframes fx-orbit { 0%, 100% { transform: rotate(-13deg); opacity: .45; } 50% { transform: rotate(13deg); opacity: 1; } }
+  @keyframes fx-travel { 0% { transform: translate(-10%, 10%); opacity: .25; } 40% { transform: translate(0, 0); opacity: 1; } 100% { transform: translate(10%, -10%); opacity: .25; } }
+  @keyframes fx-breathe { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(calc(var(--dx) * 3.5%), calc(var(--dy) * 3.5%)); } }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
+</style>
+</helmet>
+
+<div style="--fx-bg-canvas:#FBFAF8; --fx-bg-surface:#FFFFFF; --fx-bg-raised:#FFFFFF; --fx-bg-sunken:#F3F1EC; --fx-bg-hover:rgba(24,29,41,.035); --fx-bg-selected:rgba(225,179,52,.12); --fx-border-subtle:#E7E4DE; --fx-border-default:#D6D2C9; --fx-border-strong:#A9A49A; --fx-text-primary:#181D29; --fx-text-secondary:#4C5364; --fx-text-tertiary:#5E6675; --fx-text-disabled:#A8AEBB; --fx-text-inverse:#FBFAF8; --fx-accent:#E1B334; --fx-accent-hover:#CFA22B; --fx-accent-pressed:#B88C21; --fx-accent-subtle:#FAF1DA; --fx-accent-on:#181D29; --fx-success:#2F7D5B; --fx-warning:#8C5A16; --fx-danger:#B23A32; --fx-info:#2F5FA8; --fx-focus:#181D29; --fx-sh1:0 1px 2px rgba(24,29,41,.06); --fx-sh2:0 4px 12px rgba(24,29,41,.08); --fx-sh3:0 12px 32px rgba(24,29,41,.12); --fx-slash-angle:-34deg; --fx-weave-angle:146deg; --fx-thread-angle:115deg; width: 1560px; min-height: 1440px; background: var(--fx-bg-canvas); color: var(--fx-text-primary); font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: 16px; line-height: 1.55; padding: 40px; display: flex; flex-direction: column;">
+
+  <div style="margin-bottom: 26px;">
+    <div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">/workforce — the one screen where the twins differ</div>
+    <h1 style="font: 700 30px/1.15 'Plus Jakarta Sans', system-ui, sans-serif; letter-spacing: -.02em; margin: 10px 0 12px;">Payroll is HR’s and the owner’s</h1>
+    <div style="font: 400 14px/1.6 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); max-width: 92ch; text-wrap: pretty;">
+      The gate admits <code style="font: 500 13px/1 'JetBrains Mono', ui-monospace, monospace;">hr</code> and <code style="font: 500 13px/1 'JetBrains Mono', ui-monospace, monospace;">owner</code>, and refuses everybody else with a 403 carrying nothing at all — no message, no hint that what was refused is payroll. That emptiness is deliberate and it is exactly why this screen has to speak: an admin who meets a silent refusal concludes the software is broken.
+    </div>
+  </div>
+  <div style="display: flex; gap: 40px; align-items: flex-start;">
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px;">
+      <div style="font: 500 11px/1.45 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--fx-text-tertiary); padding-bottom: 10px;">owner — the run, and the signature</div>
+      <div style="background: var(--fx-bg-surface); border: 1px solid var(--fx-border-subtle); border-radius: 8px; box-shadow: var(--fx-sh1); overflow: hidden; padding: 0px;"><div style="padding: 20px 24px; display: flex; flex-direction: column; gap: 16px;">
+        <div style="display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;">
+          <span data-numeric style="font: 500 14px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">RUN-2026-11</span><span style="font: 400 14px/1.3 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">November 2026</span><span style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-warning);">awaiting approval</span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px;">
+          <div style="background: var(--fx-bg-surface); border: 1px solid var(--fx-border-subtle); border-radius: 8px; box-shadow: var(--fx-sh1); padding: 18px 20px; display: flex; flex-direction: column; gap: 8px; min-width: 0;">
+    <div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Net payable</div>
+    <div style="display: flex; align-items: baseline; gap: 6px;">
+          <span data-numeric style="font: 600 34px/1.05 'Plus Jakarta Sans', system-ui, sans-serif; letter-spacing: -.02em; color: var(--fx-text-primary);">৳1,04,82,640</span>
+          
+        </div>
+    <div style="font: 400 13px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); text-wrap: pretty;">2,412 workers · gazette v2026-1</div>
+    
+    
+  </div>
+          <div style="background: var(--fx-bg-surface); border: 1px solid var(--fx-border-subtle); border-radius: 8px; box-shadow: var(--fx-sh1); padding: 18px 20px; display: flex; flex-direction: column; gap: 8px; min-width: 0;">
+    <div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Overtime</div>
+    <div style="display: flex; align-items: baseline; gap: 6px;">
+          <span data-numeric style="font: 600 34px/1.05 'Plus Jakarta Sans', system-ui, sans-serif; letter-spacing: -.02em; color: var(--fx-text-primary);">৳9,41,220</span>
+          
+        </div>
+    <div style="font: 400 13px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); text-wrap: pretty;">18,640 OT hours at 2× basic ÷ 208</div>
+    
+    
+  </div>
+          <div style="background: var(--fx-bg-surface); border: 1px solid var(--fx-border-subtle); border-radius: 8px; box-shadow: var(--fx-sh1); padding: 18px 20px; display: flex; flex-direction: column; gap: 8px; min-width: 0;">
+    <div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Parallel run</div>
+    <div style="display: flex; align-items: baseline; gap: 6px;">
+          <span data-numeric style="font: 600 34px/1.05 'Plus Jakarta Sans', system-ui, sans-serif; letter-spacing: -.02em; color: var(--fx-success);">0</span>
+          <span style="font: 400 14px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">unexplained</span>
+        </div>
+    <div style="font: 400 13px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); text-wrap: pretty;">every net matched the factory’s own sheet for November</div>
+    
+    
+  </div>
+        </div>
+        <div style="border: 1px solid var(--fx-accent); border-radius: 8px; background: var(--fx-accent-subtle); padding: 14px 16px; font: 400 13.5px/1.6 'Plus Jakarta Sans', system-ui, sans-serif; text-wrap: pretty;">
+          Farzana Yasmin computed this at 09:14 today. Approving it is yours alone — HR computes, the owner signs. The parallel run against November’s own sheet reconciled to zero, and that report is committed.
+        </div>
+        <div style="display: flex; gap: 10px; justify-content: flex-end;"><button style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 10px 18px; font: 600 14px/1 'Plus Jakarta Sans', system-ui, sans-serif; min-height: 36px;  background: transparent; color: var(--fx-text-primary); border: 1px solid transparent; cursor: pointer;">Open the parallel run</button><button style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 10px 18px; font: 600 14px/1 'Plus Jakarta Sans', system-ui, sans-serif; min-height: 36px;  background: transparent; color: var(--fx-text-primary); border: 1px solid var(--fx-border-default); cursor: pointer;">Send it back to HR</button><button style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 10px 18px; font: 600 14px/1 'Plus Jakarta Sans', system-ui, sans-serif; min-height: 36px;  background: var(--fx-accent); color: var(--fx-accent-on); border: none; cursor: pointer;">Approve the run</button></div>
+      </div></div>
+
+      <div style="font: 500 11px/1.45 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--fx-text-tertiary); padding-bottom: 10px;">HR’s own doors, which an owner may also open</div>
+      <div style="background: var(--fx-bg-surface); border: 1px solid var(--fx-border-subtle); border-radius: 8px; box-shadow: var(--fx-sh1); overflow: hidden; padding: 0px;"><div style="padding: 18px 22px; display: flex; flex-direction: column; gap: 14px;">
+        <div style="font: 400 13px/1.6 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); text-wrap: pretty;">
+          These are Farzana Yasmin’s day-to-day, not the owner’s. They are here because an owner covering a desk must not be locked out of the operation they are covering — the same rule that admits an owner to every floor screen. An admin gets none of them: the payroll gate lists hr and owner only.
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <button style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 10px 18px; font: 600 14px/1 'Plus Jakarta Sans', system-ui, sans-serif; min-height: 36px;  background: transparent; color: var(--fx-text-primary); border: 1px solid var(--fx-border-default); cursor: pointer;">Run the December payroll</button><button style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 10px 18px; font: 600 14px/1 'Plus Jakarta Sans', system-ui, sans-serif; min-height: 36px;  background: transparent; color: var(--fx-text-primary); border: 1px solid var(--fx-border-default); cursor: pointer;">Import attendance</button><button style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 10px 18px; font: 600 14px/1 'Plus Jakarta Sans', system-ui, sans-serif; min-height: 36px;  background: transparent; color: var(--fx-text-primary); border: 1px solid var(--fx-border-default); cursor: pointer;">Record a gazette</button><button style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 10px 18px; font: 600 14px/1 'Plus Jakarta Sans', system-ui, sans-serif; min-height: 36px;  background: transparent; color: var(--fx-text-primary); border: 1px solid var(--fx-border-default); cursor: pointer;">Make a gazette active</button>
+        </div>
+        <div style="font: 400 12.5px/1.6 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); text-wrap: pretty;">
+          A gazette is law and is never edited — recorded as a draft because transcribing a government notification needs a second pair of eyes, then activated when it takes effect. Superseding one does not rewrite the months it governed: a completed run pins the gazette it was computed against.
+        </div>
+      </div></div>
+      <div style="font: 400 12px/1.5 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); padding: 12px 0 0; max-width: 76ch; text-wrap: pretty;">Approve goes through a ConfirmDialog carrying the totals again — a decision about what 2,412 people are paid is the definition of a consequence that must not be missed.</div>
+    </div>
+
+    <div style="width: 560px; flex-shrink: 0; display: flex; flex-direction: column; gap: 14px;">
+      <div style="font: 500 11px/1.45 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--fx-text-tertiary); padding-bottom: 10px;">admin — the roster, and the sentence instead</div>
+      <div style="background: var(--fx-bg-surface); border: 1px solid var(--fx-border-subtle); border-radius: 8px; box-shadow: var(--fx-sh1); overflow: hidden; padding: 0px;"><div style="padding: 20px 24px; display: flex; flex-direction: column; gap: 16px;">
+        <div style="display: flex; align-items: baseline; gap: 12px;">
+          <span style="font: 600 16px/1.3 'Plus Jakarta Sans', system-ui, sans-serif;">Roster</span><span class="" style="display: inline-block; font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-text-tertiary); background: transparent; border: 1px solid var(--fx-border-subtle); border-radius: 4px; padding: 5px 8px;">2,412 active</span>
+        </div>
+        <div class="fx-selvage" data-status="on-track" style="border-top: 1px solid var(--fx-border-subtle);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 9px 12px;">
+      <span style="flex: 1; min-width: 0; font: 400 12.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary);">L1 · 68 operators, 4 helpers</span>
+      <span style="font: 400 11.5px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); flex-shrink: 0;">72</span>
+    </div>
+  </div>
+        <div class="fx-selvage" data-status="on-track" style="border-top: 1px solid var(--fx-border-subtle);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 9px 12px;">
+      <span style="flex: 1; min-width: 0; font: 400 12.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary);">L2 · 68 operators, 4 helpers</span>
+      <span style="font: 400 11.5px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); flex-shrink: 0;">72</span>
+    </div>
+  </div>
+        <div class="fx-selvage" data-status="on-track" style="border-top: 1px solid var(--fx-border-subtle);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 9px 12px;">
+      <span style="flex: 1; min-width: 0; font: 400 12.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary);">L4 · 72 operators, 5 helpers</span>
+      <span style="font: 400 11.5px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); flex-shrink: 0;">77</span>
+    </div>
+  </div>
+        <div style="font: 400 12.5px/1.6 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); text-wrap: pretty;">
+          Headcount, sections and lines are ordinary factory data and are not behind the gate.
+        </div>
+      </div></div>
+      <div style="border: 1px solid var(--fx-border-subtle); border-radius: 8px; background: var(--fx-bg-surface); padding: 18px 20px; display: flex; gap: 14px; align-items: flex-start;">
+    <img src="marbim-logo-ink.png" alt="" style="filter: grayscale(1); opacity: .5; width: 24px; height: 24px; display: block; flex-shrink: 0;" />
+    <div style="display: flex; flex-direction: column; gap: 5px;">
+      <span style="font: 600 14.5px/1.35 'Plus Jakarta Sans', system-ui, sans-serif;">You don’t have access to payroll</span>
+      <span style="font: 400 13.5px/1.6 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); text-wrap: pretty;">Payroll is HR and the owner only — a wage figure is seen by the two roles accountable for it.</span>
+    </div>
+  </div>
+      <div style="font: 400 13px/1.6 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); text-wrap: pretty;">
+        That is the shipped copy, from the LockedState this screen already renders — day-one finding D2, not a proposal. The roster above it is not behind the gate: headcount, sections and lines are ordinary factory data.
+      </div>
+      <div style="font: 400 12px/1.5 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); padding: 12px 0 0; max-width: 76ch; text-wrap: pretty;">Absent, not disabled. A greyed “Approve the run” button would tell an admin the door exists and that they are one permission away from it, which is both untrue and the shape of a screen people file bugs against.</div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

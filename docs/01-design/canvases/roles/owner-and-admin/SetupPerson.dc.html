@@ -1,0 +1,233 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Anek+Bangla:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #FBFAF8; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: #181D29; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+  a:hover { color: #B88C21; }
+  .tabular, [data-numeric] { font-variant-numeric: tabular-nums; }
+  .fx-selvage { display: flex; align-items: stretch; overflow: hidden; }
+  .fx-selvage::before { content: ''; flex-shrink: 0; width: 3px; background: #A9A49A; }
+  .fx-selvage[data-status="on-track"]::before { background: #2F7D5B; }
+  .fx-selvage[data-status="at-risk"]::before { background: #8C5A16; }
+  .fx-selvage[data-status="late"]::before { background: #B23A32; }
+  .fx-selvage[data-status="done"]::before { background: #A9A49A; }
+  .fx-selvage[data-critical="true"]::before { width: 5px; }
+  .fx-thread-rule { height: 9px; background-image: repeating-linear-gradient(115deg, #E1B334 0 2px, transparent 2px 9px); }
+  .fx-thread-rule[data-variant="muted"] { height: 7px; background-image: repeating-linear-gradient(115deg, #D6D2C9 0 2px, transparent 2px 9px); }
+  .fx-weave { background-image: repeating-linear-gradient(146deg, transparent 0 7px, #E7E4DE 7px 9px, transparent 9px 17px); }
+  .fx-cut { clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%); border-radius: 8px; }
+  .fx-cut-chip { clip-path: polygon(0 0, 100% 0, 100% 100%, 10px 100%, 0 calc(100% - 10px)); }
+  @keyframes fx-spread { to { transform: translate(calc(var(--dx) * 6%), calc(var(--dy) * 6%)); } }
+  @keyframes fx-converge { 0% { transform: translate(calc(var(--dx) * 26%), calc(var(--dy) * 26%)) scale(.82); opacity: 0; } 62% { transform: translate(0, 0) scale(1.15); opacity: 1; } 100% { transform: translate(0, 0) scale(1); opacity: 1; } }
+  @keyframes fx-orbit { 0%, 100% { transform: rotate(-13deg); opacity: .45; } 50% { transform: rotate(13deg); opacity: 1; } }
+  @keyframes fx-travel { 0% { transform: translate(-10%, 10%); opacity: .25; } 40% { transform: translate(0, 0); opacity: 1; } 100% { transform: translate(10%, -10%); opacity: .25; } }
+  @keyframes fx-breathe { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(calc(var(--dx) * 3.5%), calc(var(--dy) * 3.5%)); } }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
+</style>
+</helmet>
+
+<div style="--fx-bg-canvas:#FBFAF8; --fx-bg-surface:#FFFFFF; --fx-bg-raised:#FFFFFF; --fx-bg-sunken:#F3F1EC; --fx-bg-hover:rgba(24,29,41,.035); --fx-bg-selected:rgba(225,179,52,.12); --fx-border-subtle:#E7E4DE; --fx-border-default:#D6D2C9; --fx-border-strong:#A9A49A; --fx-text-primary:#181D29; --fx-text-secondary:#4C5364; --fx-text-tertiary:#5E6675; --fx-text-disabled:#A8AEBB; --fx-text-inverse:#FBFAF8; --fx-accent:#E1B334; --fx-accent-hover:#CFA22B; --fx-accent-pressed:#B88C21; --fx-accent-subtle:#FAF1DA; --fx-accent-on:#181D29; --fx-success:#2F7D5B; --fx-warning:#8C5A16; --fx-danger:#B23A32; --fx-info:#2F5FA8; --fx-focus:#181D29; --fx-sh1:0 1px 2px rgba(24,29,41,.06); --fx-sh2:0 4px 12px rgba(24,29,41,.08); --fx-sh3:0 12px 32px rgba(24,29,41,.12); --fx-slash-angle:-34deg; --fx-weave-angle:146deg; --fx-thread-angle:115deg; width: 1300px; min-height: 1120px; background: var(--fx-bg-sunken); color: var(--fx-text-primary); font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: 16px; line-height: 1.55; padding: 40px; display: flex; flex-direction: column;">
+
+  <div style="margin-bottom: 24px;">
+    <div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Drawer · person — the S0 family, with the owner’s footer</div>
+    <div style="font: 400 14px/1.6 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); max-width: 92ch; margin-top: 10px; text-wrap: pretty;">
+      Opened from Setup → People, from Workforce, or from any avatar. Only owner and admin get the footer; everybody else sees the same three tabs with no actions.
+    </div>
+  </div>
+  <div style="display: flex; gap: 40px; align-items: flex-start;">
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <div style="font: 500 11px/1.45 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--fx-text-tertiary); padding-bottom: 10px;">granting a role, and scoping it</div>
+      <aside style="position: relative; width: 560px; height: 900px; flex-shrink: 0; background: var(--fx-bg-surface); border-left: 1px solid var(--fx-border-subtle); border-radius: 14px 0 0 14px; box-shadow: var(--fx-sh3); display: flex; flex-direction: column; overflow: hidden;">
+
+  <!-- 1 · header: the status rim, the identity line, the one number -->
+  <div style="display: flex; align-items: stretch;">
+    <div style="width: 3px; flex-shrink: 0; background: var(--fx-border-strong);"></div>
+    <div style="flex: 1; min-width: 0; padding: 22px 26px; border-bottom: 1px solid var(--fx-border-subtle); display: flex; flex-direction: column; gap: 14px;">
+      
+      <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;">
+        <div style="display: flex; flex-direction: column; gap: 7px; min-width: 0;">
+          <div style="display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;">
+            <span data-numeric style="font: 500 15px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">shilpi.begum</span>
+            <span style="font: 400 14px/1.3 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">Shilpi Begum</span>
+          </div>
+          <span style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-text-tertiary);">active · signed in 06:52</span>
+        </div>
+        <span style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; color: var(--fx-text-secondary); font: 400 15px/1 'Plus Jakarta Sans', system-ui, sans-serif; flex-shrink: 0;">✕</span>
+      </div>
+      <div style="position: relative; background: var(--fx-bg-sunken); border: 1px solid var(--fx-border-subtle); border-radius: 8px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px;">
+        
+        <div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Opens</div>
+        <div style="display: flex; align-items: baseline; gap: 6px;">
+          <span data-numeric style="font: 600 30px/1.05 'Plus Jakarta Sans', system-ui, sans-serif; letter-spacing: -.02em; color: var(--fx-text-primary);">13</span>
+          <span style="font: 400 14px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">screens</span>
+        </div>
+        <div style="font: 400 13px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">may change 5 of them · production, scoped to L1 and L2</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="position: relative; display: flex; gap: 4px; padding: 0 26px; border-bottom: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+    
+    <span style="padding: 13px 12px; font: 600 13.5px/1 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); border-bottom: 2px solid var(--fx-text-primary); margin-bottom: -1px;">Roles</span><span style="padding: 13px 12px; font: 500 13.5px/1 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); border-bottom: 2px solid transparent; margin-bottom: -1px;">Line scope</span><span style="padding: 13px 12px; font: 500 13.5px/1 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); border-bottom: 2px solid transparent; margin-bottom: -1px;">Activity</span>
+  </div>
+
+  <div style="position: relative; flex: 1; min-height: 0; padding: 26px; overflow: hidden; display: flex; flex-direction: column; gap: 18px;">
+    
+    
+    <div style="display: flex; flex-direction: column; gap: 9px;">
+          <div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Holds</div>
+          <div style="display: flex; align-items: center; gap: 10px; padding: 11px 13px; border: 1px solid var(--fx-border-default); border-radius: 8px; background: var(--fx-bg-sunken);">
+    <span style="width: 17px; height: 17px; flex-shrink: 0; border-radius: 4px; border: 1px solid var(--fx-border-strong); background: var(--fx-text-primary); display: inline-flex; align-items: center; justify-content: center;">
+      <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 6l2.6 2.6L10 3" stroke="var(--fx-text-inverse)" stroke-width="1.8"/></svg></span>
+    <span style="flex: 1; min-width: 0; font: 500 13.5px/1.3 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary);">Production</span>
+    <span style="font: 400 12px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-secondary);">L1, L2</span>
+  </div>
+          <div style="display: flex; align-items: center; gap: 10px; padding: 11px 13px; border: 1px solid var(--fx-border-subtle); border-radius: 8px; background: transparent;">
+    <span style="width: 17px; height: 17px; flex-shrink: 0; border-radius: 4px; border: 1px solid var(--fx-border-default); background: var(--fx-bg-surface); display: inline-flex; align-items: center; justify-content: center;">
+      </span>
+    <span style="flex: 1; min-width: 0; font: 500 13.5px/1.3 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary);">Quality</span>
+    
+  </div>
+          <div style="display: flex; align-items: center; gap: 10px; padding: 11px 13px; border: 1px solid var(--fx-border-subtle); border-radius: 8px; background: transparent;">
+    <span style="width: 17px; height: 17px; flex-shrink: 0; border-radius: 4px; border: 1px solid var(--fx-border-default); background: var(--fx-bg-surface); display: inline-flex; align-items: center; justify-content: center;">
+      </span>
+    <span style="flex: 1; min-width: 0; font: 500 13.5px/1.3 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary);">Cutting</span>
+    
+  </div>
+          <div style="font: 400 12.5px/1.6 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); text-wrap: pretty;">
+            Adding a role adds screens; it never takes any away. Line scope narrows what a floor role sees INSIDE those screens — an empty scope means the whole floor, which is why it is a deliberate choice rather than a default.
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding: 9px 0; border-bottom: 1px solid var(--fx-border-subtle);">
+    <span style="font: 400 13px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">Shift</span>
+    <span style="font: 500 14px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-align: right;">A · 08:00–17:00</span>
+  </div>
+          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding: 9px 0; border-bottom: 1px solid var(--fx-border-subtle);">
+    <span style="font: 400 13px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">Device</span>
+    <span style="font: 500 14px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-align: right;">Floor tablet 3 — shared</span>
+  </div>
+          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding: 9px 0; border-bottom: 1px solid var(--fx-border-subtle);">
+    <span style="font: 400 13px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">Granted by</span>
+    <span style="font: 500 14px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-align: right;">Admin, 14 Aug 2026</span>
+  </div>
+          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding: 9px 0; border-bottom: 1px solid var(--fx-border-subtle);">
+    <span style="font: 400 13px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">Writes today</span>
+    <span style="font: 500 14px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-align: right;">148 hourly outputs · 3 from the offline queue</span>
+  </div>
+        </div>
+  </div>
+
+  
+
+  <div style="position: relative; padding: 18px 26px; border-top: 1px solid var(--fx-border-subtle); display: flex; gap: 10px; justify-content: flex-end; align-items: center;">
+    
+    <button style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 10px 18px; font: 600 14px/1 'Plus Jakarta Sans', system-ui, sans-serif; min-height: 36px;  background: transparent; color: var(--fx-text-primary); border: 1px solid transparent; cursor: pointer;">Revoke production</button><button style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 10px 18px; font: 600 14px/1 'Plus Jakarta Sans', system-ui, sans-serif; min-height: 36px;  background: transparent; color: var(--fx-text-primary); border: 1px solid var(--fx-border-default); cursor: pointer;">Change line scope</button><button style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 10px 18px; font: 600 14px/1 'Plus Jakarta Sans', system-ui, sans-serif; min-height: 36px;  background: var(--fx-accent); color: var(--fx-accent-on); border: none; cursor: pointer;">Grant a role</button>
+  </div>
+</aside>
+      <div style="font: 400 12px/1.5 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); padding: 12px 0 0; max-width: 76ch; text-wrap: pretty;">Revoke is soft — the row stays with revoked_at set, because “who had permission to do that in March” is a question a deleted row cannot answer. The service refuses to revoke the last owner outright.</div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <div style="font: 500 11px/1.45 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--fx-text-tertiary); padding-bottom: 10px;">the invite, and the person before they have a desk</div>
+      <aside style="position: relative; width: 560px; height: 900px; flex-shrink: 0; background: var(--fx-bg-surface); border-left: 1px solid var(--fx-border-subtle); border-radius: 14px 0 0 14px; box-shadow: var(--fx-sh3); display: flex; flex-direction: column; overflow: hidden;">
+
+  <!-- 1 · header: the status rim, the identity line, the one number -->
+  <div style="display: flex; align-items: stretch;">
+    <div style="width: 3px; flex-shrink: 0; background: var(--fx-warning);"></div>
+    <div style="flex: 1; min-width: 0; padding: 22px 26px; border-bottom: 1px solid var(--fx-border-subtle); display: flex; flex-direction: column; gap: 14px;">
+      
+      <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;">
+        <div style="display: flex; flex-direction: column; gap: 7px; min-width: 0;">
+          <div style="display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;">
+            <span data-numeric style="font: 500 15px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">general.member</span>
+            <span style="font: 400 14px/1.3 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">General Member</span>
+          </div>
+          <span style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-warning);">signed in · no desk</span>
+        </div>
+        <span style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; color: var(--fx-text-secondary); font: 400 15px/1 'Plus Jakarta Sans', system-ui, sans-serif; flex-shrink: 0;">✕</span>
+      </div>
+      <div style="position: relative; background: var(--fx-bg-sunken); border: 1px solid var(--fx-border-subtle); border-radius: 8px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px;">
+        
+        <div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Opens</div>
+        <div style="display: flex; align-items: baseline; gap: 6px;">
+          <span data-numeric style="font: 600 30px/1.05 'Plus Jakarta Sans', system-ui, sans-serif; letter-spacing: -.02em; color: var(--fx-warning);">2</span>
+          <span style="font: 400 14px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">screens</span>
+        </div>
+        <div style="font: 400 13px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">MARBIM and Settings — everything else is hidden, not disabled</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="position: relative; display: flex; gap: 4px; padding: 0 26px; border-bottom: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+    
+    <span style="padding: 13px 12px; font: 600 13.5px/1 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); border-bottom: 2px solid var(--fx-text-primary); margin-bottom: -1px;">Roles</span><span style="padding: 13px 12px; font: 500 13.5px/1 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); border-bottom: 2px solid transparent; margin-bottom: -1px;">Line scope</span><span style="padding: 13px 12px; font: 500 13.5px/1 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); border-bottom: 2px solid transparent; margin-bottom: -1px;">Activity</span>
+  </div>
+
+  <div style="position: relative; flex: 1; min-height: 0; padding: 26px; overflow: hidden; display: flex; flex-direction: column; gap: 18px;">
+    
+    
+    <div style="border: 1px solid var(--fx-accent); border-radius: 8px; background: var(--fx-accent-subtle); padding: 12px 14px; font: 400 13px/1.6 'Plus Jakarta Sans', system-ui, sans-serif; text-wrap: pretty;">
+          This person has confirmed their email and holds no role. Their landing says so in words — “You don’t have a desk yet, ask your admin to assign one” — rather than offering a copilot over an empty world.
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 9px;">
+          <div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Grant a role</div>
+          <div style="display: flex; align-items: center; gap: 10px; padding: 11px 13px; border: 1px solid var(--fx-border-subtle); border-radius: 8px; background: transparent;">
+    <span style="width: 17px; height: 17px; flex-shrink: 0; border-radius: 4px; border: 1px solid var(--fx-border-default); background: var(--fx-bg-surface); display: inline-flex; align-items: center; justify-content: center;">
+      </span>
+    <span style="flex: 1; min-width: 0; font: 500 13.5px/1.3 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary);">Storekeeper</span>
+    
+  </div>
+          <div style="display: flex; align-items: center; gap: 10px; padding: 11px 13px; border: 1px solid var(--fx-border-subtle); border-radius: 8px; background: transparent;">
+    <span style="width: 17px; height: 17px; flex-shrink: 0; border-radius: 4px; border: 1px solid var(--fx-border-default); background: var(--fx-bg-surface); display: inline-flex; align-items: center; justify-content: center;">
+      </span>
+    <span style="flex: 1; min-width: 0; font: 500 13.5px/1.3 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary);">Production</span>
+    
+  </div>
+          <div style="display: flex; align-items: center; gap: 10px; padding: 11px 13px; border: 1px solid var(--fx-border-subtle); border-radius: 8px; background: transparent;">
+    <span style="width: 17px; height: 17px; flex-shrink: 0; border-radius: 4px; border: 1px solid var(--fx-border-default); background: var(--fx-bg-surface); display: inline-flex; align-items: center; justify-content: center;">
+      </span>
+    <span style="flex: 1; min-width: 0; font: 500 13.5px/1.3 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary);">Quality</span>
+    
+  </div>
+          <div style="font: 400 12.5px/1.6 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary);">Seventeen to choose from; these three are the ones this factory grants most.</div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding: 9px 0; border-bottom: 1px solid var(--fx-border-subtle);">
+    <span style="font: 400 13px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">Invited by</span>
+    <span style="font: 500 14px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-align: right;">Admin, 1 Dec 2026</span>
+  </div>
+          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding: 9px 0; border-bottom: 1px solid var(--fx-border-subtle);">
+    <span style="font: 400 13px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">Email confirmed</span>
+    <span style="font: 500 14px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-align: right;">1 Dec 2026, 16:42</span>
+  </div>
+          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding: 9px 0; border-bottom: 1px solid var(--fx-border-subtle);">
+    <span style="font: 400 13px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">Roles</span>
+    <span style="font: 500 14px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-align: right;"><span style="color: var(--fx-text-tertiary);">none yet</span></span>
+  </div>
+        </div>
+  </div>
+
+  
+
+  <div style="position: relative; padding: 18px 26px; border-top: 1px solid var(--fx-border-subtle); display: flex; gap: 10px; justify-content: flex-end; align-items: center;">
+    
+    <button style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 10px 18px; font: 600 14px/1 'Plus Jakarta Sans', system-ui, sans-serif; min-height: 36px;  background: transparent; color: var(--fx-text-primary); border: 1px solid transparent; cursor: pointer;">Remove from the factory</button><button style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 10px 18px; font: 600 14px/1 'Plus Jakarta Sans', system-ui, sans-serif; min-height: 36px;  background: var(--fx-accent); color: var(--fx-accent-on); border: none; cursor: pointer;">Grant a role</button>
+  </div>
+</aside>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

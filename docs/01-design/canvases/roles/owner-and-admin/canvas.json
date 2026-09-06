@@ -1,0 +1,327 @@
+{
+  "pages": [
+    {
+      "id": "morning",
+      "name": "The morning"
+    },
+    {
+      "id": "inbox",
+      "name": "Inbox & desks"
+    },
+    {
+      "id": "setup",
+      "name": "Setup & settings"
+    },
+    {
+      "id": "gates",
+      "name": "Drawers & gates"
+    },
+    {
+      "id": "flows",
+      "name": "Flows"
+    },
+    {
+      "id": "bengali",
+      "name": "Bengali"
+    }
+  ],
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 2160,
+      "page": "morning",
+      "title": "/home · owner · populated"
+    },
+    {
+      "file": "HomeAdmin.dc.html",
+      "x": 1560,
+      "y": 0,
+      "w": 1440,
+      "h": 2160,
+      "page": "morning",
+      "title": "/home · admin · populated"
+    },
+    {
+      "file": "HomeEmpty.dc.html",
+      "x": 3120,
+      "y": 0,
+      "w": 1440,
+      "h": 1180,
+      "page": "morning",
+      "title": "/home · empty (calm and day one)"
+    },
+    {
+      "file": "HomeStates.dc.html",
+      "x": 3120,
+      "y": 1420,
+      "w": 1440,
+      "h": 1080,
+      "page": "morning",
+      "title": "/home · loading and error"
+    },
+    {
+      "file": "HomePhone.dc.html",
+      "x": 0,
+      "y": 2400,
+      "w": 1400,
+      "h": 900,
+      "page": "morning",
+      "title": "/home · phone · the three Pulse tabs"
+    },
+    {
+      "file": "Approve.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 1160,
+      "page": "inbox",
+      "title": "/approve · populated · every desk"
+    },
+    {
+      "file": "ApproveEmpty.dc.html",
+      "x": 1560,
+      "y": 0,
+      "w": 1440,
+      "h": 900,
+      "page": "inbox",
+      "title": "/approve · empty"
+    },
+    {
+      "file": "Alerts.dc.html",
+      "x": 3120,
+      "y": 0,
+      "w": 1440,
+      "h": 940,
+      "page": "inbox",
+      "title": "/alerts · populated · owner scope"
+    },
+    {
+      "file": "Refused.dc.html",
+      "x": 4680,
+      "y": 0,
+      "w": 1440,
+      "h": 940,
+      "page": "inbox",
+      "title": "/refused · populated · every desk"
+    },
+    {
+      "file": "DesksFloor.dc.html",
+      "x": 0,
+      "y": 1400,
+      "w": 1560,
+      "h": 1080,
+      "page": "inbox",
+      "title": "the floor desks, as the owner opens them"
+    },
+    {
+      "file": "DesksOffice.dc.html",
+      "x": 1680,
+      "y": 1400,
+      "w": 1560,
+      "h": 1140,
+      "page": "inbox",
+      "title": "the office desks, as the owner opens them"
+    },
+    {
+      "file": "Setup.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 2560,
+      "page": "setup",
+      "title": "/setup · populated · six sections"
+    },
+    {
+      "file": "SetupEmpty.dc.html",
+      "x": 1560,
+      "y": 0,
+      "w": 1440,
+      "h": 1080,
+      "page": "setup",
+      "title": "/setup · empty (day one)"
+    },
+    {
+      "file": "SetupPerson.dc.html",
+      "x": 1560,
+      "y": 1320,
+      "w": 1300,
+      "h": 1120,
+      "page": "setup",
+      "title": "drawer · person · grant, scope, invite"
+    },
+    {
+      "file": "Settings.dc.html",
+      "x": 3120,
+      "y": 0,
+      "w": 1440,
+      "h": 1760,
+      "page": "setup",
+      "title": "/settings · populated · policy"
+    },
+    {
+      "file": "SettingsRules.dc.html",
+      "x": 0,
+      "y": 2760,
+      "w": 1560,
+      "h": 1240,
+      "page": "setup",
+      "title": "/settings#routing · approval rules"
+    },
+    {
+      "file": "SettingsAudit.dc.html",
+      "x": 1680,
+      "y": 2760,
+      "w": 1560,
+      "h": 1140,
+      "page": "setup",
+      "title": "/settings#audit · the trail"
+    },
+    {
+      "file": "Factory.dc.html",
+      "x": 3360,
+      "y": 2760,
+      "w": 1440,
+      "h": 1180,
+      "page": "setup",
+      "title": "/factory · the tenant card"
+    },
+    {
+      "file": "DrawerFigure.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1300,
+      "h": 1060,
+      "page": "gates",
+      "title": "drawer · figure · trend and the denominator"
+    },
+    {
+      "file": "Workforce.dc.html",
+      "x": 1420,
+      "y": 0,
+      "w": 1560,
+      "h": 1440,
+      "page": "gates",
+      "title": "/workforce · owner | admin — the payroll gate"
+    },
+    {
+      "file": "F1.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1820,
+      "h": 820,
+      "page": "flows",
+      "title": "F1 · the morning"
+    },
+    {
+      "file": "F2.dc.html",
+      "x": 1940,
+      "y": 0,
+      "w": 2260,
+      "h": 840,
+      "page": "flows",
+      "title": "F2 · approving with a correction"
+    },
+    {
+      "file": "F3.dc.html",
+      "x": 0,
+      "y": 1060,
+      "w": 2260,
+      "h": 880,
+      "page": "flows",
+      "title": "F3 · onboarding a line supervisor"
+    },
+    {
+      "file": "F4.dc.html",
+      "x": 2380,
+      "y": 1060,
+      "w": 2260,
+      "h": 900,
+      "page": "flows",
+      "title": "F4 · changing an approval rule"
+    },
+    {
+      "file": "F5.dc.html",
+      "x": 0,
+      "y": 2180,
+      "w": 1820,
+      "h": 880,
+      "page": "flows",
+      "title": "F5 · the owner signs off payroll"
+    },
+    {
+      "file": "BengaliHome.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 1720,
+      "page": "bengali",
+      "title": "/home · bn"
+    },
+    {
+      "file": "BengaliSetup.dc.html",
+      "x": 1560,
+      "y": 0,
+      "w": 1440,
+      "h": 1420,
+      "page": "bengali",
+      "title": "/setup · bn"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "brief-morning",
+      "page": "morning",
+      "x": 0,
+      "y": -240,
+      "w": 660,
+      "text": "S1 — Owner and Admin.\n\nThe order of /home is the argument: what is wrong, then what to decide, then the numbers, then the desks. Plan 2.1 settled that home wins over /dashboard and that decision is not reopened here — queues are actionable, figures are context, an owner acts first and reads second.\n\nThe admin is the owner’s twin. Two differences, both drawn: payroll, and approval routing."
+    },
+    {
+      "id": "brief-inbox",
+      "page": "inbox",
+      "x": 0,
+      "y": -220,
+      "w": 660,
+      "text": "The owner is the only person who sees every desk at once.\n\nThe inbox spans all of them; the refusal report spans all of them; the desk grid is what later sessions point at for \"what the owner sees of my work\".\n\nThe grid’s rule: the desk’s own screen, unchanged. The only additions are the two approvals that are the owner’s alone — the payroll run and the cost sheet — and they are the only \"as owner\" affordance in the product."
+    },
+    {
+      "id": "brief-setup",
+      "page": "setup",
+      "x": 0,
+      "y": -260,
+      "w": 680,
+      "text": "Setup is what the factory is made of; Settings is how it behaves.\n\nThree of the six setup sections drawn here are NOT on /setup today — company profile and People live at /settings, and Suppliers has an action with no section. Drawing them together is a proposal, and the empty state is its argument: they depend on each other in that order.\n\nApproval routing is the one screen an admin can read and cannot change."
+    },
+    {
+      "id": "brief-gates",
+      "page": "gates",
+      "x": 0,
+      "y": -200,
+      "w": 640,
+      "text": "The figure drawer is new in S1: every tile on the numbers strip opens one, and the second tab is the denominator itself.\n\nA figure a person cannot argue with is a figure they will not trust — so the 34 shipments behind \"91%\" are rows, with the three late ones at the top."
+    },
+    {
+      "id": "brief-flows",
+      "page": "flows",
+      "x": 0,
+      "y": -220,
+      "w": 660,
+      "text": "Five flows, one artboard each — the whole sequence readable at once, which is what a flow is for.\n\nF4 is drawn as it actually runs rather than as the brief described it: the admin reaches the rules screen, reads every rule, and stops, because upsertApprovalRule refuses anybody without the owner role. The owner finishes the flow."
+    },
+    {
+      "id": "brief-bengali",
+      "page": "bengali",
+      "x": 0,
+      "y": -200,
+      "w": 640,
+      "text": "The exception sentences are the longest strings on the owner’s screen and the place Bengali’s extra 30–40% actually bites.\n\nIdentifiers, money and quantities stay Latin mono in both languages. PO-BF-2044 is what the paper on the desk says."
+    }
+  ],
+  "launch": {
+    "view": "canvas",
+    "page": "morning"
+  }
+}

@@ -1,0 +1,246 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Anek+Bangla:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #FBFAF8; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: #181D29; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+  a:hover { color: #B88C21; }
+  .tabular, [data-numeric] { font-variant-numeric: tabular-nums; }
+  .fx-selvage { display: flex; align-items: stretch; overflow: hidden; }
+  .fx-selvage::before { content: ''; flex-shrink: 0; width: 3px; background: #A9A49A; }
+  .fx-selvage[data-status="on-track"]::before { background: #2F7D5B; }
+  .fx-selvage[data-status="at-risk"]::before { background: #8C5A16; }
+  .fx-selvage[data-status="late"]::before { background: #B23A32; }
+  .fx-selvage[data-status="done"]::before { background: #A9A49A; }
+  .fx-selvage[data-critical="true"]::before { width: 5px; }
+  .fx-thread-rule { height: 9px; background-image: repeating-linear-gradient(115deg, #E1B334 0 2px, transparent 2px 9px); }
+  .fx-thread-rule[data-variant="muted"] { height: 7px; background-image: repeating-linear-gradient(115deg, #D6D2C9 0 2px, transparent 2px 9px); }
+  .fx-weave { background-image: repeating-linear-gradient(146deg, transparent 0 7px, #E7E4DE 7px 9px, transparent 9px 17px); }
+  .fx-cut { clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%); border-radius: 8px; }
+  .fx-cut-chip { clip-path: polygon(0 0, 100% 0, 100% 100%, 10px 100%, 0 calc(100% - 10px)); }
+  @keyframes fx-spread { to { transform: translate(calc(var(--dx) * 6%), calc(var(--dy) * 6%)); } }
+  @keyframes fx-converge { 0% { transform: translate(calc(var(--dx) * 26%), calc(var(--dy) * 26%)) scale(.82); opacity: 0; } 62% { transform: translate(0, 0) scale(1.15); opacity: 1; } 100% { transform: translate(0, 0) scale(1); opacity: 1; } }
+  @keyframes fx-orbit { 0%, 100% { transform: rotate(-13deg); opacity: .45; } 50% { transform: rotate(13deg); opacity: 1; } }
+  @keyframes fx-travel { 0% { transform: translate(-10%, 10%); opacity: .25; } 40% { transform: translate(0, 0); opacity: 1; } 100% { transform: translate(10%, -10%); opacity: .25; } }
+  @keyframes fx-breathe { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(calc(var(--dx) * 3.5%), calc(var(--dy) * 3.5%)); } }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
+</style>
+</helmet>
+
+<div style="--fx-bg-canvas:#FBFAF8; --fx-bg-surface:#FFFFFF; --fx-bg-raised:#FFFFFF; --fx-bg-sunken:#F3F1EC; --fx-bg-hover:rgba(24,29,41,.035); --fx-bg-selected:rgba(225,179,52,.12); --fx-border-subtle:#E7E4DE; --fx-border-default:#D6D2C9; --fx-border-strong:#A9A49A; --fx-text-primary:#181D29; --fx-text-secondary:#4C5364; --fx-text-tertiary:#5E6675; --fx-text-disabled:#A8AEBB; --fx-text-inverse:#FBFAF8; --fx-accent:#E1B334; --fx-accent-hover:#CFA22B; --fx-accent-pressed:#B88C21; --fx-accent-subtle:#FAF1DA; --fx-accent-on:#181D29; --fx-success:#2F7D5B; --fx-warning:#8C5A16; --fx-danger:#B23A32; --fx-info:#2F5FA8; --fx-focus:#181D29; --fx-sh1:0 1px 2px rgba(24,29,41,.06); --fx-sh2:0 4px 12px rgba(24,29,41,.08); --fx-sh3:0 12px 32px rgba(24,29,41,.12); --fx-slash-angle:-34deg; --fx-weave-angle:146deg; --fx-thread-angle:115deg; width: 1560px; min-height: 1140px; background: var(--fx-bg-canvas); color: var(--fx-text-primary); font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: 16px; line-height: 1.55; padding: 40px; display: flex; flex-direction: column;">
+
+  <div style="margin-bottom: 26px;">
+    <div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">The owner covering a desk</div>
+    <h1 style="font: 700 30px/1.15 'Plus Jakarta Sans', system-ui, sans-serif; letter-spacing: -.02em; margin: 10px 0 12px;">The office desks, as the owner opens them</h1>
+    <div style="font: 400 14px/1.6 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); max-width: 92ch; text-wrap: pretty;">Same rule, and two exceptions that matter. The payroll run and the cost sheet carry an approval only an owner can give, so those two screens gain a strip the desk role never sees. Everything else is the desk’s own screen unchanged.</div>
+  </div>
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px 26px;"><div style="display: flex; flex-direction: column; gap: 8px; min-width: 0;">
+    <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;">
+      <span style="font: 600 13.5px/1.3 'Plus Jakarta Sans', system-ui, sans-serif;">Planning</span>
+      <span data-numeric style="font: 500 11.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">/planning</span>
+    </div>
+    <div style="border: 1px solid var(--fx-border-subtle); border-radius: 8px; background: var(--fx-bg-surface); overflow: hidden; min-height: 128px;"><div style="padding: 10px 12px 8px; border-bottom: 1px solid var(--fx-border-subtle);"><div style="font: 500 10px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">The board — 8 lines, 4 weeks</div></div><div class="fx-selvage" data-status="at-risk" style="border-top: 1px solid var(--fx-border-subtle);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 9px 12px;">
+      <span style="flex: 1; min-width: 0; font: 400 12.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary);">L1–L4 held open from 6 Dec for ST-2610</span>
+      <span style="font: 400 11.5px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); flex-shrink: 0;">4 lines</span>
+    </div>
+  </div><div class="fx-selvage" data-status="on-track" style="border-top: 1px solid var(--fx-border-subtle);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 9px 12px;">
+      <span style="flex: 1; min-width: 0; font: 400 12.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary);">L5–L6 · ST-2588 through 19 Dec</span>
+      
+    </div>
+  </div><div class="fx-selvage" data-status="on-track" style="border-top: 1px solid var(--fx-border-subtle);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 9px 12px;">
+      <span style="flex: 1; min-width: 0; font: 400 12.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary);">L7–L8 · ST-2571 finishing</span>
+      
+    </div>
+  </div></div>
+    <span style="font: 400 11.5px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); text-wrap: pretty;">The desk's own screen, unchanged. Nazmul Karim’s landing.</span>
+  </div><div style="display: flex; flex-direction: column; gap: 8px; min-width: 0;">
+    <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;">
+      <span style="font: 600 13.5px/1.3 'Plus Jakarta Sans', system-ui, sans-serif;">Procurement</span>
+      <span data-numeric style="font: 500 11.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">/procurement</span>
+    </div>
+    <div style="border: 1px solid var(--fx-border-subtle); border-radius: 8px; background: var(--fx-bg-surface); overflow: hidden; min-height: 128px;"><div style="padding: 10px 12px 8px; border-bottom: 1px solid var(--fx-border-subtle);"><div style="font: 500 10px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Needed within a week — 2</div></div><div class="fx-selvage" data-status="late" style="border-top: 1px solid var(--fx-border-subtle);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 9px 12px;">
+      <span style="flex: 1; min-width: 0; font: 400 12.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary);">PO-IMP-0311 · 9 days past promised delivery</span>
+      <span style="font: 400 11.5px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); flex-shrink: 0;">12,400 m</span>
+    </div>
+  </div><div class="fx-selvage" data-status="at-risk" style="border-top: 1px solid var(--fx-border-subtle);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 9px 12px;">
+      <span style="flex: 1; min-width: 0; font: 400 12.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary);">REQ-0783 · 900 m, needed 6 Dec</span>
+      <span style="font: 400 11.5px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); flex-shrink: 0;">unordered</span>
+    </div>
+  </div><div class="fx-selvage" data-status="done" style="border-top: 1px solid var(--fx-border-subtle);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 9px 12px;">
+      <span style="flex: 1; min-width: 0; font: 400 12.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary);">PO-BF-0982 · received in full</span>
+      
+    </div>
+  </div></div>
+    <span style="font: 400 11.5px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); text-wrap: pretty;">The desk's own screen, unchanged. The requisition and PO board.</span>
+  </div><div style="display: flex; flex-direction: column; gap: 8px; min-width: 0;">
+    <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;">
+      <span style="font: 600 13.5px/1.3 'Plus Jakarta Sans', system-ui, sans-serif;">Commercial</span>
+      <span data-numeric style="font: 500 11.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">/lcs</span>
+    </div>
+    <div style="border: 1px solid var(--fx-border-subtle); border-radius: 8px; background: var(--fx-bg-surface); overflow: hidden; min-height: 128px;"><div style="padding: 10px 12px 8px; border-bottom: 1px solid var(--fx-border-subtle);"><div style="font: 500 10px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">LC register — 1 conflict</div></div><div class="fx-selvage" data-status="late" style="border-top: 1px solid var(--fx-border-subtle);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 9px 12px;">
+      <span style="flex: 1; min-width: 0; font: 400 12.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary);">LC-BF-7781 · latest shipment before ex-factory</span>
+      <span style="font: 400 11.5px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); flex-shrink: 0;">$486,200</span>
+    </div>
+  </div><div class="fx-selvage" data-status="at-risk" style="border-top: 1px solid var(--fx-border-subtle);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 9px 12px;">
+      <span style="flex: 1; min-width: 0; font: 400 12.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary);">BTB-2026-0093 · 12% headroom left</span>
+      
+    </div>
+  </div><div class="fx-selvage" data-status="on-track" style="border-top: 1px solid var(--fx-border-subtle);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 9px 12px;">
+      <span style="flex: 1; min-width: 0; font: 400 12.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary);">LC-BF-7774 · clean</span>
+      <span style="font: 400 11.5px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); flex-shrink: 0;">$203,700</span>
+    </div>
+  </div></div>
+    <span style="font: 400 11.5px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); text-wrap: pretty;">The desk's own screen, unchanged. Tanvir Ahmed’s landing.</span>
+  </div><div style="display: flex; flex-direction: column; gap: 8px; min-width: 0;">
+    <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;">
+      <span style="font: 600 13.5px/1.3 'Plus Jakarta Sans', system-ui, sans-serif;">Finance</span>
+      <span data-numeric style="font: 500 11.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">/finance</span>
+    </div>
+    <div style="border: 1px solid var(--fx-border-subtle); border-radius: 8px; background: var(--fx-bg-surface); overflow: hidden; min-height: 128px;"><div style="padding: 10px 12px 8px; border-bottom: 1px solid var(--fx-border-subtle);"><div style="font: 500 10px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Cash · USD</div></div><div class="fx-selvage" data-status="on-track" style="border-top: 1px solid var(--fx-border-subtle);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 9px 12px;">
+      <span style="flex: 1; min-width: 0; font: 400 12.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary);">Receivables $486,200 against payables $312,940</span>
+      <span style="font: 400 11.5px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); flex-shrink: 0;">net $173,260</span>
+    </div>
+  </div><div class="fx-selvage" data-status="at-risk" style="border-top: 1px solid var(--fx-border-subtle);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 9px 12px;">
+      <span style="flex: 1; min-width: 0; font: 400 12.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary);">1 discrepant presentation ageing</span>
+      <span style="font: 400 11.5px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); flex-shrink: 0;">11 days</span>
+    </div>
+  </div><div class="fx-selvage" data-status="done" style="border-top: 1px solid var(--fx-border-subtle);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 9px 12px;">
+      <span style="flex: 1; min-width: 0; font: 400 12.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary);">SHP-0901 realised 28 Nov</span>
+      <span style="font: 400 11.5px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); flex-shrink: 0;">$96,400</span>
+    </div>
+  </div></div>
+    <span style="font: 400 11.5px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); text-wrap: pretty;">Owner and admin both have full write on /finance and /lcs — the audit’s one explicit statement about the twins outside payroll.</span>
+  </div><div style="display: flex; flex-direction: column; gap: 8px; min-width: 0;">
+    <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;">
+      <span style="font: 600 13.5px/1.3 'Plus Jakarta Sans', system-ui, sans-serif;">Compliance</span>
+      <span data-numeric style="font: 500 11.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">/compliance</span>
+    </div>
+    <div style="border: 1px solid var(--fx-border-subtle); border-radius: 8px; background: var(--fx-bg-surface); overflow: hidden; min-height: 128px;"><div style="padding: 10px 12px 8px; border-bottom: 1px solid var(--fx-border-subtle);"><div style="font: 500 10px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Due dates — nothing overdue</div></div><div class="fx-selvage" data-status="on-track" style="border-top: 1px solid var(--fx-border-subtle);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 9px 12px;">
+      <span style="flex: 1; min-width: 0; font: 400 12.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary);">Fire drill logged · next 4 Jan 2027</span>
+      
+    </div>
+  </div><div class="fx-selvage" data-status="on-track" style="border-top: 1px solid var(--fx-border-subtle);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 9px 12px;">
+      <span style="flex: 1; min-width: 0; font: 400 12.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary);">Accord inspection · 14 Feb 2027</span>
+      
+    </div>
+  </div><div class="fx-selvage" data-status="at-risk" style="border-top: 1px solid var(--fx-border-subtle);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 9px 12px;">
+      <span style="flex: 1; min-width: 0; font: 400 12.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary);">1 corrective action assigned to you</span>
+      <span style="font: 400 11.5px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); flex-shrink: 0;">CAP-0031</span>
+    </div>
+  </div></div>
+    <span style="font: 400 11.5px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); text-wrap: pretty;">The desk's own screen, unchanged. Rumi Chowdhury’s landing.</span>
+  </div><div style="display: flex; flex-direction: column; gap: 8px; min-width: 0;">
+    <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;">
+      <span style="font: 600 13.5px/1.3 'Plus Jakarta Sans', system-ui, sans-serif;">Workforce</span>
+      <span data-numeric style="font: 500 11.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">/workforce</span>
+    </div>
+    <div style="border: 1px solid var(--fx-border-subtle); border-radius: 8px; background: var(--fx-bg-surface); overflow: hidden; min-height: 128px;"><div style="padding: 10px 12px 8px; border-bottom: 1px solid var(--fx-border-subtle);"><div style="font: 500 10px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">November run — computed</div></div><div class="fx-selvage" data-status="at-risk" style="border-top: 1px solid var(--fx-border-subtle);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 9px 12px;">
+      <span style="flex: 1; min-width: 0; font: 400 12.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary);">2,412 workers · ৳1,04,82,640 · awaiting approval</span>
+      
+    </div>
+  </div><div class="fx-selvage" data-status="on-track" style="border-top: 1px solid var(--fx-border-subtle);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 9px 12px;">
+      <span style="flex: 1; min-width: 0; font: 400 12.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary);">Roster · 2,412 active across 8 lines</span>
+      
+    </div>
+  </div><div style="border-top: 1px solid var(--fx-accent); background: var(--fx-accent-subtle); padding: 9px 12px; display: flex; align-items: center; gap: 8px;">
+    <span style="width: 2px; height: 13px; transform: skewX(-34deg); background: var(--fx-accent-on); flex-shrink: 0;"></span>
+    <span style="font: 500 11.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-accent-on); text-wrap: pretty;">Approve this run — yours alone. HR computes it; you sign it.</span>
+  </div></div>
+    <span style="font: 400 11.5px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); text-wrap: pretty;">The desk's own screen, unchanged. Farzana Yasmin’s landing.</span>
+  </div><div style="display: flex; flex-direction: column; gap: 8px; min-width: 0;">
+    <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;">
+      <span style="font: 600 13.5px/1.3 'Plus Jakarta Sans', system-ui, sans-serif;">Costing</span>
+      <span data-numeric style="font: 500 11.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">/costing</span>
+    </div>
+    <div style="border: 1px solid var(--fx-border-subtle); border-radius: 8px; background: var(--fx-bg-surface); overflow: hidden; min-height: 128px;"><div style="padding: 10px 12px 8px; border-bottom: 1px solid var(--fx-border-subtle);"><div style="font: 500 10px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Cost sheets — 1 awaiting sign-off</div></div><div class="fx-selvage" data-status="at-risk" style="border-top: 1px solid var(--fx-border-subtle);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 9px 12px;">
+      <span style="flex: 1; min-width: 0; font: 400 12.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary);">ST-2610 · $4.85 FOB · margin 11.4%</span>
+      <span style="font: 400 11.5px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); flex-shrink: 0;">draft</span>
+    </div>
+  </div><div class="fx-selvage" data-status="on-track" style="border-top: 1px solid var(--fx-border-subtle);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 9px 12px;">
+      <span style="flex: 1; min-width: 0; font: 400 12.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary);">ST-2588 · $5.20 FOB signed 24 Nov</span>
+      
+    </div>
+  </div><div style="border-top: 1px solid var(--fx-accent); background: var(--fx-accent-subtle); padding: 9px 12px; display: flex; align-items: center; gap: 8px;">
+    <span style="width: 2px; height: 13px; transform: skewX(-34deg); background: var(--fx-accent-on); flex-shrink: 0;"></span>
+    <span style="font: 500 11.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-accent-on); text-wrap: pretty;">Approve this sheet — a quoted price is a promise only you make.</span>
+  </div></div>
+    <span style="font: 400 11.5px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); text-wrap: pretty;">The desk's own screen, unchanged. The sheet list; the studio sits behind a door.</span>
+  </div><div style="display: flex; flex-direction: column; gap: 8px; min-width: 0;">
+    <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;">
+      <span style="font: 600 13.5px/1.3 'Plus Jakarta Sans', system-ui, sans-serif;">Orders</span>
+      <span data-numeric style="font: 500 11.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">/orders</span>
+    </div>
+    <div style="border: 1px solid var(--fx-border-subtle); border-radius: 8px; background: var(--fx-bg-surface); overflow: hidden; min-height: 128px;"><div style="padding: 10px 12px 8px; border-bottom: 1px solid var(--fx-border-subtle);"><div style="font: 500 10px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Order book — 19 open</div></div><div class="fx-selvage" data-status="late" style="border-top: 1px solid var(--fx-border-subtle);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 9px 12px;">
+      <span style="flex: 1; min-width: 0; font: 400 12.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary);">PO-BF-2044 · H&M · ex-factory 18 Dec</span>
+      <span style="font: 400 11.5px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); flex-shrink: 0;">42,000</span>
+    </div>
+  </div><div class="fx-selvage" data-status="at-risk" style="border-top: 1px solid var(--fx-border-subtle);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 9px 12px;">
+      <span style="flex: 1; min-width: 0; font: 400 12.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary);">PO-BF-2041 · Primark · in finishing</span>
+      <span style="font: 400 11.5px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); flex-shrink: 0;">12,000</span>
+    </div>
+  </div><div class="fx-selvage" data-status="on-track" style="border-top: 1px solid var(--fx-border-subtle);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 9px 12px;">
+      <span style="flex: 1; min-width: 0; font: 400 12.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary);">PO-BF-2038 · C&A · shipped</span>
+      <span style="font: 400 11.5px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); flex-shrink: 0;">8,000</span>
+    </div>
+  </div></div>
+    <span style="font: 400 11.5px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); text-wrap: pretty;">The desk's own screen, unchanged. The book, and where the viewer lands too.</span>
+  </div><div style="display: flex; flex-direction: column; gap: 8px; min-width: 0;">
+    <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;">
+      <span style="font: 600 13.5px/1.3 'Plus Jakarta Sans', system-ui, sans-serif;">Sampling</span>
+      <span data-numeric style="font: 500 11.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">/sampling</span>
+    </div>
+    <div style="border: 1px solid var(--fx-border-subtle); border-radius: 8px; background: var(--fx-bg-surface); overflow: hidden; min-height: 128px;"><div style="padding: 10px 12px 8px; border-bottom: 1px solid var(--fx-border-subtle);"><div style="font: 500 10px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Samples out — 1 blocking a cut</div></div><div class="fx-selvage" data-status="late" style="border-top: 1px solid var(--fx-border-subtle);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 9px 12px;">
+      <span style="flex: 1; min-width: 0; font: 400 12.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary);">ST-2610 PP · with H&M since 21 Nov</span>
+      <span style="font: 400 11.5px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); flex-shrink: 0;">11 days</span>
+    </div>
+  </div><div class="fx-selvage" data-status="on-track" style="border-top: 1px solid var(--fx-border-subtle);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 9px 12px;">
+      <span style="flex: 1; min-width: 0; font: 400 12.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary);">ST-2588 fit · approved 18 Nov</span>
+      
+    </div>
+  </div><div class="fx-selvage" data-status="done" style="border-top: 1px solid var(--fx-border-subtle);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 9px 12px;">
+      <span style="flex: 1; min-width: 0; font: 400 12.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary);">ST-2571 shipment sample · closed</span>
+      
+    </div>
+  </div></div>
+    <span style="font: 400 11.5px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); text-wrap: pretty;">The desk's own screen, unchanged. Rashida Akter writes; quality and production read.</span>
+  </div></div>
+  <div style="font: 400 12px/1.5 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); padding: 12px 0 0; max-width: 76ch; text-wrap: pretty;">The amber strip is the only “as owner” affordance in the product, and it appears exactly twice. Adding a third would mean the owner has a parallel product, which is the thing this grid exists to prevent.</div>
+</div>
+</x-dc>
+</body>
+</html>

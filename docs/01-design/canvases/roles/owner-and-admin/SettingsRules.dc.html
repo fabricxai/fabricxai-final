@@ -1,0 +1,174 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Anek+Bangla:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #FBFAF8; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: #181D29; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+  a:hover { color: #B88C21; }
+  .tabular, [data-numeric] { font-variant-numeric: tabular-nums; }
+  .fx-selvage { display: flex; align-items: stretch; overflow: hidden; }
+  .fx-selvage::before { content: ''; flex-shrink: 0; width: 3px; background: #A9A49A; }
+  .fx-selvage[data-status="on-track"]::before { background: #2F7D5B; }
+  .fx-selvage[data-status="at-risk"]::before { background: #8C5A16; }
+  .fx-selvage[data-status="late"]::before { background: #B23A32; }
+  .fx-selvage[data-status="done"]::before { background: #A9A49A; }
+  .fx-selvage[data-critical="true"]::before { width: 5px; }
+  .fx-thread-rule { height: 9px; background-image: repeating-linear-gradient(115deg, #E1B334 0 2px, transparent 2px 9px); }
+  .fx-thread-rule[data-variant="muted"] { height: 7px; background-image: repeating-linear-gradient(115deg, #D6D2C9 0 2px, transparent 2px 9px); }
+  .fx-weave { background-image: repeating-linear-gradient(146deg, transparent 0 7px, #E7E4DE 7px 9px, transparent 9px 17px); }
+  .fx-cut { clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%); border-radius: 8px; }
+  .fx-cut-chip { clip-path: polygon(0 0, 100% 0, 100% 100%, 10px 100%, 0 calc(100% - 10px)); }
+  @keyframes fx-spread { to { transform: translate(calc(var(--dx) * 6%), calc(var(--dy) * 6%)); } }
+  @keyframes fx-converge { 0% { transform: translate(calc(var(--dx) * 26%), calc(var(--dy) * 26%)) scale(.82); opacity: 0; } 62% { transform: translate(0, 0) scale(1.15); opacity: 1; } 100% { transform: translate(0, 0) scale(1); opacity: 1; } }
+  @keyframes fx-orbit { 0%, 100% { transform: rotate(-13deg); opacity: .45; } 50% { transform: rotate(13deg); opacity: 1; } }
+  @keyframes fx-travel { 0% { transform: translate(-10%, 10%); opacity: .25; } 40% { transform: translate(0, 0); opacity: 1; } 100% { transform: translate(10%, -10%); opacity: .25; } }
+  @keyframes fx-breathe { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(calc(var(--dx) * 3.5%), calc(var(--dy) * 3.5%)); } }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
+</style>
+</helmet>
+
+<div style="--fx-bg-canvas:#FBFAF8; --fx-bg-surface:#FFFFFF; --fx-bg-raised:#FFFFFF; --fx-bg-sunken:#F3F1EC; --fx-bg-hover:rgba(24,29,41,.035); --fx-bg-selected:rgba(225,179,52,.12); --fx-border-subtle:#E7E4DE; --fx-border-default:#D6D2C9; --fx-border-strong:#A9A49A; --fx-text-primary:#181D29; --fx-text-secondary:#4C5364; --fx-text-tertiary:#5E6675; --fx-text-disabled:#A8AEBB; --fx-text-inverse:#FBFAF8; --fx-accent:#E1B334; --fx-accent-hover:#CFA22B; --fx-accent-pressed:#B88C21; --fx-accent-subtle:#FAF1DA; --fx-accent-on:#181D29; --fx-success:#2F7D5B; --fx-warning:#8C5A16; --fx-danger:#B23A32; --fx-info:#2F5FA8; --fx-focus:#181D29; --fx-sh1:0 1px 2px rgba(24,29,41,.06); --fx-sh2:0 4px 12px rgba(24,29,41,.08); --fx-sh3:0 12px 32px rgba(24,29,41,.12); --fx-slash-angle:-34deg; --fx-weave-angle:146deg; --fx-thread-angle:115deg; width: 1560px; min-height: 1240px; background: var(--fx-bg-canvas); color: var(--fx-text-primary); font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: 16px; line-height: 1.55; padding: 40px; display: flex; flex-direction: column;">
+
+  <div style="margin-bottom: 26px;">
+    <div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">/settings#routing — approval routing</div>
+    <h1 style="font: 700 30px/1.15 'Plus Jakarta Sans', system-ui, sans-serif; letter-spacing: -.02em; margin: 10px 0 12px;">Who signs what</h1>
+    <div style="font: 400 14px/1.6 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); max-width: 92ch; text-wrap: pretty;">
+      A rule is a draft kind and the roles that must approve it. The screen writes the sentence the inbox will show, live, as the rule is edited — because a routing rule nobody can read out loud is a rule nobody can check.
+    </div>
+  </div>
+  <div style="display: flex; gap: 40px; align-items: flex-start;">
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px;">
+      <div style="font: 500 11px/1.45 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--fx-text-tertiary); padding-bottom: 10px;">the rules, as sentences</div>
+      <div style="background: var(--fx-bg-surface); border: 1px solid var(--fx-border-subtle); border-radius: 8px; box-shadow: var(--fx-sh1); overflow: hidden; padding: 0px;">
+        <div style="border-top: 1px solid var(--fx-border-subtle); background: var(--fx-bg-selected); padding: 14px 18px; display: flex; flex-direction: column; gap: 7px;">
+    <div style="display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;">
+      <span data-numeric style="font: 500 12.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">store</span>
+      <span style="font: 400 13.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">goods_receipts · insert</span>
+      <span style="margin-left: auto; display: flex; gap: 8px; align-items: center;"><span class="" style="display: inline-block; font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-text-tertiary); background: transparent; border: 1px solid var(--fx-border-subtle); border-radius: 4px; padding: 5px 8px;">2 approvals</span><span class="" style="display: inline-block; font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-text-tertiary); background: transparent; border: 1px solid var(--fx-border-subtle); border-radius: 4px; padding: 5px 8px;">priority 10</span></span>
+    </div>
+    <div style="font: 400 14px/1.55 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-wrap: pretty;">A goods receipt against a bonded UD needs the owner — two approvals, and it sorts above everything else in the inbox.</div>
+    <div style="display: flex; gap: 6px; flex-wrap: wrap;"><span class="" style="display: inline-block; font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-text-tertiary); background: transparent; border: 1px solid var(--fx-border-subtle); border-radius: 4px; padding: 5px 8px;">owner</span></div>
+  </div>
+        <div style="border-top: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface); padding: 14px 18px; display: flex; flex-direction: column; gap: 7px;">
+    <div style="display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;">
+      <span data-numeric style="font: 500 12.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">workforce</span>
+      <span style="font: 400 13.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">payroll_runs · update</span>
+      <span style="margin-left: auto; display: flex; gap: 8px; align-items: center;"><span class="" style="display: inline-block; font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-text-tertiary); background: transparent; border: 1px solid var(--fx-border-subtle); border-radius: 4px; padding: 5px 8px;">1 approval</span><span class="" style="display: inline-block; font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-text-tertiary); background: transparent; border: 1px solid var(--fx-border-subtle); border-radius: 4px; padding: 5px 8px;">priority 10</span></span>
+    </div>
+    <div style="font: 400 14px/1.55 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-wrap: pretty;">A payroll run needs the owner. HR computes it; the owner signs it.</div>
+    <div style="display: flex; gap: 6px; flex-wrap: wrap;"><span class="" style="display: inline-block; font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-text-tertiary); background: transparent; border: 1px solid var(--fx-border-subtle); border-radius: 4px; padding: 5px 8px;">owner</span><span class="" style="display: inline-block; font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-text-tertiary); background: transparent; border: 1px solid var(--fx-border-subtle); border-radius: 4px; padding: 5px 8px;">hr</span></div>
+  </div>
+        <div style="border-top: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface); padding: 14px 18px; display: flex; flex-direction: column; gap: 7px;">
+    <div style="display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;">
+      <span data-numeric style="font: 500 12.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">orders</span>
+      <span style="font: 400 13.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">order_styles · insert</span>
+      <span style="margin-left: auto; display: flex; gap: 8px; align-items: center;"><span class="" style="display: inline-block; font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-text-tertiary); background: transparent; border: 1px solid var(--fx-border-subtle); border-radius: 4px; padding: 5px 8px;">1 approval</span><span class="" style="display: inline-block; font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-text-tertiary); background: transparent; border: 1px solid var(--fx-border-subtle); border-radius: 4px; padding: 5px 8px;">priority 5</span></span>
+    </div>
+    <div style="font: 400 14px/1.55 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-wrap: pretty;">Style measurements read from a tech pack go to whoever holds merchandising.</div>
+    <div style="display: flex; gap: 6px; flex-wrap: wrap;"><span class="" style="display: inline-block; font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-text-tertiary); background: transparent; border: 1px solid var(--fx-border-subtle); border-radius: 4px; padding: 5px 8px;">merchandiser</span></div>
+  </div>
+        <div style="border-top: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface); padding: 14px 18px; display: flex; flex-direction: column; gap: 7px;">
+    <div style="display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;">
+      <span data-numeric style="font: 500 12.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">procurement</span>
+      <span style="font: 400 13.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">purchase_orders · insert</span>
+      <span style="margin-left: auto; display: flex; gap: 8px; align-items: center;"><span class="" style="display: inline-block; font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-text-tertiary); background: transparent; border: 1px solid var(--fx-border-subtle); border-radius: 4px; padding: 5px 8px;">1 approval</span><span class="" style="display: inline-block; font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-text-tertiary); background: transparent; border: 1px solid var(--fx-border-subtle); border-radius: 4px; padding: 5px 8px;">priority 5</span></span>
+    </div>
+    <div style="font: 400 14px/1.55 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-wrap: pretty;">A purchase order read from a pro-forma goes to procurement, or to commercial if nobody holds procurement.</div>
+    <div style="display: flex; gap: 6px; flex-wrap: wrap;"><span class="" style="display: inline-block; font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-text-tertiary); background: transparent; border: 1px solid var(--fx-border-subtle); border-radius: 4px; padding: 5px 8px;">procurement</span><span class="" style="display: inline-block; font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-text-tertiary); background: transparent; border: 1px solid var(--fx-border-subtle); border-radius: 4px; padding: 5px 8px;">commercial</span></div>
+  </div>
+      </div>
+      <div style="font: 400 12px/1.5 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); padding: 12px 0 0; max-width: 76ch; text-wrap: pretty;">There is no “condition” field anywhere on this screen, and there must not be: the matcher picks on module, target table and operation only. A form offering a condition the engine ignores is a rule that looks like a gate and is not one — the day-0 script’s own recorded trap.</div>
+    </div>
+
+    <div style="width: 560px; flex-shrink: 0; display: flex; flex-direction: column; gap: 26px;">
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <div style="font: 500 11px/1.45 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--fx-text-tertiary); padding-bottom: 10px;">editing one — owner</div>
+        <div style="border: 1px solid var(--fx-border-subtle); border-radius: 8px; background: var(--fx-bg-surface); padding: 20px 22px; display: flex; flex-direction: column; gap: 16px;">
+          <div style="display: grid; grid-template-columns: minmax(0, 1.3fr) 180px; gap: 20px; align-items: center; padding: 13px 0; border-bottom: 1px solid var(--fx-border-subtle);">
+    <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0;">
+      <span style="font: 500 13.5px/1.35 'Plus Jakarta Sans', system-ui, sans-serif;">Module</span>
+      
+    </div>
+    <div style="display: flex; align-items: center; min-height: 40px; padding: 9px 12px; border: 1px solid var(--fx-border-default); border-radius: 4px; background: var(--fx-bg-surface); font: 500 13.5px/1.3 'JetBrains Mono', ui-monospace, monospace; justify-content: flex-end;">store</div>
+  </div>
+          <div style="display: grid; grid-template-columns: minmax(0, 1.3fr) 180px; gap: 20px; align-items: center; padding: 13px 0; border-bottom: 1px solid var(--fx-border-subtle);">
+    <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0;">
+      <span style="font: 500 13.5px/1.35 'Plus Jakarta Sans', system-ui, sans-serif;">Target table</span>
+      <span style="font: 400 12.5px/1.55 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); text-wrap: pretty;">Optional. Left empty, the rule covers every table the module registers.</span>
+    </div>
+    <div style="display: flex; align-items: center; min-height: 40px; padding: 9px 12px; border: 1px solid var(--fx-border-default); border-radius: 4px; background: var(--fx-bg-surface); font: 500 13.5px/1.3 'JetBrains Mono', ui-monospace, monospace; justify-content: flex-end;">goods_receipts</div>
+  </div>
+          <div style="display: grid; grid-template-columns: minmax(0, 1.3fr) 180px; gap: 20px; align-items: center; padding: 13px 0; border-bottom: 1px solid var(--fx-border-subtle);">
+    <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0;">
+      <span style="font: 500 13.5px/1.35 'Plus Jakarta Sans', system-ui, sans-serif;">Operation</span>
+      
+    </div>
+    <div style="display: flex; align-items: center; min-height: 40px; padding: 9px 12px; border: 1px solid var(--fx-border-default); border-radius: 4px; background: var(--fx-bg-surface); font: 500 13.5px/1.3 'JetBrains Mono', ui-monospace, monospace; justify-content: flex-end;">insert</div>
+  </div>
+          <div style="display: grid; grid-template-columns: minmax(0, 1.3fr) 180px; gap: 20px; align-items: center; padding: 13px 0; border-bottom: 1px solid var(--fx-border-subtle);">
+    <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0;">
+      <span style="font: 500 13.5px/1.35 'Plus Jakarta Sans', system-ui, sans-serif;">Required roles</span>
+      
+    </div>
+    <div style="display: flex; align-items: center; min-height: 40px; padding: 9px 12px; border: 1px solid var(--fx-border-default); border-radius: 4px; background: var(--fx-bg-surface); font: 500 13.5px/1.3 'JetBrains Mono', ui-monospace, monospace; justify-content: flex-end;">owner</div>
+  </div>
+          <div style="display: grid; grid-template-columns: minmax(0, 1.3fr) 180px; gap: 20px; align-items: center; padding: 13px 0; border-bottom: 1px solid var(--fx-border-subtle);">
+    <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0;">
+      <span style="font: 500 13.5px/1.35 'Plus Jakarta Sans', system-ui, sans-serif;">Approvals needed</span>
+      <span style="font: 400 12.5px/1.55 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); text-wrap: pretty;">One to five.</span>
+    </div>
+    <div style="display: flex; align-items: center; min-height: 40px; padding: 9px 12px; border: 1px solid var(--fx-border-default); border-radius: 4px; background: var(--fx-bg-surface); font: 500 13.5px/1.3 'JetBrains Mono', ui-monospace, monospace; justify-content: flex-end;">2</div>
+  </div>
+          <div style="display: grid; grid-template-columns: minmax(0, 1.3fr) 180px; gap: 20px; align-items: center; padding: 13px 0; border-bottom: 1px solid var(--fx-border-subtle);">
+    <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0;">
+      <span style="font: 500 13.5px/1.35 'Plus Jakarta Sans', system-ui, sans-serif;">Priority</span>
+      <span style="font: 400 12.5px/1.55 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); text-wrap: pretty;">Higher wins when two rules match the same draft.</span>
+    </div>
+    <div style="display: flex; align-items: center; min-height: 40px; padding: 9px 12px; border: 1px solid var(--fx-border-default); border-radius: 4px; background: var(--fx-bg-surface); font: 500 13.5px/1.3 'JetBrains Mono', ui-monospace, monospace; justify-content: flex-end;">10</div>
+  </div>
+          <div style="border: 1px solid var(--fx-accent); border-radius: 8px; background: var(--fx-accent-subtle); padding: 14px 16px; display: flex; flex-direction: column; gap: 7px;">
+            <div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">The inbox will say</div>
+            <span style="font: 400 14px/1.6 'Plus Jakarta Sans', system-ui, sans-serif; text-wrap: pretty;">“A goods receipt against a bonded UD needs the owner — two approvals, and it sorts above everything else in the inbox.”</span>
+          </div>
+          <div style="display: flex; gap: 10px; justify-content: flex-end;"><button style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 10px 18px; font: 600 14px/1 'Plus Jakarta Sans', system-ui, sans-serif; min-height: 36px;  background: transparent; color: var(--fx-text-primary); border: 1px solid transparent; cursor: pointer;">Remove this rule</button><button style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 10px 18px; font: 600 14px/1 'Plus Jakarta Sans', system-ui, sans-serif; min-height: 36px;  background: var(--fx-accent); color: var(--fx-accent-on); border: none; cursor: pointer;">Save the rule</button></div>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <div style="font: 500 11px/1.45 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--fx-text-tertiary); padding-bottom: 10px;">the same screen — admin</div>
+        <div style="background: var(--fx-bg-surface); border: 1px solid var(--fx-border-subtle); border-radius: 8px; box-shadow: var(--fx-sh1); overflow: hidden; padding: 0px;">
+          <div style="border-top: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface); padding: 14px 18px; display: flex; flex-direction: column; gap: 7px;">
+    <div style="display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;">
+      <span data-numeric style="font: 500 12.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">store</span>
+      <span style="font: 400 13.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">goods_receipts · insert</span>
+      <span style="margin-left: auto; display: flex; gap: 8px; align-items: center;"><span class="" style="display: inline-block; font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-text-tertiary); background: transparent; border: 1px solid var(--fx-border-subtle); border-radius: 4px; padding: 5px 8px;">2 approvals</span><span class="" style="display: inline-block; font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-text-tertiary); background: transparent; border: 1px solid var(--fx-border-subtle); border-radius: 4px; padding: 5px 8px;">priority 10</span></span>
+    </div>
+    <div style="font: 400 14px/1.55 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-wrap: pretty;">A goods receipt against a bonded UD needs the owner — two approvals, and it sorts above everything else in the inbox.</div>
+    <div style="display: flex; gap: 6px; flex-wrap: wrap;"><span class="" style="display: inline-block; font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-text-tertiary); background: transparent; border: 1px solid var(--fx-border-subtle); border-radius: 4px; padding: 5px 8px;">owner</span></div>
+  </div>
+        </div>
+        <div style="border: 1px solid var(--fx-border-subtle); border-radius: 8px; background: var(--fx-bg-surface); padding: 18px 20px; display: flex; gap: 14px; align-items: flex-start;">
+    <img src="marbim-logo-ink.png" alt="" style="filter: grayscale(1); opacity: .5; width: 24px; height: 24px; display: block; flex-shrink: 0;" />
+    <div style="display: flex; flex-direction: column; gap: 5px;">
+      <span style="font: 600 14.5px/1.35 'Plus Jakarta Sans', system-ui, sans-serif;">Reading, not editing</span>
+      <span style="font: 400 13.5px/1.6 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); text-wrap: pretty;">Only an owner changes who approves what. You can see every rule and the sentence it produces — an admin covering the desk needs to know why a draft landed where it did — but the Save and Remove actions are absent, not greyed.</span>
+    </div>
+  </div>
+      </div>
+    </div>
+  </div>
+  <div style="font: 400 12px/1.5 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); padding: 12px 0 0; max-width: 76ch; text-wrap: pretty;">This is the ONE thing an admin cannot do that an owner can, outside payroll. `requireRole(…, "owner")` admits an admin at the action boundary — owner and admin are supervisory roles on every action in the product — and then `upsertApprovalRule` refuses with a named sentence. That refusal is worth drawing, because a screen that offered the button and then said "Only an owner changes who approves what" would be a screen that lied first. The auto-approve threshold the brief asks for is NOT drawn: the service accepts autoApprove and minConfidence, the action’s schema does not expose them, so there is no door to draw yet.</div>
+</div>
+</x-dc>
+</body>
+</html>
