@@ -211,6 +211,85 @@ demand it. **Push is the long pole** — nothing in 4.2+ lands without 4.1.
 
 ---
 
+## Phase 5 — The drawer system (design runbook S0)
+
+Raised by the S0 VERIFY step against `docs/01-design/canvases/roles/` — the canvas draws a detail
+surface the component library cannot yet build. `Drawer` exists in `feedback.tsx` and is almost
+unused: pages open dialogs or navigate instead, because the primitive is a titled box and the
+contract in `DESIGN-RUNBOOK-BY-ROLE.md` §2.2 needs six parts. Nothing here is a new idea — each
+task names a shape already drawn and already agreed.
+
+**These are library tasks, not screen tasks.** Doing them in one slice is what makes S1–S15
+cheap; doing them per-module is what produces six drawers that disagree.
+
+- [ ] **5.1 🅗 ⏳ The drawer, as the runbook defines it.** — `Drawer` grows the anatomy: a
+  `status` prop painting the selvage rim on the panel's leading edge (the `Selvage` primitive
+  wraps a row's children and cannot reach the panel rim); a `DrawerHeader` composing the identity
+  line (`Ident` + human name + `StatusLabel` + close) and the header figure — a `FigureTile`
+  inset on `--fx-bg-sunken`, not the bordered dashboard card; a `GateStrip` of `GateChip`s
+  rendering a gate's live value BEFORE the action it guards; `LinkRow` for a linked record;
+  `HistoryList` for the audit trail as sentences; `WithheldAction` for a footer button a role
+  holds but this state does not allow, with the sentence why. Footer caps at three.
+  *Verify:* the S0 canvas's record, draft, exception, gate, person and document drawers all
+  render from the primitives with no per-screen CSS; a browser test asserts the footer refuses a
+  fourth button and that `status` paints the rim and the `StatusLabel` together.
+- [ ] **5.2 🅜 `FactPair` leaves `fx/tna.tsx`.** — Every drawer body is `FactPair` rows, and it
+  currently lives in the TNA file, so a store drawer imports from `fx/tna` to render "Received
+  on". Move to `fx/data.tsx`, re-export from `fx/tna.tsx` for one release.
+  *Verify:* `tsc` clean; no module outside sampling/orders imports `fx/tna` for a fact row.
+- [ ] **5.3 🅗 `ConfidenceTicks` and the draft banner become primitives.** — The ten-slash
+  confidence bar is private to `src/app/(app)/approve/inbox-client.tsx`, so the draft drawer the
+  canvas draws — reachable from the MARBIM panel, from home, from any Files tab — cannot render
+  it. Extract to `fx/ai.tsx` alongside a `DraftNotice` (amber border, mark, one sentence), and
+  keep the three states it already distinguishes: a measured score, `user_draft` ("typed by a
+  person"), and `ai_chat` ("model wrote this · unscored"). Rule 3 is the reason the third exists.
+  *Verify:* the approve inbox renders unchanged from the extracted component; an `ai_chat` draft
+  shows no bar and says why; `no-invented-confidence` still passes.
+- [ ] **5.4 🅜 The drawer becomes a bottom sheet under 640px.** — `Drawer` is right-anchored at
+  every width. The mobile contract's skins all open the same records, so the sheet is the same
+  component with the same footer, entering from the bottom.
+  *Verify:* the 390px sweep on a drawer-carrying floor screen — 0 hscroll, every footer button
+  ≥44px, Escape and backdrop both close.
+- [ ] **5.5 🅗 Deep-linked drawers: `?open=<id>`.** — The contract's answer to "a drawer never
+  opens a second drawer" is that a link navigates to the target's page with that row's drawer
+  already open. It is also what a push notification and an approve-inbox source link need to land
+  on. Read `open` (and an optional `tab`) in the list screens the canvas draws against.
+  *Verify:* `/orders?open=PO-BF-2044&tab=tna` lands inside the drawer on that tab; an unknown id
+  opens the list with a sentence, not an empty drawer.
+- [ ] **5.6 🅜 The rail as a directory.** — Two gaps the canvas had to invent around. Sections
+  do not collapse, so an owner's 25 entries are taller than the viewport; and `visibleNav()`
+  DROPS `railHiddenFor` entries entirely, so production's six trimmed screens (`orders`,
+  `sampling`, `planning`, `store`, `quality`, `setup`) — which the role may still open — have no
+  data source for a "More" group. Add a second return (or a `trimmed` field) and let `Sidebar`
+  render both, collapsed by default for every group but Work when the rail exceeds the viewport.
+  *Verify:* owner's rail fits 900px with Work open; production's More group lists exactly the six
+  and each navigates; `visibleNav`'s existing callers are unaffected.
+- [ ] **5.7 🅛 The role phrase moves into the top bar.** — `describeRoles` exists and is rendered
+  only inside `AccountMenu`, behind a click. The phrase is how somebody knows which of their desks
+  they are reading, and multi-role holders are the case it was written for — the Bangla ও join is
+  in the catalogue precisely because this string is copy.
+  *Verify:* a two-role account reads "Merchandiser and Planner" in the bar, and
+  "মার্চেন্ডাইজার ও প্ল্যানার" in Bangla; a no-role account reads "No role", not blank.
+- [ ] **5.8 🅜 The approve inbox's empty state teaches.** — It says "Nothing routed to you", which
+  a storekeeper cannot distinguish from "this screen is not for you". Name the 2–3 draft kinds the
+  caller's roles actually receive and the door that raises each, from the approval rules already
+  in the database.
+  *Verify:* store, production and commercial each see their own kinds; a role with no routed kind
+  sees a sentence saying so rather than an empty list.
+- [ ] **5.9 🅛 The MARBIM FAB, or the print rule that mourns it.** — `theme.css` hides
+  `[data-marbim-fab]` when printing and nothing in `src/` ever renders that attribute; the X.2
+  canvas calls the FAB the designed entry point. The floor screens have no top bar, so it is the
+  only MARBIM affordance they can have. Build it or delete the rule — the current state is a
+  stylesheet describing a component that does not exist.
+  *Verify:* the FAB appears on floor-density screens only, ≥48px, and is absent from print.
+- [ ] **5.10 🅛 One `Kbd`, not three.** — `primitives.tsx` exports `Kbd`; the approve inbox
+  inlines a byte-identical copy; `shortcuts-sheet.tsx` has a third, physical-key treatment at a
+  hardcoded `border-radius: 5px` — not a token, and the `design-tokens` ratchet did not catch it.
+  Keep both treatments if both are wanted, but as one component with a variant and a real token.
+  *Verify:* `design-tokens` passes with the 5px gone; the sheet and the legend look as they do now.
+
+---
+
 ## Sequencing notes and dependencies
 
 - Phase 1 has no dependencies and every task is independently shippable — it can interleave with
@@ -219,6 +298,10 @@ demand it. **Push is the long pole** — nothing in 4.2+ lands without 4.1.
   navigation — do it in a quiet window, it retrains the most important user's habit.
 - 3.0 gates 3.1 and 3.3; 3.2 is independent.
 - 4.0 gates all of Phase 4; 4.1 gates 4.2–4.5. Phases 1–3 do not wait for Phase 4 and vice versa.
+- 5.1 gates 5.4 and every role canvas after S0 — S1–S15 compose from the drawer families, so a
+  session that starts before the primitive exists designs against something nobody can build.
+  5.2 and 5.3 are independent and can land first. 5.6 is the only Phase 5 task that touches
+  `nav.ts`, and `core` rule 12 does not apply (this is shell, not `modules/core`).
 - The go-live gates (key rotation, rate limiting, password reset, `day0-run.log` cleanup) are not
   in this plan and remain ahead of all of it for any real-factory deployment.
 
