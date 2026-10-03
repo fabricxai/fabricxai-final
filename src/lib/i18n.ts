@@ -48,7 +48,7 @@ export type Catalogue = Record<Locale, Record<string, string>>
 export const MESSAGES: Catalogue = {
   en: {
     // ── core ──
-    'notifications.system.welcome.title': 'Welcome to FabricXAI',
+    'notifications.system.welcome.title': 'Welcome to FabricXai',
     'notifications.system.test.title': 'Test notification',
     'notifications.approve.waiting.title': '{count} change(s) waiting for your approval',
     'notifications.lc.expiry_near.title': 'LC {lcNumber} expires on {date}',
@@ -738,7 +738,7 @@ export const MESSAGES: Catalogue = {
 
   bn: {
     // ── core ──
-    'notifications.system.welcome.title': 'FabricXAI-তে স্বাগতম',
+    'notifications.system.welcome.title': 'FabricXai-তে স্বাগতম',
     'notifications.system.test.title': 'পরীক্ষামূলক নোটিফিকেশন',
     'notifications.approve.waiting.title': '{count}টি পরিবর্তন আপনার অনুমোদনের অপেক্ষায়',
     'notifications.lc.expiry_near.title': 'LC {lcNumber} শেষ হবে {date} তারিখে',

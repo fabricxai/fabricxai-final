@@ -98,10 +98,10 @@ export async function sendPasswordResetEmail(input: {
 
   await send({
     to: input.to,
-    subject: 'Reset your FabricXAI password',
-    text: `${greeting}\n\nUse this link to set a new password for your FabricXAI account:\n\n${input.url}\n\nThe link expires in one hour and can be used once. If you did not ask to reset your password, ignore this message — nothing has changed and your current password still works.\n`,
+    subject: 'Reset your FabricXai password',
+    text: `${greeting}\n\nUse this link to set a new password for your FabricXai account:\n\n${input.url}\n\nThe link expires in one hour and can be used once. If you did not ask to reset your password, ignore this message — nothing has changed and your current password still works.\n`,
     html: `<p>${greeting}</p>
-<p>Use this link to set a new password for your FabricXAI account.</p>
+<p>Use this link to set a new password for your FabricXai account.</p>
 <p><a href="${input.url}">Set a new password</a></p>
 <p>The link expires in one hour and can be used once.</p>
 <p>If you did not ask to reset your password, ignore this message — nothing has changed and your current password still works.</p>`,
@@ -117,10 +117,10 @@ export async function sendVerificationEmail(input: {
 
   await send({
     to: input.to,
-    subject: 'Confirm your FabricXAI account',
-    text: `${greeting}\n\nConfirm your email address to finish setting up your FabricXAI account:\n\n${input.url}\n\nThis link expires in 24 hours. If you did not create an account, ignore this message.\n`,
+    subject: 'Confirm your FabricXai account',
+    text: `${greeting}\n\nConfirm your email address to finish setting up your FabricXai account:\n\n${input.url}\n\nThis link expires in 24 hours. If you did not create an account, ignore this message.\n`,
     html: `<p>${greeting}</p>
-<p>Confirm your email address to finish setting up your FabricXAI account.</p>
+<p>Confirm your email address to finish setting up your FabricXai account.</p>
 <p><a href="${input.url}">Confirm my email</a></p>
 <p>This link expires in 24 hours. If you did not create an account, ignore this message.</p>`,
   })

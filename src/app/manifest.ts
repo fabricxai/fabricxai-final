@@ -10,8 +10,8 @@ import type { MetadataRoute } from 'next'
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'FabricXAI',
-    short_name: 'FabricXAI',
+    name: 'FabricXai',
+    short_name: 'FabricXai',
     description: 'The factory, in your pocket — receive, count, inspect, approve.',
     start_url: '/',
     display: 'standalone',

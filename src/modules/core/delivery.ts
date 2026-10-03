@@ -298,7 +298,7 @@ export async function deliverDigest(
     )
     if (hidden > 0) lines.push(`… and ${hidden} more`)
 
-    const subject = `FabricXAI: ${rows.length} update(s)`
+    const subject = `FabricXai: ${rows.length} update(s)`
 
     await send({
       to: recipient.email,

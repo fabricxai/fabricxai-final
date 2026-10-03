@@ -34,7 +34,7 @@ const anekBangla = Anek_Bangla({
 })
 
 export const metadata: Metadata = {
-  title: 'FabricXAI',
+  title: 'FabricXai',
   description: 'AI-powered ERP for garment export factories',
   icons: { icon: '/brand/marbim-logo-onwhite.png' },
 }

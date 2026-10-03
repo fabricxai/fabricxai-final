@@ -115,13 +115,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <LocaleProvider locale={locale}>
       <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh' }}>
         <TopBar
-          companyName={displayName ?? 'FabricXAI'}
+          companyName={displayName ?? 'FabricXai'}
           account={
             <AccountMenu
               name={me?.name ?? null}
               email={me?.email ?? ''}
               roleLabel={describeRoles(ctx.roles, (key, params) => tui(locale, key, params))}
-              companyName={displayName ?? 'FabricXAI'}
+              companyName={displayName ?? 'FabricXai'}
             />
           }
           actions={

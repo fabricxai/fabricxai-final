@@ -34,7 +34,7 @@ import { LIMITS, authRateLimitEnabled } from './rate-limit'
 import { getRedis } from './redis'
 
 export const auth = betterAuth({
-  appName: 'FabricXAI',
+  appName: 'FabricXai',
   baseURL: env.BETTER_AUTH_URL ?? env.APP_URL,
   secret: env.BETTER_AUTH_SECRET,
   trustedOrigins: [env.APP_URL],

@@ -350,7 +350,7 @@ export async function companyProfile(
  *
  * The legal name is what belongs on a document, but it is only set once somebody opens the
  * settings screen — and until then the shell was falling back to the literal string
- * "FabricXAI", printing the product's own name beside the product's own logo as though the
+ * "FabricXai", printing the product's own name beside the product's own logo as though the
  * factory were called that. `companies.name` is captured at signup and is always there, so
  * it sits between the two.
  */
