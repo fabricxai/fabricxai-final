@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 
 import { InlineAlert } from '@/components/fx/feedback'
 import { actionErrorMessage } from '@/lib/action-error'
+import { unwrap } from '@/lib/action-failure'
 import { Badge, Button } from '@/components/fx/primitives'
 import { requestUdOverride } from '@/modules/commercial/actions'
 
@@ -61,14 +62,16 @@ export function UdBlockCard({
     setFailure(null)
     startTransition(async () => {
       try {
-        await requestUdOverride({
-          udId: block.udId,
-          itemRef: block.itemRef,
-          qty: block.qty,
-          unit: block.unit,
-          ...(block.storeIssueId ? { storeIssueId: block.storeIssueId } : {}),
-          reason: reason.trim(),
-        })
+        unwrap(
+          await requestUdOverride({
+            udId: block.udId,
+            itemRef: block.itemRef,
+            qty: block.qty,
+            unit: block.unit,
+            ...(block.storeIssueId ? { storeIssueId: block.storeIssueId } : {}),
+            reason: reason.trim(),
+          }),
+        )
         setAsked(true)
         onRequested?.()
       } catch (error) {

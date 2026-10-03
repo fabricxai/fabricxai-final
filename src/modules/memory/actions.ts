@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
 
+import { surfaced, type ActionFailure } from '@/lib/action-failure'
 import { requireRole } from '@/modules/core/session'
 
 import { findSimilar, setOutcomeNote, type SimilarStyle } from './service'
@@ -22,12 +23,14 @@ import { findSimilar, setOutcomeNote, type SimilarStyle } from './service'
 export async function saveCloseOutNote(input: {
   orderId: string
   merchandiserNote: string
-}): Promise<{ outcomeId: string }> {
+}): Promise<{ outcomeId: string } | ActionFailure> {
   const ctx = await requireRole(await headers(), 'merchandiser', 'commercial', 'planner')
-  const result = await setOutcomeNote(ctx, input)
+  return surfaced(async () => {
+    const result = await setOutcomeNote(ctx, input)
 
-  revalidatePath('/memory')
-  return result
+    revalidatePath('/memory')
+    return result
+  })
 }
 
 /**
@@ -45,7 +48,7 @@ export async function findSimilarStyles(input: {
   styleCode?: string
   attrs?: Record<string, unknown>
   k?: number
-}): Promise<SimilarStyle[]> {
+}): Promise<SimilarStyle[] | ActionFailure> {
   const ctx = await requireRole(await headers(), 'merchandiser', 'commercial', 'planner')
-  return findSimilar(ctx, input)
+  return surfaced(async () => findSimilar(ctx, input))
 }

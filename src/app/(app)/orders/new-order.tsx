@@ -9,6 +9,7 @@ import { DateInput, TextInput } from '@/components/fx/forms'
 import { useLocale, useT } from '@/components/fx/locale'
 import { Button } from '@/components/fx/primitives'
 import { actionErrorMessage } from '@/lib/action-error'
+import { unwrap } from '@/lib/action-failure'
 import { createOrder } from '@/modules/orders/actions'
 
 /**
@@ -97,27 +98,29 @@ export function NewOrderButton({
 
     startTransition(async () => {
       try {
-        const { orderId } = await createOrder({
-          order: {
-            buyerId,
-            // Split, so a PO carrying two references keeps both. A single number is
-            // unaffected — one entry either way.
-            poNumbers: poNumber
-              .split(',')
-              .map((entry) => entry.trim())
-              .filter(Boolean),
-            ...(exFactory ? { plannedExFactoryDate: exFactory } : {}),
-          },
-          styles: [
-            {
-              styleCode: styleCode.trim(),
-              ...(qty > 0 ? { contractedQty: qty } : {}),
-              // Sent as typed. The service parses it as a money string and refuses a
-              // malformed one — parsing it here would round somebody's price on the way in.
-              ...(unitPrice.trim() ? { unitPrice: unitPrice.trim() } : {}),
+        const { orderId } = unwrap(
+          await createOrder({
+            order: {
+              buyerId,
+              // Split, so a PO carrying two references keeps both. A single number is
+              // unaffected — one entry either way.
+              poNumbers: poNumber
+                .split(',')
+                .map((entry) => entry.trim())
+                .filter(Boolean),
+              ...(exFactory ? { plannedExFactoryDate: exFactory } : {}),
             },
-          ],
-        })
+            styles: [
+              {
+                styleCode: styleCode.trim(),
+                ...(qty > 0 ? { contractedQty: qty } : {}),
+                // Sent as typed. The service parses it as a money string and refuses a
+                // malformed one — parsing it here would round somebody's price on the way in.
+                ...(unitPrice.trim() ? { unitPrice: unitPrice.trim() } : {}),
+              },
+            ],
+          }),
+        )
 
         setOpen(false)
         // Straight to the order, because the next two things — the grid and the schedule —

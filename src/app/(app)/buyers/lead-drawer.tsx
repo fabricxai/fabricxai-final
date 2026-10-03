@@ -9,6 +9,7 @@ import { useLocale, useT } from '@/components/fx/locale'
 import { Badge, Button } from '@/components/fx/primitives'
 import { Eyebrow } from '@/components/fx/signature'
 import { actionErrorMessage } from '@/lib/action-error'
+import { unwrap } from '@/lib/action-failure'
 import { factoryToday } from '@/lib/dates'
 import {
   convertLeadToBuyer,
@@ -86,11 +87,13 @@ export function LeadDrawer({ lead, onClose }: { lead: DrawerLead | null; onClose
 
     startTransition(async () => {
       try {
-        await moveLeadStage({
-          leadId: lead.id,
-          stage,
-          ...(stage === 'lost' ? { lostReason: lostReason.trim() } : {}),
-        })
+        unwrap(
+          await moveLeadStage({
+            leadId: lead.id,
+            stage,
+            ...(stage === 'lost' ? { lostReason: lostReason.trim() } : {}),
+          }),
+        )
         onClose()
         flash(t('ui.buyers.stage_moved', { stage: t(`ui.buyers.stage_${stage}`) }))
         router.refresh()
@@ -106,14 +109,16 @@ export function LeadDrawer({ lead, onClose }: { lead: DrawerLead | null; onClose
 
     startTransition(async () => {
       try {
-        await logLeadActivity({
-          leadId: lead.id,
-          kind: activityKind,
-          summary: summary.trim(),
-          // The factory's today, not the browser's — the quiet clock is measured in
-          // calendar days and a tablet on UTC would file the evening's call as yesterday.
-          occurredAt: factoryToday(),
-        })
+        unwrap(
+          await logLeadActivity({
+            leadId: lead.id,
+            kind: activityKind,
+            summary: summary.trim(),
+            // The factory's today, not the browser's — the quiet clock is measured in
+            // calendar days and a tablet on UTC would file the evening's call as yesterday.
+            occurredAt: factoryToday(),
+          }),
+        )
         setSummary('')
         flash(t('ui.buyers.activity_logged'))
         router.refresh()
@@ -134,11 +139,13 @@ export function LeadDrawer({ lead, onClose }: { lead: DrawerLead | null; onClose
     startTransition(async () => {
       try {
         setDuplicates(
-          await findConversionDuplicates({
-            leadId: lead.id,
-            name: lead.companyName,
-            ...(lead.website ? { website: lead.website } : {}),
-          }),
+          unwrap(
+            await findConversionDuplicates({
+              leadId: lead.id,
+              name: lead.companyName,
+              ...(lead.website ? { website: lead.website } : {}),
+            }),
+          ),
         )
       } catch (error) {
         // A failed duplicate check must not stop a conversion — it is advice, not a gate.
@@ -155,7 +162,7 @@ export function LeadDrawer({ lead, onClose }: { lead: DrawerLead | null; onClose
 
     startTransition(async () => {
       try {
-        const result = await convertLeadToBuyer({ leadId: lead.id, code: buyerCode.trim() })
+        const result = unwrap(await convertLeadToBuyer({ leadId: lead.id, code: buyerCode.trim() }))
         setConverting(false)
         onClose()
         // `created: false` is the idempotent path — the lead had already been converted, and

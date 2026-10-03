@@ -74,11 +74,13 @@ export async function progressCap(input: {
   capId: string
   status: 'in_progress' | 'evidence_submitted'
   note?: string
-}): Promise<{ status: string }> {
+}): Promise<{ status: string } | ActionFailure> {
   const ctx = await requireRole(await headers(), 'compliance')
-  const result = await advanceCap(ctx, input)
-  refresh()
-  return { status: String(result.status) }
+  return surfaced(async () => {
+    const result = await advanceCap(ctx, input)
+    refresh()
+    return { status: String(result.status) }
+  })
 }
 
 /**
@@ -92,11 +94,13 @@ export async function attachCapEvidence(input: {
   capId: string
   documentId?: string
   note?: string
-}): Promise<{ evidenceCount: number }> {
+}): Promise<{ evidenceCount: number } | ActionFailure> {
   const ctx = await requireRole(await headers(), 'compliance')
-  const result = await addCapEvidence(ctx, input)
-  refresh()
-  return { evidenceCount: result.evidenceCount }
+  return surfaced(async () => {
+    const result = await addCapEvidence(ctx, input)
+    refresh()
+    return { evidenceCount: result.evidenceCount }
+  })
 }
 
 /**
@@ -109,11 +113,13 @@ export async function attachCapEvidence(input: {
 export async function closeCorrectiveAction(input: {
   capId: string
   note?: string
-}): Promise<{ status: string }> {
+}): Promise<{ status: string } | ActionFailure> {
   const { ctx, policy } = await policyFor()
-  const result = await closeCap(ctx, input, policy)
-  refresh()
-  return { status: result.status }
+  return surfaced(async () => {
+    const result = await closeCap(ctx, input, policy)
+    refresh()
+    return { status: result.status }
+  })
 }
 
 /**
@@ -129,11 +135,13 @@ export async function saveCertificate(input: {
   issuedOn?: string
   expiresOn: string | null
   issuer?: string
-}): Promise<{ certificateId: string }> {
+}): Promise<{ certificateId: string } | ActionFailure> {
   const ctx = await requireRole(await headers(), 'compliance')
-  const result = await upsertCertificate(ctx, input)
-  refresh()
-  return result
+  return surfaced(async () => {
+    const result = await upsertCertificate(ctx, input)
+    refresh()
+    return result
+  })
 }
 
 /** Record a drill or training session held. */
@@ -141,9 +149,11 @@ export async function logTraining(input: {
   kind: string
   heldOn: string
   attendeesCount: number
-}): Promise<{ trainingId: string }> {
+}): Promise<{ trainingId: string } | ActionFailure> {
   const ctx = await requireRole(await headers(), 'compliance')
-  const result = await recordTraining(ctx, input)
-  refresh()
-  return result
+  return surfaced(async () => {
+    const result = await recordTraining(ctx, input)
+    refresh()
+    return result
+  })
 }

@@ -8,6 +8,7 @@ import { Select, TextArea, TextInput } from '@/components/fx/forms'
 import { useLocale, useT } from '@/components/fx/locale'
 import { Button } from '@/components/fx/primitives'
 import { actionErrorMessage } from '@/lib/action-error'
+import { unwrap } from '@/lib/action-failure'
 import { addLead } from '@/modules/buyers/actions'
 
 /** The five the service accepts. Kept in this order because it is how a merchandiser thinks. */
@@ -71,13 +72,15 @@ export function NewLead() {
         // optional strings, so '' would pass validation and store a blank the duplicate
         // check would then try to normalise — a stored empty domain is not the same as no
         // domain, and only one of them is true.
-        await addLead({
-          companyName: name,
-          source,
-          ...(country.trim() ? { country: country.trim() } : {}),
-          ...(website.trim() ? { website: website.trim() } : {}),
-          ...(notes.trim() ? { notes: notes.trim() } : {}),
-        })
+        unwrap(
+          await addLead({
+            companyName: name,
+            source,
+            ...(country.trim() ? { country: country.trim() } : {}),
+            ...(website.trim() ? { website: website.trim() } : {}),
+            ...(notes.trim() ? { notes: notes.trim() } : {}),
+          }),
+        )
         setOpen(false)
         reset()
         setToast(t('ui.buyers.lead_created', { name }))

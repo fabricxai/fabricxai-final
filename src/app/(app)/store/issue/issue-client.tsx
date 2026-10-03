@@ -8,6 +8,7 @@ import { useT } from '@/components/fx/locale'
 import { Badge, Button } from '@/components/fx/primitives'
 import { SectionHeading } from '@/components/fx/signature'
 import { Ident } from '@/components/fx/format'
+import { unwrap } from '@/lib/action-failure'
 import { useOfflineQueue } from '@/lib/offline/use-offline-queue'
 import { udBalancePreview } from '@/modules/commercial/actions'
 import type { OutstandingLine, RollRow } from '@/modules/store/queries'
@@ -110,7 +111,8 @@ export function IssueClient({
     for (const udId of pickedUdIds) {
       if (udBalances[udId]) continue
       void udBalancePreview({ udId })
-        .then((balance) => {
+        .then((result) => {
+          const balance = unwrap(result)
           if (!cancelled) setUdBalances((current) => ({ ...current, [udId]: balance }))
         })
         .catch(() => {

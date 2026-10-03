@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react'
 import { Card } from '@/components/fx/data'
 import { InlineAlert, Toast } from '@/components/fx/feedback'
 import { actionErrorMessage } from '@/lib/action-error'
+import { unwrap } from '@/lib/action-failure'
 import { Select, TextInput } from '@/components/fx/forms'
 import { Button } from '@/components/fx/primitives'
 import { saveCompanyProfile } from '@/modules/settings/actions'
@@ -87,12 +88,12 @@ export function ProfileForm({
           setError(null)
           startTransition(async () => {
             try {
-              await saveCompanyProfile({
+              unwrap(await saveCompanyProfile({
                 ...form,
                 binNumber: form.binNumber || undefined,
                 tinNumber: form.tinNumber || undefined,
                 bondLicenceNo: form.bondLicenceNo || undefined,
-              })
+              }))
               setSaved(true)
             } catch (e) {
               setError(actionErrorMessage(e, 'That did not save'))

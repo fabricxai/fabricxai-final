@@ -117,7 +117,8 @@ export function IntakeClient({ kinds }: { kinds: readonly Kind[] }) {
 
     if (!k.needsContext) return
     void intakeContext(k.id)
-      .then(setContext)
+      // A refusal comes back as a value; `unwrap` re-throws it so the catch still fires.
+      .then((fields) => setContext(unwrap(fields)))
       .catch((error: unknown) =>
         setFailure(actionErrorMessage(error, 'The choices could not be loaded.')),
       )

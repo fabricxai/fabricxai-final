@@ -8,6 +8,7 @@ import { actionErrorMessage } from '@/lib/action-error'
 import { Eyebrow, SlashRule } from '@/components/fx/signature'
 import { MarbimMark } from '@/components/fx/mark'
 import { Button } from '@/components/fx/primitives'
+import { unwrap } from '@/lib/action-failure'
 import { approveSheet, previewSheet, saveCostSheet } from '@/modules/costing/actions'
 import type { CostSheetResult } from '@/modules/costing/cost-sheet'
 
@@ -100,7 +101,7 @@ export function CostingStudio({
     const timer = setTimeout(() => {
       startTransition(async () => {
         try {
-          setResult(await previewSheet(sections))
+          setResult(unwrap(await previewSheet(sections)))
           setError(null)
         } catch (e) {
           setError(actionErrorMessage(e, 'That sheet did not compute'))
@@ -281,13 +282,13 @@ export function CostingStudio({
                   onClick={() =>
                     startTransition(async () => {
                       try {
-                        const r = await saveCostSheet({
+                        const r = unwrap(await saveCostSheet({
                           styleCode: styleCode.trim(),
                           sections,
                           // The sheet pins the BOM it was costed against. Only when the
                           // studio was opened FROM one — a hand-built sheet pins nothing.
                           ...(seed ? { bomId: seed.bomId } : {}),
-                        })
+                        }))
                         setSaved({ sheetId: r.sheetId, version: r.version })
                         setNoted(
                           `Saved as v${r.version} — FOB ${r.computed.fobPrice}, margin ${r.computed.achievedMarginPct}%.`,
@@ -312,7 +313,7 @@ export function CostingStudio({
                     startTransition(async () => {
                       if (!saved) return
                       try {
-                        const r = await approveSheet({ sheetId: saved.sheetId })
+                        const r = unwrap(await approveSheet({ sheetId: saved.sheetId }))
                         setNoted(
                           r.belowFloor
                             ? `v${r.version} approved BELOW the floor — recorded as a deliberate decision.`

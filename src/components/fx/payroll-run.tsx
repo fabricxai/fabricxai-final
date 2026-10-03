@@ -6,6 +6,7 @@ import { useState, useTransition } from 'react'
 import { InlineAlert } from '@/components/fx/feedback'
 import { Badge, Button } from '@/components/fx/primitives'
 import { approveRun, runPayroll } from '@/modules/workforce/actions'
+import { unwrap } from '@/lib/action-failure'
 import { actionErrorMessage } from '@/lib/action-error'
 
 /** The two festivals a Bangladeshi factory pays a bonus for. */
@@ -117,10 +118,12 @@ export function PayrollRunControl({
           disabled={pending || !period}
           onClick={() =>
             run(async () => {
-              const r = await runPayroll({
-                period,
-                ...(festival ? { festival } : {}),
-              })
+              const r = unwrap(
+                await runPayroll({
+                  period,
+                  ...(festival ? { festival } : {}),
+                }),
+              )
               return `${r.lines} workers computed · ${r.totalNet} net${
                 r.flagged > 0 ? ` · ${r.flagged} flagged for a look` : ''
               }.`

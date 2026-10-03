@@ -8,6 +8,7 @@ import { useLocale, useT } from '@/components/fx/locale'
 import { Button } from '@/components/fx/primitives'
 import { DateInput } from '@/components/fx/forms'
 import { actionErrorMessage } from '@/lib/action-error'
+import { unwrap } from '@/lib/action-failure'
 import { moveAllocation, setAllocationStatus } from '@/modules/planning/actions'
 // From `capacity.ts`, which is pure. Importing the SERVICE here would pull the database
 // client — and `postgres` — into the browser bundle; the build reports that as a missing
@@ -102,13 +103,13 @@ export function RunActions({ run, canWrite }: { run: RunSummary; canWrite: boole
     setFailure(null)
     startTransition(async () => {
       try {
-        const result = await moveAllocation({
+        const result = unwrap(await moveAllocation({
           allocationId: run.id,
           startDate,
           endDate,
           plannedDaily: respread(startDate, endDate),
           preview: true,
-        })
+        }))
         setFits(result.fits)
         setViolations(result.violations)
       } catch (error) {
@@ -123,13 +124,13 @@ export function RunActions({ run, canWrite }: { run: RunSummary; canWrite: boole
     setFailure(null)
     startTransition(async () => {
       try {
-        const result = await moveAllocation({
+        const result = unwrap(await moveAllocation({
           allocationId: run.id,
           startDate,
           endDate,
           plannedDaily: respread(startDate, endDate),
           acceptViolations,
-        })
+        }))
 
         if (!result.allocationId) {
           // Nothing was written — the plan did not fit and the violations were not accepted.
@@ -155,7 +156,7 @@ export function RunActions({ run, canWrite }: { run: RunSummary; canWrite: boole
     setFailure(null)
     startTransition(async () => {
       try {
-        await setAllocationStatus({ allocationId: run.id, status })
+        unwrap(await setAllocationStatus({ allocationId: run.id, status }))
         flash(t('ui.planning.status_set', { status: t(`ui.planning.status_${status}`) }))
         router.refresh()
       } catch (error) {

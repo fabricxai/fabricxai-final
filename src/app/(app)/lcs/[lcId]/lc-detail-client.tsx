@@ -113,11 +113,13 @@ export function LcDetailClient({
     setFailure(null)
     startTransition(async () => {
       try {
-        const result = await recordLcAmendment({
-          lcId: lc.id,
-          diff: { [field]: nextValue.trim() },
-          receivedAt,
-        })
+        const result = unwrap(
+          await recordLcAmendment({
+            lcId: lc.id,
+            diff: { [field]: nextValue.trim() },
+            receivedAt,
+          }),
+        )
         setNoted(
           `Amendment ${result.number} recorded${result.tightened ? ' — it TIGHTENS the credit' : ''}.`,
         )
@@ -155,13 +157,15 @@ export function LcDetailClient({
     setFailure(null)
     startTransition(async () => {
       try {
-        await openBtbCredit({
-          masterLcId: lc.id,
-          number: btbNumber.trim(),
-          value: asking.toFixed(2),
-          currency: lc.currency,
-          openedAt: factoryToday(),
-        })
+        unwrap(
+          await openBtbCredit({
+            masterLcId: lc.id,
+            number: btbNumber.trim(),
+            value: asking.toFixed(2),
+            currency: lc.currency,
+            openedAt: factoryToday(),
+          }),
+        )
         setNoted(`Back-to-back ${btbNumber.trim()} opened.`)
         setBtbNumber('')
         setBtbValue('')

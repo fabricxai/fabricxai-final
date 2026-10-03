@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 
 import { InlineAlert, Modal } from '@/components/fx/feedback'
+import { unwrap } from '@/lib/action-failure'
 import { actionErrorMessage } from '@/lib/action-error'
 import { Ident } from '@/components/fx/format'
 import { useLocale, useT } from '@/components/fx/locale'
@@ -228,14 +229,16 @@ function AdjustDialog({
 
     startTransition(async () => {
       try {
-        await draftStockAdjustment({
-          itemId,
-          rollId: roll.id,
-          qtyDelta: delta.toFixed(2),
-          unit: roll.unit,
-          reasonCode,
-          note: note.trim(),
-        })
+        unwrap(
+          await draftStockAdjustment({
+            itemId,
+            rollId: roll.id,
+            qtyDelta: delta.toFixed(2),
+            unit: roll.unit,
+            reasonCode,
+            note: note.trim(),
+          }),
+        )
         onDrafted(`${roll.rollNo} · ${delta > 0 ? '+' : ''}${delta.toFixed(2)} ${roll.unit}`)
       } catch (e) {
         setError(actionErrorMessage(e, t('ui.store.adjust_refused'), locale))

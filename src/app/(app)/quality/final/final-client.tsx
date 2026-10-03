@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 
 import { InlineAlert } from '@/components/fx/feedback'
+import { unwrap } from '@/lib/action-failure'
 import { actionErrorMessage } from '@/lib/action-error'
 import { NumpadInput } from '@/components/fx/floor'
 import { useLocale, useT } from '@/components/fx/locale'
@@ -178,12 +179,14 @@ export function FinalClient({
     startTransition(async () => {
       try {
         setPlan(
-          await previewAqlPlan({
-            lotQty: nextQty,
-            inspectionLevel: nextLevel,
-            majorAql,
-            minorAql,
-          }),
+          unwrap(
+            await previewAqlPlan({
+              lotQty: nextQty,
+              inspectionLevel: nextLevel,
+              majorAql,
+              minorAql,
+            }),
+          ),
         )
       } catch (error) {
         setPlan(null)

@@ -52,11 +52,13 @@ export async function moveSampleStage(input: {
   sampleRequestId: string
   stage: string
   occurredAt?: string
-}): Promise<{ stage: string }> {
+}): Promise<{ stage: string } | ActionFailure> {
   const ctx = await requireRole(await headers(), 'merchandiser')
-  const result = await advanceStage(ctx, input)
-  refresh(input.sampleRequestId)
-  return { stage: String(result.stage) }
+  return surfaced(async () => {
+    const result = await advanceStage(ctx, input)
+    refresh(input.sampleRequestId)
+    return { stage: String(result.stage) }
+  })
 }
 
 /**
@@ -86,17 +88,19 @@ export async function recordBuyerVerdict(input: {
   comments: { area: string; comment: string }[]
   recordedOn: string
   offlineKey?: string
-}): Promise<{ round: number; releasesCutting: boolean }> {
+}): Promise<{ round: number; releasesCutting: boolean } | ActionFailure> {
   const ctx = await requireRole(await headers(), 'merchandiser')
-  const result = await recordFeedback(ctx, input)
-  refresh(input.sampleRequestId)
+  return surfaced(async () => {
+    const result = await recordFeedback(ctx, input)
+    refresh(input.sampleRequestId)
 
-  return {
-    round: Number((result as { round?: number }).round ?? 0),
-    // Approved-with-comments still releases: the buyer accepted the garment and listed
-    // things to watch. Treating it as a rejection stops a floor that has permission to run.
-    releasesCutting: input.verdict !== 'rejected',
-  }
+    return {
+      round: Number((result as { round?: number }).round ?? 0),
+      // Approved-with-comments still releases: the buyer accepted the garment and listed
+      // things to watch. Treating it as a rejection stops a floor that has permission to run.
+      releasesCutting: input.verdict !== 'rejected',
+    }
+  })
 }
 
 /** Mark a sample sent, with the courier and airway bill the buyer will chase it by. */
@@ -104,11 +108,13 @@ export async function markSampleDispatched(input: {
   sampleRequestId: string
   courier: string
   awb: string
-}): Promise<{ dispatchId: string }> {
+}): Promise<{ dispatchId: string } | ActionFailure> {
   const ctx = await requireRole(await headers(), 'merchandiser')
-  const result = await dispatchSample(ctx, input)
-  refresh(input.sampleRequestId)
-  return result
+  return surfaced(async () => {
+    const result = await dispatchSample(ctx, input)
+    refresh(input.sampleRequestId)
+    return result
+  })
 }
 
 /**
@@ -124,27 +130,32 @@ export async function addCostToSample(input: {
   amount: string
   currency: string
   note?: string
-}): Promise<{ runningTotal: string }> {
+}): Promise<{ runningTotal: string } | ActionFailure> {
   const ctx = await requireRole(await headers(), 'merchandiser')
+  return surfaced(async () => {
+    // `sample_costs` has no `kind` column and the payload has no such field, so passing one
+    // through would be stripped by zod and silently lost — a dropdown that records nothing.
+    // Folded into the note, which is the field that exists.
+    const note = [input.kind, input.note].filter(Boolean).join(' · ')
 
-  // `sample_costs` has no `kind` column and the payload has no such field, so passing one
-  // through would be stripped by zod and silently lost — a dropdown that records nothing.
-  // Folded into the note, which is the field that exists.
-  const note = [input.kind, input.note].filter(Boolean).join(' · ')
-
-  const result = await addSampleCost(ctx, {
-    sampleRequestId: input.sampleRequestId,
-    amount: input.amount,
-    currency: input.currency,
-    ...(note ? { note } : {}),
+    const result = await addSampleCost(ctx, {
+      sampleRequestId: input.sampleRequestId,
+      amount: input.amount,
+      currency: input.currency,
+      ...(note ? { note } : {}),
+    })
+    refresh(input.sampleRequestId)
+    return { runningTotal: result.runningTotal }
   })
-  refresh(input.sampleRequestId)
-  return { runningTotal: result.runningTotal }
 }
 
 /** Close a request once it has served its purpose. */
-export async function closeSample(input: { sampleRequestId: string }): Promise<void> {
+export async function closeSample(input: {
+  sampleRequestId: string
+}): Promise<void | ActionFailure> {
   const ctx = await requireRole(await headers(), 'merchandiser')
-  await closeSampleRequest(ctx, input)
-  refresh(input.sampleRequestId)
+  return surfaced(async () => {
+    await closeSampleRequest(ctx, input)
+    refresh(input.sampleRequestId)
+  })
 }

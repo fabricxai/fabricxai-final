@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react'
 
 import { InlineAlert } from '@/components/fx/feedback'
 import { actionErrorMessage } from '@/lib/action-error'
+import { unwrap } from '@/lib/action-failure'
 import { Button } from '@/components/fx/primitives'
 import { saveCloseOutNote } from '@/modules/memory/actions'
 
@@ -60,7 +61,7 @@ export function CloseOutNote({
           .filter(Boolean)
           .join('\n')
 
-        await saveCloseOutNote({ orderId, merchandiserNote: note })
+        unwrap(await saveCloseOutNote({ orderId, merchandiserNote: note }))
         setSaved(true)
         onDone?.()
         router.refresh()

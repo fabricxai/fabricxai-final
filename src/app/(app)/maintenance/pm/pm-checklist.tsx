@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 
 import { InlineAlert } from '@/components/fx/feedback'
+import { unwrap } from '@/lib/action-failure'
 import { actionErrorMessage } from '@/lib/action-error'
 import { Ident } from '@/components/fx/format'
 import { Badge, Button } from '@/components/fx/primitives'
@@ -68,16 +69,18 @@ export function PmChecklist({ rows, today }: { rows: readonly Row[]; today: stri
 
     startTransition(async () => {
       try {
-        const result = await markPmDone({
-          scheduleId: row.scheduleId,
-          machineId: row.machineId,
-          completedOn: today,
-          checked: row.checklist.map((step, i) => ({
-            step,
-            ok: ticks[i]?.ok === true,
-            ...(ticks[i]?.note.trim() ? { note: ticks[i]!.note.trim() } : {}),
-          })),
-        })
+        const result = unwrap(
+          await markPmDone({
+            scheduleId: row.scheduleId,
+            machineId: row.machineId,
+            completedOn: today,
+            checked: row.checklist.map((step, i) => ({
+              step,
+              ok: ticks[i]?.ok === true,
+              ...(ticks[i]?.note.trim() ? { note: ticks[i]!.note.trim() } : {}),
+            })),
+          }),
+        )
 
         setDone(
           result.alreadyRecorded

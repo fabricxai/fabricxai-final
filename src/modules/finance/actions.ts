@@ -63,24 +63,26 @@ export async function requestPayablePayment(input: {
   payableId: string
   paidAmount: string
   paidAt: string
-}): Promise<{ pendingChangeId: string }> {
+}): Promise<{ pendingChangeId: string } | ActionFailure> {
   const ctx = await requireRole(await headers(), 'finance', 'commercial')
 
-  const { id } = await propose(ctx, {
-    moduleId: 'finance',
-    targetTable: 'payables',
-    // An update, so the row it changes must be named — and `propose` enforces that an
-    // update carries a target while an insert does not.
-    targetId: input.payableId,
-    operation: 'update',
-    zodSchemaKey: 'pay_payable',
-    // A person read an invoice and typed this. No extractor, so no field confidence.
-    source: 'user_draft',
-    payload: { ...input },
+  return surfaced(async () => {
+    const { id } = await propose(ctx, {
+      moduleId: 'finance',
+      targetTable: 'payables',
+      // An update, so the row it changes must be named — and `propose` enforces that an
+      // update carries a target while an insert does not.
+      targetId: input.payableId,
+      operation: 'update',
+      zodSchemaKey: 'pay_payable',
+      // A person read an invoice and typed this. No extractor, so no field confidence.
+      source: 'user_draft',
+      payload: { ...input },
+    })
+
+    revalidatePath('/approve')
+    revalidatePath('/finance')
+
+    return { pendingChangeId: id }
   })
-
-  revalidatePath('/approve')
-  revalidatePath('/finance')
-
-  return { pendingChangeId: id }
 }

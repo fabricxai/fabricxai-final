@@ -8,6 +8,7 @@ import { TextInput } from '@/components/fx/forms'
 import { useLocale, useT } from '@/components/fx/locale'
 import { Button } from '@/components/fx/primitives'
 import { actionErrorMessage } from '@/lib/action-error'
+import { unwrap } from '@/lib/action-failure'
 import { createSupplier } from '@/modules/procurement/actions'
 
 const TYPES = ['yarn', 'fabric_mill', 'trims', 'embellishment', 'subcontract'] as const
@@ -54,7 +55,8 @@ export function NewSupplierButton() {
 
     startTransition(async () => {
       try {
-        await createSupplier({
+        unwrap(
+          await createSupplier({
           code: code.trim(),
           name: name.trim(),
           type,
@@ -73,7 +75,8 @@ export function NewSupplierButton() {
                 ],
               }
             : {}),
-        })
+          }),
+        )
 
         setOpen(false)
         setCode('')

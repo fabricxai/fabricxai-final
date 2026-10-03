@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react'
 
 import { InlineAlert } from '@/components/fx/feedback'
 import { actionErrorMessage } from '@/lib/action-error'
+import { unwrap } from '@/lib/action-failure'
 import { Badge, Button } from '@/components/fx/primitives'
 import {
   attachCapEvidence,
@@ -105,7 +106,7 @@ export function CapActions({ cap, canClose }: { cap: CapState; canClose: boolean
               disabled={pending}
               onClick={() =>
                 run(async () => {
-                  const r = await progressCap({ capId: cap.capId, status: next })
+                  const r = unwrap(await progressCap({ capId: cap.capId, status: next }))
                   return `Moved to ${r.status.replace(/_/g, ' ')}.`
                 })
               }
@@ -120,10 +121,12 @@ export function CapActions({ cap, canClose }: { cap: CapState; canClose: boolean
               disabled={pending || needsDocument || !canClose}
               onClick={() =>
                 run(async () => {
-                  const r = await closeCorrectiveAction({
-                    capId: cap.capId,
-                    ...(note.trim() ? { note: note.trim() } : {}),
-                  })
+                  const r = unwrap(
+                    await closeCorrectiveAction({
+                      capId: cap.capId,
+                      ...(note.trim() ? { note: note.trim() } : {}),
+                    }),
+                  )
                   return `CAP ${r.status}.`
                 })
               }
@@ -157,7 +160,7 @@ export function CapActions({ cap, canClose }: { cap: CapState; canClose: boolean
             disabled={pending || !note.trim()}
             onClick={() =>
               run(async () => {
-                const r = await attachCapEvidence({ capId: cap.capId, note: note.trim() })
+                const r = unwrap(await attachCapEvidence({ capId: cap.capId, note: note.trim() }))
                 return `Evidence added — ${r.evidenceCount} on file.`
               })
             }

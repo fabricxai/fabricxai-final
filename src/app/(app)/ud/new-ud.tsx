@@ -9,6 +9,7 @@ import { DateInput, TextInput } from '@/components/fx/forms'
 import { useLocale, useT } from '@/components/fx/locale'
 import { Button } from '@/components/fx/primitives'
 import { actionErrorMessage } from '@/lib/action-error'
+import { unwrap } from '@/lib/action-failure'
 import { createUd } from '@/modules/commercial/actions'
 
 interface Item {
@@ -100,16 +101,18 @@ export function NewUdButton() {
 
     startTransition(async () => {
       try {
-        const result = await createUd({
-          number: number.trim(),
-          ...(issueDate ? { issueDate } : {}),
-          ...(validUntil ? { validUntil } : {}),
-          authorizedItems: filled.map((i) => ({
-            itemRef: i.itemRef.trim(),
-            qty: i.qty.trim(),
-            unit: i.unit.trim(),
-          })),
-        })
+        const result = unwrap(
+          await createUd({
+            number: number.trim(),
+            ...(issueDate ? { issueDate } : {}),
+            ...(validUntil ? { validUntil } : {}),
+            authorizedItems: filled.map((i) => ({
+              itemRef: i.itemRef.trim(),
+              qty: i.qty.trim(),
+              unit: i.unit.trim(),
+            })),
+          }),
+        )
 
         setOpen(false)
         router.push(`/ud/${result.udId}`)

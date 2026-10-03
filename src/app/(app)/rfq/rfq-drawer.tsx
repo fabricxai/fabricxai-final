@@ -421,7 +421,8 @@ function Trail({ rfqId }: { rfqId: string }) {
     let alive = true
     committedTrail({ targetTable: 'rfqs', targetId: rfqId })
       .then((result) => {
-        if (alive) setTrail(result)
+        // A refusal comes back as a value; `unwrap` re-throws it into the catch below.
+        if (alive) setTrail(unwrap(result))
       })
       // A refused role or a transient failure both mean the same thing here: no section.
       .catch(() => undefined)

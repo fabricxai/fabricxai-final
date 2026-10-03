@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react'
 
 import { InlineAlert } from '@/components/fx/feedback'
 import { actionErrorMessage } from '@/lib/action-error'
+import { unwrap } from '@/lib/action-failure'
 import { Button } from '@/components/fx/primitives'
 import { SectionHeading } from '@/components/fx/signature'
 import { saveBom } from '@/modules/costing/actions'
@@ -90,7 +91,7 @@ export function BomBuilder() {
 
     startTransition(async () => {
       try {
-        const result = await saveBom({
+        const result = unwrap(await saveBom({
           styleCode: styleCode.trim(),
           lines: usable.map((line) => ({
             lineGroup: line.lineGroup,
@@ -102,7 +103,7 @@ export function BomBuilder() {
             uom: line.uom.trim(),
             wastagePct: line.wastagePct.trim() === '' ? '0' : line.wastagePct.trim(),
           })),
-        })
+        }))
 
         setSaved(`${styleCode.trim()} · ${result.lineCount} lines`)
         setStyleCode('')

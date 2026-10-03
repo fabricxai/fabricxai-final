@@ -64,13 +64,14 @@ export async function createOrder(input: {
     unitPrice?: string
     currency?: string
   }[]
-}): Promise<{ orderId: string }> {
+}): Promise<{ orderId: string } | ActionFailure> {
   const ctx = await requireRole(await headers(), ...WRITERS)
+  return surfaced(async () => {
+    const result = await createOrderIn(ctx, { order: input.order, styles: input.styles })
 
-  const result = await createOrderIn(ctx, { order: input.order, styles: input.styles })
-
-  refresh(result.orderId)
-  return { orderId: result.orderId }
+    refresh(result.orderId)
+    return { orderId: result.orderId }
+  })
 }
 
 /**
@@ -84,11 +85,13 @@ export async function createOrder(input: {
 export async function previewMilestoneRipple(input: {
   milestoneId: string
   actualDate: string
-}): Promise<RippleView & { milestoneName: string }> {
+}): Promise<(RippleView & { milestoneName: string }) | ActionFailure> {
   const ctx = await requireRole(await headers(), ...WRITERS)
-  const preview = await previewRipple(ctx, input)
+  return surfaced(async () => {
+    const preview = await previewRipple(ctx, input)
 
-  return { ...rippleView(preview), milestoneName: preview.milestoneName }
+    return { ...rippleView(preview), milestoneName: preview.milestoneName }
+  })
 }
 
 /**
@@ -129,15 +132,17 @@ function rippleView(preview: RipplePreview & { orderId: string }): RippleView {
 export async function actualizeMilestone(input: {
   milestoneId: string
   actualDate: string
-}): Promise<RippleView> {
+}): Promise<RippleView | ActionFailure> {
   const ctx = await requireRole(await headers(), ...WRITERS)
-  const result = await actualizeMilestoneIn(ctx, input)
+  return surfaced(async () => {
+    const result = await actualizeMilestoneIn(ctx, input)
 
-  refresh(result.orderId)
-  // Cutting reads the PP gate this can open, and the floor board reads the dates.
-  revalidatePath('/cutting')
+    refresh(result.orderId)
+    // Cutting reads the PP gate this can open, and the floor board reads the dates.
+    revalidatePath('/cutting')
 
-  return rippleView(result)
+    return rippleView(result)
+  })
 }
 
 /**
@@ -154,32 +159,36 @@ export async function saveOrderBreakdown(input: {
   buyerRevision?: boolean
   reason?: string
   documentId?: string
-}): Promise<{
-  orderId: string
-  revision: number
-  totalQty: number
-  isNewRevision: boolean
-}> {
+}): Promise<
+  | {
+      orderId: string
+      revision: number
+      totalQty: number
+      isNewRevision: boolean
+    }
+  | ActionFailure
+> {
   const ctx = await requireRole(await headers(), ...WRITERS)
+  return surfaced(async () => {
+    const result = await saveBreakdown(ctx, {
+      orderStyleId: input.orderStyleId,
+      cells: input.cells,
+      buyerRevision: input.buyerRevision ?? false,
+      ...(input.reason === undefined ? {} : { reason: input.reason }),
+      ...(input.documentId === undefined ? {} : { documentId: input.documentId }),
+    })
 
-  const result = await saveBreakdown(ctx, {
-    orderStyleId: input.orderStyleId,
-    cells: input.cells,
-    buyerRevision: input.buyerRevision ?? false,
-    ...(input.reason === undefined ? {} : { reason: input.reason }),
-    ...(input.documentId === undefined ? {} : { documentId: input.documentId }),
+    refresh(result.orderId)
+    // The cut plan is against a revision; a new one changes what the floor should be cutting.
+    revalidatePath('/cutting')
+
+    return {
+      orderId: result.orderId,
+      revision: result.revision,
+      totalQty: result.totalQty,
+      isNewRevision: result.isNewRevision,
+    }
   })
-
-  refresh(result.orderId)
-  // The cut plan is against a revision; a new one changes what the floor should be cutting.
-  revalidatePath('/cutting')
-
-  return {
-    orderId: result.orderId,
-    revision: result.revision,
-    totalQty: result.totalQty,
-    isNewRevision: result.isNewRevision,
-  }
 }
 
 /**
@@ -204,37 +213,40 @@ export async function proposeOrderRevision(input: {
   // `drafted` is unreachable from here — that state is only for an extraction handed back
   // to the person who asked for it, and this is somebody typing a revision themselves. The
   // union follows `propose` rather than restating a narrower promise that would go stale.
-}): Promise<{ pendingChangeId: string; status: 'drafted' | 'pending' | 'committed' }> {
+}): Promise<
+  { pendingChangeId: string; status: 'drafted' | 'pending' | 'committed' } | ActionFailure
+> {
   const ctx = await requireRole(await headers(), ...WRITERS)
+  return surfaced(async () => {
+    const result = await propose(ctx, {
+      moduleId: 'orders',
+      targetTable: 'order_breakdowns',
+      /*
+       * `insert`, with no `targetId`, and the reason is what the reviewer sees.
+       *
+       * An amendment replaces a whole grid, so calling it an update and passing the STYLE id
+       * as `targetId` would read naturally and break the approve inbox: `draftFields` fetches
+       * the before with `currentRow(targetTable, targetId)`, which would look `order_styles`
+       * up in `order_breakdowns`, find nothing, and show the reviewer the incoming grid with
+       * no sign of the one it replaces. A missing before is honest; a lookup that silently
+       * misses is not. Same shape the extraction path already proposes.
+       */
+      operation: 'insert',
+      zodSchemaKey: 'order_revision_v1',
+      // A person typed this. No field confidence, because there is no extractor to have had
+      // one — and a constant would sail past the check the whole pending flow rests on.
+      source: 'user_draft',
+      payload: {
+        orderStyleId: input.orderStyleId,
+        cells: input.cells,
+        reason: input.reason,
+        ...(input.documentId === undefined ? {} : { documentId: input.documentId }),
+      },
+    })
 
-  const result = await propose(ctx, {
-    moduleId: 'orders',
-    targetTable: 'order_breakdowns',
-    /*
-     * `insert`, with no `targetId`, and the reason is what the reviewer sees.
-     *
-     * An amendment replaces a whole grid, so calling it an update and passing the STYLE id
-     * as `targetId` would read naturally and break the approve inbox: `draftFields` fetches
-     * the before with `currentRow(targetTable, targetId)`, which would look `order_styles`
-     * up in `order_breakdowns`, find nothing, and show the reviewer the incoming grid with
-     * no sign of the one it replaces. A missing before is honest; a lookup that silently
-     * misses is not. Same shape the extraction path already proposes.
-     */
-    operation: 'insert',
-    zodSchemaKey: 'order_revision_v1',
-    // A person typed this. No field confidence, because there is no extractor to have had
-    // one — and a constant would sail past the check the whole pending flow rests on.
-    source: 'user_draft',
-    payload: {
-      orderStyleId: input.orderStyleId,
-      cells: input.cells,
-      reason: input.reason,
-      ...(input.documentId === undefined ? {} : { documentId: input.documentId }),
-    },
+    revalidatePath('/approve')
+    return { pendingChangeId: result.id, status: result.status }
   })
-
-  revalidatePath('/approve')
-  return { pendingChangeId: result.id, status: result.status }
 }
 
 /**

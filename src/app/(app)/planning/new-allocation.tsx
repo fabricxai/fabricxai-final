@@ -7,6 +7,7 @@ import { InlineAlert, Modal } from '@/components/fx/feedback'
 import { DateInput, TextInput } from '@/components/fx/forms'
 import { Button } from '@/components/fx/primitives'
 import { actionErrorMessage } from '@/lib/action-error'
+import { unwrap } from '@/lib/action-failure'
 import { allocate, recordSmv } from '@/modules/planning/actions'
 
 /**
@@ -138,10 +139,10 @@ export function NewAllocationButton({
     startTransition(async () => {
       try {
         if (needsSmv && order.styleCode) {
-          await recordSmv({ styleCode: order.styleCode, smv: smv.trim(), source: 'estimate' })
+          unwrap(await recordSmv({ styleCode: order.styleCode, smv: smv.trim(), source: 'estimate' }))
         }
 
-        const result = await allocate({
+        const result = unwrap(await allocate({
           orderId: order.orderId,
           ...(order.orderStyleId ? { orderStyleId: order.orderStyleId } : {}),
           lineId,
@@ -149,7 +150,7 @@ export function NewAllocationButton({
           endDate: run.days[run.days.length - 1]!.date,
           plannedDaily: Object.fromEntries(run.days.map((d) => [d.date, d.qty])),
           ...(acceptViolations ? { acceptViolations: true } : {}),
-        })
+        }))
 
         if (!result.allocationId) {
           // Not a failure — the answer to "does this fit". Shown so the planner can shorten

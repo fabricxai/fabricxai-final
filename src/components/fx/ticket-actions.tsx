@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 
 import { InlineAlert } from '@/components/fx/feedback'
+import { unwrap } from '@/lib/action-failure'
 import { actionErrorMessage } from '@/lib/action-error'
 import { Badge, Button } from '@/components/fx/primitives'
 import {
@@ -128,7 +129,7 @@ export function TicketActions({ ticket }: { ticket: TicketState }) {
               disabled={pending}
               onClick={() =>
                 run(async () => {
-                  await takeTicket({ ticketId: ticket.ticketId })
+                  unwrap(await takeTicket({ ticketId: ticket.ticketId }))
                   return 'Claimed — nobody else will walk to this machine.'
                 })
               }
@@ -143,10 +144,12 @@ export function TicketActions({ ticket }: { ticket: TicketState }) {
               disabled={pending}
               onClick={() =>
                 run(async () => {
-                  const r = await resolveMachineTicket({
-                    ticketId: ticket.ticketId,
-                    ...(notes.trim() ? { notes: notes.trim() } : {}),
-                  })
+                  const r = unwrap(
+                    await resolveMachineTicket({
+                      ticketId: ticket.ticketId,
+                      ...(notes.trim() ? { notes: notes.trim() } : {}),
+                    }),
+                  )
                   // The minutes are closed by the ticket-resolved consumer, not by this
                   // call — so the message does not quote a number this response does not
                   // have. Claiming one and being wrong is worse than not claiming one.
@@ -165,7 +168,7 @@ export function TicketActions({ ticket }: { ticket: TicketState }) {
               disabled={pending || !notes.trim()}
               onClick={() =>
                 run(async () => {
-                  await dropTicket({ ticketId: ticket.ticketId, reason: notes.trim() })
+                  unwrap(await dropTicket({ ticketId: ticket.ticketId, reason: notes.trim() }))
                   return 'Ticket cancelled.'
                 })
               }

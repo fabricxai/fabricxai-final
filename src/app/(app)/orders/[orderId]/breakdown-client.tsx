@@ -9,6 +9,7 @@ import { useLocale, useT } from '@/components/fx/locale'
 import { Button } from '@/components/fx/primitives'
 import { BreakdownGrid } from '@/components/fx/tna'
 import { actionErrorMessage } from '@/lib/action-error'
+import { unwrap } from '@/lib/action-failure'
 import { compositeKey } from '@/lib/keys'
 import { proposeOrderRevision, saveOrderBreakdown } from '@/modules/orders/actions'
 
@@ -129,12 +130,14 @@ export function OrderBreakdown({
 
     startTransition(async () => {
       try {
-        const result = await saveOrderBreakdown({
-          orderStyleId,
-          cells: payloadCells(),
-          buyerRevision: false,
-          ...(reason.trim() ? { reason: reason.trim() } : {}),
-        })
+        const result = unwrap(
+          await saveOrderBreakdown({
+            orderStyleId,
+            cells: payloadCells(),
+            buyerRevision: false,
+            ...(reason.trim() ? { reason: reason.trim() } : {}),
+          }),
+        )
 
         setEditing(false)
         setToast(t('ui.orders.breakdown_corrected', { total: result.totalQty }))
@@ -152,11 +155,13 @@ export function OrderBreakdown({
 
     startTransition(async () => {
       try {
-        await proposeOrderRevision({
-          orderStyleId,
-          cells: payloadCells(),
-          reason: reason.trim(),
-        })
+        unwrap(
+          await proposeOrderRevision({
+            orderStyleId,
+            cells: payloadCells(),
+            reason: reason.trim(),
+          }),
+        )
 
         setEditing(false)
         setToast(t('ui.orders.revision_proposed'))

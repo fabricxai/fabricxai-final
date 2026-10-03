@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react'
 
 import { InlineAlert, Modal } from '@/components/fx/feedback'
 import { actionErrorMessage } from '@/lib/action-error'
+import { unwrap } from '@/lib/action-failure'
 import { Button } from '@/components/fx/primitives'
 import { requestPayablePayment } from '@/modules/finance/actions'
 import { factoryToday } from '@/lib/dates'
@@ -41,11 +42,13 @@ export function PayableAction({
     setFailure(null)
     startTransition(async () => {
       try {
-        await requestPayablePayment({
-          payableId,
-          paidAmount: paying.trim(),
-          paidAt: factoryToday(),
-        })
+        unwrap(
+          await requestPayablePayment({
+            payableId,
+            paidAmount: paying.trim(),
+            paidAt: factoryToday(),
+          }),
+        )
         setAsked(true)
         router.refresh()
       } catch (error) {

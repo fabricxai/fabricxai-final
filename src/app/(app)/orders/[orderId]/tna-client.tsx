@@ -79,7 +79,9 @@ export function OrderTna({
     setFailure(null)
     startTransition(async () => {
       try {
-        setPreview(await previewMilestoneRipple({ milestoneId: milestone.id, actualDate: date }))
+        setPreview(
+          unwrap(await previewMilestoneRipple({ milestoneId: milestone.id, actualDate: date })),
+        )
       } catch (error) {
         setPreview(null)
         setFailure(actionErrorMessage(error, t('ui.orders.ripple_unavailable'), locale))
@@ -93,10 +95,12 @@ export function OrderTna({
 
     startTransition(async () => {
       try {
-        const result = await actualizeMilestone({
-          milestoneId: milestone.id,
-          actualDate,
-        })
+        const result = unwrap(
+          await actualizeMilestone({
+            milestoneId: milestone.id,
+            actualDate,
+          }),
+        )
 
         setTarget(null)
         // What the WRITE did, not what the preview said. They agree today; a screen that

@@ -6,6 +6,7 @@ import { useState, useTransition } from 'react'
 
 import { InlineAlert } from '@/components/fx/feedback'
 import { actionErrorMessage } from '@/lib/action-error'
+import { unwrap } from '@/lib/action-failure'
 import { Badge, Button } from '@/components/fx/primitives'
 import { SectionHeading } from '@/components/fx/signature'
 import {
@@ -148,7 +149,7 @@ export function SampleDetailClient({
                 disabled={pending || done}
                 onClick={() =>
                   run(async () => {
-                    const r = await moveSampleStage({ sampleRequestId, stage })
+                    const r = unwrap(await moveSampleStage({ sampleRequestId, stage }))
                     return `Moved to ${r.stage}.`
                   })
                 }
@@ -289,13 +290,15 @@ export function SampleDetailClient({
               disabled={pending || (verdict === 'rejected' && comments.length === 0)}
               onClick={() =>
                 run(async () => {
-                  const r = await recordBuyerVerdict({
-                    sampleRequestId,
-                    verdict: verdict as 'approved' | 'approved_with_comments' | 'rejected',
-                    comments,
-                    recordedOn: factoryToday(),
-                    offlineKey: verdictKey,
-                  })
+                  const r = unwrap(
+                    await recordBuyerVerdict({
+                      sampleRequestId,
+                      verdict: verdict as 'approved' | 'approved_with_comments' | 'rejected',
+                      comments,
+                      recordedOn: factoryToday(),
+                      offlineKey: verdictKey,
+                    }),
+                  )
                   setComments([])
                   setVerdictKey(crypto.randomUUID())
                   return r.releasesCutting
@@ -384,7 +387,9 @@ export function SampleDetailClient({
             disabled={pending || !awb.trim() || !courier.trim() || !canDispatch}
             onClick={() =>
               run(async () => {
-                await markSampleDispatched({ sampleRequestId, courier: courier.trim(), awb: awb.trim() })
+                unwrap(
+                  await markSampleDispatched({ sampleRequestId, courier: courier.trim(), awb: awb.trim() }),
+                )
                 setAwb('')
                 return `Dispatched by ${courier.trim()}.`
               })
@@ -419,12 +424,14 @@ export function SampleDetailClient({
             disabled={pending || !costAmount.trim()}
             onClick={() =>
               run(async () => {
-                const r = await addCostToSample({
-                  sampleRequestId,
-                  kind: costKind,
-                  amount: costAmount.trim(),
-                  currency: 'USD',
-                })
+                const r = unwrap(
+                  await addCostToSample({
+                    sampleRequestId,
+                    kind: costKind,
+                    amount: costAmount.trim(),
+                    currency: 'USD',
+                  }),
+                )
                 setCostAmount('')
                 return `Added — ${r.runningTotal} spent on this sample so far.`
               })
@@ -453,7 +460,7 @@ export function SampleDetailClient({
               disabled={pending}
               onClick={() =>
                 run(async () => {
-                  await closeSample({ sampleRequestId })
+                  unwrap(await closeSample({ sampleRequestId }))
                   return 'Request closed.'
                 })
               }

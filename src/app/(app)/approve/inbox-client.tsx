@@ -456,7 +456,8 @@ function InboxRowItem({
 
     setLoading(true)
     void draftFields({ pendingChangeId: row.id })
-      .then(setFields)
+      // A refusal comes back as a value; `unwrap` re-throws it so the catch still fires.
+      .then((detail) => setFields(unwrap(detail)))
       .catch(() => setFields(null))
       .finally(() => setLoading(false))
   }

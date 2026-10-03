@@ -6,6 +6,7 @@ import { InlineAlert, Toast } from '@/components/fx/feedback'
 import { Button } from '@/components/fx/primitives'
 import { ROLE_LABEL } from '@/components/shell/nav'
 import { actionErrorMessage } from '@/lib/action-error'
+import { unwrap } from '@/lib/action-failure'
 import type { Role } from '@/modules/core/ctx'
 import { grantUserRole, revokeUserRole } from '@/modules/settings/actions'
 
@@ -91,7 +92,7 @@ export function RoleControls({
           disabled={pending || adding === ''}
           onClick={() =>
             run(async () => {
-              await grantUserRole({ userId, role: adding as Role })
+              unwrap(await grantUserRole({ userId, role: adding as Role }))
               setAdding('')
             }, `Granted ${ROLE_LABEL[adding as Role] ?? adding}.`)
           }
@@ -110,7 +111,7 @@ export function RoleControls({
               disabled={pending}
               onClick={() =>
                 run(
-                  () => revokeUserRole({ userId, role: role as Role }),
+                  async () => unwrap(await revokeUserRole({ userId, role: role as Role })),
                   `Revoked ${ROLE_LABEL[role as Role] ?? role}. The record of having held it stays.`,
                 )
               }

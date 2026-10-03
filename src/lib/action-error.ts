@@ -45,7 +45,13 @@ export function actionErrorMessage(
    * said no, in words) and a failure (something broke) show in different tones.
    */
   const announce = (message: string): string => {
-    notifyOutcome(error instanceof ActionRefused ? 'refused' : 'failed', message)
+    // Browser only. Server components call this too (a page turning a service refusal
+    // into copy renders it inline) — and `notifyOutcome` lives in a 'use client' module,
+    // so calling its reference during a server render is itself a crash, which took the
+    // whole screen down exactly where a sentence was being prepared.
+    if (typeof window !== 'undefined') {
+      notifyOutcome(error instanceof ActionRefused ? 'refused' : 'failed', message)
+    }
     return message
   }
 
@@ -60,6 +66,15 @@ export function actionErrorMessage(
     const copy = t(locale, error.failure.messageKey)
     if (copy !== error.failure.messageKey) return announce(copy)
     return announce(MESSAGES[DEFAULT_LOCALE][error.failure.messageKey] ?? fallback)
+  }
+
+  // Production's mask for a thrown server error. The real message is gone by the time it
+  // reaches the client, so the raw text is React boilerplate with an error number in it —
+  // the least readable sentence this function could possibly emit. The call site's own
+  // fallback at least says which act failed. Actions migrated to `surfaced()` never take
+  // this branch; it exists for the ones that still throw.
+  if (/Minified React error #\d|Server Components render/.test(error.message)) {
+    return announce(fallback)
   }
 
   const key = KEYED.exec(error.message)?.[1]

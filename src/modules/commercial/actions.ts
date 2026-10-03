@@ -107,15 +107,17 @@ export async function createUd(input: {
   validUntil?: string
   authorizedItems: { itemRef: string; qty: string; unit: string }[]
   documentId?: string
-}): Promise<{ udId: string; number: string }> {
+}): Promise<{ udId: string; number: string } | ActionFailure> {
   const ctx = await requireRole(await headers(), 'commercial', 'store')
-  const result = await createUdIn(ctx, input)
+  return surfaced(async () => {
+    const result = await createUdIn(ctx, input)
 
-  revalidatePath('/ud')
-  // The store's issue screen reads the balance this creates.
-  revalidatePath('/store')
-  revalidatePath('/store/issue')
-  return result
+    revalidatePath('/ud')
+    // The store's issue screen reads the balance this creates.
+    revalidatePath('/store')
+    revalidatePath('/store/issue')
+    return result
+  })
 }
 
 /**
@@ -132,14 +134,16 @@ export async function requestUdOverride(input: {
   unit: string
   storeIssueId?: string
   reason: string
-}): Promise<{ pendingChangeId: string; decision: UdDrawDecision }> {
+}): Promise<{ pendingChangeId: string; decision: UdDrawDecision } | ActionFailure> {
   const ctx = await requireRole(await headers(), 'store', 'commercial')
-  const result = await proposeUdOverride(ctx, input)
+  return surfaced(async () => {
+    const result = await proposeUdOverride(ctx, input)
 
-  // The request is in somebody's inbox now; the UD itself has not moved.
-  revalidatePath('/approve')
+    // The request is in somebody's inbox now; the UD itself has not moved.
+    revalidatePath('/approve')
 
-  return result
+    return result
+  })
 }
 
 /**
@@ -152,13 +156,15 @@ export async function requestUdOverride(input: {
 export async function generateUdReconciliation(input: {
   udId: string
   period: string
-}): Promise<{ reconciliationId: string }> {
+}): Promise<{ reconciliationId: string } | ActionFailure> {
   const ctx = await requireRole(await headers(), 'commercial', 'compliance')
-  const result = await snapshotReconciliation(ctx, input)
+  return surfaced(async () => {
+    const result = await snapshotReconciliation(ctx, input)
 
-  revalidatePath('/ud')
+    revalidatePath('/ud')
 
-  return { reconciliationId: result.reconciliationId }
+    return { reconciliationId: result.reconciliationId }
+  })
 }
 
 /**
@@ -175,9 +181,9 @@ export async function checkUdDraw(input: {
   itemRef: string
   qty: string
   unit: string
-}): Promise<UdDrawDecision> {
+}): Promise<UdDrawDecision | ActionFailure> {
   const ctx = await requireRole(await headers(), 'store', 'commercial', 'compliance')
-  return checkUdBalance(ctx, input)
+  return surfaced(async () => checkUdBalance(ctx, input))
 }
 
 /**
@@ -192,20 +198,25 @@ export async function checkUdDraw(input: {
  * Advisory, like `checkUdDraw` above: the draw re-checks under a lock, and only that
  * decision counts.
  */
-export async function udBalancePreview(input: { udId: string }): Promise<{
-  udNumber: string
-  items: { itemRef: string; unit: string; free: string }[]
-}> {
+export async function udBalancePreview(input: { udId: string }): Promise<
+  | {
+      udNumber: string
+      items: { itemRef: string; unit: string; free: string }[]
+    }
+  | ActionFailure
+> {
   const ctx = await requireRole(await headers(), 'store', 'commercial', 'compliance')
-  const balance = await getUdBalance(ctx, input.udId)
-  return {
-    udNumber: balance.udNumber,
-    items: balance.items.map((item) => ({
-      itemRef: item.itemRef,
-      unit: item.unit ?? '',
-      free: item.free ?? '0',
-    })),
-  }
+  return surfaced(async () => {
+    const balance = await getUdBalance(ctx, input.udId)
+    return {
+      udNumber: balance.udNumber,
+      items: balance.items.map((item) => ({
+        itemRef: item.itemRef,
+        unit: item.unit ?? '',
+        free: item.free ?? '0',
+      })),
+    }
+  })
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -230,14 +241,16 @@ export async function recordLcAmendment(input: {
     expiryDate?: string | null
   }
   receivedAt: string
-}): Promise<{ amendmentId: string; number: number; tightened: boolean }> {
+}): Promise<{ amendmentId: string; number: number; tightened: boolean } | ActionFailure> {
   const ctx = await requireRole(await headers(), 'commercial')
-  const result = await amendLc(ctx, input)
+  return surfaced(async () => {
+    const result = await amendLc(ctx, input)
 
-  revalidatePath('/lcs')
-  revalidatePath(`/lcs/${input.lcId}`)
+    revalidatePath('/lcs')
+    revalidatePath(`/lcs/${input.lcId}`)
 
-  return { amendmentId: result.amendmentId, number: result.number, tightened: result.tightened }
+    return { amendmentId: result.amendmentId, number: result.number, tightened: result.tightened }
+  })
 }
 
 /**
@@ -257,15 +270,17 @@ export async function openBtbCredit(input: {
   currency: string
   openedAt?: string
   expiryDate?: string
-}): Promise<{ btbLcId: string }> {
+}): Promise<{ btbLcId: string } | ActionFailure> {
   const ctx = await requireRole(await headers(), 'commercial')
-  const policy = await getPolicy<BankDocsPolicy>(ctx, 'commercial')
+  return surfaced(async () => {
+    const policy = await getPolicy<BankDocsPolicy>(ctx, 'commercial')
 
-  const result = await openBtb(ctx, input, policy)
+    const result = await openBtb(ctx, input, policy)
 
-  revalidatePath(`/lcs/${input.masterLcId}`)
+    revalidatePath(`/lcs/${input.masterLcId}`)
 
-  return { btbLcId: result.btbLcId }
+    return { btbLcId: result.btbLcId }
+  })
 }
 
 /**

@@ -59,30 +59,42 @@ const stageInput = z
  * because the service is also called by the demo script and by MARBIM's commit path, and a
  * check that only exists in the action is a check those callers do not get.
  */
-export async function addLead(input: z.input<typeof leadPayload>): Promise<{ leadId: string }> {
+export async function addLead(
+  input: z.input<typeof leadPayload>,
+): Promise<{ leadId: string } | ActionFailure> {
   const ctx = await requireRole(await headers(), 'merchandiser', 'commercial')
-  const parsed = leadPayload.parse(input)
+  return surfaced(async () => {
+    const parsed = leadPayload.parse(input)
 
-  const result = await createLead(ctx, parsed)
-  revalidatePath('/buyers')
-  return result
+    const result = await createLead(ctx, parsed)
+    revalidatePath('/buyers')
+    return result
+  })
 }
 
-export async function moveLeadStage(input: z.input<typeof stageInput>): Promise<void> {
+export async function moveLeadStage(
+  input: z.input<typeof stageInput>,
+): Promise<void | ActionFailure> {
   const ctx = await requireRole(await headers(), 'merchandiser', 'commercial')
-  const parsed = stageInput.parse(input)
+  return surfaced(async () => {
+    const parsed = stageInput.parse(input)
 
-  await setLeadStage(ctx, parsed)
-  revalidatePath('/buyers')
+    await setLeadStage(ctx, parsed)
+    revalidatePath('/buyers')
+  })
 }
 
-export async function logLeadActivity(input: unknown): Promise<{ activityId: string }> {
+export async function logLeadActivity(
+  input: unknown,
+): Promise<{ activityId: string } | ActionFailure> {
   const ctx = await requireRole(await headers(), 'merchandiser', 'commercial')
-  const result = await logActivity(ctx, input)
+  return surfaced(async () => {
+    const result = await logActivity(ctx, input)
 
-  // The quiet-lead clock is driven by activity, so logging one changes the board.
-  revalidatePath('/buyers')
-  return result
+    // The quiet-lead clock is driven by activity, so logging one changes the board.
+    revalidatePath('/buyers')
+    return result
+  })
 }
 
 const convertInput = z.object({
@@ -112,34 +124,38 @@ export async function findConversionDuplicates(input: {
   leadId: string
   name: string
   website?: string
-}): Promise<DuplicateCandidate[]> {
+}): Promise<DuplicateCandidate[] | ActionFailure> {
   const ctx = await requireRole(await headers(), 'merchandiser', 'commercial')
-  const parsed = z
-    .object({
-      leadId: z.string().uuid(),
-      name: z.string().min(1).max(300),
-      website: z.string().max(300).optional(),
-    })
-    .parse(input)
+  return surfaced(async () => {
+    const parsed = z
+      .object({
+        leadId: z.string().uuid(),
+        name: z.string().min(1).max(300),
+        website: z.string().max(300).optional(),
+      })
+      .parse(input)
 
-  const policy = await getPolicy<BuyerDeskPolicy>(ctx, 'buyers')
-  const candidates = await detectDuplicates(
-    ctx,
-    { name: parsed.name, website: parsed.website ?? null },
-    policy,
-  )
+    const policy = await getPolicy<BuyerDeskPolicy>(ctx, 'buyers')
+    const candidates = await detectDuplicates(
+      ctx,
+      { name: parsed.name, website: parsed.website ?? null },
+      policy,
+    )
 
-  // The lead being converted matches itself, obviously and unhelpfully.
-  return candidates.filter((candidate) => candidate.id !== parsed.leadId)
+    // The lead being converted matches itself, obviously and unhelpfully.
+    return candidates.filter((candidate) => candidate.id !== parsed.leadId)
+  })
 }
 
 export async function convertLeadToBuyer(input: z.input<typeof convertInput>) {
   const ctx = await requireRole(await headers(), 'merchandiser', 'commercial')
-  const parsed = convertInput.parse(input)
+  return surfaced(async () => {
+    const parsed = convertInput.parse(input)
 
-  const result = await convertLead(ctx, parsed)
-  revalidatePath('/buyers')
-  return result
+    const result = await convertLead(ctx, parsed)
+    revalidatePath('/buyers')
+    return result
+  })
 }
 
 /**

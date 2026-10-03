@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react'
 
 import { InlineAlert } from '@/components/fx/feedback'
 import { ReadIntoForm, type ReadFields } from '@/components/shell/read-into-form'
+import { unwrap } from '@/lib/action-failure'
 import { actionErrorMessage } from '@/lib/action-error'
 import { Ident } from '@/components/fx/format'
 import { Badge, Button } from '@/components/fx/primitives'
@@ -76,13 +77,15 @@ export function MachineRegistry({
 
     startTransition(async () => {
       try {
-        await addMachine({
-          machineType: form.machineType.trim(),
-          ...(form.brand.trim() ? { brand: form.brand.trim() } : {}),
-          ...(form.model.trim() ? { model: form.model.trim() } : {}),
-          ...(form.serial.trim() ? { serial: form.serial.trim() } : {}),
-          ...(form.lineId ? { lineId: form.lineId } : {}),
-        })
+        unwrap(
+          await addMachine({
+            machineType: form.machineType.trim(),
+            ...(form.brand.trim() ? { brand: form.brand.trim() } : {}),
+            ...(form.model.trim() ? { model: form.model.trim() } : {}),
+            ...(form.serial.trim() ? { serial: form.serial.trim() } : {}),
+            ...(form.lineId ? { lineId: form.lineId } : {}),
+          }),
+        )
         setNote(`${form.machineType.trim()} registered.`)
         setForm({ machineType: '', brand: '', model: '', serial: '', lineId: '' })
         setAdding(false)
@@ -97,7 +100,7 @@ export function MachineRegistry({
     setFailure(null)
     startTransition(async () => {
       try {
-        await moveMachine({ machineId, lineId: lineId === '' ? null : lineId, on })
+        unwrap(await moveMachine({ machineId, lineId: lineId === '' ? null : lineId, on }))
         setMovingId(null)
         router.refresh()
       } catch (error) {

@@ -25,14 +25,18 @@ import type { Role } from '@/modules/core/ctx'
  * only existed at the action boundary would be missed by every other caller.
  */
 
-export async function saveCompanyProfile(input: unknown): Promise<{ companyId: string }> {
+export async function saveCompanyProfile(
+  input: unknown,
+): Promise<{ companyId: string } | ActionFailure> {
   const ctx = await requireRole(await headers(), 'owner', 'admin')
-  const result = await upsertCompanyProfile(ctx, input)
+  return surfaced(async () => {
+    const result = await upsertCompanyProfile(ctx, input)
 
-  // factoryType decides which modules appear in the nav, so the whole shell has
-  // to re-render, not just this screen.
-  revalidatePath('/', 'layout')
-  return result
+    // factoryType decides which modules appear in the nav, so the whole shell has
+    // to re-render, not just this screen.
+    revalidatePath('/', 'layout')
+    return result
+  })
 }
 
 /**
@@ -48,11 +52,12 @@ export async function saveCompanyProfile(input: unknown): Promise<{ companyId: s
  */
 export async function readAuditTrail(
   query: AuditQuery = {},
-): Promise<{ rows: Awaited<ReturnType<typeof auditTrail>>; tables: string[] }> {
+): Promise<{ rows: Awaited<ReturnType<typeof auditTrail>>; tables: string[] } | ActionFailure> {
   const ctx = await requireRole(await headers(), 'owner', 'admin')
-
-  const [rows, tables] = await Promise.all([auditTrail(ctx, query), auditedTables(ctx)])
-  return { rows, tables }
+  return surfaced(async () => {
+    const [rows, tables] = await Promise.all([auditTrail(ctx, query), auditedTables(ctx)])
+    return { rows, tables }
+  })
 }
 
 /**
@@ -65,12 +70,14 @@ export async function readAuditTrail(
 export async function grantUserRole(input: {
   userId: string
   role: Role
-}): Promise<void> {
+}): Promise<void | ActionFailure> {
   const ctx = await requireRole(await headers(), 'owner', 'admin')
-  await grantRole(ctx, input)
+  return surfaced(async () => {
+    await grantRole(ctx, input)
 
-  // A role decides which screens exist for that person, so the shell has to re-render.
-  revalidatePath('/', 'layout')
+    // A role decides which screens exist for that person, so the shell has to re-render.
+    revalidatePath('/', 'layout')
+  })
 }
 
 /**
@@ -83,11 +90,13 @@ export async function grantUserRole(input: {
 export async function revokeUserRole(input: {
   userId: string
   role: Role
-}): Promise<void> {
+}): Promise<void | ActionFailure> {
   const ctx = await requireRole(await headers(), 'owner', 'admin')
-  await revokeRole(ctx, input)
+  return surfaced(async () => {
+    await revokeRole(ctx, input)
 
-  revalidatePath('/', 'layout')
+    revalidatePath('/', 'layout')
+  })
 }
 
 /**

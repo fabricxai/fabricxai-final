@@ -7,6 +7,7 @@ import { useState, useTransition } from 'react'
 import { compareDecimalStrings, roundToScale, subtractDecimalStrings } from '@/lib/quantity'
 import { InlineAlert } from '@/components/fx/feedback'
 import { actionErrorMessage } from '@/lib/action-error'
+import { unwrap } from '@/lib/action-failure'
 import { Badge, Button } from '@/components/fx/primitives'
 import { SectionHeading } from '@/components/fx/signature'
 import { UdBlockCard, type UdBlock } from '@/components/fx/ud-block'
@@ -90,12 +91,14 @@ export function UdDetailClient({
 
     startTransition(async () => {
       try {
-        const decision = await checkUdDraw({
-          udId,
-          itemRef,
-          qty: qty.trim(),
-          unit: item.unit,
-        })
+        const decision = unwrap(
+          await checkUdDraw({
+            udId,
+            itemRef,
+            qty: qty.trim(),
+            unit: item.unit,
+          }),
+        )
 
         if (decision.allowed) {
           setClear(
@@ -126,7 +129,7 @@ export function UdDetailClient({
     setFailure(null)
     startTransition(async () => {
       try {
-        await generateUdReconciliation({ udId, period })
+        unwrap(await generateUdReconciliation({ udId, period }))
         setNoted(`Statement frozen for ${period}.`)
         router.refresh()
       } catch (error) {

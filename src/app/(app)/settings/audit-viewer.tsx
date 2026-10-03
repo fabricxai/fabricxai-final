@@ -9,6 +9,7 @@ import { Select } from '@/components/fx/forms'
 import { Badge, Button } from '@/components/fx/primitives'
 import { Eyebrow } from '@/components/fx/signature'
 import { actionErrorMessage } from '@/lib/action-error'
+import { unwrap } from '@/lib/action-failure'
 import { readAuditTrail } from '@/modules/settings/actions'
 
 interface AuditRow {
@@ -63,10 +64,10 @@ export function AuditViewer({
     setFailure(null)
     startTransition(async () => {
       try {
-        const result = await readAuditTrail({
+        const result = unwrap(await readAuditTrail({
           ...(nextTable ? { targetTable: nextTable } : {}),
           ...(nextAction ? { action: nextAction } : {}),
-        })
+        }))
         setRows(result.rows as unknown as AuditRow[])
       } catch (error) {
         setFailure(actionErrorMessage(error, 'The trail could not be read.'))

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 
 import { InlineAlert } from '@/components/fx/feedback'
+import { unwrap } from '@/lib/action-failure'
 import { actionErrorMessage } from '@/lib/action-error'
 import { NumpadInput } from '@/components/fx/floor'
 import { useLocale, useT } from '@/components/fx/locale'
@@ -124,18 +125,20 @@ export function FabricClient({
 
     startTransition(async () => {
       try {
-        const result = await recordFabricInspection({
-          grnId: grading.grn.grnId,
-          rollId: grading.roll.rollId,
-          points4: {
-            1: counts[0]!,
-            2: counts[1]!,
-            3: counts[2]!,
-            4: counts[3]!,
-          },
-          inspectedLengthYards: lengthYards.toFixed(2),
-          widthInches: widthInches.toFixed(2),
-        })
+        const result = unwrap(
+          await recordFabricInspection({
+            grnId: grading.grn.grnId,
+            rollId: grading.roll.rollId,
+            points4: {
+              1: counts[0]!,
+              2: counts[1]!,
+              3: counts[2]!,
+              4: counts[3]!,
+            },
+            inspectedLengthYards: lengthYards.toFixed(2),
+            widthInches: widthInches.toFixed(2),
+          }),
+        )
 
         setNoted(
           t('ui.quality.fabric_recorded', {
