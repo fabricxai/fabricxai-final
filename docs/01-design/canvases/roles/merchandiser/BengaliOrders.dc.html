@@ -1,0 +1,314 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Anek+Bangla:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #FBFAF8; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: #181D29; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+  a:hover { color: #B88C21; }
+  .tabular, [data-numeric] { font-variant-numeric: tabular-nums; }
+  .fx-selvage { display: flex; align-items: stretch; overflow: hidden; }
+  .fx-selvage::before { content: ''; flex-shrink: 0; width: 3px; background: #A9A49A; }
+  .fx-selvage[data-status="on-track"]::before { background: #2F7D5B; }
+  .fx-selvage[data-status="at-risk"]::before { background: #8C5A16; }
+  .fx-selvage[data-status="late"]::before { background: #B23A32; }
+  .fx-selvage[data-status="done"]::before { background: #A9A49A; }
+  .fx-selvage[data-critical="true"]::before { width: 5px; }
+  .fx-thread-rule { height: 9px; background-image: repeating-linear-gradient(115deg, #E1B334 0 2px, transparent 2px 9px); }
+  .fx-thread-rule[data-variant="muted"] { height: 7px; background-image: repeating-linear-gradient(115deg, #D6D2C9 0 2px, transparent 2px 9px); }
+  .fx-weave { background-image: repeating-linear-gradient(146deg, transparent 0 7px, #E7E4DE 7px 9px, transparent 9px 17px); }
+  .fx-cut { clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%); border-radius: 8px; }
+  .fx-cut-chip { clip-path: polygon(0 0, 100% 0, 100% 100%, 10px 100%, 0 calc(100% - 10px)); }
+  @keyframes fx-spread { to { transform: translate(calc(var(--dx) * 6%), calc(var(--dy) * 6%)); } }
+  @keyframes fx-converge { 0% { transform: translate(calc(var(--dx) * 26%), calc(var(--dy) * 26%)) scale(.82); opacity: 0; } 62% { transform: translate(0, 0) scale(1.15); opacity: 1; } 100% { transform: translate(0, 0) scale(1); opacity: 1; } }
+  @keyframes fx-orbit { 0%, 100% { transform: rotate(-13deg); opacity: .45; } 50% { transform: rotate(13deg); opacity: 1; } }
+  @keyframes fx-travel { 0% { transform: translate(-10%, 10%); opacity: .25; } 40% { transform: translate(0, 0); opacity: 1; } 100% { transform: translate(10%, -10%); opacity: .25; } }
+  @keyframes fx-breathe { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(calc(var(--dx) * 3.5%), calc(var(--dy) * 3.5%)); } }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
+</style>
+</helmet>
+
+<div style="--fx-bg-canvas:#FBFAF8; --fx-bg-surface:#FFFFFF; --fx-bg-raised:#FFFFFF; --fx-bg-sunken:#F3F1EC; --fx-bg-hover:rgba(24,29,41,.035); --fx-bg-selected:rgba(225,179,52,.12); --fx-border-subtle:#E7E4DE; --fx-border-default:#D6D2C9; --fx-border-strong:#A9A49A; --fx-text-primary:#181D29; --fx-text-secondary:#4C5364; --fx-text-tertiary:#5E6675; --fx-text-disabled:#A8AEBB; --fx-text-inverse:#FBFAF8; --fx-accent:#E1B334; --fx-accent-hover:#CFA22B; --fx-accent-pressed:#B88C21; --fx-accent-subtle:#FAF1DA; --fx-accent-on:#181D29; --fx-success:#2F7D5B; --fx-warning:#8C5A16; --fx-danger:#B23A32; --fx-info:#2F5FA8; --fx-focus:#181D29; --fx-sh1:0 1px 2px rgba(24,29,41,.06); --fx-sh2:0 4px 12px rgba(24,29,41,.08); --fx-sh3:0 12px 32px rgba(24,29,41,.12); --fx-slash-angle:-34deg; --fx-weave-angle:146deg; --fx-thread-angle:115deg; width: 1440px; min-height: 1180px; background: var(--fx-bg-canvas); color: var(--fx-text-primary); font-family: 'Anek Bangla', 'Noto Sans Bengali', sans-serif; font-size: 16px; line-height: 1.7; padding: 0px; display: flex; flex-direction: column;">
+<header style="height: 60px; flex-shrink: 0; border-bottom: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface); display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, 420px) minmax(0, 1fr); align-items: center; gap: 16px; padding: 0 24px;">
+    <div style="display: flex; align-items: center; gap: 16px; min-width: 0;">
+      <img src="fabricxai-logo-light.png" alt="FabricX AI" style="height: 26px; width: auto; display: block;" />
+      <span style="display: inline-flex; align-items: center; gap: 10px; padding: 5px 12px 5px 5px; border-radius: 8px; border: 1px solid var(--fx-border-default); background: var(--fx-bg-sunken); color: var(--fx-text-primary);">
+        <span style="width: 32px; height: 32px; border-radius: 4px; background: var(--fx-text-primary); color: var(--fx-text-inverse); display: inline-flex; align-items: center; justify-content: center; font: 700 12px/1 'Plus Jakarta Sans', system-ui, sans-serif; letter-spacing: .04em; flex-shrink: 0;">BF</span>
+        <span style="font: 600 14px/1.2 'Plus Jakarta Sans', system-ui, sans-serif; white-space: nowrap;">Barakah Fashions Ltd</span>
+      </span>
+    </div>
+    <div style="justify-self: center; width: 100%;">
+      <div style="display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--fx-border-default); background: var(--fx-bg-sunken); color: var(--fx-text-tertiary); font: 400 13px/1 'Anek Bangla', sans-serif;">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.5"/><path d="M10.5 10.5L14 14" stroke="currentColor" stroke-width="1.5"/></svg>
+        মডিউল, অর্ডার, বায়ার খুঁজুন…
+      </div>
+    </div>
+    <div style="justify-self: end; display: flex; align-items: center; gap: 14px; min-width: 0;">
+      <button style="display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--fx-border-default); background: var(--fx-bg-surface); color: var(--fx-text-secondary); font: 500 12.5px/1 'Plus Jakarta Sans', system-ui, sans-serif; cursor: pointer;">
+        <img src="marbim-logo-ink.png" alt="" style="width: 20px; height: 20px; display: block; flex-shrink: 0;" />Ask MARBIM
+      </button>
+      <span style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--fx-border-subtle); font: 500 13px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">?</span>
+      <span style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--fx-border-subtle); color: var(--fx-text-tertiary);">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M13 9.5A5.5 5.5 0 016.5 3a5.5 5.5 0 106.5 6.5z" stroke="currentColor" stroke-width="1.4"/></svg>
+      </span>
+      <span style="display: flex; align-items: center; gap: 8px;">
+        <span style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--fx-text-tertiary); white-space: nowrap;">মার্চেন্ডাইজার</span>
+        <span style="width: 30px; height: 30px; border-radius: 999px; background: var(--fx-bg-sunken); border: 2px solid var(--fx-bg-surface); display: inline-flex; align-items: center; justify-content: center; font: 600 11px/1 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">RA</span>
+      </span>
+    </div>
+  </header>
+<div style="flex: 1; display: flex; min-height: 0;">
+  <nav style="width: 232px; flex-shrink: 0;  border-right: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface); padding: 20px 12px; display: flex; flex-direction: column; gap: 22px; overflow: hidden;">
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+      <div style="font: 500 12px/1.4 'Anek Bangla', 'Noto Sans Bengali', sans-serif; letter-spacing: 0; color: var(--fx-text-tertiary); padding: 0 12px 8px;">কাজ</div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-height: 36px; border-radius: 8px; font: 500 14px/1.2 'Plus Jakarta Sans', system-ui, sans-serif; background: transparent; color: var(--fx-text-secondary);">
+      <span style="width: 2px; height: 15px; flex-shrink: 0; transform: skewX(-34deg); background: transparent;"></span>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink: 0; display: block;"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><path d="M3 3.5h10v10H3z"/><path d="M5.5 6.5h5"/><path d="M5.5 9h3.5"/><path d="M5.5 11.5h4"/></g></svg>
+      <span style="flex: 1; min-width: 0;">আপনার কাজ</span>
+      
+    </div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-height: 36px; border-radius: 8px; font: 500 14px/1.2 'Plus Jakarta Sans', system-ui, sans-serif; background: transparent; color: var(--fx-text-secondary);">
+      <span style="width: 2px; height: 15px; flex-shrink: 0; transform: skewX(-34deg); background: transparent;"></span>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink: 0; display: block;"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><path d="M2 5.5h12v7H2z"/><path d="M2 5.5l6 4 6-4"/></g></svg>
+      <span style="flex: 1; min-width: 0;">অ্যাপ্রুভ ইনবক্স</span>
+      
+    </div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-height: 36px; border-radius: 8px; font: 500 14px/1.2 'Plus Jakarta Sans', system-ui, sans-serif; background: transparent; color: var(--fx-text-secondary);">
+      <span style="width: 2px; height: 15px; flex-shrink: 0; transform: skewX(-34deg); background: transparent;"></span>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink: 0; display: block;"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><path d="M3.5 3.5l9 9"/><path d="M12.5 3.5l-9 9"/></g></svg>
+      <span style="flex: 1; min-width: 0;">MARBIM</span>
+      
+    </div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-height: 36px; border-radius: 8px; font: 500 14px/1.2 'Plus Jakarta Sans', system-ui, sans-serif; background: var(--fx-bg-selected); color: var(--fx-text-primary);">
+      <span style="width: 2px; height: 15px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-accent);"></span>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink: 0; display: block;"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><rect x="2.5" y="3.5" width="11" height="10"/><path d="M2.5 6.5h11"/><path d="M5.5 2v3"/><path d="M10.5 2v3"/></g></svg>
+      <span style="flex: 1; min-width: 0;">অর্ডার ডেস্ক ও TNA</span>
+      
+    </div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-height: 36px; border-radius: 8px; font: 500 14px/1.2 'Plus Jakarta Sans', system-ui, sans-serif; background: transparent; color: var(--fx-text-secondary);">
+      <span style="width: 2px; height: 15px; flex-shrink: 0; transform: skewX(-34deg); background: transparent;"></span>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink: 0; display: block;"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><path d="M4 4.5h9v8H4z"/><path d="M2.5 3h9"/><path d="M2.5 3v8"/></g></svg>
+      <span style="flex: 1; min-width: 0;">অর্ডার মেমোরি</span>
+      
+    </div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-height: 36px; border-radius: 8px; font: 500 14px/1.2 'Plus Jakarta Sans', system-ui, sans-serif; background: transparent; color: var(--fx-text-secondary);">
+      <span style="width: 2px; height: 15px; flex-shrink: 0; transform: skewX(-34deg); background: transparent;"></span>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink: 0; display: block;"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><path d="M5 2.5h6l1.5 3.5H3.5L5 2.5z"/><path d="M3.5 6v7.5h9V6"/><path d="M8 9v4.5"/></g></svg>
+      <span style="flex: 1; min-width: 0;">স্যাম্পল রুম</span>
+      
+    </div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+      <div style="font: 500 12px/1.4 'Anek Bangla', 'Noto Sans Bengali', sans-serif; letter-spacing: 0; color: var(--fx-text-tertiary); padding: 0 12px 8px;">কমার্শিয়াল</div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-height: 36px; border-radius: 8px; font: 500 14px/1.2 'Plus Jakarta Sans', system-ui, sans-serif; background: transparent; color: var(--fx-text-secondary);">
+      <span style="width: 2px; height: 15px; flex-shrink: 0; transform: skewX(-34deg); background: transparent;"></span>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink: 0; display: block;"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><circle cx="8" cy="5" r="2.25"/><path d="M3.5 13.5c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4"/></g></svg>
+      <span style="flex: 1; min-width: 0;">বায়ার ও লিড ডেস্ক</span>
+      
+    </div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-height: 36px; border-radius: 8px; font: 500 14px/1.2 'Plus Jakarta Sans', system-ui, sans-serif; background: transparent; color: var(--fx-text-secondary);">
+      <span style="width: 2px; height: 15px; flex-shrink: 0; transform: skewX(-34deg); background: transparent;"></span>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink: 0; display: block;"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><path d="M4 2.5h6l3 3V13.5H4z"/><path d="M10 2.5V5.5h3"/><path d="M6 8.5h4"/><path d="M6 11h3"/></g></svg>
+      <span style="flex: 1; min-width: 0;">RFQ ও কোটেশন</span>
+      
+    </div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-height: 36px; border-radius: 8px; font: 500 14px/1.2 'Plus Jakarta Sans', system-ui, sans-serif; background: transparent; color: var(--fx-text-secondary);">
+      <span style="width: 2px; height: 15px; flex-shrink: 0; transform: skewX(-34deg); background: transparent;"></span>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink: 0; display: block;"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><rect x="3" y="2.5" width="10" height="11"/><path d="M3 6h10"/><path d="M6 8.5h1.5M8.5 8.5H10M6 11h1.5M8.5 11H10"/></g></svg>
+      <span style="flex: 1; min-width: 0;">কস্টিং স্টুডিও</span>
+      
+    </div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+      <div style="font: 500 12px/1.4 'Anek Bangla', 'Noto Sans Bengali', sans-serif; letter-spacing: 0; color: var(--fx-text-tertiary); padding: 0 12px 8px;">ফ্লোর</div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-height: 36px; border-radius: 8px; font: 500 14px/1.2 'Plus Jakarta Sans', system-ui, sans-serif; background: transparent; color: var(--fx-text-secondary);">
+      <span style="width: 2px; height: 15px; flex-shrink: 0; transform: skewX(-34deg); background: transparent;"></span>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink: 0; display: block;"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><rect x="2.5" y="2.5" width="11" height="11"/><path d="M6.5 2.5v11M9.5 2.5v11M2.5 6.5h11M2.5 9.5h11"/></g></svg>
+      <span style="flex: 1; min-width: 0;">প্ল্যানিং বোর্ড</span>
+      
+    </div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-height: 36px; border-radius: 8px; font: 500 14px/1.2 'Plus Jakarta Sans', system-ui, sans-serif; background: transparent; color: var(--fx-text-secondary);">
+      <span style="width: 2px; height: 15px; flex-shrink: 0; transform: skewX(-34deg); background: transparent;"></span>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink: 0; display: block;"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><path d="M2.5 4.5h7v7h-7z"/><path d="M9.5 7h3l1.5 2v2.5h-4.5"/><circle cx="5" cy="12.5" r="1.25"/><circle cx="12" cy="12.5" r="1.25"/></g></svg>
+      <span style="flex: 1; min-width: 0;">শিপমেন্ট</span>
+      
+    </div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+      <div style="font: 500 12px/1.4 'Anek Bangla', 'Noto Sans Bengali', sans-serif; letter-spacing: 0; color: var(--fx-text-tertiary); padding: 0 12px 8px;">তদারকি</div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-height: 36px; border-radius: 8px; font: 500 14px/1.2 'Plus Jakarta Sans', system-ui, sans-serif; background: transparent; color: var(--fx-text-secondary);">
+      <span style="width: 2px; height: 15px; flex-shrink: 0; transform: skewX(-34deg); background: transparent;"></span>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink: 0; display: block;"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><path d="M4 8h8"/></g></svg>
+      <span style="flex: 1; min-width: 0;">রিফিউজড রাইটস</span>
+      
+    </div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+      <div style="font: 500 12px/1.4 'Anek Bangla', 'Noto Sans Bengali', sans-serif; letter-spacing: 0; color: var(--fx-text-tertiary); padding: 0 12px 8px;">সিস্টেম</div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-height: 36px; border-radius: 8px; font: 500 14px/1.2 'Plus Jakarta Sans', system-ui, sans-serif; background: transparent; color: var(--fx-text-secondary);">
+      <span style="width: 2px; height: 15px; flex-shrink: 0; transform: skewX(-34deg); background: transparent;"></span>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink: 0; display: block;"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><circle cx="8" cy="8" r="2.25"/><path d="M8 2.5v2M8 11.5v2M2.5 8h2M11.5 8h2M4.1 4.1l1.4 1.4M10.5 10.5l1.4 1.4M11.9 4.1l-1.4 1.4M5.5 10.5l-1.4 1.4"/></g></svg>
+      <span style="flex: 1; min-width: 0;">সেটিংস</span>
+      
+    </div>
+    </div>
+    
+  </nav>
+  <main style="flex: 1; min-width: 0; background: var(--fx-bg-canvas); padding: 32px 48px 40px; overflow: hidden;">
+    <div style="max-width: 1280px; margin: 0 auto;"><div style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 32px;">
+    <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap;">
+      <div style="display: flex; flex-direction: column; gap: 8px; min-width: 0;">
+        <div style="font: 400 13px/1.5 'Anek Bangla', 'Noto Sans Bengali', sans-serif; letter-spacing: 0; color: var(--fx-text-tertiary);">বই</div>
+        <h1 style="font: 600 34px/1.35 'Anek Bangla', 'Noto Sans Bengali', sans-serif; letter-spacing: 0; margin: 0; color: var(--fx-text-primary);">অর্ডার ডেস্ক ও TNA</h1>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px; flex-shrink: 0;">
+        <span style="font: 400 13px/1.5 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-secondary);">১৯টি খোলা · 412,000 pcs · $1.94m</span>
+        <div style="display: flex; gap: 10px;"><button style="display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; padding: 10px 18px; font: 600 14px/1.4 'Anek Bangla', 'Noto Sans Bengali', sans-serif; min-height: 36px; background: transparent; color: var(--fx-text-primary); border: 1px solid var(--fx-border-default);">বায়ারের PO দিন</button><button style="display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; padding: 10px 18px; font: 600 14px/1.4 'Anek Bangla', 'Noto Sans Bengali', sans-serif; min-height: 36px; background: var(--fx-accent); color: var(--fx-accent-on); border: none;">অর্ডার তুলুন</button></div>
+      </div>
+    </div>
+    <div class="fx-thread-rule" data-variant="muted"></div>
+  </div>
+  <div style="background: var(--fx-bg-surface); border: 1px solid var(--fx-border-subtle); border-radius: 8px; box-shadow: var(--fx-sh1); overflow: hidden; padding: 0px;">
+    <div style="border-bottom: 1px solid var(--fx-border-default); background: var(--fx-bg-surface);">
+      <div style="display: grid; grid-template-columns: 128px minmax(0, 1fr) 92px 96px 84px 156px; gap: 14px; padding: 10px 18px 10px 21px;">
+        <span style="font: 500 12px/1.4 'Anek Bangla', 'Noto Sans Bengali', sans-serif; letter-spacing: 0; color: var(--fx-text-tertiary); text-align: left;">PO</span><span style="font: 500 12px/1.4 'Anek Bangla', 'Noto Sans Bengali', sans-serif; letter-spacing: 0; color: var(--fx-text-tertiary); text-align: left;">বায়ার ও স্টাইল</span><span style="font: 500 12px/1.4 'Anek Bangla', 'Noto Sans Bengali', sans-serif; letter-spacing: 0; color: var(--fx-text-tertiary); text-align: right;">পরিমাণ</span><span style="font: 500 12px/1.4 'Anek Bangla', 'Noto Sans Bengali', sans-serif; letter-spacing: 0; color: var(--fx-text-tertiary); text-align: right;">মূল্য</span><span style="font: 500 12px/1.4 'Anek Bangla', 'Noto Sans Bengali', sans-serif; letter-spacing: 0; color: var(--fx-text-tertiary); text-align: right;">এক্স-ফ্যাক্টরি</span><span style="font: 500 12px/1.4 'Anek Bangla', 'Noto Sans Bengali', sans-serif; letter-spacing: 0; color: var(--fx-text-tertiary); text-align: right;">LC</span>
+      </div></div>
+    <div class="fx-selvage" data-status="late" data-critical="true" style="border-top: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+  <div style="flex: 1; min-width: 0; display: grid; grid-template-columns: 128px minmax(0, 1fr) 92px 96px 84px 156px; gap: 14px; align-items: center; padding: 13px 18px; min-height: 44px;">
+    <span><span data-numeric style="font: 500 12.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">PO-BF-2044</span></span>
+    <div style="min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+      <span style="font: 500 14px/1.5 'Anek Bangla', 'Noto Sans Bengali', sans-serif;">H&M · ST-2610</span>
+      <span style="font: 400 12.5px/1.7 'Anek Bangla', 'Noto Sans Bengali', sans-serif; color: var(--fx-text-tertiary); text-wrap: pretty;">কাটিং শুরু করা যায়নি — PP স্যাম্পল এখনও বায়ারের কাছে</span>
+    </div>
+    <span data-numeric style="font: 400 13px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-secondary); text-align: right;">42,000</span>
+    <span data-numeric style="font: 400 13px/1.3 'JetBrains Mono', ui-monospace, monospace; text-align: right;">$203,700</span>
+    <span data-numeric style="font: 400 13px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-secondary); text-align: right;">18 Dec</span>
+    <span style="display: flex; justify-content: flex-end;"><span style="display: inline-flex; align-items: center; gap: 7px; padding: 5px 9px; border-radius: 999px; border: 1px solid var(--fx-danger); background: var(--fx-bg-surface); font: 500 11.5px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary); white-space: nowrap;">
+    <span style="color: var(--fx-danger);">●</span>LC-BF-7781 · −3d</span></span>
+  </div></div><div class="fx-selvage" data-status="at-risk"  style="border-top: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+  <div style="flex: 1; min-width: 0; display: grid; grid-template-columns: 128px minmax(0, 1fr) 92px 96px 84px 156px; gap: 14px; align-items: center; padding: 13px 18px; min-height: 44px;">
+    <span><span data-numeric style="font: 500 12.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">PO-BF-2041</span></span>
+    <div style="min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+      <span style="font: 500 14px/1.5 'Anek Bangla', 'Noto Sans Bengali', sans-serif;">Primark · ST-2588</span>
+      <span style="font: 400 12.5px/1.7 'Anek Bangla', 'Noto Sans Bengali', sans-serif; color: var(--fx-text-tertiary); text-wrap: pretty;">ফিনিশিংয়ে আছে · ১২,০০০-এর মধ্যে ৮,৪০০ সেলাই হয়েছে</span>
+    </div>
+    <span data-numeric style="font: 400 13px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-secondary); text-align: right;">12,000</span>
+    <span data-numeric style="font: 400 13px/1.3 'JetBrains Mono', ui-monospace, monospace; text-align: right;">$62,400</span>
+    <span data-numeric style="font: 400 13px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-secondary); text-align: right;">9 Dec</span>
+    <span style="display: flex; justify-content: flex-end;"><span style="display: inline-flex; align-items: center; gap: 7px; padding: 5px 9px; border-radius: 999px; border: 1px solid var(--fx-border-default); background: var(--fx-bg-surface); font: 500 11.5px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-secondary); white-space: nowrap;">
+    LC-BF-7774 · 19d</span></span>
+  </div></div><div class="fx-selvage" data-status="on-track"  style="border-top: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+  <div style="flex: 1; min-width: 0; display: grid; grid-template-columns: 128px minmax(0, 1fr) 92px 96px 84px 156px; gap: 14px; align-items: center; padding: 13px 18px; min-height: 44px;">
+    <span><span data-numeric style="font: 500 12.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">PO-BF-2039</span></span>
+    <div style="min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+      <span style="font: 500 14px/1.5 'Anek Bangla', 'Noto Sans Bengali', sans-serif;">Bestseller A/S · ST-2571</span>
+      <span style="font: 400 12.5px/1.7 'Anek Bangla', 'Noto Sans Bengali', sans-serif; color: var(--fx-text-tertiary); text-wrap: pretty;">পরিকল্পনা মতোই চলছে · কাটিং ৬২% শেষ</span>
+    </div>
+    <span data-numeric style="font: 400 13px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-secondary); text-align: right;">18,000</span>
+    <span data-numeric style="font: 400 13px/1.3 'JetBrains Mono', ui-monospace, monospace; text-align: right;">$97,200</span>
+    <span data-numeric style="font: 400 13px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-secondary); text-align: right;">22 Dec</span>
+    <span style="display: flex; justify-content: flex-end;"><span style="display: inline-flex; align-items: center; gap: 7px; padding: 5px 9px; border-radius: 999px; border: 1px solid var(--fx-border-default); background: var(--fx-bg-surface); font: 500 11.5px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-secondary); white-space: nowrap;">
+    LC-BF-7786 · 34d</span></span>
+  </div></div>
+  </div>
+  <div style="height: 30px;"></div>
+  <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 12px;">
+  <span style="display: flex; gap: 4px; transform: skewX(-34deg);"><i style="display: block; width: 2px; height: 15px; background: var(--fx-accent);"></i><i style="display: block; width: 2px; height: 15px; background: var(--fx-accent);"></i><i style="display: block; width: 2px; height: 15px; background: var(--fx-accent);"></i></span>
+  <h2 style="font: 600 26px/1.35 'Anek Bangla', 'Noto Sans Bengali', sans-serif; letter-spacing: 0; margin: 0;">অর্ডারের ড্রয়ার</h2>
+  <span style="margin-left: auto; font: 400 12.5px/1.5 'Anek Bangla', 'Noto Sans Bengali', sans-serif; color: var(--fx-text-tertiary);">যেটা সারিতে চাপ দিলে খোলে</span></div>
+  <div style="display: flex; gap: 28px; align-items: flex-start;">
+    <aside style="position: relative; width: 720px; height: 620px; flex-shrink: 0; background: var(--fx-bg-surface); border-left: 1px solid var(--fx-border-subtle); border-radius: 14px 0 0 14px; box-shadow: var(--fx-sh3); display: flex; flex-direction: column; overflow: hidden;">
+
+  <!-- 1 · header: the status rim, the identity line, the one number -->
+  <div style="display: flex; align-items: stretch;">
+    <div style="width: 5px; flex-shrink: 0; background: var(--fx-danger);"></div>
+    <div style="flex: 1; min-width: 0; padding: 22px 26px; border-bottom: 1px solid var(--fx-border-subtle); display: flex; flex-direction: column; gap: 14px;">
+      
+      <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;">
+        <div style="display: flex; flex-direction: column; gap: 7px; min-width: 0;">
+          <div style="display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;">
+            <span data-numeric style="font: 500 15px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">PO-BF-2044</span>
+            <span style="font: 400 14px/1.3 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">H&M · ST-2610</span>
+          </div>
+          <span style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-danger);">৪ দিন দেরি</span>
+        </div>
+        <span style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; color: var(--fx-text-secondary); font: 400 15px/1 'Plus Jakarta Sans', system-ui, sans-serif; flex-shrink: 0;">✕</span>
+      </div>
+      <div style="position: relative; background: var(--fx-bg-sunken); border: 1px solid var(--fx-border-subtle); border-radius: 8px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px;">
+        
+        <div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">অর্ডার</div>
+        <div style="display: flex; align-items: baseline; gap: 6px;">
+          <span data-numeric style="font: 600 30px/1.05 'Plus Jakarta Sans', system-ui, sans-serif; letter-spacing: -.02em; color: var(--fx-text-primary);">42,000</span>
+          <span style="font: 400 14px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">pcs</span>
+        </div>
+        <div style="font: 400 13px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">৩টি রঙ × ৬টি সাইজ · $4.85 FOB · এক্স-ফ্যাক্টরি 18 Dec 2026</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="position: relative; display: flex; gap: 4px; padding: 0 26px; border-bottom: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+    
+    <span style="padding: 13px 12px; font: 600 13.5px/1 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); border-bottom: 2px solid var(--fx-text-primary); margin-bottom: -1px;">TNA</span><span style="padding: 13px 12px; font: 500 13.5px/1 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); border-bottom: 2px solid transparent; margin-bottom: -1px;">ব্রেকডাউন</span><span style="padding: 13px 12px; font: 500 13.5px/1 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); border-bottom: 2px solid transparent; margin-bottom: -1px;">LC</span><span style="padding: 13px 12px; font: 500 13.5px/1 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); border-bottom: 2px solid transparent; margin-bottom: -1px;">ফাইল</span><span style="padding: 13px 12px; font: 500 13.5px/1 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); border-bottom: 2px solid transparent; margin-bottom: -1px;">ইতিহাস</span>
+  </div>
+
+  <div style="position: relative; flex: 1; min-height: 0; padding: 26px; overflow: hidden; display: flex; flex-direction: column; gap: 18px;">
+    
+    
+    <div style="border: 1px solid var(--fx-danger); border-radius: 8px; background: var(--fx-bg-surface); padding: 12px 14px; font: 400 13.5px/1.75 'Anek Bangla', 'Noto Sans Bengali', sans-serif; text-wrap: pretty;">
+        <strong style="font-weight: 600;">LC-BF-7781-এর শেষ শিপমেন্টের তারিখ 21 Dec।</strong> এক্স-ফ্যাক্টরি 18 Dec, আর সেটা পিছিয়ে যাচ্ছে — হাতে তিন দিন আছে। সংশোধনী তুলবে কমার্শিয়াল; আপনি শুধু কোন তারিখ দরকার সেটা বলবেন।
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 11px;">
+        
+          <div style="display: flex; gap: 12px; align-items: flex-start;">
+            <span style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; flex-shrink: 0; border-radius: 999px; border: 1.5px solid var(--fx-danger); color: var(--fx-danger); font: 500 10px/1 'JetBrains Mono', ui-monospace, monospace;">✕</span>
+            <div style="display: flex; flex-direction: column; gap: 3px;">
+              <span style="font: 600 13.5px/1.5 'Anek Bangla', 'Noto Sans Bengali', sans-serif;">PP অনুমোদন</span>
+              <span style="font: 400 12.5px/1.7 'Anek Bangla', 'Noto Sans Bengali', sans-serif; color: var(--fx-text-tertiary);"><span style="font-family: 'JetBrains Mono', ui-monospace, monospace;">28 Nov</span> — এখনও হয়নি — ১১ দিন বায়ারের কাছে</span>
+            </div></div>
+          <div style="display: flex; gap: 12px; align-items: flex-start;">
+            <span style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; flex-shrink: 0; border-radius: 999px; border: 1.5px solid var(--fx-success); color: var(--fx-success); font: 500 10px/1 'JetBrains Mono', ui-monospace, monospace;">✓</span>
+            <div style="display: flex; flex-direction: column; gap: 3px;">
+              <span style="font: 600 13.5px/1.5 'Anek Bangla', 'Noto Sans Bengali', sans-serif;">কাপড় গুদামে</span>
+              <span style="font: 400 12.5px/1.7 'Anek Bangla', 'Noto Sans Bengali', sans-serif; color: var(--fx-text-tertiary);"><span style="font-family: 'JetBrains Mono', ui-monospace, monospace;">26 Nov</span> — 28 Nov — দুই দিন দেরিতে এসেছে</span>
+            </div></div>
+          <div style="display: flex; gap: 12px; align-items: flex-start;">
+            <span style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; flex-shrink: 0; border-radius: 999px; border: 1.5px solid var(--fx-danger); color: var(--fx-danger); font: 500 10px/1 'JetBrains Mono', ui-monospace, monospace;">✕</span>
+            <div style="display: flex; flex-direction: column; gap: 3px;">
+              <span style="font: 600 13.5px/1.5 'Anek Bangla', 'Noto Sans Bengali', sans-serif;">কাটিং শুরু</span>
+              <span style="font: 400 12.5px/1.7 'Anek Bangla', 'Noto Sans Bengali', sans-serif; color: var(--fx-text-tertiary);"><span style="font-family: 'JetBrains Mono', ui-monospace, monospace;">1 Dec</span> — PP-র জন্য আটকে আছে</span>
+            </div></div>
+      </div>
+  </div>
+
+  <div style="position: relative; padding: 16px 26px; border-top: 1px solid var(--fx-border-subtle); background: var(--fx-bg-sunken); display: flex; flex-direction: column; gap: 10px;">
+    
+    <div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Before the next action</div>
+    <div style="display: flex; flex-wrap: wrap; gap: 8px;"><span style="display: inline-flex; align-items: center; gap: 7px; padding: 7px 11px; border-radius: 999px; border: 1px solid var(--fx-danger); background: var(--fx-bg-surface); font: 500 12px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">
+    <span style="color: var(--fx-danger);">✕</span>PP অনুমোদন — ১১ দিন</span><span style="display: inline-flex; align-items: center; gap: 7px; padding: 7px 11px; border-radius: 999px; border: 1px solid var(--fx-success); background: var(--fx-bg-surface); font: 500 12px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">
+    <span style="color: var(--fx-success);">✓</span>কাপড় গুদামে 28 Nov</span></div>
+  </div>
+
+  <div style="position: relative; padding: 18px 26px; border-top: 1px solid var(--fx-border-subtle); display: flex; gap: 10px; justify-content: flex-end; align-items: center;">
+    
+    <button style="display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; padding: 10px 18px; font: 600 14px/1.4 'Anek Bangla', 'Noto Sans Bengali', sans-serif; min-height: 36px; background: transparent; color: var(--fx-text-primary); border: 1px solid transparent;">সংশোধনী চান</button><button style="display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; padding: 10px 18px; font: 600 14px/1.4 'Anek Bangla', 'Noto Sans Bengali', sans-serif; min-height: 36px; background: var(--fx-accent); color: var(--fx-accent-on); border: none;">PP অনুমোদন লিখুন</button>
+  </div>
+</aside>
+    <div style="flex: 1; min-width: 0;">
+      <div style="font: 400 12px/1.5 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); padding: 12px 0 0; max-width: 76ch; text-wrap: pretty;">The LC conflict sentence is the longest string a merchandiser reads, and in Bengali it is roughly 40% longer again — which is why the drawer is 720 here and the banner wraps to four lines rather than being truncated. Purchase orders, style codes, quantities, money and dates keep their Latin forms: the buyer’s paper says PO-BF-2044 and 18 Dec, and so does the screen.</div>
+    </div>
+  </div></div>
+  </main>
+</div>
+</div>
+</x-dc>
+</body>
+</html>

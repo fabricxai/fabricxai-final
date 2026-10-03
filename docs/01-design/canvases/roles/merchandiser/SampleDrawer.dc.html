@@ -1,0 +1,233 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Anek+Bangla:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #FBFAF8; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: #181D29; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+  a:hover { color: #B88C21; }
+  .tabular, [data-numeric] { font-variant-numeric: tabular-nums; }
+  .fx-selvage { display: flex; align-items: stretch; overflow: hidden; }
+  .fx-selvage::before { content: ''; flex-shrink: 0; width: 3px; background: #A9A49A; }
+  .fx-selvage[data-status="on-track"]::before { background: #2F7D5B; }
+  .fx-selvage[data-status="at-risk"]::before { background: #8C5A16; }
+  .fx-selvage[data-status="late"]::before { background: #B23A32; }
+  .fx-selvage[data-status="done"]::before { background: #A9A49A; }
+  .fx-selvage[data-critical="true"]::before { width: 5px; }
+  .fx-thread-rule { height: 9px; background-image: repeating-linear-gradient(115deg, #E1B334 0 2px, transparent 2px 9px); }
+  .fx-thread-rule[data-variant="muted"] { height: 7px; background-image: repeating-linear-gradient(115deg, #D6D2C9 0 2px, transparent 2px 9px); }
+  .fx-weave { background-image: repeating-linear-gradient(146deg, transparent 0 7px, #E7E4DE 7px 9px, transparent 9px 17px); }
+  .fx-cut { clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%); border-radius: 8px; }
+  .fx-cut-chip { clip-path: polygon(0 0, 100% 0, 100% 100%, 10px 100%, 0 calc(100% - 10px)); }
+  @keyframes fx-spread { to { transform: translate(calc(var(--dx) * 6%), calc(var(--dy) * 6%)); } }
+  @keyframes fx-converge { 0% { transform: translate(calc(var(--dx) * 26%), calc(var(--dy) * 26%)) scale(.82); opacity: 0; } 62% { transform: translate(0, 0) scale(1.15); opacity: 1; } 100% { transform: translate(0, 0) scale(1); opacity: 1; } }
+  @keyframes fx-orbit { 0%, 100% { transform: rotate(-13deg); opacity: .45; } 50% { transform: rotate(13deg); opacity: 1; } }
+  @keyframes fx-travel { 0% { transform: translate(-10%, 10%); opacity: .25; } 40% { transform: translate(0, 0); opacity: 1; } 100% { transform: translate(10%, -10%); opacity: .25; } }
+  @keyframes fx-breathe { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(calc(var(--dx) * 3.5%), calc(var(--dy) * 3.5%)); } }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
+</style>
+</helmet>
+
+<div style="--fx-bg-canvas:#FBFAF8; --fx-bg-surface:#FFFFFF; --fx-bg-raised:#FFFFFF; --fx-bg-sunken:#F3F1EC; --fx-bg-hover:rgba(24,29,41,.035); --fx-bg-selected:rgba(225,179,52,.12); --fx-border-subtle:#E7E4DE; --fx-border-default:#D6D2C9; --fx-border-strong:#A9A49A; --fx-text-primary:#181D29; --fx-text-secondary:#4C5364; --fx-text-tertiary:#5E6675; --fx-text-disabled:#A8AEBB; --fx-text-inverse:#FBFAF8; --fx-accent:#E1B334; --fx-accent-hover:#CFA22B; --fx-accent-pressed:#B88C21; --fx-accent-subtle:#FAF1DA; --fx-accent-on:#181D29; --fx-success:#2F7D5B; --fx-warning:#8C5A16; --fx-danger:#B23A32; --fx-info:#2F5FA8; --fx-focus:#181D29; --fx-sh1:0 1px 2px rgba(24,29,41,.06); --fx-sh2:0 4px 12px rgba(24,29,41,.08); --fx-sh3:0 12px 32px rgba(24,29,41,.12); --fx-slash-angle:-34deg; --fx-weave-angle:146deg; --fx-thread-angle:115deg; width: 1300px; min-height: 1160px; background: var(--fx-bg-sunken); color: var(--fx-text-primary); font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: 16px; line-height: 1.55; padding: 40px; display: flex; flex-direction: column;">
+
+  <div style="margin-bottom: 24px;">
+    <div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Drawer · record — a sample</div>
+    <div style="font: 400 14px/1.6 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); max-width: 92ch; margin-top: 10px; text-wrap: pretty;">
+      The audit’s friction, closed: the drawer names the TNA milestone this sample gates and links to it. A PP verdict is the highest-consequence write in the module — three words on a buyer’s comment sheet that are a floor apart in meaning — so the verdict control says what each one does before it is pressed.
+    </div>
+  </div>
+  <div style="display: flex; gap: 40px; align-items: flex-start;">
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <div style="font: 500 11px/1.45 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--fx-text-tertiary); padding-bottom: 10px;">the sample that gates a cut</div>
+      <aside style="position: relative; width: 560px; height: 960px; flex-shrink: 0; background: var(--fx-bg-surface); border-left: 1px solid var(--fx-border-subtle); border-radius: 14px 0 0 14px; box-shadow: var(--fx-sh3); display: flex; flex-direction: column; overflow: hidden;">
+
+  <!-- 1 · header: the status rim, the identity line, the one number -->
+  <div style="display: flex; align-items: stretch;">
+    <div style="width: 5px; flex-shrink: 0; background: var(--fx-danger);"></div>
+    <div style="flex: 1; min-width: 0; padding: 22px 26px; border-bottom: 1px solid var(--fx-border-subtle); display: flex; flex-direction: column; gap: 14px;">
+      
+      <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;">
+        <div style="display: flex; flex-direction: column; gap: 7px; min-width: 0;">
+          <div style="display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;">
+            <span data-numeric style="font: 500 15px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">SMP-0412</span>
+            <span style="font: 400 14px/1.3 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">ST-2610 · H&M · PP sample</span>
+          </div>
+          <span style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-danger);">dispatched · 11 days</span>
+        </div>
+        <span style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; color: var(--fx-text-secondary); font: 400 15px/1 'Plus Jakarta Sans', system-ui, sans-serif; flex-shrink: 0;">✕</span>
+      </div>
+      <div style="position: relative; background: var(--fx-bg-sunken); border: 1px solid var(--fx-border-subtle); border-radius: 8px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px;">
+        
+        <div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Waiting on the buyer</div>
+        <div style="display: flex; align-items: baseline; gap: 6px;">
+          <span data-numeric style="font: 600 30px/1.05 'Plus Jakarta Sans', system-ui, sans-serif; letter-spacing: -.02em; color: var(--fx-danger);">11</span>
+          <span style="font: 400 14px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">days</span>
+        </div>
+        <div style="font: 400 13px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">dispatched 21 Nov · chased 25 Nov and 1 Dec · cutting cannot start until this comes back</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="position: relative; display: flex; gap: 4px; padding: 0 26px; border-bottom: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+    
+    <span style="padding: 13px 12px; font: 600 13.5px/1 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); border-bottom: 2px solid var(--fx-text-primary); margin-bottom: -1px;">This sample</span><span style="padding: 13px 12px; font: 500 13.5px/1 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); border-bottom: 2px solid transparent; margin-bottom: -1px;">Requisition</span><span style="padding: 13px 12px; font: 500 13.5px/1 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); border-bottom: 2px solid transparent; margin-bottom: -1px;">History</span>
+  </div>
+
+  <div style="position: relative; flex: 1; min-height: 0; padding: 26px; overflow: hidden; display: flex; flex-direction: column; gap: 18px;">
+    
+    
+    <div style="border: 1px solid var(--fx-danger); border-radius: 8px; background: var(--fx-bg-surface); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;">
+          <span style="font: 600 13.5px/1.35 'Plus Jakarta Sans', system-ui, sans-serif;">This verdict is what flips cutting</span>
+          <span style="font: 400 13px/1.6 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); text-wrap: pretty;">The PP gate is defined here and enforced on the cutting floor. Until a verdict is recorded, a lay for ST-2610 is refused at the service — Rafiq Islam has met that refusal three times.</span>
+          <div style="display: flex; align-items: center; gap: 12px; padding: 11px 13px; border: 1px solid var(--fx-border-subtle); border-radius: 8px; background: var(--fx-bg-surface);">
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px;">
+      <span style="display: flex; align-items: baseline; gap: 8px;"><span data-numeric style="font: 500 12.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">PO-BF-2044</span><span style="font: 400 13px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary);">the milestone this gates: “PP approved”</span></span>
+      <span style="font: 400 12px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary);">planned 28 Nov · opens the order’s TNA with this milestone focused</span>
+    </div>
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style="flex-shrink: 0;"><path d="M5.5 2.5L11 8l-5.5 5.5" stroke="var(--fx-text-tertiary)" stroke-width="1.5"/></svg>
+  </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding: 9px 0; border-bottom: 1px solid var(--fx-border-subtle);">
+    <span style="font: 400 13px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">Kind</span>
+    <span style="font: 500 14px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-align: right;">PP — pre-production</span>
+  </div>
+          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding: 9px 0; border-bottom: 1px solid var(--fx-border-subtle);">
+    <span style="font: 400 13px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">Dispatched</span>
+    <span style="font: 500 14px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-align: right;">21 Nov 2026 · DHL 176-44219308</span>
+  </div>
+          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding: 9px 0; border-bottom: 1px solid var(--fx-border-subtle);">
+    <span style="font: 400 13px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">Round</span>
+    <span style="font: 500 14px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-align: right;">1 of however many it takes</span>
+  </div>
+          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding: 9px 0; border-bottom: 1px solid var(--fx-border-subtle);">
+    <span style="font: 400 13px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">Cost so far</span>
+    <span style="font: 500 14px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-align: right;">৳4,820 · fabric, trims, one operator-day</span>
+  </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 9px;">
+          <div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Record the buyer’s verdict</div>
+          <div style="display: flex; gap: 11px; align-items: flex-start; padding: 11px 13px; border: 1px solid var(--fx-border-subtle); border-radius: 8px;">
+              <span style="width: 15px; height: 15px; border-radius: 999px; border: 1px solid var(--fx-success); flex-shrink: 0; margin-top: 2px;"></span>
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <span style="font: 500 13.5px/1.3 'Plus Jakarta Sans', system-ui, sans-serif;">Approved</span>
+                <span style="font: 400 12.5px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); text-wrap: pretty;">cutting is released the moment this is saved</span>
+              </div></div><div style="display: flex; gap: 11px; align-items: flex-start; padding: 11px 13px; border: 1px solid var(--fx-border-subtle); border-radius: 8px;">
+              <span style="width: 15px; height: 15px; border-radius: 999px; border: 1px solid var(--fx-warning); flex-shrink: 0; margin-top: 2px;"></span>
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <span style="font: 500 13.5px/1.3 'Plus Jakarta Sans', system-ui, sans-serif;">Approved with comments</span>
+                <span style="font: 400 12.5px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); text-wrap: pretty;">cutting is released; the comments go to the room as round two</span>
+              </div></div><div style="display: flex; gap: 11px; align-items: flex-start; padding: 11px 13px; border: 1px solid var(--fx-border-subtle); border-radius: 8px;">
+              <span style="width: 15px; height: 15px; border-radius: 999px; border: 1px solid var(--fx-danger); flex-shrink: 0; margin-top: 2px;"></span>
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <span style="font: 500 13.5px/1.3 'Plus Jakarta Sans', system-ui, sans-serif;">Rejected</span>
+                <span style="font: 400 12.5px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); text-wrap: pretty;">cutting stays blocked and the sample goes back to in work</span>
+              </div></div>
+        </div>
+  </div>
+
+  <div style="position: relative; padding: 16px 26px; border-top: 1px solid var(--fx-border-subtle); background: var(--fx-bg-sunken); display: flex; flex-direction: column; gap: 10px;">
+    
+    <div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Before the next action</div>
+    <div style="display: flex; flex-wrap: wrap; gap: 8px;"><span style="display: inline-flex; align-items: center; gap: 7px; padding: 7px 11px; border-radius: 999px; border: 1px solid var(--fx-danger); background: var(--fx-bg-surface); font: 500 12px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">
+    <span style="color: var(--fx-danger);">✕</span>PP approval — no verdict</span><span style="display: inline-flex; align-items: center; gap: 7px; padding: 7px 11px; border-radius: 999px; border: 1px solid var(--fx-success); background: var(--fx-bg-surface); font: 500 12px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">
+    <span style="color: var(--fx-success);">✓</span>dispatched 21 Nov</span></div>
+  </div>
+
+  <div style="position: relative; padding: 18px 26px; border-top: 1px solid var(--fx-border-subtle); display: flex; gap: 10px; justify-content: flex-end; align-items: center;">
+    
+    <button style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 10px 18px; font: 600 14px/1 'Plus Jakarta Sans', system-ui, sans-serif; min-height: 36px;  background: transparent; color: var(--fx-text-primary); border: 1px solid transparent; cursor: pointer;">Add a cost</button><button style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 10px 18px; font: 600 14px/1 'Plus Jakarta Sans', system-ui, sans-serif; min-height: 36px;  background: transparent; color: var(--fx-text-primary); border: 1px solid var(--fx-border-default); cursor: pointer;">Close the sample</button><button style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 10px 18px; font: 600 14px/1 'Plus Jakarta Sans', system-ui, sans-serif; min-height: 36px;  background: var(--fx-accent); color: var(--fx-accent-on); border: none; cursor: pointer;">Record the verdict</button>
+  </div>
+</aside>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <div style="font: 500 11px/1.45 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--fx-text-tertiary); padding-bottom: 10px;">earlier in its life — the stage mover and dispatch</div>
+      <aside style="position: relative; width: 560px; height: 960px; flex-shrink: 0; background: var(--fx-bg-surface); border-left: 1px solid var(--fx-border-subtle); border-radius: 14px 0 0 14px; box-shadow: var(--fx-sh3); display: flex; flex-direction: column; overflow: hidden;">
+
+  <!-- 1 · header: the status rim, the identity line, the one number -->
+  <div style="display: flex; align-items: stretch;">
+    <div style="width: 3px; flex-shrink: 0; background: var(--fx-warning);"></div>
+    <div style="flex: 1; min-width: 0; padding: 22px 26px; border-bottom: 1px solid var(--fx-border-subtle); display: flex; flex-direction: column; gap: 14px;">
+      
+      <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;">
+        <div style="display: flex; flex-direction: column; gap: 7px; min-width: 0;">
+          <div style="display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;">
+            <span data-numeric style="font: 500 15px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">SMP-0421</span>
+            <span style="font: 400 14px/1.3 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">ST-2588 · Primark · shipment sample</span>
+          </div>
+          <span style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--fx-warning);">in work</span>
+        </div>
+        <span style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; color: var(--fx-text-secondary); font: 400 15px/1 'Plus Jakarta Sans', system-ui, sans-serif; flex-shrink: 0;">✕</span>
+      </div>
+      <div style="position: relative; background: var(--fx-bg-sunken); border: 1px solid var(--fx-border-subtle); border-radius: 8px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px;">
+        
+        <div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Buyer wants it by</div>
+        <div style="display: flex; align-items: baseline; gap: 6px;">
+          <span data-numeric style="font: 600 30px/1.05 'Plus Jakarta Sans', system-ui, sans-serif; letter-spacing: -.02em; color: var(--fx-warning);">5 Dec</span>
+          
+        </div>
+        <div style="font: 400 13px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">sewn today · not yet couriered · 3 days left</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="position: relative; display: flex; gap: 4px; padding: 0 26px; border-bottom: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+    
+    <span style="padding: 13px 12px; font: 600 13.5px/1 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); border-bottom: 2px solid var(--fx-text-primary); margin-bottom: -1px;">This sample</span><span style="padding: 13px 12px; font: 500 13.5px/1 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); border-bottom: 2px solid transparent; margin-bottom: -1px;">Requisition</span><span style="padding: 13px 12px; font: 500 13.5px/1 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); border-bottom: 2px solid transparent; margin-bottom: -1px;">History</span>
+  </div>
+
+  <div style="position: relative; flex: 1; min-height: 0; padding: 26px; overflow: hidden; display: flex; flex-direction: column; gap: 18px;">
+    
+    
+    <div style="display: flex; flex-direction: column; gap: 9px;">
+          <div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Move it on</div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <span style="display: inline-flex; align-items: center; gap: 7px; padding: 8px 12px; min-height: 36px; border-radius: 999px; border: 1px solid var(--fx-border-subtle); background: transparent; font: 500 12.5px/1 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary);">requested</span><span style="display: inline-flex; align-items: center; gap: 7px; padding: 8px 12px; min-height: 36px; border-radius: 999px; border: 1px solid var(--fx-border-strong); background: var(--fx-bg-sunken); font: 500 12.5px/1 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary);"><span style="color: var(--fx-success);">●</span>in work</span><span style="display: inline-flex; align-items: center; gap: 7px; padding: 8px 12px; min-height: 36px; border-radius: 999px; border: 1px solid var(--fx-border-default); background: transparent; font: 500 12.5px/1 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary);">dispatched</span><span style="display: inline-flex; align-items: center; gap: 7px; padding: 8px 12px; min-height: 36px; border-radius: 999px; border: 1px solid var(--fx-border-subtle); background: transparent; font: 500 12.5px/1 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-disabled);">feedback</span>
+          </div>
+          <span style="font: 400 12.5px/1.6 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary); text-wrap: pretty;">Only the moves the machine allows are offered. From <strong style="font-weight: 600;">in work</strong> that is dispatched or closed — feedback is greyed because a sample nobody has sent cannot have come back.</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 9px;">
+          <div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Dispatch</div>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
+            <div style="display: flex; flex-direction: column; gap: 6px;"><span style="font: 400 12.5px/1.3 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">Courier</span><div style="min-height: 40px; padding: 10px 12px; border: 1px solid var(--fx-border-default); border-radius: 4px; font: 400 14px/1.3 'Plus Jakarta Sans', system-ui, sans-serif;">DHL</div></div>
+            <div style="display: flex; flex-direction: column; gap: 6px;"><span style="font: 400 12.5px/1.3 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">AWB</span><div style="min-height: 40px; padding: 10px 12px; border: 1px solid var(--fx-border-default); border-radius: 4px; font: 400 14px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">176-…</div></div>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding: 9px 0; border-bottom: 1px solid var(--fx-border-subtle);">
+    <span style="font: 400 13px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">Requested by</span>
+    <span style="font: 500 14px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-align: right;">Primark, on the order</span>
+  </div>
+          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding: 9px 0; border-bottom: 1px solid var(--fx-border-subtle);">
+    <span style="font: 400 13px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">Raised</span>
+    <span style="font: 500 14px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-align: right;">28 Nov 2026 by Rashida Akter</span>
+  </div>
+          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding: 9px 0; border-bottom: 1px solid var(--fx-border-subtle);">
+    <span style="font: 400 13px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">Cost so far</span>
+    <span style="font: 500 14px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-align: right;">৳2,140</span>
+  </div>
+        </div>
+  </div>
+
+  
+
+  <div style="position: relative; padding: 18px 26px; border-top: 1px solid var(--fx-border-subtle); display: flex; gap: 10px; justify-content: flex-end; align-items: center;">
+    
+    <button style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 10px 18px; font: 600 14px/1 'Plus Jakarta Sans', system-ui, sans-serif; min-height: 36px;  background: transparent; color: var(--fx-text-primary); border: 1px solid transparent; cursor: pointer;">Add a cost</button><button style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 10px 18px; font: 600 14px/1 'Plus Jakarta Sans', system-ui, sans-serif; min-height: 36px;  background: transparent; color: var(--fx-text-primary); border: 1px solid var(--fx-border-default); cursor: pointer;">Close the sample</button><button style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 10px 18px; font: 600 14px/1 'Plus Jakarta Sans', system-ui, sans-serif; min-height: 36px;  background: var(--fx-accent); color: var(--fx-accent-on); border: none; cursor: pointer;">Mark dispatched</button>
+  </div>
+</aside>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

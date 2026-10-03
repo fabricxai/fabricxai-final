@@ -1,0 +1,106 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Anek+Bangla:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #FBFAF8; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: #181D29; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+  a:hover { color: #B88C21; }
+  .tabular, [data-numeric] { font-variant-numeric: tabular-nums; }
+  .fx-selvage { display: flex; align-items: stretch; overflow: hidden; }
+  .fx-selvage::before { content: ''; flex-shrink: 0; width: 3px; background: #A9A49A; }
+  .fx-selvage[data-status="on-track"]::before { background: #2F7D5B; }
+  .fx-selvage[data-status="at-risk"]::before { background: #8C5A16; }
+  .fx-selvage[data-status="late"]::before { background: #B23A32; }
+  .fx-selvage[data-status="done"]::before { background: #A9A49A; }
+  .fx-selvage[data-critical="true"]::before { width: 5px; }
+  .fx-thread-rule { height: 9px; background-image: repeating-linear-gradient(115deg, #E1B334 0 2px, transparent 2px 9px); }
+  .fx-thread-rule[data-variant="muted"] { height: 7px; background-image: repeating-linear-gradient(115deg, #D6D2C9 0 2px, transparent 2px 9px); }
+  .fx-weave { background-image: repeating-linear-gradient(146deg, transparent 0 7px, #E7E4DE 7px 9px, transparent 9px 17px); }
+  .fx-cut { clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%); border-radius: 8px; }
+  .fx-cut-chip { clip-path: polygon(0 0, 100% 0, 100% 100%, 10px 100%, 0 calc(100% - 10px)); }
+  @keyframes fx-spread { to { transform: translate(calc(var(--dx) * 6%), calc(var(--dy) * 6%)); } }
+  @keyframes fx-converge { 0% { transform: translate(calc(var(--dx) * 26%), calc(var(--dy) * 26%)) scale(.82); opacity: 0; } 62% { transform: translate(0, 0) scale(1.15); opacity: 1; } 100% { transform: translate(0, 0) scale(1); opacity: 1; } }
+  @keyframes fx-orbit { 0%, 100% { transform: rotate(-13deg); opacity: .45; } 50% { transform: rotate(13deg); opacity: 1; } }
+  @keyframes fx-travel { 0% { transform: translate(-10%, 10%); opacity: .25; } 40% { transform: translate(0, 0); opacity: 1; } 100% { transform: translate(10%, -10%); opacity: .25; } }
+  @keyframes fx-breathe { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(calc(var(--dx) * 3.5%), calc(var(--dy) * 3.5%)); } }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
+</style>
+</helmet>
+
+<div style="--fx-bg-canvas:#FBFAF8; --fx-bg-surface:#FFFFFF; --fx-bg-raised:#FFFFFF; --fx-bg-sunken:#F3F1EC; --fx-bg-hover:rgba(24,29,41,.035); --fx-bg-selected:rgba(225,179,52,.12); --fx-border-subtle:#E7E4DE; --fx-border-default:#D6D2C9; --fx-border-strong:#A9A49A; --fx-text-primary:#181D29; --fx-text-secondary:#4C5364; --fx-text-tertiary:#5E6675; --fx-text-disabled:#A8AEBB; --fx-text-inverse:#FBFAF8; --fx-accent:#E1B334; --fx-accent-hover:#CFA22B; --fx-accent-pressed:#B88C21; --fx-accent-subtle:#FAF1DA; --fx-accent-on:#181D29; --fx-success:#2F7D5B; --fx-warning:#8C5A16; --fx-danger:#B23A32; --fx-info:#2F5FA8; --fx-focus:#181D29; --fx-sh1:0 1px 2px rgba(24,29,41,.06); --fx-sh2:0 4px 12px rgba(24,29,41,.08); --fx-sh3:0 12px 32px rgba(24,29,41,.12); --fx-slash-angle:-34deg; --fx-weave-angle:146deg; --fx-thread-angle:115deg; width: 1820px; min-height: 880px; background: var(--fx-bg-canvas); color: var(--fx-text-primary); font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: 16px; line-height: 1.55; padding: 40px; display: flex; flex-direction: column;">
+<div style="margin-bottom: 26px;">
+    <div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Flow 3</div>
+    <h1 style="font: 700 28px/1.15 'Plus Jakarta Sans', system-ui, sans-serif; letter-spacing: -.02em; margin: 10px 0 12px;">The buyer changes their mind</h1>
+    <div style="font: 400 14px/1.6 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); max-width: 100ch; text-wrap: pretty;">A revision is a diff, not a re-entry. What arrives is a revised PO; what a merchandiser needs to see is the six numbers that moved, not the ninety that did not.</div>
+  </div>
+  <div style="display: flex; align-items: stretch; gap: 0;"><div style="width: 400px; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 999px; background: var(--fx-text-primary); color: var(--fx-text-inverse); font: 600 11px/1 'JetBrains Mono', ui-monospace, monospace;">1</span>
+      <span style="font: 600 13.5px/1.3 'Plus Jakarta Sans', system-ui, sans-serif;">the revised PO</span>
+    </div>
+    <div style="border: 1px solid var(--fx-border-subtle); border-radius: 8px; background: var(--fx-bg-surface); overflow: hidden; flex: 1;"><div style="padding: 11px 14px; border-bottom: 1px solid var(--fx-border-subtle); display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;">
+  <span data-numeric style="font: 500 11.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">/orders</span><span style="font: 600 13px/1.3 'Plus Jakarta Sans', system-ui, sans-serif;">a second drop</span></div><div style="padding: 12px 14px; display: flex; flex-direction: column; gap: 9px;"><div style="border: 1px dashed var(--fx-border-strong); border-radius: 8px; padding: 20px 14px; text-align: center; font: 400 13px/1.5 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary);">H&amp;M_PO_2044_RevB.pdf</div><div style="font: 400 12.5px/1.6 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); text-wrap: pretty;">Matched to the existing order by PO number, so it reads as a revision rather than a second order.</div></div></div>
+    
+  </div><div style="display: flex; align-items: center; padding: 0 4px; flex-shrink: 0; align-self: center;">
+    <svg width="26" height="16" viewBox="0 0 26 16" fill="none"><path d="M0 8h22M16 2l6 6-6 6" stroke="var(--fx-border-strong)" stroke-width="1.5"/></svg>
+  </div><div style="width: 400px; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 999px; background: var(--fx-text-primary); color: var(--fx-text-inverse); font: 600 11px/1 'JetBrains Mono', ui-monospace, monospace;">2</span>
+      <span style="font: 600 13.5px/1.3 'Plus Jakarta Sans', system-ui, sans-serif;">the diff draft</span>
+    </div>
+    <div style="border: 1px solid var(--fx-border-subtle); border-radius: 8px; background: var(--fx-bg-surface); overflow: hidden; flex: 1;"><div style="padding: 11px 14px; border-bottom: 1px solid var(--fx-border-subtle); display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;">
+  <span data-numeric style="font: 500 11.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">drawer · draft</span><span style="font: 600 13px/1.3 'Plus Jakarta Sans', system-ui, sans-serif;">a revision</span></div><div style="padding: 12px 14px; display: flex; flex-direction: column; gap: 9px;"><div style="font: 400 12.5px/1.6 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); text-wrap: pretty;"><strong>Deep navy / L +2,000. Ship date −5 days.</strong></div><div class="fx-selvage" data-status="at-risk" style="border-top: 1px solid var(--fx-border-subtle);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 9px 12px;">
+      <span style="flex: 1; min-width: 0; font: 400 12.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary);">Deep navy / L · 2,700 → 4,700</span>
+      <span style="font: 400 11.5px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); flex-shrink: 0;">+2,000</span>
+    </div>
+  </div><div class="fx-selvage" data-status="at-risk" style="border-top: 1px solid var(--fx-border-subtle);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 9px 12px;">
+      <span style="flex: 1; min-width: 0; font: 400 12.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary);">Ex-factory · 18 → 13 Dec</span>
+      <span style="font: 400 11.5px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); flex-shrink: 0;">−5d</span>
+    </div>
+  </div><div style="font: 400 12.5px/1.6 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); text-wrap: pretty;">Two changes on a 42,000-piece order. Everything unchanged is not listed — a diff that repeats the whole grid is a re-entry with extra steps.</div></div></div>
+    
+  </div><div style="display: flex; align-items: center; padding: 0 4px; flex-shrink: 0; align-self: center;">
+    <svg width="26" height="16" viewBox="0 0 26 16" fill="none"><path d="M0 8h22M16 2l6 6-6 6" stroke="var(--fx-border-strong)" stroke-width="1.5"/></svg>
+  </div><div style="width: 400px; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 999px; background: var(--fx-text-primary); color: var(--fx-text-inverse); font: 600 11px/1 'JetBrains Mono', ui-monospace, monospace;">3</span>
+      <span style="font: 600 13.5px/1.3 'Plus Jakarta Sans', system-ui, sans-serif;">approve it</span>
+    </div>
+    <div style="border: 1px solid var(--fx-border-subtle); border-radius: 8px; background: var(--fx-bg-surface); overflow: hidden; flex: 1;"><div style="padding: 11px 14px; border-bottom: 1px solid var(--fx-border-subtle); display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;">
+  <span data-numeric style="font: 500 11.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">/approve</span><span style="font: 600 13px/1.3 'Plus Jakarta Sans', system-ui, sans-serif;">the merchandiser’s inbox</span></div><div style="padding: 12px 14px; display: flex; flex-direction: column; gap: 9px;"><div style="font: 400 12.5px/1.6 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); text-wrap: pretty;">Confidence 0.91 on the quantity, 0.84 on the date — the date was handwritten again.</div><span style="display: inline-flex; align-items: center; gap: 8px;">
+    <span data-numeric style="font: 500 13px/1.2 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-warning);">0.84</span>
+    <span style="display: flex; gap: 4px; align-items: center;"><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-warning);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-warning);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-warning);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-warning);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-warning);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-warning);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-warning);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-warning);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-border-default);"></span><span style="width: 2px; height: 12px; flex-shrink: 0; transform: skewX(-34deg); background: var(--fx-border-default);"></span></span></span><div style="font: 400 12.5px/1.6 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); text-wrap: pretty;">Approving writes Rev 2. The order header and the grid move together; a revision that changed only one of them is the state the breakdown tab refuses.</div></div></div>
+    
+  </div><div style="display: flex; align-items: center; padding: 0 4px; flex-shrink: 0; align-self: center;">
+    <svg width="26" height="16" viewBox="0 0 26 16" fill="none"><path d="M0 8h22M16 2l6 6-6 6" stroke="var(--fx-border-strong)" stroke-width="1.5"/></svg>
+  </div><div style="width: 400px; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 999px; background: var(--fx-text-primary); color: var(--fx-text-inverse); font: 600 11px/1 'JetBrains Mono', ui-monospace, monospace;">4</span>
+      <span style="font: 600 13.5px/1.3 'Plus Jakarta Sans', system-ui, sans-serif;">Rev 2, with the overlay</span>
+    </div>
+    <div style="border: 1px solid var(--fx-border-subtle); border-radius: 8px; background: var(--fx-bg-surface); overflow: hidden; flex: 1;"><div style="padding: 11px 14px; border-bottom: 1px solid var(--fx-border-subtle); display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;">
+  <span data-numeric style="font: 500 11.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary);">/orders/PO-BF-2044</span><span style="font: 600 13px/1.3 'Plus Jakarta Sans', system-ui, sans-serif;">Breakdown</span></div><div style="padding: 12px 14px; display: flex; flex-direction: column; gap: 9px;"><div style="font: 400 12.5px/1.6 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); text-wrap: pretty;">Rev 1 stays selectable. The changed cell carries the accent and the delta under the new number.</div><div class="fx-selvage" data-status="at-risk" style="border-top: 1px solid var(--fx-border-subtle);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 9px 12px;">
+      <span style="flex: 1; min-width: 0; font: 400 12.5px/1.4 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary);">Deep navy / L · 4,700</span>
+      <span style="font: 400 11.5px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); flex-shrink: 0;">+2,000</span>
+    </div>
+  </div><div style="font: 400 12.5px/1.6 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); text-wrap: pretty;">“What did we agree in November” is a question a buyer asks in January.</div></div></div>
+    
+  </div></div>
+  <div style="font: 400 12px/1.5 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); padding: 12px 0 0; max-width: 76ch; text-wrap: pretty;">The five-day pull-in is the harder half and it does not stop here: it re-ripples the TNA, and the ripple preview runs on it the same way F2’s did.</div>
+</div>
+</x-dc>
+</body>
+</html>

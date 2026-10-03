@@ -1,0 +1,114 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Anek+Bangla:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #FBFAF8; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: #181D29; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+  a:hover { color: #B88C21; }
+  .tabular, [data-numeric] { font-variant-numeric: tabular-nums; }
+  .fx-selvage { display: flex; align-items: stretch; overflow: hidden; }
+  .fx-selvage::before { content: ''; flex-shrink: 0; width: 3px; background: #A9A49A; }
+  .fx-selvage[data-status="on-track"]::before { background: #2F7D5B; }
+  .fx-selvage[data-status="at-risk"]::before { background: #8C5A16; }
+  .fx-selvage[data-status="late"]::before { background: #B23A32; }
+  .fx-selvage[data-status="done"]::before { background: #A9A49A; }
+  .fx-selvage[data-critical="true"]::before { width: 5px; }
+  .fx-thread-rule { height: 9px; background-image: repeating-linear-gradient(115deg, #E1B334 0 2px, transparent 2px 9px); }
+  .fx-thread-rule[data-variant="muted"] { height: 7px; background-image: repeating-linear-gradient(115deg, #D6D2C9 0 2px, transparent 2px 9px); }
+  .fx-weave { background-image: repeating-linear-gradient(146deg, transparent 0 7px, #E7E4DE 7px 9px, transparent 9px 17px); }
+  .fx-cut { clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%); border-radius: 8px; }
+  .fx-cut-chip { clip-path: polygon(0 0, 100% 0, 100% 100%, 10px 100%, 0 calc(100% - 10px)); }
+  @keyframes fx-spread { to { transform: translate(calc(var(--dx) * 6%), calc(var(--dy) * 6%)); } }
+  @keyframes fx-converge { 0% { transform: translate(calc(var(--dx) * 26%), calc(var(--dy) * 26%)) scale(.82); opacity: 0; } 62% { transform: translate(0, 0) scale(1.15); opacity: 1; } 100% { transform: translate(0, 0) scale(1); opacity: 1; } }
+  @keyframes fx-orbit { 0%, 100% { transform: rotate(-13deg); opacity: .45; } 50% { transform: rotate(13deg); opacity: 1; } }
+  @keyframes fx-travel { 0% { transform: translate(-10%, 10%); opacity: .25; } 40% { transform: translate(0, 0); opacity: 1; } 100% { transform: translate(10%, -10%); opacity: .25; } }
+  @keyframes fx-breathe { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(calc(var(--dx) * 3.5%), calc(var(--dy) * 3.5%)); } }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
+</style>
+</helmet>
+
+<div style="--fx-bg-canvas:#FBFAF8; --fx-bg-surface:#FFFFFF; --fx-bg-raised:#FFFFFF; --fx-bg-sunken:#F3F1EC; --fx-bg-hover:rgba(24,29,41,.035); --fx-bg-selected:rgba(225,179,52,.12); --fx-border-subtle:#E7E4DE; --fx-border-default:#D6D2C9; --fx-border-strong:#A9A49A; --fx-text-primary:#181D29; --fx-text-secondary:#4C5364; --fx-text-tertiary:#5E6675; --fx-text-disabled:#A8AEBB; --fx-text-inverse:#FBFAF8; --fx-accent:#E1B334; --fx-accent-hover:#CFA22B; --fx-accent-pressed:#B88C21; --fx-accent-subtle:#FAF1DA; --fx-accent-on:#181D29; --fx-success:#2F7D5B; --fx-warning:#8C5A16; --fx-danger:#B23A32; --fx-info:#2F5FA8; --fx-focus:#181D29; --fx-sh1:0 1px 2px rgba(24,29,41,.06); --fx-sh2:0 4px 12px rgba(24,29,41,.08); --fx-sh3:0 12px 32px rgba(24,29,41,.12); --fx-slash-angle:-34deg; --fx-weave-angle:146deg; --fx-thread-angle:115deg; width: 1560px; min-height: 1000px; background: var(--fx-bg-canvas); color: var(--fx-text-primary); font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: 16px; line-height: 1.55; padding: 40px; display: flex; flex-direction: column;">
+
+  <div style="margin-bottom: 26px;">
+    <div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">/sampling/library and /sampling/load</div>
+    <h1 style="font: 700 28px/1.15 'Plus Jakarta Sans', system-ui, sans-serif; letter-spacing: -.02em; margin: 10px 0 12px;">What the room has made, and what it is making</h1>
+    <div style="font: 400 14px/1.6 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-secondary); max-width: 92ch; text-wrap: pretty;">
+      Two questions the board cannot answer. The library is asked months later — “what did we do for this buyer in a stretch cotton” — and the load is asked on Monday morning.
+    </div>
+  </div>
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 34px; align-items: start;">
+    <div style="display: flex; flex-direction: column; gap: 14px;">
+      <div style="font: 500 11px/1.45 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--fx-text-tertiary); padding-bottom: 10px;">/sampling/library — findable by style or buyer</div>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <span style="display: inline-flex; align-items: center; padding: 8px 12px; min-height: 36px; border-radius: 4px; border: 1px solid var(--fx-border-subtle); background: transparent; font: 500 12.5px/1 'Plus Jakarta Sans', system-ui, sans-serif;">All buyers</span><span style="display: inline-flex; align-items: center; padding: 8px 12px; min-height: 36px; border-radius: 4px; border: 1px solid var(--fx-border-default); background: var(--fx-bg-selected); font: 500 12.5px/1 'Plus Jakarta Sans', system-ui, sans-serif;">H&M</span><span style="display: inline-flex; align-items: center; padding: 8px 12px; min-height: 36px; border-radius: 4px; border: 1px solid var(--fx-border-subtle); background: transparent; font: 500 12.5px/1 'Plus Jakarta Sans', system-ui, sans-serif;">Primark</span><span style="display: inline-flex; align-items: center; padding: 8px 12px; min-height: 36px; border-radius: 4px; border: 1px solid var(--fx-border-subtle); background: transparent; font: 500 12.5px/1 'Plus Jakarta Sans', system-ui, sans-serif;">C&A</span><span style="display: inline-flex; align-items: center; padding: 8px 12px; min-height: 36px; border-radius: 4px; border: 1px solid var(--fx-border-subtle); background: transparent; font: 500 12.5px/1 'Plus Jakarta Sans', system-ui, sans-serif;">Bestseller</span>
+      </div>
+      <div style="background: var(--fx-bg-surface); border: 1px solid var(--fx-border-subtle); border-radius: 8px; box-shadow: var(--fx-sh1); overflow: hidden; padding: 0px;">
+        <div class="fx-selvage" data-status="done"  style="border-top: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 16px; padding: 12px 18px; min-height: 44px;">
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;">
+          <span data-numeric style="font: 500 12.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">SMP-0402</span>
+          <span style="font: 400 14px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-wrap: pretty;">ST-2588 PP — approved 18 Nov, first round</span>
+        </div>
+        <span style="font: 400 12.5px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary);">Primark · poplin · ৳3,940 · this is what released cutting</span>
+      </div>
+      
+      
+    </div>
+  </div>
+        <div class="fx-selvage" data-status="done"  style="border-top: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 16px; padding: 12px 18px; min-height: 44px;">
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;">
+          <span data-numeric style="font: 500 12.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">SMP-0361</span>
+          <span style="font: 400 14px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-wrap: pretty;">ST-2510 PP — approved with comments, round 2</span>
+        </div>
+        <span style="font: 400 12.5px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary);">H&M · poplin · ৳6,220 · sleeve length changed at round 1</span>
+      </div>
+      
+      
+    </div>
+  </div>
+        <div class="fx-selvage" data-status="done"  style="border-top: 1px solid var(--fx-border-subtle); background: var(--fx-bg-surface);">
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 16px; padding: 12px 18px; min-height: 44px;">
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;">
+          <span data-numeric style="font: 500 12.5px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">SMP-0344</span>
+          <span style="font: 400 14px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-primary); text-wrap: pretty;">ST-2477 proto — rejected on fabric hand</span>
+        </div>
+        <span style="font: 400 12.5px/1.45 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fx-text-tertiary);">C&A · twill · ৳2,180 · re-made in 32s and approved</span>
+      </div>
+      
+      
+    </div>
+  </div>
+      </div>
+      <div style="font: 400 12px/1.5 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); padding: 12px 0 0; max-width: 76ch; text-wrap: pretty;">The library’s job is comparison, so cost and round count are on the row rather than behind it. “Two rounds and ৳6,220” is the fact that tells a merchandiser what to promise for the next one.</div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 14px;">
+      <div style="font: 500 11px/1.45 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--fx-text-tertiary); padding-bottom: 10px;">/sampling/load — the room’s week</div>
+      <div style="background: var(--fx-bg-surface); border: 1px solid var(--fx-border-subtle); border-radius: 8px; box-shadow: var(--fx-sh1); overflow: hidden; padding: 0px;"><div style="display: grid; grid-template-columns: 108px repeat(5, minmax(0, 1fr));">
+        <div style="padding: 10px 12px; border-bottom: 1px solid var(--fx-border-default);"><div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Machine</div></div>
+        <div style="padding: 10px; text-align: center; border-bottom: 1px solid var(--fx-border-default); border-left: 1px solid var(--fx-border-subtle);"><div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Mon</div></div><div style="padding: 10px; text-align: center; border-bottom: 1px solid var(--fx-border-default); border-left: 1px solid var(--fx-border-subtle);"><div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Tue</div></div><div style="padding: 10px; text-align: center; border-bottom: 1px solid var(--fx-border-default); border-left: 1px solid var(--fx-border-subtle);"><div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Wed</div></div><div style="padding: 10px; text-align: center; border-bottom: 1px solid var(--fx-border-default); border-left: 1px solid var(--fx-border-subtle);"><div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Thu</div></div><div style="padding: 10px; text-align: center; border-bottom: 1px solid var(--fx-border-default); border-left: 1px solid var(--fx-border-subtle);"><div style="font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--fx-text-tertiary);">Fri</div></div>
+        <div style="padding: 11px 12px; border-bottom: 1px solid var(--fx-border-subtle); font: 500 13px/1.3 'Plus Jakarta Sans', system-ui, sans-serif;">Sample line 1</div>
+          <div style="padding: 10px; border-bottom: 1px solid var(--fx-border-subtle); border-left: 1px solid var(--fx-border-subtle); text-align: center; min-height: 44px; display: flex; align-items: center; justify-content: center; background: var(--fx-bg-sunken);"><span data-numeric style="font: 500 11px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">SMP-0425</span></div><div style="padding: 10px; border-bottom: 1px solid var(--fx-border-subtle); border-left: 1px solid var(--fx-border-subtle); text-align: center; min-height: 44px; display: flex; align-items: center; justify-content: center; background: var(--fx-bg-sunken);"><span data-numeric style="font: 500 11px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">SMP-0425</span></div><div style="padding: 10px; border-bottom: 1px solid var(--fx-border-subtle); border-left: 1px solid var(--fx-border-subtle); text-align: center; min-height: 44px; display: flex; align-items: center; justify-content: center; background: var(--fx-bg-sunken);"><span data-numeric style="font: 500 11px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">SMP-0424</span></div><div style="padding: 10px; border-bottom: 1px solid var(--fx-border-subtle); border-left: 1px solid var(--fx-border-subtle); text-align: center; min-height: 44px; display: flex; align-items: center; justify-content: center; background: transparent;"></div><div style="padding: 10px; border-bottom: 1px solid var(--fx-border-subtle); border-left: 1px solid var(--fx-border-subtle); text-align: center; min-height: 44px; display: flex; align-items: center; justify-content: center; background: transparent;"></div><div style="padding: 11px 12px; border-bottom: 1px solid var(--fx-border-subtle); font: 500 13px/1.3 'Plus Jakarta Sans', system-ui, sans-serif;">Sample line 2</div>
+          <div style="padding: 10px; border-bottom: 1px solid var(--fx-border-subtle); border-left: 1px solid var(--fx-border-subtle); text-align: center; min-height: 44px; display: flex; align-items: center; justify-content: center; background: var(--fx-bg-sunken);"><span data-numeric style="font: 500 11px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">SMP-0423</span></div><div style="padding: 10px; border-bottom: 1px solid var(--fx-border-subtle); border-left: 1px solid var(--fx-border-subtle); text-align: center; min-height: 44px; display: flex; align-items: center; justify-content: center; background: var(--fx-bg-sunken);"><span data-numeric style="font: 500 11px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">SMP-0423</span></div><div style="padding: 10px; border-bottom: 1px solid var(--fx-border-subtle); border-left: 1px solid var(--fx-border-subtle); text-align: center; min-height: 44px; display: flex; align-items: center; justify-content: center; background: transparent;"></div><div style="padding: 10px; border-bottom: 1px solid var(--fx-border-subtle); border-left: 1px solid var(--fx-border-subtle); text-align: center; min-height: 44px; display: flex; align-items: center; justify-content: center; background: var(--fx-bg-sunken);"><span data-numeric style="font: 500 11px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">SMP-0424</span></div><div style="padding: 10px; border-bottom: 1px solid var(--fx-border-subtle); border-left: 1px solid var(--fx-border-subtle); text-align: center; min-height: 44px; display: flex; align-items: center; justify-content: center; background: var(--fx-bg-sunken);"><span data-numeric style="font: 500 11px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">SMP-0424</span></div><div style="padding: 11px 12px; border-bottom: 1px solid var(--fx-border-subtle); font: 500 13px/1.3 'Plus Jakarta Sans', system-ui, sans-serif;">Cutting table</div>
+          <div style="padding: 10px; border-bottom: 1px solid var(--fx-border-subtle); border-left: 1px solid var(--fx-border-subtle); text-align: center; min-height: 44px; display: flex; align-items: center; justify-content: center; background: var(--fx-bg-sunken);"><span data-numeric style="font: 500 11px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">SMP-0425</span></div><div style="padding: 10px; border-bottom: 1px solid var(--fx-border-subtle); border-left: 1px solid var(--fx-border-subtle); text-align: center; min-height: 44px; display: flex; align-items: center; justify-content: center; background: transparent;"></div><div style="padding: 10px; border-bottom: 1px solid var(--fx-border-subtle); border-left: 1px solid var(--fx-border-subtle); text-align: center; min-height: 44px; display: flex; align-items: center; justify-content: center; background: var(--fx-bg-sunken);"><span data-numeric style="font: 500 11px/1.3 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-primary);">SMP-0424</span></div><div style="padding: 10px; border-bottom: 1px solid var(--fx-border-subtle); border-left: 1px solid var(--fx-border-subtle); text-align: center; min-height: 44px; display: flex; align-items: center; justify-content: center; background: transparent;"></div><div style="padding: 10px; border-bottom: 1px solid var(--fx-border-subtle); border-left: 1px solid var(--fx-border-subtle); text-align: center; min-height: 44px; display: flex; align-items: center; justify-content: center; background: transparent;"></div>
+      </div></div>
+      <div style="font: 400 12px/1.5 'JetBrains Mono', ui-monospace, monospace; color: var(--fx-text-tertiary); padding: 12px 0 0; max-width: 76ch; text-wrap: pretty;">Three sample makers and a cutting table is the whole capacity of a sampling room this size, which is why a fourth urgent request is a conversation and not a form field.</div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

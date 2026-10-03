@@ -19,6 +19,7 @@
 | You are… | Your documents |
 |---|---|
 | Designing a module (Claude Design) | `01-design/fabricxai-department-build-pack.md` (its frontend prompt + shared preamble) · `01-design/theme.css` + `fabricxai-design-system.html` |
+| Designing a role's screens (Claude Code, `/design`) | `01-design/DESIGN-RUNBOOK-BY-ROLE.md` — 16 sessions, one canvas per role, details in the side drawer |
 | Filling a handoff | `01-design/design-handoff-template.md` (includes a filled example) |
 | Building backend | `02-backend/PLAYBOOK.md` §2 loop · `02-backend/briefs/<module>.md` · the module's HANDOFF |
 | Building frontend | `03-frontend/frontend-dev-plan.md` · the HANDOFF · the build-pack prompt |

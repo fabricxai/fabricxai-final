@@ -1,0 +1,310 @@
+{
+  "pages": [
+    {
+      "id": "desk",
+      "name": "The desk"
+    },
+    {
+      "id": "order",
+      "name": "An order"
+    },
+    {
+      "id": "sampling",
+      "name": "Sampling"
+    },
+    {
+      "id": "memory",
+      "name": "Memory & edges"
+    },
+    {
+      "id": "flows",
+      "name": "Flows"
+    },
+    {
+      "id": "bengali",
+      "name": "Bengali"
+    }
+  ],
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 2020,
+      "page": "desk",
+      "title": "/home · merchandiser · populated"
+    },
+    {
+      "file": "HomeEmpty.dc.html",
+      "x": 1560,
+      "y": 0,
+      "w": 1440,
+      "h": 900,
+      "page": "desk",
+      "title": "/home · empty (Test Textile)"
+    },
+    {
+      "file": "Orders.dc.html",
+      "x": 3120,
+      "y": 0,
+      "w": 1440,
+      "h": 1160,
+      "page": "desk",
+      "title": "/orders · populated"
+    },
+    {
+      "file": "OrdersEmpty.dc.html",
+      "x": 1560,
+      "y": 1120,
+      "w": 1440,
+      "h": 880,
+      "page": "desk",
+      "title": "/orders · empty"
+    },
+    {
+      "file": "OrdersStates.dc.html",
+      "x": 3120,
+      "y": 1400,
+      "w": 1440,
+      "h": 1000,
+      "page": "desk",
+      "title": "/orders · loading and error"
+    },
+    {
+      "file": "HomePhone.dc.html",
+      "x": 0,
+      "y": 2260,
+      "w": 1400,
+      "h": 920,
+      "page": "desk",
+      "title": "/home · phone · the three Desk tabs"
+    },
+    {
+      "file": "OrderDrawer.dc.html",
+      "x": 1560,
+      "y": 2260,
+      "w": 900,
+      "h": 1060,
+      "page": "desk",
+      "title": "drawer · record · an order (720)"
+    },
+    {
+      "file": "OrderTna.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 1800,
+      "page": "order",
+      "title": "/orders/[orderId] · TNA · the ripple"
+    },
+    {
+      "file": "OrderBreakdown.dc.html",
+      "x": 1560,
+      "y": 0,
+      "w": 1440,
+      "h": 1240,
+      "page": "order",
+      "title": "/orders/[orderId] · Breakdown · Rev 2 diff"
+    },
+    {
+      "file": "OrderLc.dc.html",
+      "x": 3120,
+      "y": 0,
+      "w": 1440,
+      "h": 1200,
+      "page": "order",
+      "title": "/orders/[orderId] · LC · the conflict"
+    },
+    {
+      "file": "OrderDossier.dc.html",
+      "x": 0,
+      "y": 1800,
+      "w": 1440,
+      "h": 2000,
+      "page": "order",
+      "title": "/orders/[orderId] · Dossier, Files, History"
+    },
+    {
+      "file": "OrdersInputs.dc.html",
+      "x": 1560,
+      "y": 1800,
+      "w": 1560,
+      "h": 1080,
+      "page": "order",
+      "title": "/orders/inputs · the readiness matrix"
+    },
+    {
+      "file": "Sampling.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 1100,
+      "page": "sampling",
+      "title": "/sampling · the board by stage"
+    },
+    {
+      "file": "SampleDrawer.dc.html",
+      "x": 1560,
+      "y": 0,
+      "w": 1300,
+      "h": 1160,
+      "page": "sampling",
+      "title": "drawer · record · a sample"
+    },
+    {
+      "file": "SampleFull.dc.html",
+      "x": 0,
+      "y": 1300,
+      "w": 1440,
+      "h": 1320,
+      "page": "sampling",
+      "title": "/sampling/[sampleId] · requisition"
+    },
+    {
+      "file": "SamplingLibraryLoad.dc.html",
+      "x": 1560,
+      "y": 1300,
+      "w": 1560,
+      "h": 1000,
+      "page": "sampling",
+      "title": "/sampling/library · /sampling/load"
+    },
+    {
+      "file": "SamplingMachine.dc.html",
+      "x": 2980,
+      "y": 0,
+      "w": 1300,
+      "h": 1100,
+      "page": "sampling",
+      "title": "the 14 transitions, and the control for each"
+    },
+    {
+      "file": "Memory.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 1240,
+      "page": "memory",
+      "title": "/memory · populated · the close-out note"
+    },
+    {
+      "file": "SimilarStyles.dc.html",
+      "x": 1560,
+      "y": 0,
+      "w": 1300,
+      "h": 1000,
+      "page": "memory",
+      "title": "drawer · similar styles"
+    },
+    {
+      "file": "Adjacent.dc.html",
+      "x": 0,
+      "y": 1440,
+      "w": 1560,
+      "h": 1240,
+      "page": "memory",
+      "title": "/planning · /shipment · /approve · /refused · /marbim"
+    },
+    {
+      "file": "F1.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 2260,
+      "h": 880,
+      "page": "flows",
+      "title": "F1 · booking an order off the paper"
+    },
+    {
+      "file": "F2.dc.html",
+      "x": 2380,
+      "y": 0,
+      "w": 2260,
+      "h": 900,
+      "page": "flows",
+      "title": "F2 · a slip and what it costs"
+    },
+    {
+      "file": "F3.dc.html",
+      "x": 0,
+      "y": 1100,
+      "w": 1820,
+      "h": 880,
+      "page": "flows",
+      "title": "F3 · the buyer changes their mind"
+    },
+    {
+      "file": "F4.dc.html",
+      "x": 1940,
+      "y": 1100,
+      "w": 2260,
+      "h": 900,
+      "page": "flows",
+      "title": "F4 · a sample becomes a cutting release"
+    },
+    {
+      "file": "F5.dc.html",
+      "x": 0,
+      "y": 2200,
+      "w": 1820,
+      "h": 860,
+      "page": "flows",
+      "title": "F5 · close-out and the next quotation"
+    },
+    {
+      "file": "BengaliOrders.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 1180,
+      "page": "bengali",
+      "title": "/orders and the order drawer · bn"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "brief-desk",
+      "page": "desk",
+      "x": 0,
+      "y": -240,
+      "w": 660,
+      "text": "S8 — Merchandiser, part 1: orders, sampling, memory.\n\nThe busiest desk in the factory, and the one whose screens are read at a desk rather than standing up. Thirteen rail entries, four of them somebody else’s.\n\nMilestones group by DAY, not by order: a merchandiser’s week is a calendar, and an order-shaped list makes them re-sort it every morning."
+    },
+    {
+      "id": "brief-order",
+      "page": "order",
+      "x": 0,
+      "y": -220,
+      "w": 660,
+      "text": "An order is one of the three records too big for a drawer.\n\nThe drawer is still where a merchandiser starts — five tabs and the next milestone’s action — and “Open full page” is the second click the contract allows.\n\nEvery date change goes through the ripple preview first. The preview and the write run the same computation, so they cannot disagree."
+    },
+    {
+      "id": "brief-sampling",
+      "page": "sampling",
+      "x": 0,
+      "y": -220,
+      "w": 660,
+      "text": "The audit’s friction, closed: the sample drawer names the TNA milestone it gates and links to it.\n\nA PP verdict is the highest-consequence write in the module — three words on a comment sheet that are a floor apart in meaning — so the verdict control says what each one does before it is pressed.\n\nThe machine’s fourteen transitions are drawn as a table so a later session can check the drawer against the machine."
+    },
+    {
+      "id": "brief-memory",
+      "page": "memory",
+      "x": 0,
+      "y": -200,
+      "w": 640,
+      "text": "Memory is not an archive; it is what the next quotation should know.\n\nEach row is a sentence somebody wrote at close-out, never a computed summary — a generated one would say “shipped on time” and lose the sleeve comment that is the actual lesson."
+    },
+    {
+      "id": "brief-flows",
+      "page": "flows",
+      "x": 0,
+      "y": -200,
+      "w": 640,
+      "text": "Five flows, one artboard each.\n\nF2 is the one to walk with a merchandiser: recording that fabric arrived four days late is not asking to move the ship date, but it does move, and the preview is what lets them see by how much before committing."
+    }
+  ],
+  "launch": {
+    "view": "canvas",
+    "page": "desk"
+  }
+}
